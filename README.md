@@ -1,35 +1,56 @@
 # lez-payment-streams
 
 LEZ implementation of payment streams.
-
-A SPEL program built with [spel-framework](https://github.com/logos-co/spel).
+A SPEL program built with
+[spel-framework](https://github.com/logos-co/spel).
 
 ## Prerequisites
 
 - Rust + [risc0 toolchain](https://dev.risczero.com/api/zkvm/install)
-- [LSSA wallet CLI](https://github.com/logos-blockchain/lssa) (`wallet` binary)
-- A running sequencer
+- [LSSA wallet CLI](https://github.com/logos-blockchain/lssa)
+  (`wallet` binary, integration only)
+- A running sequencer (integration only)
+
+## Local testing without wallet or sequencer
+
+Use these commands for local development only.
+They do not require `wallet` or a sequencer.
+
+```bash
+# Rebuild guest ELF after guest or shared-type changes
+cargo risczero build --manifest-path methods/guest/Cargo.toml
+
+# Run local library tests in core crate
+RISC0_DEV_MODE=1 cargo test -p lez_payment_streams_core --lib vault_tests
+```
+
+`cargo risczero build` rebuilds the guest binary.
+`cargo test ... vault_tests` runs only matching local library tests.
+Deploy and transaction submission still require `wallet`
+and a sequencer.
 
 ## Quick Start
 
-```bash
-# 1. Build the guest binary
-make build
+This section assumes integration setup
+with both `wallet` and a running sequencer.
+For local-only checks, use the commands above.
 
-# 2. Generate the IDL (auto-extracts from #[lez_program] annotations)
+```bash
+# Build guest and IDL
+make build
 make idl
 
-# 3. Deploy to sequencer
+# Deploy (integration)
 make deploy
 
-# 4. See available commands (auto-generated from your program)
+# Show CLI help
 make cli ARGS="--help"
 
-# 5. Run an instruction
+# Run an instruction
 make cli ARGS="-p methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin \\
   <command> --arg1 value1 --arg2 value2"
 
-# Dry run (no submission):
+# Dry run (no submission)
 make cli ARGS="--dry-run -p methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin \\
   <command> --arg1 value1"
 ```
