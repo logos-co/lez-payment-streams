@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
+mod test_support;
+
+#[cfg(test)]
 mod vault_tests;
 
 /// Example state struct — customize for your program.
