@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
-mod test_support;
+mod test_helpers;
 
 #[cfg(test)]
 mod vault_tests;

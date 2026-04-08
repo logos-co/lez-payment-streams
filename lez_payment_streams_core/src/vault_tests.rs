@@ -1,4 +1,4 @@
-use crate::test_support::create_keypair;
+use crate::test_helpers::create_keypair;
 
 #[test]
 fn vault_tests_trivial_test() {
