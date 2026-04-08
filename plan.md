@@ -17,7 +17,7 @@ until decisions are stable.
 instruction handlers,
 validation rules,
 and tests.
-- MVP vault semantics are single-token (native).
+- Vault semantics are single-token (native).
 - Off-chain protocol work is out of scope.
 
 ## References
@@ -40,7 +40,7 @@ Multi-token support is a future extension.
 
 ## Testing Approach
 
-Use in-process `V02State` tests
+Use in-process `V03State` tests
 with a TDD loop:
 start with failing tests,
 implement,
@@ -51,6 +51,40 @@ Primary checks:
 - `cargo risczero build --manifest-path methods/guest/Cargo.toml`
 - `RISC0_DEV_MODE=1 cargo test -p lez_payment_streams_core --lib vault_tests`
 
+Keep Borsh guest-safe:
+on guest, avoid `#[derive(BorshSerialize, BorshDeserialize)]`—
+use manual serialization.
+Shared types are guest-relevant,
+so direct derive-based Borsh in shared code isn't expected.
+
+## Code Placement in SPEL Repository
+
+- `methods/guest/src/bin/lez_payment_streams.rs`
+  contains the `#[lez_program]` module,
+  `#[instruction]` handlers,
+  account attributes,
+  and thin dispatch glue.
+- `lez_payment_streams_core/src/lib.rs`
+  is the shared types and pure-logic boundary
+  for both guest and host code.
+  Keep `VaultLayout`, `StreamLayout`,
+  shared enums, instruction payload types,
+  and pure helpers here.
+  Avoid guest runtime or account I/O here.
+- `methods/src/lib.rs`
+  remains generated-methods glue
+  and should stay minimal.
+- `lez_payment_streams_core/src/vault_tests.rs`
+  contains behavior tests for instruction flows,
+  state transitions,
+  and negative cases.
+- `lez_payment_streams_core/src/test_helpers.rs`
+  contains reusable test harness helpers
+  for keypairs,
+  state setup,
+  guest deployment,
+  and transaction builders.
+
 ## Plan
 
 ### 1. SPEL scaffold and vault account baseline
@@ -58,18 +92,17 @@ Primary checks:
 Decision log updates in `design.md`:
 - canonical PDA seed checklist
 - stable external identifiers vs internal counters
-- account layout versioning policy for MVP
-- single-token vault definition for MVP
-- `total_allocated` is single-token scoped in MVP
+- account layout versioning policy
+- single-token vault definition
+- `total_allocated` is single-token scoped
 
-Prep:
-1. Review the LEZ development guide in References.
-2. Copy host-side test helpers from the learning sandbox.
-3. Confirm minimal SPEL guest build
-   and trivial `V02State` test pass.
+Setup:
+1. Copy host-side test helpers from the learning sandbox.
+2. Confirm minimal SPEL guest build
+   and trivial `V03State` test pass.
 
 Impl:
-define `VaultLayout` in `ps-types` (Borsh-serializable).
+define `VaultLayout` in `lez_payment_streams_core/src/lib.rs` (Borsh-encoded).
 Add `initialize_vault` as an `#[instruction]` function.
 Declare vault account with `#[account(init, pda = [...])]`
 and authority with `#[account(signer)]`.
@@ -100,7 +133,7 @@ Decision log updates in `design.md`:
 - stream PDA derivation and uniqueness
 
 Impl:
-define `StreamLayout` in `ps-types`.
+define `StreamLayout` in `lez_payment_streams_core/src/lib.rs`.
 Add `create_stream` handler.
 Declare stream account with `#[account(init, pda = [...])]`.
 
@@ -175,10 +208,6 @@ and operations on non-existent accounts.
 Decision log updates in `design.md`:
 - public and shielded parity assumptions
 - timestamp constraints in private flow
-
-Prep:
-review privacy-preserving transaction guidance
-from the LEZ development guide in References.
 
 Impl:
 run working public flows
@@ -215,7 +244,7 @@ and RFC text.
   VaultProof, StreamProof, eligibility proofs, service messaging.
 - Integration with a running sequencer for end-to-end demo.
 - Multiple tokens per vault.
-- Future token extension path is out of MVP scope.
+- Future token extension path is out of scope.
 - Protocol extensions
   auto-pause, delivery receipts, activation fee, auto-claim.
 # Payment Streams on LEZ - Implementation Plan
@@ -237,7 +266,7 @@ until decisions are stable.
 instruction handlers,
 validation rules,
 and tests.
-- MVP vault semantics are single-token (native).
+- Vault semantics are single-token (native).
 - Off-chain protocol work is out of scope.
 
 ## References
@@ -260,7 +289,7 @@ Multi-token support is a future extension.
 
 ## Testing Approach
 
-Use in-process `V02State` tests
+Use in-process `V03State` tests
 with a TDD loop:
 start with failing tests,
 implement,
@@ -278,18 +307,17 @@ Primary checks:
 Decision log updates in `design.md`:
 - canonical PDA seed checklist
 - stable external identifiers vs internal counters
-- account layout versioning policy for MVP
-- single-token vault definition for MVP
-- `total_allocated` is single-token scoped in MVP
+- account layout versioning policy
+- single-token vault definition
+- `total_allocated` is single-token scoped
 
-Prep:
-1. Review the LEZ development guide in References.
-2. Copy host-side test helpers from the learning sandbox.
-3. Confirm minimal SPEL guest build
-   and trivial `V02State` test pass.
+Setup:
+1. Copy host-side test helpers from the learning sandbox.
+2. Confirm minimal SPEL guest build
+   and trivial `V03State` test pass.
 
 Impl:
-define `VaultLayout` in `ps-types` (Borsh-serializable).
+define `VaultLayout` in `lez_payment_streams_core/src/lib.rs` (Borsh-encoded).
 Add `initialize_vault` as an `#[instruction]` function.
 Declare vault account with `#[account(init, pda = [...])]`
 and authority with `#[account(signer)]`.
@@ -322,7 +350,7 @@ Decision log updates in `design.md`:
 - stream PDA derivation and uniqueness
 
 Impl:
-define `StreamLayout` in `ps-types`.
+define `StreamLayout` in `lez_payment_streams_core/src/lib.rs`.
 Add `create_stream` handler.
 Declare stream account with `#[account(init, pda = [...])]`.
 
@@ -402,10 +430,6 @@ and operations on non-existent accounts.
 Decision log updates in `design.md`:
 - public and shielded parity assumptions
 - timestamp constraints in private flow
-
-Prep:
-review privacy-preserving transaction guidance
-from the LEZ development guide in References.
 
 Impl:
 run working public flows
