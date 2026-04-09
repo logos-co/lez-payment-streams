@@ -1643,6 +1643,7 @@ name = "lez_payment_streams_core"
 version = "0.1.0"
 dependencies = [
  "borsh",
+ "nssa_core",
  "serde",
 ]
 
