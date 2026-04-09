@@ -109,7 +109,6 @@ impl VaultConfig {
 }
 
 
-
 // ---- VaultHolding ---- //
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -143,4 +142,12 @@ impl VaultHolding {
     pub fn new_with_version(version: VersionId) -> Self {
         Self { version }
     }
+}
+
+
+// ---- Instruction ---- //
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Instruction {
+    InitializeVault { vault_id: VaultId },
 }

@@ -27,7 +27,7 @@ atomically in a single instruction.
 
 ### VaultConfig
 
-`[b"vault_config", owner, vault_id_le]`
+`[b"vault_config", owner, vault_id]`
 
 `vault_id` is a user-chosen `u64`.
 Duplicate `vault_id` values are rejected
@@ -42,7 +42,7 @@ This reserves a path for future single-token vaults.
 
 ### StreamConfig
 
-`[b"stream_config", vault_config_pda, stream_id_le]`
+`[b"stream_config", vault_config_pda, stream_id]`
 
 `stream_id` is assigned from `VaultConfig.next_stream_id`,
 incremented only on successful `CreateStream`.

@@ -2,6 +2,8 @@
 
 use spel_framework::prelude::*;
 
+use lez_payment_streams_core::{VaultConfig, VaultHolding, VaultId};
+
 risc0_zkvm::guest::entry!(main);
 
 #[lez_program]
@@ -9,34 +11,32 @@ mod lez_payment_streams {
     #[allow(unused_imports)]
     use super::*;
 
-    /// Initialize the program state.
+    /// Initialize a vault.
     #[instruction]
-    pub fn initialize(
-        #[account(init, pda = literal("state"))]
-        state: AccountWithMetadata,
+    pub fn initialize_vault(
+        #[account(init, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
+        vault_config: AccountWithMetadata,
+        #[account(init, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
+        vault_holding: AccountWithMetadata,
         #[account(signer)]
         owner: AccountWithMetadata,
+        vault_id: VaultId,
     ) -> SpelResult {
-        // TODO: implement initialization logic
+        let vault_config_state = VaultConfig::new(owner.account_id, vault_id);
+        let vault_holding_state = VaultHolding::new();
+
+        let mut vault_config_account = vault_config.account.clone();
+        let mut vault_holding_account = vault_holding.account.clone();
+
+        vault_config_account.data = vault_config_state.to_bytes().try_into().unwrap();
+        vault_holding_account.data = vault_holding_state.to_bytes().try_into().unwrap();
+
         Ok(SpelOutput::states_only(vec![
-            AccountPostState::new_claimed(state.account.clone()),
+            AccountPostState::new_claimed(vault_config_account),
+            AccountPostState::new_claimed(vault_holding_account),
             AccountPostState::new(owner.account.clone()),
         ]))
     }
 
-    /// Example instruction — replace with your own.
-    #[instruction]
-    pub fn do_something(
-        #[account(mut, pda = literal("state"))]
-        state: AccountWithMetadata,
-        #[account(signer)]
-        owner: AccountWithMetadata,
-        amount: u64,
-    ) -> SpelResult {
-        // TODO: implement your logic
-        Ok(SpelOutput::states_only(vec![
-            AccountPostState::new(state.account.clone()),
-            AccountPostState::new(owner.account.clone()),
-        ]))
-    }
+
 }

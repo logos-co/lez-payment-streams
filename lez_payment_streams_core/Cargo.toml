@@ -10,3 +10,4 @@ nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.gi
 
 [dev-dependencies]
 nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "ffcbc15972adbf557939bf3e2852af276422631b" }
+spel-framework-core = { git = "https://github.com/logos-co/spel.git" }

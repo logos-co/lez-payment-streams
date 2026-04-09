@@ -67,3 +67,9 @@ pub(crate) fn build_public_tx<T: Serialize>(
     let witness_set = WitnessSet::for_message(&message, private_keys);
     PublicTransaction::new(message, witness_set)
 }
+
+pub(crate) fn seed_from_u64(value: u64) -> [u8; 32] {
+    let mut seed = [0u8; 32];
+    seed[..8].copy_from_slice(&value.to_le_bytes());
+    seed
+}
