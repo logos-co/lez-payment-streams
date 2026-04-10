@@ -6,7 +6,10 @@ use lez_payment_streams_core::{
     VaultConfig,
     VaultHolding,
     VaultId,
+    ERR_BALANCE_OVERFLOW,
+    ERR_INSUFFICIENT_FUNDS,
     ERR_ZERO_DEPOSIT_AMOUNT,
+    ERR_ZERO_WITHDRAW_AMOUNT,
     ERR_VERSION_MISMATCH,
     ERR_VAULT_ID_MISMATCH,
 };
@@ -83,8 +86,7 @@ mod lez_payment_streams {
     }
 
     /// Build one chained authenticated-transfer call. `source` and `destination` are the
-    /// `pre_states` order expected by that program (e.g. owner → vault holding for deposit,
-    /// vault holding → payout account for withdraw).
+    /// `pre_states` order expected by that program (e.g. owner → vault holding for deposit).
     fn authenticated_transfer_chained_call(
         authenticated_transfer_program_id: ProgramId,
         source: AccountWithMetadata,
@@ -174,6 +176,75 @@ mod lez_payment_streams {
             vec![transfer_call],
         ))
 
+    }
+
+    #[instruction]
+    pub fn withdraw(
+        #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
+        vault_config_with_meta: AccountWithMetadata,
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
+        vault_holding_with_meta: AccountWithMetadata,
+        #[account(mut, signer)]
+        owner_with_meta: AccountWithMetadata,
+        #[account(mut)]
+        withdraw_to: AccountWithMetadata,
+        vault_id: VaultId,
+        amount: Balance,
+    ) -> SpelResult {
+        if amount == 0 {
+            return Err(SpelError::Custom {
+                code: ERR_ZERO_WITHDRAW_AMOUNT,
+                message: "zero withdraw amount".into(),
+            });
+        }
+
+        let (vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
+            &vault_config_with_meta,
+            &vault_holding_with_meta,
+        )?;
+
+        validate_vault_owner_invariants(
+            &vault_config_state,
+            &vault_holding_state,
+            vault_id,
+            owner_with_meta.account_id,
+        )?;
+
+        let holding_balance = vault_holding_with_meta.account.balance;
+        let available = holding_balance.saturating_sub(vault_config_state.total_allocated);
+        if amount > available {
+            return Err(SpelError::Custom {
+                code: ERR_INSUFFICIENT_FUNDS,
+                message: "withdraw exceeds unallocated vault balance".into(),
+            });
+        }
+
+        // Debit vault holding and credit `withdraw_to` inside this program. Chained
+        // `authenticated_transfer` cannot debit the vault PDA (it is owned by this program, not the
+        // auth-transfer program); deposit uses a chain because the owner's funds are auth-owned.
+        let mut holding_account = vault_holding_with_meta.account.clone();
+        let mut recipient_account = withdraw_to.account.clone();
+
+        holding_account.balance = holding_account.balance.checked_sub(amount).ok_or_else(|| {
+            SpelError::Custom {
+                code: ERR_INSUFFICIENT_FUNDS,
+                message: "vault holding balance underflow".into(),
+            }
+        })?;
+
+        recipient_account.balance = recipient_account.balance.checked_add(amount).ok_or_else(|| {
+            SpelError::Custom {
+                code: ERR_BALANCE_OVERFLOW,
+                message: "recipient balance overflow".into(),
+            }
+        })?;
+
+        Ok(SpelOutput::states_only(vec![
+            AccountPostState::new(vault_config_with_meta.account.clone()),
+            AccountPostState::new(holding_account),
+            AccountPostState::new(owner_with_meta.account.clone()),
+            AccountPostState::new(recipient_account),
+        ]))
     }
 
 

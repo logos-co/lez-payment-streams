@@ -74,6 +74,27 @@ pub(crate) fn build_public_tx<T: Serialize>(
     PublicTransaction::new(message, witness_set)
 }
 
+/// Build a signed public transaction for a vault program instruction.
+///
+/// Argument order is meant for call sites: program id, instruction payload, account list,
+/// signer nonces, then signer private keys. Caller submits with
+/// [`V03State::transition_from_public_transaction`].
+pub(crate) fn build_signed_public_tx<T: Serialize>(
+    program_id: ProgramId,
+    instruction: T,
+    account_ids: &[AccountId],
+    nonces: &[Nonce],
+    signer_private_keys: &[&PrivateKey],
+) -> PublicTransaction {
+    build_public_tx(
+        program_id,
+        account_ids,
+        nonces,
+        instruction,
+        signer_private_keys,
+    )
+}
+
 pub(crate) fn seed_from_u64(value: u64) -> [u8; 32] {
     let mut seed = [0u8; 32];
     seed[..8].copy_from_slice(&value.to_le_bytes());
@@ -136,11 +157,11 @@ pub(crate) fn state_with_initialized_vault(
 
     let block_init = 1 as BlockId;
     let nonce_init = Nonce(0);
-    let tx_init = build_public_tx(
+    let tx_init = build_signed_public_tx(
         program_id,
+        Instruction::InitializeVault { vault_id },
         &account_ids_init,
         &[nonce_init],
-        Instruction::InitializeVault { vault_id },
         &[&owner_private_key],
     );
     let result_init = state.transition_from_public_transaction(&tx_init, block_init);
@@ -155,6 +176,63 @@ pub(crate) fn state_with_initialized_vault(
         program_id,
         owner_private_key,
         owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    )
+}
+
+/// Like [`state_with_initialized_vault`], but genesis also includes `recipient_account_id` with
+/// balance `0` for four-account withdraw tests.
+pub(crate) fn state_with_initialized_vault_with_recipient(
+    owner_balance: Balance,
+) -> (
+    V03State,
+    ProgramId,
+    PrivateKey,
+    AccountId,
+    AccountId,
+    VaultId,
+    AccountId,
+    AccountId,
+) {
+    let (owner_private_key, owner_account_id) = create_keypair(1);
+    let (_, recipient_account_id) = create_keypair(88);
+    let initial_accounts_data = vec![
+        (owner_account_id, owner_balance),
+        (recipient_account_id, 0 as Balance),
+    ];
+    let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
+        .expect("guest ELF present (build methods/guest) and state genesis ok");
+    let program_id = guest_program.id();
+
+    let vault_id: VaultId = 1;
+    let (vault_config_account_id, vault_holding_account_id) =
+        derive_vault_pdas(program_id, owner_account_id, vault_id);
+    let account_ids_init = [vault_config_account_id, vault_holding_account_id, owner_account_id];
+
+    let block_init = 1 as BlockId;
+    let nonce_init = Nonce(0);
+    let tx_init = build_signed_public_tx(
+        program_id,
+        Instruction::InitializeVault { vault_id },
+        &account_ids_init,
+        &[nonce_init],
+        &[&owner_private_key],
+    );
+    let result_init = state.transition_from_public_transaction(&tx_init, block_init);
+    assert!(
+        result_init.is_ok(),
+        "initialize_vault tx failed: {:?}",
+        result_init
+    );
+
+    (
+        state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        recipient_account_id,
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
@@ -181,5 +259,31 @@ pub(crate) fn assert_vault_state_unchanged(
     assert_eq!(
         state.get_account_by_id(vault_config_account_id).data,
         vault_config_data_before
+    );
+}
+
+pub(crate) fn assert_vault_state_unchanged_with_recipient(
+    state: &V03State,
+    owner_account_id: AccountId,
+    vault_holding_account_id: AccountId,
+    vault_config_account_id: AccountId,
+    recipient_account_id: AccountId,
+    owner_balance: Balance,
+    vault_holding_balance: Balance,
+    recipient_balance: Balance,
+    vault_config_data_before: Data,
+) {
+    assert_vault_state_unchanged(
+        state,
+        owner_account_id,
+        vault_holding_account_id,
+        vault_config_account_id,
+        owner_balance,
+        vault_holding_balance,
+        vault_config_data_before,
+    );
+    assert_eq!(
+        state.get_account_by_id(recipient_account_id).balance,
+        recipient_balance
     );
 }

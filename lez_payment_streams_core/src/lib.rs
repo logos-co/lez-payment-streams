@@ -31,6 +31,7 @@ pub const ERR_VERSION_MISMATCH: u32     = 6002;
 pub const ERR_VAULT_ID_MISMATCH: u32    = 6003;
 pub const ERR_INSUFFICIENT_FUNDS: u32   = 6004;
 pub const ERR_BALANCE_OVERFLOW: u32     = 6005;
+pub const ERR_ZERO_WITHDRAW_AMOUNT: u32 = 6006;
 
 
 // ---- VaultConfig ---- //
@@ -164,5 +165,9 @@ pub enum Instruction {
         vault_id: VaultId,
         amount: Balance,
         authenticated_transfer_program_id: ProgramId,
+    },
+    Withdraw {
+        vault_id: VaultId,
+        amount: Balance,
     },
 }
