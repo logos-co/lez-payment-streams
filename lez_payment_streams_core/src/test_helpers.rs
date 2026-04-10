@@ -9,11 +9,14 @@ use nssa::{
     public_transaction::{Message, WitnessSet},
     PrivateKey, ProgramId, PublicKey, PublicTransaction, V03State,
 };
-use nssa_core::account::{AccountId, Balance, Nonce};
+use nssa_core::{
+    account::{AccountId, Balance, Data, Nonce},
+    program::BlockId,
+};
 use serde::Serialize;
 use spel_framework_core::pda::{compute_pda, seed_from_str};
 
-use crate::VaultId;
+use crate::{Instruction, VaultId};
 
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -105,4 +108,78 @@ pub(crate) fn derive_vault_pdas(
     );
 
     (vault_config_account_id, vault_holding_account_id)
+}
+
+/// Single-owner genesis, guest deployed, `initialize_vault` applied.
+/// Next public tx should use `block_id` `2` and signer nonce `Nonce(1)`.
+pub(crate) fn state_with_initialized_vault(
+    owner_balance: Balance,
+) -> (
+    V03State,
+    ProgramId,
+    PrivateKey,
+    AccountId,
+    VaultId,
+    AccountId,
+    AccountId,
+) {
+    let (owner_private_key, owner_account_id) = create_keypair(1);
+    let initial_accounts_data = vec![(owner_account_id, owner_balance)];
+    let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
+        .expect("guest ELF present (build methods/guest) and state genesis ok");
+    let program_id = guest_program.id();
+
+    let vault_id: VaultId = 1;
+    let (vault_config_account_id, vault_holding_account_id) =
+        derive_vault_pdas(program_id, owner_account_id, vault_id);
+    let account_ids_init = [vault_config_account_id, vault_holding_account_id, owner_account_id];
+
+    let block_init = 1 as BlockId;
+    let nonce_init = Nonce(0);
+    let tx_init = build_public_tx(
+        program_id,
+        &account_ids_init,
+        &[nonce_init],
+        Instruction::InitializeVault { vault_id },
+        &[&owner_private_key],
+    );
+    let result_init = state.transition_from_public_transaction(&tx_init, block_init);
+    assert!(
+        result_init.is_ok(),
+        "initialize_vault tx failed: {:?}",
+        result_init
+    );
+
+    (
+        state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    )
+}
+
+pub(crate) fn assert_vault_state_unchanged(
+    state: &V03State,
+    owner_account_id: AccountId,
+    vault_holding_account_id: AccountId,
+    vault_config_account_id: AccountId,
+    owner_balance: Balance,
+    vault_holding_balance: Balance,
+    vault_config_data_before: Data,
+) {
+    assert_eq!(
+        state.get_account_by_id(owner_account_id).balance,
+        owner_balance
+    );
+    assert_eq!(
+        state.get_account_by_id(vault_holding_account_id).balance,
+        vault_holding_balance
+    );
+    assert_eq!(
+        state.get_account_by_id(vault_config_account_id).data,
+        vault_config_data_before
+    );
 }
