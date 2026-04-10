@@ -10,7 +10,7 @@ use lez_payment_streams_core::{
     ERR_VERSION_MISMATCH,
     ERR_VAULT_ID_MISMATCH,
 };
-use nssa_core::account::Balance;
+use nssa_core::account::{AccountId, Balance};
 use nssa_core::program::ProgramId;
 
 risc0_zkvm::guest::entry!(main);
@@ -19,6 +19,86 @@ risc0_zkvm::guest::entry!(main);
 mod lez_payment_streams {
     #[allow(unused_imports)]
     use super::*;
+
+    /// Parse vault config and holding from the standard two-account layout used by vault mutating
+    /// instructions. Account indices match SPEL `#[account]` order: config first, holding second.
+    fn parse_vault_config_and_holding(
+        vault_config_with_meta: &AccountWithMetadata,
+        vault_holding_with_meta: &AccountWithMetadata,
+    ) -> Result<(VaultConfig, VaultHolding), SpelError> {
+        let vault_config_state =
+            VaultConfig::from_bytes(&vault_config_with_meta.account.data).ok_or_else(|| {
+                SpelError::DeserializationError {
+                    account_index: 0,
+                    message: "invalid vault config data".into(),
+                }
+            })?;
+
+        let vault_holding_state =
+            VaultHolding::from_bytes(&vault_holding_with_meta.account.data).ok_or_else(|| {
+                SpelError::DeserializationError {
+                    account_index: 1,
+                    message: "invalid vault holding data".into(),
+                }
+            })?;
+
+        Ok((vault_config_state, vault_holding_state))
+    }
+
+    /// Shared checks for operations that require a vault owner signer and a matching `vault_id`
+    /// argument (deposit, withdraw, and later stream instructions that touch both vault accounts).
+    fn validate_vault_owner_invariants(
+        vault_config_state: &VaultConfig,
+        vault_holding_state: &VaultHolding,
+        vault_id: VaultId,
+        owner_account_id: AccountId,
+    ) -> Result<(), SpelError> {
+        if vault_config_state.version != vault_holding_state.version {
+            return Err(SpelError::Custom {
+                code: ERR_VERSION_MISMATCH,
+                message: "version mismatch".into(),
+            });
+        }
+
+        if vault_config_state.vault_id != vault_id {
+            return Err(SpelError::Custom {
+                code: ERR_VAULT_ID_MISMATCH,
+                message: "incorrect vault id".into(),
+            });
+        }
+
+        if vault_config_state.owner != owner_account_id {
+            return Err(SpelError::Unauthorized {
+                message: "owner mismatch".into(),
+            });
+        }
+
+        Ok(())
+    }
+
+    fn serialize_transfer_amount(amount: Balance) -> Result<Vec<u32>, SpelError> {
+        risc0_zkvm::serde::to_vec(&amount).map_err(|_| SpelError::SerializationError {
+            message: "failed to serialize transfer amount".into(),
+        })
+    }
+
+    /// Build one chained authenticated-transfer call. `source` and `destination` are the
+    /// `pre_states` order expected by that program (e.g. owner → vault holding for deposit,
+    /// vault holding → payout account for withdraw).
+    fn authenticated_transfer_chained_call(
+        authenticated_transfer_program_id: ProgramId,
+        source: AccountWithMetadata,
+        destination: AccountWithMetadata,
+        amount: Balance,
+    ) -> Result<ChainedCall, SpelError> {
+        let instruction_data = serialize_transfer_amount(amount)?;
+        Ok(ChainedCall {
+            program_id: authenticated_transfer_program_id,
+            instruction_data,
+            pre_states: vec![source, destination],
+            pda_seeds: vec![],
+        })
+    }
 
     /// Initialize a vault.
     #[instruction]
@@ -65,57 +145,25 @@ mod lez_payment_streams {
                 message: "zero deposit amount".into(),
             });
         }
-        // Parse vault state first, then apply invariant checks.
-        let vault_config_account = &vault_config_with_meta.account;
-        let vault_config_state = VaultConfig::from_bytes(&vault_config_account.data).ok_or_else(|| {
-            SpelError::DeserializationError {
-                account_index: 0,
-                message: "invalid vault config data".into(),
-            }
-        })?;
 
-        let vault_holding_state = VaultHolding::from_bytes(&vault_holding_with_meta.account.data).ok_or_else(|| {
-            SpelError::DeserializationError {
-                account_index: 1,
-                message: "invalid vault holding data".into(),
-            }
-        })?;
-
-        if vault_config_state.version != vault_holding_state.version {
-            return Err(SpelError::Custom{
-                code: ERR_VERSION_MISMATCH,
-                message: "version mismatch".into(),
-            });
-        }
-
-        if vault_config_state.vault_id != vault_id {
-            return Err(SpelError::Custom{
-                code: ERR_VAULT_ID_MISMATCH,
-                message: "incorrect vault id".into(),
-            });
-        }
-
-        // optional defense-in-depth (PDA should link vault to owner already)
-        if vault_config_state.owner != owner_with_meta.account_id {
-            return Err(SpelError::Unauthorized {
-                message: "owner mismatch".into(),
-            });
-        }
-
-        let transfer_instruction_data = risc0_zkvm::serde::to_vec(&amount)
-            .map_err(|_| {
-                SpelError::SerializationError {
-                    message: "failed to serialize transfer amount".into(),
-                }
-            }
+        let (vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
+            &vault_config_with_meta,
+            &vault_holding_with_meta,
         )?;
 
-        let transfer_call = ChainedCall {
-            program_id: authenticated_transfer_program_id,
-            instruction_data: transfer_instruction_data,
-            pre_states: vec![owner_with_meta.clone(), vault_holding_with_meta.clone()],
-            pda_seeds: vec![],
-        };
+        validate_vault_owner_invariants(
+            &vault_config_state,
+            &vault_holding_state,
+            vault_id,
+            owner_with_meta.account_id,
+        )?;
+
+        let transfer_call = authenticated_transfer_chained_call(
+            authenticated_transfer_program_id,
+            owner_with_meta.clone(),
+            vault_holding_with_meta.clone(),
+            amount,
+        )?;
 
         Ok(SpelOutput::with_chained_calls(
             vec![
