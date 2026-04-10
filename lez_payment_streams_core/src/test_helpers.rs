@@ -11,6 +11,9 @@ use nssa::{
 };
 use nssa_core::account::{AccountId, Balance, Nonce};
 use serde::Serialize;
+use spel_framework_core::pda::{compute_pda, seed_from_str};
+
+use crate::VaultId;
 
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -72,4 +75,34 @@ pub(crate) fn seed_from_u64(value: u64) -> [u8; 32] {
     let mut seed = [0u8; 32];
     seed[..8].copy_from_slice(&value.to_le_bytes());
     seed
+}
+
+pub(crate) fn derive_vault_pdas(
+    program_id: ProgramId,
+    owner_account_id: AccountId,
+    vault_id: VaultId,
+) -> (AccountId, AccountId) {
+    // vault config PDA: [b"vault_config", owner, vault_id]
+    let vault_config_seed_1 = seed_from_str("vault_config");
+    let vault_config_seed_2 = *owner_account_id.value();
+    let vault_config_seed_3 = seed_from_u64(vault_id);
+    let vault_config_account_id = compute_pda(
+        &program_id,
+        &[&vault_config_seed_1, &vault_config_seed_2, &vault_config_seed_3],
+    );
+
+    // vault holding PDA: [b"vault_holding", vault_config_pda, b"native"]
+    let vault_holding_seed_1 = seed_from_str("vault_holding");
+    let vault_holding_seed_2 = *vault_config_account_id.value();
+    let vault_holding_seed_3 = seed_from_str("native");
+    let vault_holding_account_id = compute_pda(
+        &program_id,
+        &[
+            &vault_holding_seed_1,
+            &vault_holding_seed_2,
+            &vault_holding_seed_3,
+        ],
+    );
+
+    (vault_config_account_id, vault_holding_account_id)
 }

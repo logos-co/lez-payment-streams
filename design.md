@@ -92,6 +92,22 @@ An explicit target supports key rotation and recovery.
 
 Claim: provider receives accrued funds directly from VaultHolding.
 
+### Deposit and withdraw semantics
+
+`Deposit` and `Withdraw` reject `amount = 0`.
+
+`Deposit` moves funds
+from an explicit signer-funded source account.
+
+`Deposit` does not modify `vault_config.total_allocated`.
+
+Vault operations that read both vault accounts require
+`VaultConfig.version == VaultHolding.version`.
+
+Vault operations with `vault_id` also require
+`VaultConfig.vault_id == vault_id`
+as defense in depth.
+
 ### Balance conservation
 
 Every mutating instruction must preserve:

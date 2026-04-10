@@ -4,6 +4,7 @@ use nssa_core::account::{
     AccountId,
     Balance,
 };
+use nssa_core::program::ProgramId;
 
 use core::mem::size_of;
 
@@ -21,7 +22,16 @@ pub type StreamId = u64;
 
 // ---- Version ---- //
 
-pub const DEFAULT_VERSION: VersionId = 1;
+pub const DEFAULT_VERSION: VersionId    = 1;
+
+// ---- Custom errors --- //
+
+pub const ERR_ZERO_DEPOSIT_AMOUNT: u32  = 6001;
+pub const ERR_VERSION_MISMATCH: u32     = 6002;
+pub const ERR_VAULT_ID_MISMATCH: u32    = 6003;
+pub const ERR_INSUFFICIENT_FUNDS: u32   = 6004;
+pub const ERR_BALANCE_OVERFLOW: u32     = 6005;
+
 
 // ---- VaultConfig ---- //
 
@@ -150,4 +160,9 @@ impl VaultHolding {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Instruction {
     InitializeVault { vault_id: VaultId },
+    Deposit {
+        vault_id: VaultId,
+        amount: Balance,
+        authenticated_transfer_program_id: ProgramId,
+    },
 }
