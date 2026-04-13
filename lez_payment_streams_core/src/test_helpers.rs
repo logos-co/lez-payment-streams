@@ -150,7 +150,7 @@ pub(crate) fn state_with_initialized_vault(
         .expect("guest ELF present (build methods/guest) and state genesis ok");
     let program_id = guest_program.id();
 
-    let vault_id: VaultId = 1;
+    let vault_id = VaultId::from(1u64);
     let (vault_config_account_id, vault_holding_account_id) =
         derive_vault_pdas(program_id, owner_account_id, vault_id);
     let account_ids_init = [vault_config_account_id, vault_holding_account_id, owner_account_id];
@@ -200,13 +200,13 @@ pub(crate) fn state_with_initialized_vault_with_recipient(
     let (_, recipient_account_id) = create_keypair(88);
     let initial_accounts_data = vec![
         (owner_account_id, owner_balance),
-        (recipient_account_id, 0 as Balance),
+        (recipient_account_id, Balance::MIN),
     ];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
         .expect("guest ELF present (build methods/guest) and state genesis ok");
     let program_id = guest_program.id();
 
-    let vault_id: VaultId = 1;
+    let vault_id = VaultId::from(1u64);
     let (vault_config_account_id, vault_holding_account_id) =
         derive_vault_pdas(program_id, owner_account_id, vault_id);
     let account_ids_init = [vault_config_account_id, vault_holding_account_id, owner_account_id];

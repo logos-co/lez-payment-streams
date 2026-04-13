@@ -5,7 +5,7 @@ use nssa_core::{
 use nssa::{program::Program};
 
 use crate::{
-    DEFAULT_VERSION, VaultConfig, VaultHolding, VaultId,
+    DEFAULT_VERSION, StreamId, VaultConfig, VaultHolding, VaultId,
     test_helpers::{
         assert_vault_state_unchanged, assert_vault_state_unchanged_with_recipient,
         build_signed_public_tx, create_keypair, create_state_with_guest_program,
@@ -30,7 +30,7 @@ fn test_keypair_is_deterministic_for_seed() {
 
 #[test]
 fn test_vault_config_roundtrip_serialization() {
-    let vault_config = VaultConfig::new(AccountId::new([43; 32]), 34u64);
+    let vault_config = VaultConfig::new(AccountId::new([43; 32]), VaultId::from(34u64));
     let serialized = vault_config.to_bytes();
     let deserialized = VaultConfig::from_bytes(&serialized);
     assert_eq!(Some(vault_config), deserialized);
@@ -40,7 +40,7 @@ fn test_vault_config_roundtrip_serialization() {
 
 #[test]
 fn test_vault_config_from_bytes_wrong_len_returns_none() {
-    let vault_config = VaultConfig::new(AccountId::new([43; 32]), 34u64);
+    let vault_config = VaultConfig::new(AccountId::new([43; 32]), VaultId::from(34u64));
     let bytes = vault_config.to_bytes();
     let short = &bytes[..bytes.len() - 1];
     assert!(VaultConfig::from_bytes(short).is_none());
@@ -79,7 +79,7 @@ fn test_initialize_vault_then_reinitialize_fails() {
         .expect("guest ELF present (build methods/guest) and state genesis ok");
     let program_id = guest_program.id();
 
-    let vault_id: VaultId = 1;
+    let vault_id = VaultId::from(1u64);
     let block_init = 1 as BlockId;
     let block_reinit = 2 as BlockId;
     let nonce_init = Nonce(0);
@@ -106,8 +106,8 @@ fn test_initialize_vault_then_reinitialize_fails() {
     assert_eq!(vault_config.version, DEFAULT_VERSION);
     assert_eq!(vault_config.owner, owner_account_id);
     assert_eq!(vault_config.vault_id, vault_id);
-    assert_eq!(vault_config.next_stream_id, 0);
-    assert_eq!(vault_config.total_allocated, 0);
+    assert_eq!(vault_config.next_stream_id, StreamId::MIN);
+    assert_eq!(vault_config.total_allocated, Balance::MIN);
     let vault_holding_account = state.get_account_by_id(vault_holding_account_id);
     assert_eq!(vault_holding_account.data.len(), VaultHolding::SIZE);
     let vault_holding = VaultHolding::from_bytes(&vault_holding_account.data).expect("valid vault holding bytes");
@@ -242,7 +242,7 @@ fn test_deposit_zero_amount_fails() {
 fn test_deposit_wrong_vault_id_fails() {
     let block_deposit = 2 as BlockId;
     let nonce_deposit = Nonce(1);
-    let wrong_vault_id: VaultId = 999;
+    let wrong_vault_id = VaultId::from(999u64);
     let deposit_amount = 100 as Balance;
 
     let (
@@ -408,7 +408,7 @@ fn test_deposit_owner_mismatch_fails() {
         .expect("guest ELF present (build methods/guest) and state genesis ok");
     let program_id = guest_program.id();
 
-    let vault_id: VaultId = 1;
+    let vault_id = VaultId::from(1u64);
     let (vault_config_account_id, vault_holding_account_id) =
         derive_vault_pdas(program_id, owner_account_id, vault_id);
     let account_ids_init = [vault_config_account_id, vault_holding_account_id, owner_account_id];
@@ -621,7 +621,7 @@ fn test_withdraw_zero_amount_fails() {
 fn test_withdraw_wrong_vault_id_fails() {
     let block_withdraw = 2 as BlockId;
     let nonce_withdraw = Nonce(1);
-    let wrong_vault_id: VaultId = 999;
+    let wrong_vault_id = VaultId::from(999u64);
 
     let (
         mut state,
@@ -777,7 +777,7 @@ fn test_withdraw_owner_mismatch_fails() {
         .expect("guest ELF present (build methods/guest) and state genesis ok");
     let program_id = guest_program.id();
 
-    let vault_id: VaultId = 1;
+    let vault_id = VaultId::from(1u64);
     let (vault_config_account_id, vault_holding_account_id) =
         derive_vault_pdas(program_id, owner_account_id, vault_id);
     let account_ids_init = [vault_config_account_id, vault_holding_account_id, owner_account_id];
