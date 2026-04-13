@@ -85,23 +85,6 @@ mod lez_payment_streams {
         })
     }
 
-    /// Build one chained authenticated-transfer call. `source` and `destination` are the
-    /// `pre_states` order expected by that program (e.g. owner → vault holding for deposit).
-    fn authenticated_transfer_chained_call(
-        authenticated_transfer_program_id: ProgramId,
-        source: AccountWithMetadata,
-        destination: AccountWithMetadata,
-        amount: Balance,
-    ) -> Result<ChainedCall, SpelError> {
-        let instruction_data = serialize_transfer_amount(amount)?;
-        Ok(ChainedCall {
-            program_id: authenticated_transfer_program_id,
-            instruction_data,
-            pre_states: vec![source, destination],
-            pda_seeds: vec![],
-        })
-    }
-
     /// Initialize a vault.
     #[instruction]
     pub fn initialize_vault(
@@ -160,12 +143,17 @@ mod lez_payment_streams {
             owner_with_meta.account_id,
         )?;
 
-        let transfer_call = authenticated_transfer_chained_call(
-            authenticated_transfer_program_id,
-            owner_with_meta.clone(),
-            vault_holding_with_meta.clone(),
-            amount,
-        )?;
+        // `pre_states` order matches authenticated-transfer: signer (source) → vault holding.
+        let instruction_data = serialize_transfer_amount(amount)?;
+        let transfer_call = ChainedCall {
+            program_id: authenticated_transfer_program_id,
+            instruction_data,
+            pre_states: vec![
+                owner_with_meta.clone(),
+                vault_holding_with_meta.clone(),
+            ],
+            pda_seeds: vec![],
+        };
 
         Ok(SpelOutput::with_chained_calls(
             vec![
