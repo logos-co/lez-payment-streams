@@ -16,9 +16,11 @@ mod vault_tests;
 
 // ---- Type aliases ---- //
 
-pub type VersionId = u8;
-pub type VaultId = u64;
-pub type StreamId = u64;
+pub type VersionId          = u8;
+pub type VaultId            = u64;
+pub type StreamId           = u64;
+pub type TokensPerSecond    = u64;
+pub type Timestamp          = u64;
 
 // ---- Version ---- //
 
@@ -112,8 +114,8 @@ impl VaultConfig {
             version,
             owner,
             vault_id,
-            next_stream_id: 0,
-            total_allocated: 0,
+            next_stream_id: StreamId::MIN,
+            total_allocated: Balance::MIN,
         }
     }
 
@@ -156,6 +158,154 @@ impl VaultHolding {
 }
 
 
+// ---- StreamConfig ---- //
+
+/// Lifecycle state for a stream. Encoded as a single byte (ordinal) to match Borsh-style enums.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum StreamState {
+    Active = 0,
+    Paused = 1,
+    Closed = 2,
+}
+
+impl StreamState {
+    pub fn from_discriminant(d: u8) -> Option<Self> {
+        match d {
+            0 => Some(Self::Active),
+            1 => Some(Self::Paused),
+            2 => Some(Self::Closed),
+            _ => None,
+        }
+    }
+}
+
+/// Serialized body of the stream PDA account.
+/// Vault identity is not stored; it is fixed by `vault_config_pda` in the PDA seeds.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct StreamConfig {
+    pub version: VersionId,
+    /// Must equal the `stream_id` seed used to derive this account’s PDA.
+    pub stream_id: StreamId,
+    pub provider: AccountId,
+    /// Tokens per second (spec "tokens per time unit"; LEZ uses second granularity in MVP).
+    pub rate: TokensPerSecond,
+    pub allocation: Balance,
+    pub accrued: Balance,
+    pub state: StreamState,
+    pub last_accrued_at: Timestamp,
+}
+
+impl StreamConfig {
+    pub const SIZE: usize = 
+        size_of::<VersionId>() +
+        size_of::<StreamId>() +
+        size_of::<AccountId>() +
+        size_of::<TokensPerSecond>() +
+        size_of::<Balance>() +
+        size_of::<Balance>() +
+        size_of::<StreamState>() +
+        size_of::<Timestamp>();
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(Self::SIZE);
+        buf.extend_from_slice(&self.version.to_le_bytes());
+        buf.extend_from_slice(&self.stream_id.to_le_bytes());
+        buf.extend_from_slice(self.provider.value());
+        buf.extend_from_slice(&self.rate.to_le_bytes());
+        buf.extend_from_slice(&self.allocation.to_le_bytes());
+        buf.extend_from_slice(&self.accrued.to_le_bytes());
+        buf.push(self.state as u8);
+        buf.extend_from_slice(&self.last_accrued_at.to_le_bytes());
+        buf
+    }
+
+    pub fn from_bytes(data: &[u8]) -> Option<Self> {
+        if data.len() != Self::SIZE {
+            return None;
+        }
+        let mut offset = 0;
+
+        let size = size_of::<VersionId>();
+        let version = VersionId::from_le_bytes(data[offset..offset + size].try_into().ok()?);
+        offset += size;
+
+        let size = size_of::<StreamId>();
+        let stream_id = StreamId::from_le_bytes(data[offset..offset + size].try_into().ok()?);
+        offset += size;
+
+        let size = size_of::<AccountId>();
+        let provider = AccountId::new(data[offset..offset + size].try_into().ok()?);
+        offset += size;
+
+        let size = size_of::<TokensPerSecond>();
+        let rate = TokensPerSecond::from_le_bytes(data[offset..offset + size].try_into().ok()?);
+        offset += size;
+
+        let size = size_of::<Balance>();
+        let allocation = Balance::from_le_bytes(data[offset..offset + size].try_into().ok()?);
+        offset += size;
+
+        let size = size_of::<Balance>();
+        let accrued = Balance::from_le_bytes(data[offset..offset + size].try_into().ok()?);
+        offset += size;
+
+        let state = StreamState::from_discriminant(*data.get(offset)?)?;
+        offset += size_of::<StreamState>();
+
+        let size = size_of::<Timestamp>();
+        let last_accrued_at = Timestamp::from_le_bytes(data[offset..offset + size].try_into().ok()?);
+
+        Some(Self {
+            version,
+            stream_id,
+            provider,
+            rate,
+            allocation,
+            accrued,
+            state,
+            last_accrued_at,
+        })
+    }
+
+    pub fn new(
+        stream_id: StreamId,
+        provider: AccountId,
+        rate: TokensPerSecond,
+        allocation: Balance,
+        last_accrued_at: Timestamp,
+    ) -> Self {
+        Self::new_with_version(
+            stream_id,
+            provider,
+            rate,
+            allocation,
+            last_accrued_at,
+            DEFAULT_VERSION,
+        )
+    }
+
+    pub fn new_with_version(
+        stream_id: StreamId,
+        provider: AccountId,
+        rate: TokensPerSecond,
+        allocation: Balance,
+        last_accrued_at: Timestamp,
+        version: VersionId,
+    ) -> Self {
+        Self {
+            version,
+            stream_id,
+            provider,
+            rate,
+            allocation,
+            accrued: Balance::MIN,
+            state: StreamState::Active,
+            last_accrued_at,
+        }
+    }
+}
+
 // ---- Instruction ---- //
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -169,5 +319,11 @@ pub enum Instruction {
     Withdraw {
         vault_id: VaultId,
         amount: Balance,
+    },
+    CreateStream {
+        vault_id: VaultId,
+        provider: AccountId,
+        rate: TokensPerSecond,
+        allocation: Balance,
     },
 }

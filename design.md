@@ -49,6 +49,9 @@ incremented only on successful `CreateStream`.
 Provider is stored as data, not encoded in seeds,
 to avoid coupling derivation to external identity formats.
 
+Stream account data does not repeat `vault_id`.
+The vault is fixed by `vault_config_pda` in the seed.
+
 ## Data types
 
 Provider identity uses `AccountId` (`[u8; 32]`),
@@ -60,7 +63,7 @@ Stream lifecycle state is an enum:
 
 Numeric field types:
 
-- `rate`: `u64` (tokens per second)
+- `rate`: `TokensPerSecond` (`u64`, tokens per second)
 - `allocation`, `accrued`: `Balance` (`u128`)
 - timestamps: `u64`
 
