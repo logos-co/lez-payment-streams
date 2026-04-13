@@ -16,10 +16,13 @@ use lez_payment_streams_core::{
 use nssa_core::account::{AccountId, Balance};
 use nssa_core::program::ProgramId;
 
+#[cfg(target_arch = "riscv32")]
 risc0_zkvm::guest::entry!(main);
 
 #[lez_program]
 mod lez_payment_streams {
+    #![cfg_attr(not(target_arch = "riscv32"), allow(dead_code))]
+
     #[allow(unused_imports)]
     use super::*;
 
@@ -79,6 +82,9 @@ mod lez_payment_streams {
         Ok(())
     }
 
+    // How `authenticated_transfer` encodes the debit amount in `ChainedCall::instruction_data`.
+    // Kept as a named step for clarity, not because we expect reuse: deposit is the only
+    // path that moves funds from an external signer balance into this program.
     fn serialize_transfer_amount(amount: Balance) -> Result<Vec<u32>, SpelError> {
         risc0_zkvm::serde::to_vec(&amount).map_err(|_| SpelError::SerializationError {
             message: "failed to serialize transfer amount".into(),
@@ -89,18 +95,18 @@ mod lez_payment_streams {
     #[instruction]
     pub fn initialize_vault(
         #[account(init, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
-        vault_config: AccountWithMetadata,
+        vault_config_with_meta: AccountWithMetadata,
         #[account(init, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
-        vault_holding: AccountWithMetadata,
+        vault_holding_with_meta: AccountWithMetadata,
         #[account(signer)]
-        owner: AccountWithMetadata,
+        owner_with_meta: AccountWithMetadata,
         vault_id: VaultId,
     ) -> SpelResult {
-        let vault_config_state = VaultConfig::new(owner.account_id, vault_id);
+        let vault_config_state = VaultConfig::new(owner_with_meta.account_id, vault_id);
         let vault_holding_state = VaultHolding::new();
 
-        let mut vault_config_account = vault_config.account.clone();
-        let mut vault_holding_account = vault_holding.account.clone();
+        let mut vault_config_account = vault_config_with_meta.account.clone();
+        let mut vault_holding_account = vault_holding_with_meta.account.clone();
 
         vault_config_account.data = vault_config_state.to_bytes().try_into().unwrap();
         vault_holding_account.data = vault_holding_state.to_bytes().try_into().unwrap();
@@ -108,7 +114,7 @@ mod lez_payment_streams {
         Ok(SpelOutput::states_only(vec![
             AccountPostState::new_claimed(vault_config_account),
             AccountPostState::new_claimed(vault_holding_account),
-            AccountPostState::new(owner.account.clone()),
+            AccountPostState::new(owner_with_meta.account.clone()),
         ]))
     }
 
@@ -125,7 +131,7 @@ mod lez_payment_streams {
         authenticated_transfer_program_id: ProgramId,
     ) -> SpelResult {
         if amount == 0 {
-            return Err(SpelError::Custom{
+            return Err(SpelError::Custom {
                 code: ERR_ZERO_DEPOSIT_AMOUNT,
                 message: "zero deposit amount".into(),
             });
@@ -207,9 +213,9 @@ mod lez_payment_streams {
             });
         }
 
-        // Debit vault holding and credit `withdraw_to` inside this program. Chained
-        // `authenticated_transfer` cannot debit the vault PDA (it is owned by this program, not the
-        // auth-transfer program); deposit uses a chain because the owner's funds are auth-owned.
+        // Debit vault holding and credit `withdraw_to` inside this program.
+        // Chained `authenticated_transfer` cannot debit the vault PDA
+        // (it is owned by this program, not the auth-transfer program).
         let mut holding_account = vault_holding_with_meta.account.clone();
         let mut recipient_account = withdraw_to.account.clone();
 
