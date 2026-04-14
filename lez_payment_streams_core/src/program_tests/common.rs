@@ -1,25 +1,19 @@
 //! Shared constants and helpers for the sibling `program_tests::*` modules.
-//! This file does not define any `#[test]` functions; those live in modules such as
-//! `deposit` and `withdraw`. Items here exist specifically to support those tests.
+//! This file does not define any `#[test]` functions (those live in modules).
 
+use nssa::{error::NssaError, program::Program, PrivateKey, ProgramId, V03State};
 use nssa_core::{
     account::{AccountId, Balance, Nonce},
     program::BlockId,
 };
-use nssa::{
-    error::NssaError,
-    program::Program,
-    PrivateKey, ProgramId, V03State,
-};
 
+use crate::Instruction;
 use crate::{
-    MockTimestamp, Timestamp,
-    VaultId,
     test_helpers::{
         build_signed_public_tx, force_mock_timestamp_account, state_with_initialized_vault,
     },
+    MockTimestamp, Timestamp, VaultId,
 };
-use crate::Instruction;
 
 /// Well-funded owner balance for typical integration tests.
 pub(crate) const DEFAULT_OWNER_GENESIS_BALANCE: Balance = 1_000;
@@ -27,9 +21,6 @@ pub(crate) const DEFAULT_OWNER_GENESIS_BALANCE: Balance = 1_000;
 pub(crate) const DEFAULT_MOCK_CLOCK_INITIAL_TS: Timestamp = 1;
 /// Single deposit into vault holding after `initialize_vault` for stream-focused tests (unified fixture).
 pub(crate) const DEFAULT_STREAM_TEST_DEPOSIT: Balance = 500;
-
-// `ERR_TOTAL_ALLOCATED_OVERFLOW` is not exercised here: if `allocation <= unallocated` holds with
-// consistent numeric state, `total_allocated + allocation` cannot overflow in practice.
 
 pub(crate) fn assert_execution_failed_with_code(result: Result<(), NssaError>, code: u32) {
     match result {
@@ -70,8 +61,11 @@ pub(crate) fn state_deposited_with_mock_clock(
 
     let block_deposit = 2 as BlockId;
     let nonce_deposit = Nonce(1);
-    let account_ids_deposit =
-        [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids_deposit = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
     assert!(
         state
             .transition_from_public_transaction(
@@ -80,7 +74,9 @@ pub(crate) fn state_deposited_with_mock_clock(
                     Instruction::Deposit {
                         vault_id,
                         amount: deposit_amount,
-                        authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+                        authenticated_transfer_program_id: Program::authenticated_transfer_program(
+                        )
+                        .id(),
                     },
                     &account_ids_deposit,
                     &[nonce_deposit],

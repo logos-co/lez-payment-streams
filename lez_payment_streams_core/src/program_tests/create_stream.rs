@@ -1,26 +1,24 @@
+use nssa::program::Program;
 use nssa_core::{
     account::{Account, Balance, Data, Nonce},
     program::BlockId,
 };
-use nssa::program::Program;
 
+use crate::Instruction;
 use crate::{
-    DEFAULT_VERSION, MockTimestamp, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond,
-    VaultConfig, VaultId,
-    ERR_ALLOCATION_EXCEEDS_UNALLOCATED, ERR_INVALID_MOCK_TIMESTAMP,
+    test_helpers::{
+        build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
+        derive_vault_pdas, force_mock_timestamp_account, state_with_initialized_vault,
+    },
+    MockTimestamp, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig,
+    VaultId, DEFAULT_VERSION, ERR_ALLOCATION_EXCEEDS_UNALLOCATED, ERR_INVALID_MOCK_TIMESTAMP,
     ERR_NEXT_STREAM_ID_OVERFLOW, ERR_STREAM_ID_MISMATCH, ERR_VAULT_ID_MISMATCH,
     ERR_ZERO_STREAM_ALLOCATION, ERR_ZERO_STREAM_RATE,
-    test_helpers::{
-        build_signed_public_tx, create_keypair, create_state_with_guest_program,
-        derive_stream_pda, derive_vault_pdas, force_mock_timestamp_account,
-        state_with_initialized_vault,
-    },
 };
-use crate::Instruction;
 
 use super::common::{
-    assert_execution_failed_with_code, state_deposited_with_mock_clock, DEFAULT_MOCK_CLOCK_INITIAL_TS,
-    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
+    assert_execution_failed_with_code, state_deposited_with_mock_clock,
+    DEFAULT_MOCK_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
 
 // ---- Create stream ---- //
@@ -30,8 +28,9 @@ fn test_derive_stream_pda_stable() {
     let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
     let (_, owner_account_id) = create_keypair(1);
     let initial_accounts_data = vec![(owner_account_id, owner_genesis_balance)];
-    let (_, guest_program) = create_state_with_guest_program(&initial_accounts_data)
-        .expect("guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok");
+    let (_, guest_program) = create_state_with_guest_program(&initial_accounts_data).expect(
+        "guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok",
+    );
     let program_id = guest_program.id();
     let vault_id = VaultId::from(1u64);
     let (vault_config_account_id, _) = derive_vault_pdas(program_id, owner_account_id, vault_id);
@@ -68,8 +67,11 @@ fn test_create_stream() {
         vault_holding_account_id,
     ) = state_with_initialized_vault(owner_balance_start);
 
-    let account_ids_deposit =
-        [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids_deposit = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
     let tx_deposit = build_signed_public_tx(
         program_id,
         Instruction::Deposit {
@@ -119,10 +121,15 @@ fn test_create_stream() {
         &[&owner_private_key],
     );
     let result_stream = state.transition_from_public_transaction(&tx_stream, block_stream);
-    assert!(result_stream.is_ok(), "create_stream tx failed: {:?}", result_stream);
+    assert!(
+        result_stream.is_ok(),
+        "create_stream tx failed: {:?}",
+        result_stream
+    );
 
-    let vault_config = VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
-        .expect("vault config");
+    let vault_config =
+        VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
+            .expect("vault config");
     assert_eq!(vault_config.next_stream_id, 1);
     assert_eq!(vault_config.total_allocated, allocation);
 
@@ -166,8 +173,11 @@ fn test_create_stream_exceeds_unallocated_fails() {
         vault_holding_account_id,
     ) = state_with_initialized_vault(owner_balance_start);
 
-    let account_ids_deposit =
-        [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids_deposit = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
     assert!(
         state
             .transition_from_public_transaction(
@@ -176,8 +186,9 @@ fn test_create_stream_exceeds_unallocated_fails() {
                     Instruction::Deposit {
                         vault_id,
                         amount: deposit_amount,
-                        authenticated_transfer_program_id: Program::authenticated_transfer_program()
-                            .id(),
+                        authenticated_transfer_program_id: Program::authenticated_transfer_program(
+                        )
+                        .id(),
                     },
                     &account_ids_deposit,
                     &[nonce_deposit],
@@ -193,7 +204,10 @@ fn test_create_stream_exceeds_unallocated_fails() {
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, stream_id);
     let (_, provider_account_id) = create_keypair(42);
 
-    let vault_config_before = state.get_account_by_id(vault_config_account_id).data.clone();
+    let vault_config_before = state
+        .get_account_by_id(vault_config_account_id)
+        .data
+        .clone();
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
 
     let account_ids_stream = [
@@ -522,7 +536,9 @@ fn test_create_stream_owner_mismatch_fails() {
         (other_account_id, signer_account_balance),
     ];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
-        .expect("guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok");
+        .expect(
+            "guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok",
+        );
     let program_id = guest_program.id();
 
     let vault_id = VaultId::from(1u64);
@@ -556,7 +572,9 @@ fn test_create_stream_owner_mismatch_fails() {
                     Instruction::Deposit {
                         vault_id,
                         amount: deposit_amount,
-                        authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+                        authenticated_transfer_program_id: Program::authenticated_transfer_program(
+                        )
+                        .id(),
                     },
                     &[
                         vault_config_account_id,
@@ -580,7 +598,10 @@ fn test_create_stream_owner_mismatch_fails() {
     );
 
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
-    let vault_config_before = state.get_account_by_id(vault_config_account_id).data.clone();
+    let vault_config_before = state
+        .get_account_by_id(vault_config_account_id)
+        .data
+        .clone();
     let allocation = 1 as Balance;
     let rate = 1 as TokensPerSecond;
 
@@ -606,7 +627,11 @@ fn test_create_stream_owner_mismatch_fails() {
         ),
         block_stream,
     );
-    assert!(result.is_err(), "create_stream with non-owner signer succeeded: {:?}", result);
+    assert!(
+        result.is_err(),
+        "create_stream with non-owner signer succeeded: {:?}",
+        result
+    );
     assert_eq!(
         state.get_account_by_id(vault_config_account_id).data,
         vault_config_before
@@ -713,7 +738,11 @@ fn test_create_stream_allocation_equals_unallocated_succeeds() {
         ),
         3 as BlockId,
     );
-    assert!(result.is_ok(), "create_stream at exact unallocated failed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "create_stream at exact unallocated failed: {:?}",
+        result
+    );
     let vc = VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
         .expect("vault config");
     assert_eq!(vc.total_allocated, allocation);

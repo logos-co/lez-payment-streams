@@ -1,19 +1,17 @@
+use nssa::program::Program;
 use nssa_core::{
     account::{Balance, Data, Nonce},
     program::BlockId,
 };
-use nssa::program::Program;
 
-use crate::{
-    VaultConfig, VaultHolding, VaultId,
-    ERR_VERSION_MISMATCH,
-    test_helpers::{
-        assert_vault_state_unchanged,
-        build_signed_public_tx, create_keypair, create_state_with_guest_program,
-        derive_vault_pdas, state_with_initialized_vault,
-    },
-};
 use crate::Instruction;
+use crate::{
+    test_helpers::{
+        assert_vault_state_unchanged, build_signed_public_tx, create_keypair,
+        create_state_with_guest_program, derive_vault_pdas, state_with_initialized_vault,
+    },
+    VaultConfig, VaultHolding, VaultId, ERR_VERSION_MISMATCH,
+};
 
 use super::common::{assert_execution_failed_with_code, DEFAULT_OWNER_GENESIS_BALANCE};
 
@@ -33,7 +31,11 @@ fn test_deposit() {
         vault_config_account_id,
         vault_holding_account_id,
     ) = state_with_initialized_vault(owner_balance_before);
-    let account_ids = [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
 
     let vault_config_before = state.get_account_by_id(vault_config_account_id);
     let vault_config_state_before =
@@ -54,7 +56,11 @@ fn test_deposit() {
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
 
     let result_deposit = state.transition_from_public_transaction(&tx_deposit, block_deposit);
-    assert!(result_deposit.is_ok(), "deposit tx failed: {:?}", result_deposit);
+    assert!(
+        result_deposit.is_ok(),
+        "deposit tx failed: {:?}",
+        result_deposit
+    );
 
     let owner_balance_after = state.get_account_by_id(owner_account_id).balance;
     let vault_holding_balance_after = state.get_account_by_id(vault_holding_account_id).balance;
@@ -63,7 +69,10 @@ fn test_deposit() {
         VaultConfig::from_bytes(&vault_config_after.data).expect("valid vault config bytes");
 
     assert_eq!(owner_balance_after, owner_balance_before - deposit_amount);
-    assert_eq!(vault_holding_balance_after, vault_holding_balance_before + deposit_amount);
+    assert_eq!(
+        vault_holding_balance_after,
+        vault_holding_balance_before + deposit_amount
+    );
     assert_eq!(
         vault_config_state_after.total_allocated,
         vault_config_state_before.total_allocated
@@ -72,9 +81,18 @@ fn test_deposit() {
         vault_config_state_after.next_stream_id,
         vault_config_state_before.next_stream_id
     );
-    assert_eq!(vault_config_state_after.version, vault_config_state_before.version);
-    assert_eq!(vault_config_state_after.owner, vault_config_state_before.owner);
-    assert_eq!(vault_config_state_after.vault_id, vault_config_state_before.vault_id);
+    assert_eq!(
+        vault_config_state_after.version,
+        vault_config_state_before.version
+    );
+    assert_eq!(
+        vault_config_state_after.owner,
+        vault_config_state_before.owner
+    );
+    assert_eq!(
+        vault_config_state_after.vault_id,
+        vault_config_state_before.vault_id
+    );
 }
 
 #[test]
@@ -93,11 +111,18 @@ fn test_deposit_zero_amount_fails() {
         vault_config_account_id,
         vault_holding_account_id,
     ) = state_with_initialized_vault(owner_balance_start);
-    let account_ids = [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
 
     let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
-    let vault_config_data_before = state.get_account_by_id(vault_config_account_id).data.clone();
+    let vault_config_data_before = state
+        .get_account_by_id(vault_config_account_id)
+        .data
+        .clone();
 
     let tx_deposit = build_signed_public_tx(
         program_id,
@@ -112,7 +137,11 @@ fn test_deposit_zero_amount_fails() {
     );
 
     let result = state.transition_from_public_transaction(&tx_deposit, block_deposit);
-    assert!(result.is_err(), "deposit with zero amount succeeded: {:?}", result);
+    assert!(
+        result.is_err(),
+        "deposit with zero amount succeeded: {:?}",
+        result
+    );
 
     assert_vault_state_unchanged(
         &state,
@@ -142,11 +171,18 @@ fn test_deposit_wrong_vault_id_fails() {
         vault_config_account_id,
         vault_holding_account_id,
     ) = state_with_initialized_vault(owner_balance_start);
-    let account_ids = [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
 
     let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
-    let vault_config_data_before = state.get_account_by_id(vault_config_account_id).data.clone();
+    let vault_config_data_before = state
+        .get_account_by_id(vault_config_account_id)
+        .data
+        .clone();
 
     let tx_deposit = build_signed_public_tx(
         program_id,
@@ -161,7 +197,11 @@ fn test_deposit_wrong_vault_id_fails() {
     );
 
     let result = state.transition_from_public_transaction(&tx_deposit, block_deposit);
-    assert!(result.is_err(), "deposit with mismatched vault_id succeeded: {:?}", result);
+    assert!(
+        result.is_err(),
+        "deposit with mismatched vault_id succeeded: {:?}",
+        result
+    );
 
     assert_vault_state_unchanged(
         &state,
@@ -190,11 +230,18 @@ fn test_deposit_wrong_authenticated_transfer_program_id_fails() {
         vault_config_account_id,
         vault_holding_account_id,
     ) = state_with_initialized_vault(owner_balance_start);
-    let account_ids = [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
 
     let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
-    let vault_config_data_before = state.get_account_by_id(vault_config_account_id).data.clone();
+    let vault_config_data_before = state
+        .get_account_by_id(vault_config_account_id)
+        .data
+        .clone();
 
     // Chained transfer must target `Program::authenticated_transfer_program().id()`; using the
     // payment-streams guest `program_id` here is deliberately wrong and fails chained execution.
@@ -244,10 +291,17 @@ fn test_deposit_insufficient_funds_fails() {
         vault_config_account_id,
         vault_holding_account_id,
     ) = state_with_initialized_vault(genesis_owner_balance);
-    let account_ids = [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
 
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
-    let vault_config_data_before = state.get_account_by_id(vault_config_account_id).data.clone();
+    let vault_config_data_before = state
+        .get_account_by_id(vault_config_account_id)
+        .data
+        .clone();
 
     let tx_deposit = build_signed_public_tx(
         program_id,
@@ -295,13 +349,19 @@ fn test_deposit_owner_mismatch_fails() {
         (other_account_id, signer_account_balance),
     ];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
-        .expect("guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok");
+        .expect(
+            "guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok",
+        );
     let program_id = guest_program.id();
 
     let vault_id = VaultId::from(1u64);
     let (vault_config_account_id, vault_holding_account_id) =
         derive_vault_pdas(program_id, owner_account_id, vault_id);
-    let account_ids_init = [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids_init = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
     let tx_init = build_signed_public_tx(
         program_id,
         Instruction::InitializeVault { vault_id },
@@ -310,12 +370,19 @@ fn test_deposit_owner_mismatch_fails() {
         &[&owner_private_key],
     );
     let result_init = state.transition_from_public_transaction(&tx_init, block_init);
-    assert!(result_init.is_ok(), "initialize_vault tx failed: {:?}", result_init);
+    assert!(
+        result_init.is_ok(),
+        "initialize_vault tx failed: {:?}",
+        result_init
+    );
 
     let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
     let other_balance_before = state.get_account_by_id(other_account_id).balance;
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
-    let vault_config_data_before = state.get_account_by_id(vault_config_account_id).data.clone();
+    let vault_config_data_before = state
+        .get_account_by_id(vault_config_account_id)
+        .data
+        .clone();
 
     let account_ids_deposit = [
         vault_config_account_id,
@@ -383,7 +450,11 @@ fn test_deposit_vault_holding_version_mismatch_fails() {
                 amount: deposit_amount,
                 authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
             },
-            &[vault_config_account_id, vault_holding_account_id, owner_account_id],
+            &[
+                vault_config_account_id,
+                vault_holding_account_id,
+                owner_account_id,
+            ],
             &[Nonce(1)],
             &[&owner_private_key],
         ),

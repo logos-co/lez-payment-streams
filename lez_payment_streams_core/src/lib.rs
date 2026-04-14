@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use nssa_core::account::{
-    AccountId,
-    Balance,
-};
+use nssa_core::account::{AccountId, Balance};
 use nssa_core::program::ProgramId;
 
 use core::mem::size_of;
@@ -19,32 +16,31 @@ pub use mock_timestamp::MockTimestamp;
 
 // ---- Type aliases ---- //
 
-pub type VersionId          = u8;
-pub type VaultId            = u64;
-pub type StreamId           = u64;
-pub type TokensPerSecond    = u64;
-pub type Timestamp          = u64;
+pub type VersionId = u8;
+pub type VaultId = u64;
+pub type StreamId = u64;
+pub type TokensPerSecond = u64;
+pub type Timestamp = u64;
 
 // ---- Version ---- //
 
-pub const DEFAULT_VERSION: VersionId    = 1;
+pub const DEFAULT_VERSION: VersionId = 1;
 
 // ---- Custom errors --- //
 
-pub const ERR_ZERO_DEPOSIT_AMOUNT: u32              = 6001;
-pub const ERR_VERSION_MISMATCH: u32                 = 6002;
-pub const ERR_VAULT_ID_MISMATCH: u32                = 6003;
-pub const ERR_INSUFFICIENT_FUNDS: u32               = 6004;
-pub const ERR_BALANCE_OVERFLOW: u32                 = 6005;
-pub const ERR_ZERO_WITHDRAW_AMOUNT: u32             = 6006;
-pub const ERR_ZERO_STREAM_RATE: u32                 = 6007;
-pub const ERR_ZERO_STREAM_ALLOCATION: u32           = 6008;
-pub const ERR_STREAM_ID_MISMATCH: u32               = 6009;
-pub const ERR_TOTAL_ALLOCATED_OVERFLOW: u32         = 6010;
-pub const ERR_INVALID_MOCK_TIMESTAMP: u32           = 6011;
-pub const ERR_ALLOCATION_EXCEEDS_UNALLOCATED: u32     = 6012;
-pub const ERR_NEXT_STREAM_ID_OVERFLOW: u32          = 6013;
-
+pub const ERR_ZERO_DEPOSIT_AMOUNT: u32 = 6001;
+pub const ERR_VERSION_MISMATCH: u32 = 6002;
+pub const ERR_VAULT_ID_MISMATCH: u32 = 6003;
+pub const ERR_INSUFFICIENT_FUNDS: u32 = 6004;
+pub const ERR_BALANCE_OVERFLOW: u32 = 6005;
+pub const ERR_ZERO_WITHDRAW_AMOUNT: u32 = 6006;
+pub const ERR_ZERO_STREAM_RATE: u32 = 6007;
+pub const ERR_ZERO_STREAM_ALLOCATION: u32 = 6008;
+pub const ERR_STREAM_ID_MISMATCH: u32 = 6009;
+pub const ERR_TOTAL_ALLOCATED_OVERFLOW: u32 = 6010;
+pub const ERR_INVALID_MOCK_TIMESTAMP: u32 = 6011;
+pub const ERR_ALLOCATION_EXCEEDS_UNALLOCATED: u32 = 6012;
+pub const ERR_NEXT_STREAM_ID_OVERFLOW: u32 = 6013;
 
 // ---- VaultConfig ---- //
 
@@ -58,13 +54,11 @@ pub struct VaultConfig {
 }
 
 impl VaultConfig {
-
-    pub const SIZE: usize = 
-        size_of::<VersionId>() +
-        size_of::<AccountId>() +
-        size_of::<VaultId>() +
-        size_of::<StreamId>() +
-        size_of::<Balance>();
+    pub const SIZE: usize = size_of::<VersionId>()
+        + size_of::<AccountId>()
+        + size_of::<VaultId>()
+        + size_of::<StreamId>()
+        + size_of::<Balance>();
 
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(Self::SIZE);
@@ -128,9 +122,7 @@ impl VaultConfig {
             total_allocated: Balance::MIN,
         }
     }
-
 }
-
 
 // ---- VaultHolding ---- //
 
@@ -206,15 +198,14 @@ pub struct StreamConfig {
 }
 
 impl StreamConfig {
-    pub const SIZE: usize = 
-        size_of::<VersionId>() +
-        size_of::<StreamId>() +
-        size_of::<AccountId>() +
-        size_of::<TokensPerSecond>() +
-        size_of::<Balance>() +
-        size_of::<Balance>() +
-        size_of::<StreamState>() +
-        size_of::<Timestamp>();
+    pub const SIZE: usize = size_of::<VersionId>()
+        + size_of::<StreamId>()
+        + size_of::<AccountId>()
+        + size_of::<TokensPerSecond>()
+        + size_of::<Balance>()
+        + size_of::<Balance>()
+        + size_of::<StreamState>()
+        + size_of::<Timestamp>();
 
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(Self::SIZE);
@@ -263,7 +254,8 @@ impl StreamConfig {
         offset += size_of::<StreamState>();
 
         let size = size_of::<Timestamp>();
-        let last_accrued_at = Timestamp::from_le_bytes(data[offset..offset + size].try_into().ok()?);
+        let last_accrued_at =
+            Timestamp::from_le_bytes(data[offset..offset + size].try_into().ok()?);
 
         Some(Self {
             version,
@@ -319,7 +311,9 @@ impl StreamConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Instruction {
-    InitializeVault { vault_id: VaultId },
+    InitializeVault {
+        vault_id: VaultId,
+    },
     Deposit {
         vault_id: VaultId,
         amount: Balance,

@@ -58,10 +58,7 @@ mod tests {
     fn mock_timestamp_roundtrip() {
         let time_original = MockTimestamp::new_with_version(42, DEFAULT_VERSION);
         let wire_bytes = time_original.to_bytes();
-        assert_eq!(
-            MockTimestamp::from_bytes(&wire_bytes),
-            Some(time_original)
-        );
+        assert_eq!(MockTimestamp::from_bytes(&wire_bytes), Some(time_original));
     }
 
     #[test]

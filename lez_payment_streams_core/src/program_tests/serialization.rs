@@ -5,8 +5,8 @@ use std::mem::size_of;
 
 use nssa_core::account::AccountId;
 
-use crate::{StreamConfig, StreamState, Timestamp, VaultConfig, VaultHolding, VaultId};
 use crate::test_helpers::create_keypair;
+use crate::{StreamConfig, StreamState, Timestamp, VaultConfig, VaultHolding, VaultId};
 
 #[test]
 fn test_keypair_is_deterministic_for_seed() {

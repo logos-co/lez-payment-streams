@@ -1,19 +1,18 @@
+use nssa::program::Program;
 use nssa_core::{
     account::{Balance, Nonce},
     program::BlockId,
 };
-use nssa::program::Program;
 
-use crate::{
-    VaultConfig, VaultId,
-    ERR_BALANCE_OVERFLOW,
-    test_helpers::{
-        assert_vault_state_unchanged_with_recipient,
-        build_signed_public_tx, create_keypair, create_state_with_guest_program,
-        derive_vault_pdas, state_with_initialized_vault_with_recipient,
-    },
-};
 use crate::Instruction;
+use crate::{
+    test_helpers::{
+        assert_vault_state_unchanged_with_recipient, build_signed_public_tx, create_keypair,
+        create_state_with_guest_program, derive_vault_pdas,
+        state_with_initialized_vault_with_recipient,
+    },
+    VaultConfig, VaultId, ERR_BALANCE_OVERFLOW,
+};
 
 use super::common::{assert_execution_failed_with_code, DEFAULT_OWNER_GENESIS_BALANCE};
 
@@ -38,8 +37,11 @@ fn test_withdraw() {
         vault_holding_account_id,
     ) = state_with_initialized_vault_with_recipient(owner_balance_start);
 
-    let account_ids_deposit =
-        [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids_deposit = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
     let tx_deposit = build_signed_public_tx(
         program_id,
         Instruction::Deposit {
@@ -52,14 +54,17 @@ fn test_withdraw() {
         &[&owner_private_key],
     );
     let result_deposit = state.transition_from_public_transaction(&tx_deposit, block_deposit);
-    assert!(result_deposit.is_ok(), "deposit tx failed: {:?}", result_deposit);
+    assert!(
+        result_deposit.is_ok(),
+        "deposit tx failed: {:?}",
+        result_deposit
+    );
 
     let vault_config_before = state.get_account_by_id(vault_config_account_id);
     let vault_config_state_before =
         VaultConfig::from_bytes(&vault_config_before.data).expect("valid vault config bytes");
     let owner_after_deposit = state.get_account_by_id(owner_account_id).balance;
-    let vault_holding_before_withdraw =
-        state.get_account_by_id(vault_holding_account_id).balance;
+    let vault_holding_before_withdraw = state.get_account_by_id(vault_holding_account_id).balance;
     let recipient_before_withdraw = state.get_account_by_id(recipient_account_id).balance;
 
     let account_ids_withdraw = [
@@ -79,7 +84,11 @@ fn test_withdraw() {
         &[&owner_private_key],
     );
     let result_withdraw = state.transition_from_public_transaction(&tx_withdraw, block_withdraw);
-    assert!(result_withdraw.is_ok(), "withdraw tx failed: {:?}", result_withdraw);
+    assert!(
+        result_withdraw.is_ok(),
+        "withdraw tx failed: {:?}",
+        result_withdraw
+    );
 
     let vault_config_after = state.get_account_by_id(vault_config_account_id);
     let vault_config_state_after =
@@ -105,13 +114,19 @@ fn test_withdraw() {
         vault_config_state_after.next_stream_id,
         vault_config_state_before.next_stream_id
     );
-    assert_eq!(vault_config_state_after.version, vault_config_state_before.version);
-    assert_eq!(vault_config_state_after.owner, vault_config_state_before.owner);
-    assert_eq!(vault_config_state_after.vault_id, vault_config_state_before.vault_id);
     assert_eq!(
-        owner_after_deposit,
-        owner_balance_start - deposit_amount
+        vault_config_state_after.version,
+        vault_config_state_before.version
     );
+    assert_eq!(
+        vault_config_state_after.owner,
+        vault_config_state_before.owner
+    );
+    assert_eq!(
+        vault_config_state_after.vault_id,
+        vault_config_state_before.vault_id
+    );
+    assert_eq!(owner_after_deposit, owner_balance_start - deposit_amount);
 }
 
 #[test]
@@ -141,7 +156,10 @@ fn test_withdraw_zero_amount_fails() {
     let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
     let recipient_balance_before = state.get_account_by_id(recipient_account_id).balance;
-    let vault_config_data_before = state.get_account_by_id(vault_config_account_id).data.clone();
+    let vault_config_data_before = state
+        .get_account_by_id(vault_config_account_id)
+        .data
+        .clone();
 
     let tx_withdraw = build_signed_public_tx(
         program_id,
@@ -155,7 +173,11 @@ fn test_withdraw_zero_amount_fails() {
     );
 
     let result = state.transition_from_public_transaction(&tx_withdraw, block_withdraw);
-    assert!(result.is_err(), "withdraw with zero amount succeeded: {:?}", result);
+    assert!(
+        result.is_err(),
+        "withdraw with zero amount succeeded: {:?}",
+        result
+    );
 
     assert_vault_state_unchanged_with_recipient(
         &state,
@@ -198,7 +220,10 @@ fn test_withdraw_wrong_vault_id_fails() {
     let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
     let recipient_balance_before = state.get_account_by_id(recipient_account_id).balance;
-    let vault_config_data_before = state.get_account_by_id(vault_config_account_id).data.clone();
+    let vault_config_data_before = state
+        .get_account_by_id(vault_config_account_id)
+        .data
+        .clone();
 
     let tx_withdraw = build_signed_public_tx(
         program_id,
@@ -252,8 +277,11 @@ fn test_withdraw_exceeds_unallocated_fails() {
         vault_holding_account_id,
     ) = state_with_initialized_vault_with_recipient(owner_balance_start);
 
-    let account_ids_deposit =
-        [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids_deposit = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
     let tx_deposit = build_signed_public_tx(
         program_id,
         Instruction::Deposit {
@@ -275,7 +303,10 @@ fn test_withdraw_exceeds_unallocated_fails() {
     let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
     let recipient_balance_before = state.get_account_by_id(recipient_account_id).balance;
-    let vault_config_data_before = state.get_account_by_id(vault_config_account_id).data.clone();
+    let vault_config_data_before = state
+        .get_account_by_id(vault_config_account_id)
+        .data
+        .clone();
 
     let account_ids_withdraw = [
         vault_config_account_id,
@@ -333,13 +364,19 @@ fn test_withdraw_owner_mismatch_fails() {
         (recipient_account_id, recipient_genesis_balance),
     ];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
-        .expect("guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok");
+        .expect(
+            "guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok",
+        );
     let program_id = guest_program.id();
 
     let vault_id = VaultId::from(1u64);
     let (vault_config_account_id, vault_holding_account_id) =
         derive_vault_pdas(program_id, owner_account_id, vault_id);
-    let account_ids_init = [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids_init = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
     let tx_init = build_signed_public_tx(
         program_id,
         Instruction::InitializeVault { vault_id },
@@ -358,7 +395,10 @@ fn test_withdraw_owner_mismatch_fails() {
     let other_balance_before = state.get_account_by_id(other_account_id).balance;
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
     let recipient_balance_before = state.get_account_by_id(recipient_account_id).balance;
-    let vault_config_data_before = state.get_account_by_id(vault_config_account_id).data.clone();
+    let vault_config_data_before = state
+        .get_account_by_id(vault_config_account_id)
+        .data
+        .clone();
 
     let account_ids_withdraw = [
         vault_config_account_id,
@@ -425,9 +465,15 @@ fn test_withdraw_recipient_balance_overflow_fails() {
                     Instruction::Deposit {
                         vault_id,
                         amount: deposit_amount,
-                        authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+                        authenticated_transfer_program_id: Program::authenticated_transfer_program(
+                        )
+                        .id(),
                     },
-                    &[vault_config_account_id, vault_holding_account_id, owner_account_id],
+                    &[
+                        vault_config_account_id,
+                        vault_holding_account_id,
+                        owner_account_id
+                    ],
                     &[Nonce(1)],
                     &[&owner_private_key],
                 ),

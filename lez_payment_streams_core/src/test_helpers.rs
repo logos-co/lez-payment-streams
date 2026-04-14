@@ -117,7 +117,11 @@ pub(crate) fn derive_vault_pdas(
     let vault_config_seed_3 = seed_from_u64(vault_id);
     let vault_config_account_id = compute_pda(
         &program_id,
-        &[&vault_config_seed_1, &vault_config_seed_2, &vault_config_seed_3],
+        &[
+            &vault_config_seed_1,
+            &vault_config_seed_2,
+            &vault_config_seed_3,
+        ],
     );
 
     // vault holding PDA: [b"vault_holding", vault_config_pda, b"native"]
@@ -182,13 +186,19 @@ pub(crate) fn state_with_initialized_vault(
     let (owner_private_key, owner_account_id) = create_keypair(1);
     let initial_accounts_data = vec![(owner_account_id, owner_balance)];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
-        .expect("guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok");
+        .expect(
+            "guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok",
+        );
     let program_id = guest_program.id();
 
     let vault_id = VaultId::from(1u64);
     let (vault_config_account_id, vault_holding_account_id) =
         derive_vault_pdas(program_id, owner_account_id, vault_id);
-    let account_ids_init = [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids_init = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
 
     let block_init = 1 as BlockId;
     let nonce_init = Nonce(0);
@@ -238,13 +248,19 @@ pub(crate) fn state_with_initialized_vault_with_recipient(
         (recipient_account_id, Balance::MIN),
     ];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
-        .expect("guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok");
+        .expect(
+            "guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok",
+        );
     let program_id = guest_program.id();
 
     let vault_id = VaultId::from(1u64);
     let (vault_config_account_id, vault_holding_account_id) =
         derive_vault_pdas(program_id, owner_account_id, vault_id);
-    let account_ids_init = [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let account_ids_init = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
 
     let block_init = 1 as BlockId;
     let nonce_init = Nonce(0);
