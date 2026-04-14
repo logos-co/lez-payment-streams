@@ -3,6 +3,9 @@ name = "lez_payment_streams-methods"
 version = "0.1.0"
 edition = "2021"
 
+[package.metadata.risc0]
+methods = ["guest"]
+
 [build-dependencies]
 risc0-build = "=3.0.5"
 

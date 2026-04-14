@@ -21,11 +21,11 @@ They do not require `wallet` or a sequencer.
 cargo risczero build --manifest-path methods/guest/Cargo.toml
 
 # Run local library tests in core crate
-RISC0_DEV_MODE=1 cargo test -p lez_payment_streams_core --lib vault_tests
+RISC0_DEV_MODE=1 cargo test -p lez_payment_streams_core --lib program_tests
 ```
 
 `cargo risczero build` rebuilds the guest binary.
-`cargo test ... vault_tests` runs only matching local library tests.
+`cargo test ... program_tests` runs only matching local library tests.
 Deploy and transaction submission still require `wallet`
 and a sequencer.
 

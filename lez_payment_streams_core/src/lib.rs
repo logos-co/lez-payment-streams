@@ -12,7 +12,10 @@ use core::mem::size_of;
 mod test_helpers;
 
 #[cfg(test)]
-mod vault_tests;
+mod program_tests;
+
+mod mock_timestamp;
+pub use mock_timestamp::MockTimestamp;
 
 // ---- Type aliases ---- //
 
@@ -28,12 +31,19 @@ pub const DEFAULT_VERSION: VersionId    = 1;
 
 // ---- Custom errors --- //
 
-pub const ERR_ZERO_DEPOSIT_AMOUNT: u32  = 6001;
-pub const ERR_VERSION_MISMATCH: u32     = 6002;
-pub const ERR_VAULT_ID_MISMATCH: u32    = 6003;
-pub const ERR_INSUFFICIENT_FUNDS: u32   = 6004;
-pub const ERR_BALANCE_OVERFLOW: u32     = 6005;
-pub const ERR_ZERO_WITHDRAW_AMOUNT: u32 = 6006;
+pub const ERR_ZERO_DEPOSIT_AMOUNT: u32              = 6001;
+pub const ERR_VERSION_MISMATCH: u32                 = 6002;
+pub const ERR_VAULT_ID_MISMATCH: u32                = 6003;
+pub const ERR_INSUFFICIENT_FUNDS: u32               = 6004;
+pub const ERR_BALANCE_OVERFLOW: u32                 = 6005;
+pub const ERR_ZERO_WITHDRAW_AMOUNT: u32             = 6006;
+pub const ERR_ZERO_STREAM_RATE: u32                 = 6007;
+pub const ERR_ZERO_STREAM_ALLOCATION: u32           = 6008;
+pub const ERR_STREAM_ID_MISMATCH: u32               = 6009;
+pub const ERR_TOTAL_ALLOCATED_OVERFLOW: u32         = 6010;
+pub const ERR_INVALID_MOCK_TIMESTAMP: u32           = 6011;
+pub const ERR_ALLOCATION_EXCEEDS_UNALLOCATED: u32     = 6012;
+pub const ERR_NEXT_STREAM_ID_OVERFLOW: u32          = 6013;
 
 
 // ---- VaultConfig ---- //
@@ -156,7 +166,6 @@ impl VaultHolding {
         Self { version }
     }
 }
-
 
 // ---- StreamConfig ---- //
 
@@ -322,6 +331,7 @@ pub enum Instruction {
     },
     CreateStream {
         vault_id: VaultId,
+        stream_id: StreamId,
         provider: AccountId,
         rate: TokensPerSecond,
         allocation: Balance,

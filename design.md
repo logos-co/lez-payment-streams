@@ -71,7 +71,14 @@ All match LEZ-native types (`Balance`, `Timestamp`).
 
 A placeholder timestamp source account
 is passed as a read-only instruction account.
-To be replaced by a LEZ-native mechanism when available.
+To be replaced by a LEZ-native clock once the platform supports it.
+
+Wire layout for the MVP mock clock (`MockTimestamp` in the core crate):
+`version` (`u8`, little-endian as a single byte)
+followed by `timestamp` (`u64`, little-endian),
+nine bytes total.
+Tests may synthesize this with `MockTimestamp::to_bytes`
+or mutate host-side account data between transactions.
 
 ## Accounting
 
@@ -79,7 +86,9 @@ VaultHolding stores no application fields beyond `version`.
 Actual balance is the LEZ-native account balance.
 
 VaultConfig stores `total_allocated` only.
-Available balance: `vault_holding.balance - total_allocated`.
+Unallocated balance: `vault_holding.balance - total_allocated`.
+That figure caps both how much you may withdraw without touching streams
+and how much you may allocate when opening a stream.
 Per-stream accrual stays in StreamConfig.
 
 Multiple streams are allowed per `(vault, provider)`.

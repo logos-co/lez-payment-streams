@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+//! Block id and nonce ladder for tests: see [`build_signed_public_tx`] and [`state_with_initialized_vault`].
+
 use std::fs;
 use std::path::PathBuf;
 
@@ -10,13 +12,13 @@ use nssa::{
     PrivateKey, ProgramId, PublicKey, PublicTransaction, V03State,
 };
 use nssa_core::{
-    account::{AccountId, Balance, Data, Nonce},
+    account::{Account, AccountId, Balance, Data, Nonce},
     program::BlockId,
 };
 use serde::Serialize;
 use spel_framework_core::pda::{compute_pda, seed_from_str};
 
-use crate::{Instruction, VaultId};
+use crate::{Instruction, MockTimestamp, StreamId, VaultId};
 
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -26,8 +28,10 @@ fn workspace_root() -> PathBuf {
 }
 
 fn guest_binary_path() -> PathBuf {
+    // `Program::new` expects the risc0 `ProgramBinary` blob (`*.bin`), not the raw ELF.
+    // Produced by `cargo build -p lez_payment_streams-methods` (`risc0_build::embed_methods`).
     workspace_root().join(
-        "methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin",
+        "target/riscv-guest/lez_payment_streams-methods/lez_payment_streams-guest/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin",
     )
 }
 
@@ -79,6 +83,7 @@ pub(crate) fn build_public_tx<T: Serialize>(
 /// Argument order is meant for call sites: program id, instruction payload, account list,
 /// signer nonces, then signer private keys. Caller submits with
 /// [`V03State::transition_from_public_transaction`].
+/// Typical ladder: `initialize_vault` at block `1` / `Nonce(0)`; next public tx at block `2` / `Nonce(1)` per signer; further txs increment block and nonce (e.g. stream tests often use block `3` / `Nonce(2)`).
 pub(crate) fn build_signed_public_tx<T: Serialize>(
     program_id: ProgramId,
     instruction: T,
@@ -131,6 +136,36 @@ pub(crate) fn derive_vault_pdas(
     (vault_config_account_id, vault_holding_account_id)
 }
 
+/// Stream PDA: `[b"stream_config", vault_config_pda, stream_id]` (matches SPEL `create_stream` seeds).
+pub(crate) fn derive_stream_pda(
+    program_id: ProgramId,
+    vault_config_account_id: AccountId,
+    stream_id: StreamId,
+) -> AccountId {
+    let stream_seed_1 = seed_from_str("stream_config");
+    let stream_seed_2 = *vault_config_account_id.value();
+    let stream_seed_3 = seed_from_u64(stream_id);
+    compute_pda(
+        &program_id,
+        &[&stream_seed_1, &stream_seed_2, &stream_seed_3],
+    )
+}
+
+/// Insert or replace a read-only mock clock account (tests only).
+pub(crate) fn force_mock_timestamp_account(
+    state: &mut V03State,
+    account_id: AccountId,
+    clock: MockTimestamp,
+) {
+    let account = Account {
+        program_owner: Program::authenticated_transfer_program().id(),
+        balance: Balance::MIN,
+        data: Data::try_from(clock.to_bytes()).expect("mock clock payload fits Data limits"),
+        ..Account::default()
+    };
+    state.force_insert_account(account_id, account);
+}
+
 /// Single-owner genesis, guest deployed, `initialize_vault` applied.
 /// Next public tx should use `block_id` `2` and signer nonce `Nonce(1)`.
 pub(crate) fn state_with_initialized_vault(
@@ -147,7 +182,7 @@ pub(crate) fn state_with_initialized_vault(
     let (owner_private_key, owner_account_id) = create_keypair(1);
     let initial_accounts_data = vec![(owner_account_id, owner_balance)];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
-        .expect("guest ELF present (build methods/guest) and state genesis ok");
+        .expect("guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok");
     let program_id = guest_program.id();
 
     let vault_id = VaultId::from(1u64);
@@ -203,7 +238,7 @@ pub(crate) fn state_with_initialized_vault_with_recipient(
         (recipient_account_id, Balance::MIN),
     ];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
-        .expect("guest ELF present (build methods/guest) and state genesis ok");
+        .expect("guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok");
     let program_id = guest_program.id();
 
     let vault_id = VaultId::from(1u64);

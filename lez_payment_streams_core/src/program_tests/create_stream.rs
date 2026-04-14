@@ -1,0 +1,877 @@
+use nssa_core::{
+    account::{Account, Balance, Data, Nonce},
+    program::BlockId,
+};
+use nssa::program::Program;
+
+use crate::{
+    DEFAULT_VERSION, MockTimestamp, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond,
+    VaultConfig, VaultId,
+    ERR_ALLOCATION_EXCEEDS_UNALLOCATED, ERR_INVALID_MOCK_TIMESTAMP,
+    ERR_NEXT_STREAM_ID_OVERFLOW, ERR_STREAM_ID_MISMATCH, ERR_VAULT_ID_MISMATCH,
+    ERR_ZERO_STREAM_ALLOCATION, ERR_ZERO_STREAM_RATE,
+    test_helpers::{
+        build_signed_public_tx, create_keypair, create_state_with_guest_program,
+        derive_stream_pda, derive_vault_pdas, force_mock_timestamp_account,
+        state_with_initialized_vault,
+    },
+};
+use crate::Instruction;
+
+use super::common::{
+    assert_execution_failed_with_code, state_deposited_with_mock_clock, DEFAULT_MOCK_CLOCK_INITIAL_TS,
+    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
+};
+
+// ---- Create stream ---- //
+
+#[test]
+fn test_derive_stream_pda_stable() {
+    let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
+    let (_, owner_account_id) = create_keypair(1);
+    let initial_accounts_data = vec![(owner_account_id, owner_genesis_balance)];
+    let (_, guest_program) = create_state_with_guest_program(&initial_accounts_data)
+        .expect("guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok");
+    let program_id = guest_program.id();
+    let vault_id = VaultId::from(1u64);
+    let (vault_config_account_id, _) = derive_vault_pdas(program_id, owner_account_id, vault_id);
+    let s0 = derive_stream_pda(program_id, vault_config_account_id, 0);
+    let s0_b = derive_stream_pda(program_id, vault_config_account_id, 0);
+    assert_eq!(s0, s0_b);
+    assert_ne!(
+        s0,
+        derive_stream_pda(program_id, vault_config_account_id, 1)
+    );
+}
+
+#[test]
+fn test_create_stream() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let allocation = 200 as Balance;
+    let rate = 10 as TokensPerSecond;
+    let block_deposit = 2 as BlockId;
+    let block_stream = 3 as BlockId;
+    let nonce_deposit = Nonce(1);
+    let nonce_stream = Nonce(2);
+
+    let (_, mock_clock_account_id) = create_keypair(77);
+    let (_, provider_account_id) = create_keypair(42);
+
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_with_initialized_vault(owner_balance_start);
+
+    let account_ids_deposit =
+        [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    let tx_deposit = build_signed_public_tx(
+        program_id,
+        Instruction::Deposit {
+            vault_id,
+            amount,
+            authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+        },
+        &account_ids_deposit,
+        &[nonce_deposit],
+        &[&owner_private_key],
+    );
+    assert!(
+        state
+            .transition_from_public_transaction(&tx_deposit, block_deposit)
+            .is_ok(),
+        "deposit failed"
+    );
+
+    let initial_ts: Timestamp = 12_345;
+    force_mock_timestamp_account(
+        &mut state,
+        mock_clock_account_id,
+        MockTimestamp::new(initial_ts),
+    );
+
+    let stream_id = StreamId::MIN;
+    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, stream_id);
+
+    let account_ids_stream = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        stream_pda,
+        owner_account_id,
+        mock_clock_account_id,
+    ];
+    let tx_stream = build_signed_public_tx(
+        program_id,
+        Instruction::CreateStream {
+            vault_id,
+            stream_id,
+            provider: provider_account_id,
+            rate,
+            allocation,
+        },
+        &account_ids_stream,
+        &[nonce_stream],
+        &[&owner_private_key],
+    );
+    let result_stream = state.transition_from_public_transaction(&tx_stream, block_stream);
+    assert!(result_stream.is_ok(), "create_stream tx failed: {:?}", result_stream);
+
+    let vault_config = VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
+        .expect("vault config");
+    assert_eq!(vault_config.next_stream_id, 1);
+    assert_eq!(vault_config.total_allocated, allocation);
+
+    let stream_data = state.get_account_by_id(stream_pda).data.clone();
+    let stream_cfg = StreamConfig::from_bytes(&stream_data).expect("stream config");
+    assert_eq!(stream_cfg.version, DEFAULT_VERSION);
+    assert_eq!(stream_cfg.stream_id, stream_id);
+    assert_eq!(stream_cfg.provider, provider_account_id);
+    assert_eq!(stream_cfg.rate, rate);
+    assert_eq!(stream_cfg.allocation, allocation);
+    assert_eq!(stream_cfg.accrued, Balance::MIN);
+    assert_eq!(stream_cfg.state, StreamState::Active);
+    assert_eq!(stream_cfg.last_accrued_at, initial_ts);
+
+    assert_eq!(
+        state.get_account_by_id(vault_holding_account_id).balance,
+        amount
+    );
+}
+
+#[test]
+fn test_create_stream_exceeds_unallocated_fails() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let allocation = deposit_amount + 1 as Balance;
+    let rate = 1 as TokensPerSecond;
+    let block_deposit = 2 as BlockId;
+    let block_stream = 3 as BlockId;
+    let nonce_deposit = Nonce(1);
+    let nonce_stream = Nonce(2);
+
+    let (_, mock_clock_account_id) = create_keypair(77);
+
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_with_initialized_vault(owner_balance_start);
+
+    let account_ids_deposit =
+        [vault_config_account_id, vault_holding_account_id, owner_account_id];
+    assert!(
+        state
+            .transition_from_public_transaction(
+                &build_signed_public_tx(
+                    program_id,
+                    Instruction::Deposit {
+                        vault_id,
+                        amount: deposit_amount,
+                        authenticated_transfer_program_id: Program::authenticated_transfer_program()
+                            .id(),
+                    },
+                    &account_ids_deposit,
+                    &[nonce_deposit],
+                    &[&owner_private_key],
+                ),
+                block_deposit,
+            )
+            .is_ok(),
+        "deposit failed"
+    );
+
+    let stream_id = StreamId::MIN;
+    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, stream_id);
+    let (_, provider_account_id) = create_keypair(42);
+
+    let vault_config_before = state.get_account_by_id(vault_config_account_id).data.clone();
+    let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
+
+    let account_ids_stream = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        stream_pda,
+        owner_account_id,
+        mock_clock_account_id,
+    ];
+    let result = state.transition_from_public_transaction(
+        &build_signed_public_tx(
+            program_id,
+            Instruction::CreateStream {
+                vault_id,
+                stream_id,
+                provider: provider_account_id,
+                rate,
+                allocation,
+            },
+            &account_ids_stream,
+            &[nonce_stream],
+            &[&owner_private_key],
+        ),
+        block_stream,
+    );
+    assert_execution_failed_with_code(result, ERR_ALLOCATION_EXCEEDS_UNALLOCATED);
+
+    assert_eq!(
+        state.get_account_by_id(vault_config_account_id).data,
+        vault_config_before
+    );
+    assert_eq!(
+        state.get_account_by_id(vault_holding_account_id).balance,
+        vault_holding_balance_before
+    );
+    let stream_account = state.get_account_by_id(stream_pda);
+    assert!(
+        stream_account.data.is_empty(),
+        "stream PDA should not be initialized on failure"
+    );
+}
+#[test]
+fn test_create_stream_zero_rate_fails() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
+    let allocation = 1 as Balance;
+    let rate = 0 as TokensPerSecond;
+    let (_, mock_clock_account_id) = create_keypair(77);
+    let (_, provider_account_id) = create_keypair(42);
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_deposited_with_mock_clock(
+        owner_balance_start,
+        deposit_amount,
+        mock_clock_account_id,
+        mock_clock_initial_ts,
+    );
+
+    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
+    let result = state.transition_from_public_transaction(
+        &build_signed_public_tx(
+            program_id,
+            Instruction::CreateStream {
+                vault_id,
+                stream_id: 0,
+                provider: provider_account_id,
+                rate,
+                allocation,
+            },
+            &[
+                vault_config_account_id,
+                vault_holding_account_id,
+                stream_pda,
+                owner_account_id,
+                mock_clock_account_id,
+            ],
+            &[Nonce(2)],
+            &[&owner_private_key],
+        ),
+        3 as BlockId,
+    );
+    assert_execution_failed_with_code(result, ERR_ZERO_STREAM_RATE);
+}
+
+#[test]
+fn test_create_stream_zero_allocation_fails() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
+    let allocation = 0 as Balance;
+    let rate = 1 as TokensPerSecond;
+    let (_, mock_clock_account_id) = create_keypair(77);
+    let (_, provider_account_id) = create_keypair(42);
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_deposited_with_mock_clock(
+        owner_balance_start,
+        deposit_amount,
+        mock_clock_account_id,
+        mock_clock_initial_ts,
+    );
+
+    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
+    let result = state.transition_from_public_transaction(
+        &build_signed_public_tx(
+            program_id,
+            Instruction::CreateStream {
+                vault_id,
+                stream_id: 0,
+                provider: provider_account_id,
+                rate,
+                allocation,
+            },
+            &[
+                vault_config_account_id,
+                vault_holding_account_id,
+                stream_pda,
+                owner_account_id,
+                mock_clock_account_id,
+            ],
+            &[Nonce(2)],
+            &[&owner_private_key],
+        ),
+        3 as BlockId,
+    );
+    assert_execution_failed_with_code(result, ERR_ZERO_STREAM_ALLOCATION);
+}
+
+#[test]
+fn test_create_stream_stream_id_mismatch_fails() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
+    let allocation = 1 as Balance;
+    let rate = 1 as TokensPerSecond;
+    let (_, mock_clock_account_id) = create_keypair(77);
+    let (_, provider_account_id) = create_keypair(42);
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_deposited_with_mock_clock(
+        owner_balance_start,
+        deposit_amount,
+        mock_clock_account_id,
+        mock_clock_initial_ts,
+    );
+
+    // `next_stream_id` is 0; instruction asks for stream 1 with matching PDA — guest rejects.
+    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 1);
+    let result = state.transition_from_public_transaction(
+        &build_signed_public_tx(
+            program_id,
+            Instruction::CreateStream {
+                vault_id,
+                stream_id: 1,
+                provider: provider_account_id,
+                rate,
+                allocation,
+            },
+            &[
+                vault_config_account_id,
+                vault_holding_account_id,
+                stream_pda,
+                owner_account_id,
+                mock_clock_account_id,
+            ],
+            &[Nonce(2)],
+            &[&owner_private_key],
+        ),
+        3 as BlockId,
+    );
+    assert_execution_failed_with_code(result, ERR_STREAM_ID_MISMATCH);
+}
+
+/// If the stream position lists a different address than `derive_stream_pda(program_id, vault_config, stream_id)`,
+/// execution still succeeds and writes stream state to the **listed** account. The canonical PDA
+/// for `stream_id` is not populated unless that address appears in the transaction.
+#[test]
+fn test_create_stream_listed_stream_account_can_differ_from_derived_pda_for_stream_id() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
+    let allocation = 1 as Balance;
+    let rate = 1 as TokensPerSecond;
+    let (_, mock_clock_account_id) = create_keypair(77);
+    let (_, provider_account_id) = create_keypair(42);
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_deposited_with_mock_clock(
+        owner_balance_start,
+        deposit_amount,
+        mock_clock_account_id,
+        mock_clock_initial_ts,
+    );
+
+    let listed_stream_slot = derive_stream_pda(program_id, vault_config_account_id, 1);
+    let canonical_stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
+    let stream_id = 0 as StreamId;
+    let result = state.transition_from_public_transaction(
+        &build_signed_public_tx(
+            program_id,
+            Instruction::CreateStream {
+                vault_id,
+                stream_id,
+                provider: provider_account_id,
+                rate,
+                allocation,
+            },
+            &[
+                vault_config_account_id,
+                vault_holding_account_id,
+                listed_stream_slot,
+                owner_account_id,
+                mock_clock_account_id,
+            ],
+            &[Nonce(2)],
+            &[&owner_private_key],
+        ),
+        3 as BlockId,
+    );
+    assert!(result.is_ok(), "create_stream failed: {:?}", result);
+
+    let stream_at_listed =
+        StreamConfig::from_bytes(&state.get_account_by_id(listed_stream_slot).data)
+            .expect("stream state at listed stream account id");
+    assert_eq!(stream_at_listed.stream_id, stream_id);
+    assert!(
+        StreamConfig::from_bytes(&state.get_account_by_id(canonical_stream_pda).data).is_none(),
+        "canonical PDA for stream_id should not hold stream data when another id was listed"
+    );
+}
+
+#[test]
+fn test_create_stream_wrong_vault_id_fails() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
+    let allocation = 1 as Balance;
+    let rate = 1 as TokensPerSecond;
+    let (_, mock_clock_account_id) = create_keypair(77);
+    let (_, provider_account_id) = create_keypair(42);
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        _vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_deposited_with_mock_clock(
+        owner_balance_start,
+        deposit_amount,
+        mock_clock_account_id,
+        mock_clock_initial_ts,
+    );
+
+    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
+    let wrong_vault_id = VaultId::from(999u64);
+    let result = state.transition_from_public_transaction(
+        &build_signed_public_tx(
+            program_id,
+            Instruction::CreateStream {
+                vault_id: wrong_vault_id,
+                stream_id: 0,
+                provider: provider_account_id,
+                rate,
+                allocation,
+            },
+            &[
+                vault_config_account_id,
+                vault_holding_account_id,
+                stream_pda,
+                owner_account_id,
+                mock_clock_account_id,
+            ],
+            &[Nonce(2)],
+            &[&owner_private_key],
+        ),
+        3 as BlockId,
+    );
+    assert_execution_failed_with_code(result, ERR_VAULT_ID_MISMATCH);
+}
+
+#[test]
+fn test_create_stream_owner_mismatch_fails() {
+    let signer_account_balance = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let block_init = 1 as BlockId;
+    let block_deposit = 2 as BlockId;
+    let block_stream = 3 as BlockId;
+    let nonce_init = Nonce(0);
+    let nonce_deposit = Nonce(1);
+    let nonce_stream = Nonce(2);
+
+    let (owner_private_key, owner_account_id) = create_keypair(1);
+    let (other_private_key, other_account_id) = create_keypair(2);
+    let (_, mock_clock_account_id) = create_keypair(77);
+    let (_, provider_account_id) = create_keypair(42);
+
+    let initial_accounts_data = vec![
+        (owner_account_id, signer_account_balance),
+        (other_account_id, signer_account_balance),
+    ];
+    let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
+        .expect("guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok");
+    let program_id = guest_program.id();
+
+    let vault_id = VaultId::from(1u64);
+    let (vault_config_account_id, vault_holding_account_id) =
+        derive_vault_pdas(program_id, owner_account_id, vault_id);
+    assert!(
+        state
+            .transition_from_public_transaction(
+                &build_signed_public_tx(
+                    program_id,
+                    Instruction::InitializeVault { vault_id },
+                    &[
+                        vault_config_account_id,
+                        vault_holding_account_id,
+                        owner_account_id,
+                    ],
+                    &[nonce_init],
+                    &[&owner_private_key],
+                ),
+                block_init,
+            )
+            .is_ok(),
+        "initialize_vault failed"
+    );
+
+    assert!(
+        state
+            .transition_from_public_transaction(
+                &build_signed_public_tx(
+                    program_id,
+                    Instruction::Deposit {
+                        vault_id,
+                        amount: deposit_amount,
+                        authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+                    },
+                    &[
+                        vault_config_account_id,
+                        vault_holding_account_id,
+                        owner_account_id,
+                    ],
+                    &[nonce_deposit],
+                    &[&owner_private_key],
+                ),
+                block_deposit,
+            )
+            .is_ok(),
+        "deposit failed"
+    );
+
+    let mock_clock_ts_after_deposit = DEFAULT_MOCK_CLOCK_INITIAL_TS;
+    force_mock_timestamp_account(
+        &mut state,
+        mock_clock_account_id,
+        MockTimestamp::new(mock_clock_ts_after_deposit),
+    );
+
+    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
+    let vault_config_before = state.get_account_by_id(vault_config_account_id).data.clone();
+    let allocation = 1 as Balance;
+    let rate = 1 as TokensPerSecond;
+
+    let result = state.transition_from_public_transaction(
+        &build_signed_public_tx(
+            program_id,
+            Instruction::CreateStream {
+                vault_id,
+                stream_id: 0,
+                provider: provider_account_id,
+                rate,
+                allocation,
+            },
+            &[
+                vault_config_account_id,
+                vault_holding_account_id,
+                stream_pda,
+                other_account_id,
+                mock_clock_account_id,
+            ],
+            &[nonce_stream],
+            &[&other_private_key],
+        ),
+        block_stream,
+    );
+    assert!(result.is_err(), "create_stream with non-owner signer succeeded: {:?}", result);
+    assert_eq!(
+        state.get_account_by_id(vault_config_account_id).data,
+        vault_config_before
+    );
+}
+
+#[test]
+fn test_create_stream_invalid_mock_timestamp_fails() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
+    let allocation = 1 as Balance;
+    let rate = 1 as TokensPerSecond;
+    let (_, mock_clock_account_id) = create_keypair(77);
+    let (_, provider_account_id) = create_keypair(42);
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_deposited_with_mock_clock(
+        owner_balance_start,
+        deposit_amount,
+        mock_clock_account_id,
+        mock_clock_initial_ts,
+    );
+
+    // Undo mock clock payload so account data is empty / invalid for `MockTimestamp::from_bytes`.
+    state.force_insert_account(mock_clock_account_id, Account::default());
+
+    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
+    let result = state.transition_from_public_transaction(
+        &build_signed_public_tx(
+            program_id,
+            Instruction::CreateStream {
+                vault_id,
+                stream_id: 0,
+                provider: provider_account_id,
+                rate,
+                allocation,
+            },
+            &[
+                vault_config_account_id,
+                vault_holding_account_id,
+                stream_pda,
+                owner_account_id,
+                mock_clock_account_id,
+            ],
+            &[Nonce(2)],
+            &[&owner_private_key],
+        ),
+        3 as BlockId,
+    );
+    assert_execution_failed_with_code(result, ERR_INVALID_MOCK_TIMESTAMP);
+}
+
+#[test]
+fn test_create_stream_allocation_equals_unallocated_succeeds() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let mock_clock_initial_ts = 99 as Timestamp;
+    let rate = 1 as TokensPerSecond;
+    let (_, mock_clock_account_id) = create_keypair(77);
+    let (_, provider_account_id) = create_keypair(42);
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_deposited_with_mock_clock(
+        owner_balance_start,
+        deposit_amount,
+        mock_clock_account_id,
+        mock_clock_initial_ts,
+    );
+
+    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
+    let allocation = deposit_amount;
+    let result = state.transition_from_public_transaction(
+        &build_signed_public_tx(
+            program_id,
+            Instruction::CreateStream {
+                vault_id,
+                stream_id: 0,
+                provider: provider_account_id,
+                rate,
+                allocation,
+            },
+            &[
+                vault_config_account_id,
+                vault_holding_account_id,
+                stream_pda,
+                owner_account_id,
+                mock_clock_account_id,
+            ],
+            &[Nonce(2)],
+            &[&owner_private_key],
+        ),
+        3 as BlockId,
+    );
+    assert!(result.is_ok(), "create_stream at exact unallocated failed: {:?}", result);
+    let vc = VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
+        .expect("vault config");
+    assert_eq!(vc.total_allocated, allocation);
+}
+
+#[test]
+fn test_create_stream_second_stream_succeeds() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let mock_clock_initial_ts = 7 as Timestamp;
+    let first_stream_allocation = 200 as Balance;
+    let second_stream_allocation = 100 as Balance;
+    let expected_total_allocated = first_stream_allocation + second_stream_allocation;
+    let first_stream_rate = 2 as TokensPerSecond;
+    let second_stream_rate = 3 as TokensPerSecond;
+    let (_, mock_clock_account_id) = create_keypair(77);
+    let (_, provider_a) = create_keypair(42);
+    let (_, provider_b) = create_keypair(43);
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_deposited_with_mock_clock(
+        owner_balance_start,
+        deposit_amount,
+        mock_clock_account_id,
+        mock_clock_initial_ts,
+    );
+
+    let stream0 = derive_stream_pda(program_id, vault_config_account_id, 0);
+    let rate = first_stream_rate;
+    let allocation = first_stream_allocation;
+    assert!(
+        state
+            .transition_from_public_transaction(
+                &build_signed_public_tx(
+                    program_id,
+                    Instruction::CreateStream {
+                        vault_id,
+                        stream_id: 0,
+                        provider: provider_a,
+                        rate,
+                        allocation,
+                    },
+                    &[
+                        vault_config_account_id,
+                        vault_holding_account_id,
+                        stream0,
+                        owner_account_id,
+                        mock_clock_account_id,
+                    ],
+                    &[Nonce(2)],
+                    &[&owner_private_key],
+                ),
+                3 as BlockId,
+            )
+            .is_ok(),
+        "first create_stream failed"
+    );
+
+    let stream1 = derive_stream_pda(program_id, vault_config_account_id, 1);
+    let rate = second_stream_rate;
+    let allocation = second_stream_allocation;
+    let result = state.transition_from_public_transaction(
+        &build_signed_public_tx(
+            program_id,
+            Instruction::CreateStream {
+                vault_id,
+                stream_id: 1,
+                provider: provider_b,
+                rate,
+                allocation,
+            },
+            &[
+                vault_config_account_id,
+                vault_holding_account_id,
+                stream1,
+                owner_account_id,
+                mock_clock_account_id,
+            ],
+            &[Nonce(3)],
+            &[&owner_private_key],
+        ),
+        4 as BlockId,
+    );
+    assert!(result.is_ok(), "second create_stream failed: {:?}", result);
+
+    let vc = VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
+        .expect("vault config");
+    assert_eq!(vc.next_stream_id, 2);
+    assert_eq!(vc.total_allocated, expected_total_allocated);
+
+    let cfg1 = StreamConfig::from_bytes(&state.get_account_by_id(stream1).data).expect("stream 1");
+    assert_eq!(cfg1.stream_id, 1);
+    assert_eq!(cfg1.provider, provider_b);
+    assert_eq!(cfg1.rate, second_stream_rate);
+    assert_eq!(cfg1.allocation, second_stream_allocation);
+}
+
+#[test]
+fn test_create_stream_next_stream_id_overflow_fails() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
+    let allocation = 1 as Balance;
+    let rate = 1 as TokensPerSecond;
+    let (_, mock_clock_account_id) = create_keypair(77);
+    let (_, provider_account_id) = create_keypair(42);
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_deposited_with_mock_clock(
+        owner_balance_start,
+        deposit_amount,
+        mock_clock_account_id,
+        mock_clock_initial_ts,
+    );
+
+    let mut vc = VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
+        .expect("vault config");
+    vc.next_stream_id = u64::MAX;
+    vc.total_allocated = Balance::MIN;
+    let mut config_account = state.get_account_by_id(vault_config_account_id).clone();
+    config_account.data =
+        Data::try_from(vc.to_bytes()).expect("vault config payload fits Data limits");
+    state.force_insert_account(vault_config_account_id, config_account);
+
+    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, u64::MAX);
+    let result = state.transition_from_public_transaction(
+        &build_signed_public_tx(
+            program_id,
+            Instruction::CreateStream {
+                vault_id,
+                stream_id: u64::MAX,
+                provider: provider_account_id,
+                rate,
+                allocation,
+            },
+            &[
+                vault_config_account_id,
+                vault_holding_account_id,
+                stream_pda,
+                owner_account_id,
+                mock_clock_account_id,
+            ],
+            &[Nonce(2)],
+            &[&owner_private_key],
+        ),
+        3 as BlockId,
+    );
+    assert_execution_failed_with_code(result, ERR_NEXT_STREAM_ID_OVERFLOW);
+}

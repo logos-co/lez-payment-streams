@@ -3,12 +3,23 @@
 use spel_framework::prelude::*;
 
 use lez_payment_streams_core::{
+    MockTimestamp,
+    StreamConfig,
+    StreamId,
+    TokensPerSecond,
     VaultConfig,
     VaultHolding,
     VaultId,
+    ERR_ALLOCATION_EXCEEDS_UNALLOCATED,
     ERR_BALANCE_OVERFLOW,
     ERR_INSUFFICIENT_FUNDS,
+    ERR_INVALID_MOCK_TIMESTAMP,
+    ERR_NEXT_STREAM_ID_OVERFLOW,
+    ERR_STREAM_ID_MISMATCH,
+    ERR_TOTAL_ALLOCATED_OVERFLOW,
     ERR_ZERO_DEPOSIT_AMOUNT,
+    ERR_ZERO_STREAM_ALLOCATION,
+    ERR_ZERO_STREAM_RATE,
     ERR_ZERO_WITHDRAW_AMOUNT,
     ERR_VERSION_MISMATCH,
     ERR_VAULT_ID_MISMATCH,
@@ -105,8 +116,8 @@ mod lez_payment_streams {
         let vault_config_state = VaultConfig::new(owner_with_meta.account_id, vault_id);
         let vault_holding_state = VaultHolding::new();
 
-        let mut vault_config_account = vault_config_with_meta.account.clone();
-        let mut vault_holding_account = vault_holding_with_meta.account.clone();
+        let mut vault_config_account = vault_config_with_meta.account;
+        let mut vault_holding_account = vault_holding_with_meta.account;
 
         vault_config_account.data = vault_config_state.to_bytes().try_into().unwrap();
         vault_holding_account.data = vault_holding_state.to_bytes().try_into().unwrap();
@@ -114,7 +125,7 @@ mod lez_payment_streams {
         Ok(SpelOutput::states_only(vec![
             AccountPostState::new_claimed(vault_config_account),
             AccountPostState::new_claimed(vault_holding_account),
-            AccountPostState::new(owner_with_meta.account.clone()),
+            AccountPostState::new(owner_with_meta.account),
         ]))
     }
 
@@ -163,9 +174,9 @@ mod lez_payment_streams {
 
         Ok(SpelOutput::with_chained_calls(
             vec![
-                AccountPostState::new(vault_config_with_meta.account.clone()),
-                AccountPostState::new(vault_holding_with_meta.account.clone()),
-                AccountPostState::new(owner_with_meta.account.clone()),
+                AccountPostState::new(vault_config_with_meta.account),
+                AccountPostState::new(vault_holding_with_meta.account),
+                AccountPostState::new(owner_with_meta.account),
             ],
             vec![transfer_call],
         ))
@@ -204,9 +215,9 @@ mod lez_payment_streams {
             owner_with_meta.account_id,
         )?;
 
-        let holding_balance = vault_holding_with_meta.account.balance;
-        let available = holding_balance.saturating_sub(vault_config_state.total_allocated);
-        if amount > available {
+        let unallocated = vault_holding_with_meta.account.balance
+            .saturating_sub(vault_config_state.total_allocated);
+        if amount > unallocated {
             return Err(SpelError::Custom {
                 code: ERR_INSUFFICIENT_FUNDS,
                 message: "withdraw exceeds unallocated vault balance".into(),
@@ -216,8 +227,8 @@ mod lez_payment_streams {
         // Debit vault holding and credit `withdraw_to` inside this program.
         // Chained `authenticated_transfer` cannot debit the vault PDA
         // (it is owned by this program, not the auth-transfer program).
-        let mut holding_account = vault_holding_with_meta.account.clone();
-        let mut recipient_account = withdraw_to.account.clone();
+        let mut holding_account = vault_holding_with_meta.account;
+        let mut recipient_account = withdraw_to.account;
 
         holding_account.balance = holding_account.balance.checked_sub(amount).ok_or_else(|| {
             SpelError::Custom {
@@ -234,12 +245,115 @@ mod lez_payment_streams {
         })?;
 
         Ok(SpelOutput::states_only(vec![
-            AccountPostState::new(vault_config_with_meta.account.clone()),
+            AccountPostState::new(vault_config_with_meta.account),
             AccountPostState::new(holding_account),
-            AccountPostState::new(owner_with_meta.account.clone()),
+            AccountPostState::new(owner_with_meta.account),
             AccountPostState::new(recipient_account),
         ]))
     }
 
+    // Vault config and holding are both `mut` like deposit/withdraw
+    // so every vault-scoped instruction shares the same account shape.
+    // Holding is unchanged here (echoed in post state).
+    #[instruction]
+    pub fn create_stream(
+        #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
+        vault_config_with_meta: AccountWithMetadata,
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
+        vault_holding_with_meta: AccountWithMetadata,
+        #[account(init, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
+        stream_config_with_meta: AccountWithMetadata,
+        #[account(signer)]
+        owner_with_meta: AccountWithMetadata,
+        mock_timestamp_with_meta: AccountWithMetadata,
+        vault_id: VaultId,
+        stream_id: StreamId,
+        provider: AccountId,
+        rate: TokensPerSecond,
+        allocation: Balance,
+    ) -> SpelResult {
+        if rate == 0 {
+            return Err(SpelError::Custom {
+                code: ERR_ZERO_STREAM_RATE,
+                message: "zero stream rate".into(),
+            });
+        }
+        if allocation == 0 {
+            return Err(SpelError::Custom {
+                code: ERR_ZERO_STREAM_ALLOCATION,
+                message: "zero stream allocation".into(),
+            });
+        }
 
+        let (mut vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
+            &vault_config_with_meta,
+            &vault_holding_with_meta,
+        )?;
+
+        validate_vault_owner_invariants(
+            &vault_config_state,
+            &vault_holding_state,
+            vault_id,
+            owner_with_meta.account_id,
+        )?;
+
+        if stream_id != vault_config_state.next_stream_id {
+            return Err(SpelError::Custom {
+                code: ERR_STREAM_ID_MISMATCH,
+                message: "stream id does not match vault next_stream_id".into(),
+            });
+        }
+
+        let unallocated = vault_holding_with_meta.account.balance
+            .saturating_sub(vault_config_state.total_allocated);
+        if allocation > unallocated {
+            return Err(SpelError::Custom {
+                code: ERR_ALLOCATION_EXCEEDS_UNALLOCATED,
+                message: "stream allocation exceeds unallocated vault balance".into(),
+            });
+        }
+
+        let new_total_allocated = vault_config_state.total_allocated
+            .checked_add(allocation).ok_or_else(|| {
+                SpelError::Custom {
+                    code: ERR_TOTAL_ALLOCATED_OVERFLOW,
+                    message: "total allocated overflow".into(),
+                }
+            })?;
+
+        let clock_state = MockTimestamp::from_bytes(&mock_timestamp_with_meta.account.data).ok_or_else(|| {
+            SpelError::Custom {
+                code: ERR_INVALID_MOCK_TIMESTAMP,
+                message: "invalid mock timestamp account data".into(),
+            }
+        })?;
+        let last_accrued_at = clock_state.timestamp;
+
+        let stream_config_state =
+            StreamConfig::new(stream_id, provider, rate, allocation, last_accrued_at);
+
+        let next_stream_id = stream_id.checked_add(1).ok_or_else(|| {
+            SpelError::Custom {
+                code: ERR_NEXT_STREAM_ID_OVERFLOW,
+                message: "next_stream_id overflow".into(),
+            }
+        })?;
+
+        vault_config_state.next_stream_id = next_stream_id;
+        vault_config_state.total_allocated = new_total_allocated;
+
+        let mut vault_config_account = vault_config_with_meta.account;
+        vault_config_account.data = vault_config_state.to_bytes().try_into().unwrap();
+
+        let mut stream_account = stream_config_with_meta.account;
+        stream_account.data = stream_config_state.to_bytes().try_into().unwrap();
+
+        Ok(SpelOutput::states_only(vec![
+            AccountPostState::new(vault_config_account),
+            AccountPostState::new(vault_holding_with_meta.account),
+            AccountPostState::new_claimed(stream_account),
+            AccountPostState::new(owner_with_meta.account),
+            AccountPostState::new(mock_timestamp_with_meta.account),
+        ]))
+    }
 }

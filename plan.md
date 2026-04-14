@@ -45,11 +45,27 @@ with a TDD loop:
 start with failing tests,
 implement,
 rerun to green.
+That workflow does not depend on a particular `cargo test` filter
+or a separate test binary.
 
-Primary checks:
+Primary local loop:
 
-- `cargo risczero build --manifest-path methods/guest/Cargo.toml`
-- `RISC0_DEV_MODE=1 cargo test -p lez_payment_streams_core --lib vault_tests`
+- `RISC0_DEV_MODE=1 cargo test -p lez_payment_streams_core --lib`
+
+Optional: add a `program_tests` filter
+(`… --lib program_tests`)
+to match only tests under that module
+when you want a slightly faster iteration
+and are not touching other unit tests
+(for example `mock_timestamp`).
+
+After changes to the guest
+or to shared types the guest uses,
+rebuild the guest ELF before relying on test results,
+for example
+`cargo risczero build --manifest-path methods/guest/Cargo.toml`
+or
+`cargo build -p lez_payment_streams-methods`.
 
 Keep Borsh guest-safe:
 on guest, avoid `#[derive(BorshSerialize, BorshDeserialize)]`—
@@ -67,17 +83,16 @@ so direct derive-based Borsh in shared code isn't expected.
 - `lez_payment_streams_core/src/lib.rs`
   is the shared types and pure-logic boundary
   for both guest and host code.
-  Keep `VaultLayout`, `StreamLayout`,
+  Keep `VaultConfig`, `VaultHolding`, `StreamConfig`,
   shared enums, instruction payload types,
   and pure helpers here.
   Avoid guest runtime or account I/O here.
 - `methods/src/lib.rs`
   remains generated-methods glue
   and should stay minimal.
-- `lez_payment_streams_core/src/vault_tests.rs`
-  contains behavior tests for instruction flows,
-  state transitions,
-  and negative cases.
+- `lez_payment_streams_core/src/program_tests/`
+  contains guest-backed `V03State` tests
+  (submodules per instruction, plus `serialization` and `common` helpers).
 - `lez_payment_streams_core/src/test_helpers.rs`
   contains reusable test harness helpers
   for keypairs,
@@ -87,7 +102,7 @@ so direct derive-based Borsh in shared code isn't expected.
 
 Negative-case tests use a `*_fails` suffix
 when the name alone would be ambiguous
-(for example `test_withdraw_exceeds_available_fails`).
+(for example `test_withdraw_exceeds_unallocated_fails`).
 
 ## Plan
 
@@ -106,7 +121,8 @@ Setup:
    and trivial `V03State` test pass.
 
 Impl:
-define `VaultLayout` in `lez_payment_streams_core/src/lib.rs` (Borsh-encoded).
+define vault account payloads (`VaultConfig`, `VaultHolding`) in `lez_payment_streams_core/src/lib.rs`
+with manual fixed-width `to_bytes` / `from_bytes` (guest-safe; not derive-based Borsh on account data).
 Add `initialize_vault` as an `#[instruction]` function.
 Declare vault account with `#[account(init, pda = [...])]`
 and authority with `#[account(signer)]`.
@@ -116,7 +132,7 @@ Write in-process state tests covering `initialize_vault`
 ### 2. Deposit and withdraw
 
 Decision log updates in `design.md`:
-- available-balance rule
+- unallocated-balance rule (`vault_holding.balance - total_allocated`)
 - withdraw target semantics
 - arithmetic safety policy
 
@@ -128,23 +144,23 @@ and `#[account(signer)]` for owner authorization.
 Tests:
 `test_deposit`,
 `test_withdraw`,
-`test_withdraw_exceeds_available_fails`.
+`test_withdraw_exceeds_unallocated_fails`.
 
 ### 3. Stream creation
 
 Decision log updates in `design.md`:
-- `StreamLayout` fields and types
+- `StreamConfig` fields and types
 - stream id assignment policy
 - stream PDA derivation and uniqueness
 
 Impl:
-define `StreamLayout` in `lez_payment_streams_core/src/lib.rs`.
+define stream account payload (`StreamConfig`) in `lez_payment_streams_core/src/lib.rs`.
 Add `create_stream` handler.
 Declare stream account with `#[account(init, pda = [...])]`.
 
 Tests:
 `test_create_stream`,
-`test_create_stream_exceeds_balance` must fail.
+`test_create_stream_exceeds_unallocated_fails` must fail.
 
 ### 4. Timestamp and accrual
 
@@ -227,6 +243,12 @@ This is the first step that edits the RFC.
 Promote stable decisions from `design.md`
 to `rfc-index/docs/ift-ts/raw/payment-streams.md`.
 
+When editing the RFC, align terminology with the implementation:
+use **unallocated** for `vault_holding.balance - total_allocated`
+(not “available balance,” which is easy to confuse with pending-reservation
+semantics in other protocols).
+Apply the same wording pass to any spec excerpts that predate this naming.
+
 Include:
 - account model and PDA derivation
 - instruction definitions
@@ -242,6 +264,36 @@ Review consistency across:
 implemented behavior,
 `design.md`,
 and RFC text.
+Revisit **unallocated** vs legacy “available” wording in the RFC
+(see step 9 terminology note).
+
+## Final polish (implementation)
+
+Items below are optional tightening once behavior and tests are stable.
+
+- Revisit how custom program error codes are modeled in Rust.
+  Today they are shared `u32` constants (`ERR_*` in `lez_payment_streams_core`).
+  If many call sites start matching on codes and exhaustiveness would help,
+  consider a `#[repr(u32)] enum` (not driven by the test helper alone).
+
+- CI and contributor ergonomics for the guest binary:
+  ensure automated runs build `lez_payment_streams-methods` (or the guest crate)
+  before `cargo test -p lez_payment_streams_core`,
+  so embedded program tests never use a stale ELF
+  (wrong numeric codes or confusing failures after guest edits).
+
+- Policy for `RISC0_DEV_MODE` in automated versus local runs
+  (speed vs parity with non-dev proving), documented in README or `design.md`
+  when CI exists.
+
+- If the host ever exposes structured program error codes instead of string messages,
+  tighten `assert_execution_failed_with_code` or replace it with a typed assertion.
+
+- Formatting and static analysis before release or large merges:
+  `cargo fmt --all` (or scoped to changed crates),
+  `cargo clippy --workspace --all-targets` (or equivalent scoped invocation),
+  and consistency with the project’s recommended Rust style
+  (document or link here when that guide exists).
 
 ## Out of Scope
 
