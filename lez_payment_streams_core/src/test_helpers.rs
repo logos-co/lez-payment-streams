@@ -156,6 +156,10 @@ pub(crate) fn derive_stream_pda(
 }
 
 /// Insert or replace a read-only mock clock account (tests only).
+///
+/// Prefer advancing time with [`MockTimestamp::advance_by`] / [`MockTimestamp::increment`] when
+/// building a [`MockTimestamp`] value. This helper accepts any `clock` payload, including a lower
+/// [`MockTimestamp::timestamp`] than before, for negative tests (e.g. time regression).
 pub(crate) fn force_mock_timestamp_account(
     state: &mut V03State,
     account_id: AccountId,

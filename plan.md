@@ -164,17 +164,39 @@ Tests:
 
 ### 4. Timestamp and accrual
 
-Decision log updates in `design.md`:
-- mock timestamp account contract
-- lazy accrual update policy
-- pause-on-depletion behavior
+Decision log updates in `design.md`
+(see **Data types** for mock clock wire and versioning policy;
+see **Accrual behavior** for lazy accrual via `at_time` and testing notes):
+
+- mock timestamp account contract and read-only role
+- error if `now` from the clock is strictly before `accrued_as_of` on the stream
+- lazy accrual via `StreamConfig::at_time` in shared core; `at_time`-then-operate in handlers
+- time-based accrual only while stored state is `Active`
+- pause-on-depletion in the same `at_time` step
+- `accrued_as_of`: when the cap is hit from below, the exact depletion instant
+  (integer-second timeline; may be before `now` when `now` is later);
+  further rules are `StreamConfig::at_time` (e.g. unchanged when `now == accrued_as_of`)
 
 Impl:
-implement accrual as a pure helper in guest code.
+
+- Implement lazy accrual as `StreamConfig::at_time(t)` in `lez_payment_streams_core`
+  (single source of truth; guest deserializes, calls `stream_config.at_time(now)`, serializes).
+  Expose `StreamConfig::validate_invariants` for shared checks (rate, allocation, accrued cap).
+- Add `sync_stream`: loads a stream, validates it against the vault accounts and instruction
+  arguments (version alignment, `stream_id` bounds and consistency), runs `validate_invariants`,
+  then applies `at_time(now)`, writes `StreamConfig` back.
 
 Tests:
-`test_accrual_basic`,
-`test_accrual_caps_at_allocation`.
+
+- Unit tests on `StreamConfig::at_time` in the core crate.
+- Guest-backed `program_tests`:
+  `test_accrual_basic`,
+  `test_accrual_caps_at_allocation`.
+
+Follow-up (separate plan tightening, not blocking core accrual):
+
+- Test harness hygiene for the mock clock
+  (monotonic-by-default helpers and escape hatches for negative tests).
 
 ### 5. Pause resume top up
 

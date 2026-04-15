@@ -11,11 +11,12 @@ use lez_payment_streams_core::{
     VaultHolding,
     VaultId,
     ERR_ALLOCATION_EXCEEDS_UNALLOCATED,
-    ERR_BALANCE_OVERFLOW,
+    ERR_ARITHMETIC_OVERFLOW,
     ERR_INSUFFICIENT_FUNDS,
     ERR_INVALID_MOCK_TIMESTAMP,
     ERR_NEXT_STREAM_ID_OVERFLOW,
     ERR_STREAM_ID_MISMATCH,
+    ERR_STREAM_EXCEEDS_ALLOCATION,
     ERR_TOTAL_ALLOCATED_OVERFLOW,
     ERR_ZERO_DEPOSIT_AMOUNT,
     ERR_ZERO_STREAM_ALLOCATION,
@@ -36,6 +37,32 @@ mod lez_payment_streams {
 
     #[allow(unused_imports)]
     use super::*;
+
+    fn spel_custom(code: u32, message: &'static str) -> SpelError {
+        SpelError::Custom {
+            code,
+            message: message.into(),
+        }
+    }
+
+    fn parse_mock_timestamp(meta: &AccountWithMetadata) -> Result<MockTimestamp, SpelError> {
+        MockTimestamp::from_bytes(&meta.account.data).ok_or_else(|| {
+            spel_custom(ERR_INVALID_MOCK_TIMESTAMP, "invalid mock timestamp account data")
+        })
+    }
+
+    fn stream_invariant_err(code: u32) -> SpelError {
+        let message = match code {
+            ERR_ZERO_STREAM_RATE => "zero stream rate",
+            ERR_ZERO_STREAM_ALLOCATION => "zero stream allocation",
+            ERR_STREAM_EXCEEDS_ALLOCATION => "accrued exceeds allocation",
+            _ => "invalid stream config",
+        };
+        SpelError::Custom {
+            code,
+            message: message.into(),
+        }
+    }
 
     /// Parse vault config and holding from the standard two-account layout used by vault mutating
     /// instructions. Account indices match SPEL `#[account]` order: config first, holding second.
@@ -64,24 +91,18 @@ mod lez_payment_streams {
 
     /// Shared checks for operations that require a vault owner signer and a matching `vault_id`
     /// argument (deposit, withdraw, and later stream instructions that touch both vault accounts).
-    fn validate_vault_owner_invariants(
+    fn validate_vault_config(
         vault_config_state: &VaultConfig,
         vault_holding_state: &VaultHolding,
         vault_id: VaultId,
         owner_account_id: AccountId,
     ) -> Result<(), SpelError> {
         if vault_config_state.version != vault_holding_state.version {
-            return Err(SpelError::Custom {
-                code: ERR_VERSION_MISMATCH,
-                message: "version mismatch".into(),
-            });
+            return Err(spel_custom(ERR_VERSION_MISMATCH, "version mismatch"));
         }
 
         if vault_config_state.vault_id != vault_id {
-            return Err(SpelError::Custom {
-                code: ERR_VAULT_ID_MISMATCH,
-                message: "incorrect vault id".into(),
-            });
+            return Err(spel_custom(ERR_VAULT_ID_MISMATCH, "incorrect vault id"));
         }
 
         if vault_config_state.owner != owner_account_id {
@@ -91,6 +112,44 @@ mod lez_payment_streams {
         }
 
         Ok(())
+    }
+
+    /// After deserializing a [`StreamConfig`], check version alignment with vault accounts,
+    /// `stream_id` vs PDA argument, vault existence bound, and core stream invariants (rate,
+    /// allocation, accrued cap). Call after [`validate_vault_config`].
+    fn validate_stream_config_for_vault(
+        stream_config: &StreamConfig,
+        vault_config_state: &VaultConfig,
+        vault_holding_state: &VaultHolding,
+        stream_id: StreamId,
+    ) -> Result<(), SpelError> {
+        if stream_config.version != vault_config_state.version {
+            return Err(spel_custom(
+                ERR_VERSION_MISMATCH,
+                "stream version does not match vault config",
+            ));
+        }
+        if stream_config.version != vault_holding_state.version {
+            return Err(spel_custom(
+                ERR_VERSION_MISMATCH,
+                "stream version does not match vault holding",
+            ));
+        }
+        if stream_id >= vault_config_state.next_stream_id {
+            return Err(spel_custom(
+                ERR_STREAM_ID_MISMATCH,
+                "stream does not exist for this vault",
+            ));
+        }
+        if stream_config.stream_id != stream_id {
+            return Err(spel_custom(
+                ERR_STREAM_ID_MISMATCH,
+                "stream id does not match account",
+            ));
+        }
+        stream_config
+            .validate_invariants()
+            .map_err(stream_invariant_err)
     }
 
     // How `authenticated_transfer` encodes the debit amount in `ChainedCall::instruction_data`.
@@ -142,10 +201,7 @@ mod lez_payment_streams {
         authenticated_transfer_program_id: ProgramId,
     ) -> SpelResult {
         if amount == 0 {
-            return Err(SpelError::Custom {
-                code: ERR_ZERO_DEPOSIT_AMOUNT,
-                message: "zero deposit amount".into(),
-            });
+            return Err(spel_custom(ERR_ZERO_DEPOSIT_AMOUNT, "zero deposit amount"));
         }
 
         let (vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
@@ -153,7 +209,7 @@ mod lez_payment_streams {
             &vault_holding_with_meta,
         )?;
 
-        validate_vault_owner_invariants(
+        validate_vault_config(
             &vault_config_state,
             &vault_holding_state,
             vault_id,
@@ -197,10 +253,7 @@ mod lez_payment_streams {
         amount: Balance,
     ) -> SpelResult {
         if amount == 0 {
-            return Err(SpelError::Custom {
-                code: ERR_ZERO_WITHDRAW_AMOUNT,
-                message: "zero withdraw amount".into(),
-            });
+            return Err(spel_custom(ERR_ZERO_WITHDRAW_AMOUNT, "zero withdraw amount"));
         }
 
         let (vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
@@ -208,7 +261,7 @@ mod lez_payment_streams {
             &vault_holding_with_meta,
         )?;
 
-        validate_vault_owner_invariants(
+        validate_vault_config(
             &vault_config_state,
             &vault_holding_state,
             vault_id,
@@ -218,10 +271,10 @@ mod lez_payment_streams {
         let unallocated = vault_holding_with_meta.account.balance
             .saturating_sub(vault_config_state.total_allocated);
         if amount > unallocated {
-            return Err(SpelError::Custom {
-                code: ERR_INSUFFICIENT_FUNDS,
-                message: "withdraw exceeds unallocated vault balance".into(),
-            });
+            return Err(spel_custom(
+                ERR_INSUFFICIENT_FUNDS,
+                "withdraw exceeds unallocated vault balance",
+            ));
         }
 
         // Debit vault holding and credit `withdraw_to` inside this program.
@@ -231,17 +284,11 @@ mod lez_payment_streams {
         let mut recipient_account = withdraw_to.account;
 
         holding_account.balance = holding_account.balance.checked_sub(amount).ok_or_else(|| {
-            SpelError::Custom {
-                code: ERR_INSUFFICIENT_FUNDS,
-                message: "vault holding balance underflow".into(),
-            }
+            spel_custom(ERR_INSUFFICIENT_FUNDS, "vault holding balance underflow")
         })?;
 
         recipient_account.balance = recipient_account.balance.checked_add(amount).ok_or_else(|| {
-            SpelError::Custom {
-                code: ERR_BALANCE_OVERFLOW,
-                message: "recipient balance overflow".into(),
-            }
+            spel_custom(ERR_ARITHMETIC_OVERFLOW, "recipient balance overflow")
         })?;
 
         Ok(SpelOutput::states_only(vec![
@@ -273,16 +320,10 @@ mod lez_payment_streams {
         allocation: Balance,
     ) -> SpelResult {
         if rate == 0 {
-            return Err(SpelError::Custom {
-                code: ERR_ZERO_STREAM_RATE,
-                message: "zero stream rate".into(),
-            });
+            return Err(spel_custom(ERR_ZERO_STREAM_RATE, "zero stream rate"));
         }
         if allocation == 0 {
-            return Err(SpelError::Custom {
-                code: ERR_ZERO_STREAM_ALLOCATION,
-                message: "zero stream allocation".into(),
-            });
+            return Err(spel_custom(ERR_ZERO_STREAM_ALLOCATION, "zero stream allocation"));
         }
 
         let (mut vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
@@ -290,7 +331,7 @@ mod lez_payment_streams {
             &vault_holding_with_meta,
         )?;
 
-        validate_vault_owner_invariants(
+        validate_vault_config(
             &vault_config_state,
             &vault_holding_state,
             vault_id,
@@ -298,46 +339,33 @@ mod lez_payment_streams {
         )?;
 
         if stream_id != vault_config_state.next_stream_id {
-            return Err(SpelError::Custom {
-                code: ERR_STREAM_ID_MISMATCH,
-                message: "stream id does not match vault next_stream_id".into(),
-            });
+            return Err(spel_custom(
+                ERR_STREAM_ID_MISMATCH,
+                "stream id does not match vault next_stream_id",
+            ));
         }
 
         let unallocated = vault_holding_with_meta.account.balance
             .saturating_sub(vault_config_state.total_allocated);
         if allocation > unallocated {
-            return Err(SpelError::Custom {
-                code: ERR_ALLOCATION_EXCEEDS_UNALLOCATED,
-                message: "stream allocation exceeds unallocated vault balance".into(),
-            });
+            return Err(spel_custom(
+                ERR_ALLOCATION_EXCEEDS_UNALLOCATED,
+                "stream allocation exceeds unallocated vault balance",
+            ));
         }
 
         let new_total_allocated = vault_config_state.total_allocated
-            .checked_add(allocation).ok_or_else(|| {
-                SpelError::Custom {
-                    code: ERR_TOTAL_ALLOCATED_OVERFLOW,
-                    message: "total allocated overflow".into(),
-                }
-            })?;
+            .checked_add(allocation)
+            .ok_or_else(|| spel_custom(ERR_TOTAL_ALLOCATED_OVERFLOW, "total allocated overflow"))?;
 
-        let clock_state = MockTimestamp::from_bytes(&mock_timestamp_with_meta.account.data).ok_or_else(|| {
-            SpelError::Custom {
-                code: ERR_INVALID_MOCK_TIMESTAMP,
-                message: "invalid mock timestamp account data".into(),
-            }
-        })?;
-        let last_accrued_at = clock_state.timestamp;
+        let accrued_as_of = parse_mock_timestamp(&mock_timestamp_with_meta)?.timestamp;
 
         let stream_config_state =
-            StreamConfig::new(stream_id, provider, rate, allocation, last_accrued_at);
+            StreamConfig::new(stream_id, provider, rate, allocation, accrued_as_of);
 
-        let next_stream_id = stream_id.checked_add(1).ok_or_else(|| {
-            SpelError::Custom {
-                code: ERR_NEXT_STREAM_ID_OVERFLOW,
-                message: "next_stream_id overflow".into(),
-            }
-        })?;
+        let next_stream_id = stream_id
+            .checked_add(1)
+            .ok_or_else(|| spel_custom(ERR_NEXT_STREAM_ID_OVERFLOW, "next_stream_id overflow"))?;
 
         vault_config_state.next_stream_id = next_stream_id;
         vault_config_state.total_allocated = new_total_allocated;
@@ -352,6 +380,67 @@ mod lez_payment_streams {
             AccountPostState::new(vault_config_account),
             AccountPostState::new(vault_holding_with_meta.account),
             AccountPostState::new_claimed(stream_account),
+            AccountPostState::new(owner_with_meta.account),
+            AccountPostState::new(mock_timestamp_with_meta.account),
+        ]))
+    }
+
+    /// Apply lazy accrual through the mock clock `now` and persist stream state (owner only).
+    #[instruction]
+    pub fn sync_stream(
+        #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
+        vault_config_with_meta: AccountWithMetadata,
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
+        vault_holding_with_meta: AccountWithMetadata,
+        #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
+        stream_config_with_meta: AccountWithMetadata,
+        #[account(signer)]
+        owner_with_meta: AccountWithMetadata,
+        mock_timestamp_with_meta: AccountWithMetadata,
+        vault_id: VaultId,
+        stream_id: StreamId,
+    ) -> SpelResult {
+        let (vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
+            &vault_config_with_meta,
+            &vault_holding_with_meta,
+        )?;
+
+        validate_vault_config(
+            &vault_config_state,
+            &vault_holding_state,
+            vault_id,
+            owner_with_meta.account_id,
+        )?;
+
+        let mut stream_config_state =
+            StreamConfig::from_bytes(&stream_config_with_meta.account.data).ok_or_else(|| {
+                SpelError::DeserializationError {
+                    account_index: 2,
+                    message: "invalid stream config data".into(),
+                }
+            })?;
+
+        validate_stream_config_for_vault(
+            &stream_config_state,
+            &vault_config_state,
+            &vault_holding_state,
+            stream_id,
+        )?;
+
+        let now = parse_mock_timestamp(&mock_timestamp_with_meta)?.timestamp;
+
+        stream_config_state = stream_config_state
+            .at_time(now)
+            .map_err(|code| spel_custom(code, "at_time failed"))?;
+
+        let vault_config_account = vault_config_with_meta.account;
+        let mut stream_account = stream_config_with_meta.account;
+        stream_account.data = stream_config_state.to_bytes().try_into().unwrap();
+
+        Ok(SpelOutput::states_only(vec![
+            AccountPostState::new(vault_config_account),
+            AccountPostState::new(vault_holding_with_meta.account),
+            AccountPostState::new(stream_account),
             AccountPostState::new(owner_with_meta.account),
             AccountPostState::new(mock_timestamp_with_meta.account),
         ]))

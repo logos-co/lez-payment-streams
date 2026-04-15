@@ -11,7 +11,7 @@ use crate::{
         create_state_with_guest_program, derive_vault_pdas,
         state_with_initialized_vault_with_recipient,
     },
-    VaultConfig, VaultId, ERR_BALANCE_OVERFLOW,
+    VaultConfig, VaultId, ERR_ARITHMETIC_OVERFLOW,
 };
 
 use super::common::{assert_execution_failed_with_code, DEFAULT_OWNER_GENESIS_BALANCE};
@@ -505,5 +505,5 @@ fn test_withdraw_recipient_balance_overflow_fails() {
         ),
         3 as BlockId,
     );
-    assert_execution_failed_with_code(result, ERR_BALANCE_OVERFLOW);
+    assert_execution_failed_with_code(result, ERR_ARITHMETIC_OVERFLOW);
 }

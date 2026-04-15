@@ -142,7 +142,7 @@ fn test_create_stream() {
     assert_eq!(stream_cfg.allocation, allocation);
     assert_eq!(stream_cfg.accrued, Balance::MIN);
     assert_eq!(stream_cfg.state, StreamState::Active);
-    assert_eq!(stream_cfg.last_accrued_at, initial_ts);
+    assert_eq!(stream_cfg.accrued_as_of, initial_ts);
 
     assert_eq!(
         state.get_account_by_id(vault_holding_account_id).balance,
