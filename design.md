@@ -168,6 +168,28 @@ On successful resume, set `state` to `Active`, set `accrued_as_of` to `now`,
 and leave `accrued` unchanged so time while paused does not accrue later.
 Invalid transitions fail with `ERR_*` (not no-ops).
 
+## Top-up
+
+`TopUpStream` uses the same account layout as `SyncStream` / `PauseStream` / `ResumeStream`
+(vault config, holding, stream PDA, owner signer, read-only mock clock).
+
+Handlers run `StreamConfig::at_time(now)` first.
+
+- Reject if post-`at_time` state is `CLOSED` (`ERR_STREAM_CLOSED`).
+- Reject `vault_total_allocated_increase == 0` (`ERR_ZERO_TOP_UP_AMOUNT`).
+- Reserve liquidity the same way as `CreateStream`: increase `StreamConfig.allocation` and
+  `VaultConfig.total_allocated` by the same amount, capped by unallocated vault balance
+  (`vault_holding.balance - total_allocated`). No native transfer; use
+  `commit_vault_total_allocated_increase` in core. On stream `allocation` `checked_add` failure,
+  `ERR_ARITHMETIC_OVERFLOW`.
+
+If post-`at_time` state is `Paused`, after the allocation bump the handler calls the same
+resume transition as `ResumeStream` via `StreamConfig::resume_from_paused_at(now)`:
+`Active`, `accrued_as_of = now`, `accrued` unchanged (spec: top-up must yield `ACTIVE`;
+pause wall time must not count as accrual on the next fold).
+
+If state is already `Active`, only allocation and `total_allocated` change.
+
 ## Accrual behavior
 
 Lazy accrual on mutating stream instructions only

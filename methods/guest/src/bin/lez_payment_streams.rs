@@ -3,6 +3,7 @@
 use spel_framework::prelude::*;
 
 use lez_payment_streams_core::{
+    commit_vault_total_allocated_increase,
     MockTimestamp,
     StreamConfig,
     StreamId,
@@ -12,20 +13,20 @@ use lez_payment_streams_core::{
     VaultConfig,
     VaultHolding,
     VaultId,
-    ERR_ALLOCATION_EXCEEDS_UNALLOCATED,
     ERR_ARITHMETIC_OVERFLOW,
     ERR_INSUFFICIENT_FUNDS,
     ERR_INVALID_MOCK_TIMESTAMP,
     ERR_NEXT_STREAM_ID_OVERFLOW,
     ERR_RESUME_ZERO_REMAINING_ALLOCATION,
+    ERR_STREAM_CLOSED,
     ERR_STREAM_EXCEEDS_ALLOCATION,
     ERR_STREAM_ID_MISMATCH,
     ERR_STREAM_NOT_ACTIVE,
     ERR_STREAM_NOT_PAUSED,
-    ERR_TOTAL_ALLOCATED_OVERFLOW,
     ERR_ZERO_DEPOSIT_AMOUNT,
     ERR_ZERO_STREAM_ALLOCATION,
     ERR_ZERO_STREAM_RATE,
+    ERR_ZERO_TOP_UP_AMOUNT,
     ERR_ZERO_WITHDRAW_AMOUNT,
     ERR_VERSION_MISMATCH,
     ERR_VAULT_ID_MISMATCH,
@@ -392,18 +393,13 @@ mod lez_payment_streams {
             ));
         }
 
-        let unallocated = vault_holding_with_meta.account.balance
-            .saturating_sub(vault_config_state.total_allocated);
-        if allocation > unallocated {
-            return Err(spel_custom(
-                ERR_ALLOCATION_EXCEEDS_UNALLOCATED,
-                "stream allocation exceeds unallocated vault balance",
-            ));
-        }
-
-        let new_total_allocated = vault_config_state.total_allocated
-            .checked_add(allocation)
-            .ok_or_else(|| spel_custom(ERR_TOTAL_ALLOCATED_OVERFLOW, "total allocated overflow"))?;
+        // New stream allocation and the vault `total_allocated` bump are the same delta.
+        let new_vault_total_allocated = commit_vault_total_allocated_increase(
+            vault_holding_with_meta.account.balance,
+            vault_config_state.total_allocated,
+            allocation,
+        )
+        .map_err(|code| spel_custom(code, "vault total_allocated increase failed"))?;
 
         let accrued_as_of = parse_mock_timestamp(&mock_timestamp_with_meta)?.timestamp;
 
@@ -415,7 +411,7 @@ mod lez_payment_streams {
             .ok_or_else(|| spel_custom(ERR_NEXT_STREAM_ID_OVERFLOW, "next_stream_id overflow"))?;
 
         vault_config_state.next_stream_id = next_stream_id;
-        vault_config_state.total_allocated = new_total_allocated;
+        vault_config_state.total_allocated = new_vault_total_allocated;
 
         let mut vault_config_account = vault_config_with_meta.account;
         vault_config_account.data = vault_config_state.to_bytes().try_into().unwrap();
@@ -552,24 +548,121 @@ mod lez_payment_streams {
             .at_time(now)
             .map_err(|code| spel_custom(code, "at_time failed"))?;
 
-        if stream_config_state.state != StreamState::Paused {
-            return Err(spel_custom(
-                ERR_STREAM_NOT_PAUSED,
-                "stream is not paused after accrual fold",
-            ));
-        }
-
-        if stream_config_state.remaining_allocation() == (0 as Balance) {
-            return Err(spel_custom(
-                ERR_RESUME_ZERO_REMAINING_ALLOCATION,
-                "remaining allocation is zero",
-            ));
-        }
-
-        stream_config_state.state = StreamState::Active;
-        stream_config_state.accrued_as_of = now;
+        stream_config_state = stream_config_state
+            .resume_from_paused_at(now)
+            .map_err(|code| {
+                let msg = match code {
+                    ERR_STREAM_NOT_PAUSED => "stream is not paused after accrual fold",
+                    ERR_RESUME_ZERO_REMAINING_ALLOCATION => "remaining allocation is zero",
+                    _ => "resume_from_paused_at failed",
+                };
+                spel_custom(code, msg)
+            })?;
 
         let vault_config_account = vault_config_with_meta.account;
+        let mut stream_account = stream_config_with_meta.account;
+        stream_account.data = stream_config_state.to_bytes().try_into().unwrap();
+
+        Ok(SpelOutput::states_only(vec![
+            AccountPostState::new(vault_config_account),
+            AccountPostState::new(vault_holding_with_meta.account),
+            AccountPostState::new(stream_account),
+            AccountPostState::new(owner_with_meta.account),
+            AccountPostState::new(mock_timestamp_with_meta.account),
+        ]))
+    }
+
+    /// Add allocation to an existing stream from vault unallocated balance; if paused, resume with
+    /// the same `accrued_as_of = now` anchor as `resume_stream` (`StreamConfig::resume_from_paused_at`).
+    #[instruction]
+    pub fn top_up_stream(
+        #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
+        vault_config_with_meta: AccountWithMetadata,
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
+        vault_holding_with_meta: AccountWithMetadata,
+        #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
+        stream_config_with_meta: AccountWithMetadata,
+        #[account(signer)]
+        owner_with_meta: AccountWithMetadata,
+        mock_timestamp_with_meta: AccountWithMetadata,
+        vault_id: VaultId,
+        stream_id: StreamId,
+        vault_total_allocated_increase: Balance,
+    ) -> SpelResult {
+        let (mut vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
+            &vault_config_with_meta,
+            &vault_holding_with_meta,
+        )?;
+
+        validate_vault_config(
+            &vault_config_state,
+            &vault_holding_state,
+            vault_id,
+            owner_with_meta.account_id,
+        )?;
+
+        let mut stream_config_state =
+            StreamConfig::from_bytes(&stream_config_with_meta.account.data).ok_or_else(|| {
+                SpelError::DeserializationError {
+                    account_index: 2,
+                    message: "invalid stream config data".into(),
+                }
+            })?;
+
+        validate_stream_config_for_vault(
+            &stream_config_state,
+            &vault_config_state,
+            &vault_holding_state,
+            stream_id,
+        )?;
+
+        let now = parse_mock_timestamp(&mock_timestamp_with_meta)?.timestamp;
+
+        stream_config_state = stream_config_state
+            .at_time(now)
+            .map_err(|code| spel_custom(code, "at_time failed"))?;
+
+        if stream_config_state.state == StreamState::Closed {
+            return Err(spel_custom(ERR_STREAM_CLOSED, "stream is closed"));
+        }
+
+        if vault_total_allocated_increase == 0 {
+            return Err(spel_custom(ERR_ZERO_TOP_UP_AMOUNT, "zero top-up amount"));
+        }
+
+        let new_vault_total_allocated = commit_vault_total_allocated_increase(
+            vault_holding_with_meta.account.balance,
+            vault_config_state.total_allocated,
+            vault_total_allocated_increase,
+        )
+        .map_err(|code| spel_custom(code, "vault total_allocated increase failed"))?;
+
+        stream_config_state.allocation = stream_config_state
+            .allocation
+            .checked_add(vault_total_allocated_increase)
+            .ok_or_else(|| spel_custom(ERR_ARITHMETIC_OVERFLOW, "stream allocation overflow"))?;
+
+        vault_config_state.total_allocated = new_vault_total_allocated;
+
+        if stream_config_state.state == StreamState::Paused {
+            // Same `accrued_as_of = now` anchor as `resume_stream`; see `resume_from_paused_at`.
+            stream_config_state = stream_config_state
+                .resume_from_paused_at(now)
+                .map_err(|code| {
+                    let msg = match code {
+                        ERR_STREAM_NOT_PAUSED => "stream is not paused after top-up",
+                        ERR_RESUME_ZERO_REMAINING_ALLOCATION => {
+                            "remaining allocation is zero after top-up"
+                        }
+                        _ => "resume_from_paused_at failed",
+                    };
+                    spel_custom(code, msg)
+                })?;
+        }
+
+        let mut vault_config_account = vault_config_with_meta.account;
+        vault_config_account.data = vault_config_state.to_bytes().try_into().unwrap();
+
         let mut stream_account = stream_config_with_meta.account;
         stream_account.data = stream_config_state.to_bytes().try_into().unwrap();
 

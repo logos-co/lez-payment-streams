@@ -56,17 +56,17 @@ fn test_vault_holding_from_bytes_wrong_len_returns_none() {
 #[test]
 fn test_stream_config_roundtrip_serialization() {
     let (_, provider) = create_keypair(5);
-    let stream_config = StreamConfig::new(7, provider, 10, 200, 12_345);
-    let serialized = stream_config.to_bytes();
+    let s_original = StreamConfig::new(7, provider, 10, 200, 12_345);
+    let serialized = s_original.to_bytes();
     let deserialized = StreamConfig::from_bytes(&serialized);
-    assert_eq!(Some(stream_config), deserialized);
+    assert_eq!(Some(s_original), deserialized);
 }
 
 #[test]
 fn test_stream_config_from_bytes_wrong_len_returns_none() {
     let (_, provider) = create_keypair(5);
-    let stream_config = StreamConfig::new(7, provider, 10, 200, 12_345);
-    let bytes = stream_config.to_bytes();
+    let s_original = StreamConfig::new(7, provider, 10, 200, 12_345);
+    let bytes = s_original.to_bytes();
     let short = &bytes[..bytes.len() - 1];
     assert!(StreamConfig::from_bytes(short).is_none());
     let mut long = bytes.clone();
@@ -94,8 +94,8 @@ fn test_stream_config_from_bytes_invalid_stream_state_returns_none() {
     let undefined_discriminant_after_max = highest_defined_discriminant + 1;
 
     let (_, provider) = create_keypair(5);
-    let valid_config = StreamConfig::new(0, provider, 1, 1, 1);
-    let mut serialized = valid_config.to_bytes();
+    let s_valid = StreamConfig::new(0, provider, 1, 1, 1);
+    let mut serialized = s_valid.to_bytes();
     let timestamp_field_size = size_of::<Timestamp>();
     let stream_state_byte_index = serialized.len() - timestamp_field_size - 1;
     serialized[stream_state_byte_index] = undefined_discriminant_after_max;

@@ -1,8 +1,8 @@
 //! Guest-backed pause and resume tests.
 
-use nssa::{program::Program, PrivateKey, ProgramId, PublicTransaction, V03State};
+use nssa::program::Program;
 use nssa_core::{
-    account::{AccountId, Balance, Data, Nonce},
+    account::{Balance, Nonce},
     program::BlockId,
 };
 
@@ -12,144 +12,17 @@ use crate::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
         derive_vault_pdas, force_mock_timestamp_account,
     },
-    MockTimestamp, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultId,
+    MockTimestamp, StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId,
     ERR_RESUME_ZERO_REMAINING_ALLOCATION, ERR_STREAM_NOT_ACTIVE, ERR_STREAM_NOT_PAUSED,
     ERR_TIME_REGRESSION, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
 };
 
 use super::common::{
-    assert_execution_failed_with_code, state_deposited_with_mock_clock,
+    assert_execution_failed_with_code, first_stream_accounts, force_stream_state_closed,
+    signed_create_stream, signed_pause_stream, signed_resume_stream, signed_sync_stream,
+    state_deposited_with_mock_clock, transition_ok,
     DEFAULT_MOCK_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
-
-/// Account order for stream instructions: vault config, holding, stream PDA, owner, mock clock.
-type StreamIxAccounts = [AccountId; 5];
-
-fn first_stream_accounts(
-    program_id: ProgramId,
-    vault_config_account_id: AccountId,
-    vault_holding_account_id: AccountId,
-    owner_account_id: AccountId,
-    mock_clock_account_id: AccountId,
-) -> (StreamId, AccountId, StreamIxAccounts) {
-    let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, stream_id);
-    let account_ids = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        stream_pda,
-        owner_account_id,
-        mock_clock_account_id,
-    ];
-    (stream_id, stream_pda, account_ids)
-}
-
-fn transition_ok(
-    state: &mut V03State,
-    tx: &PublicTransaction,
-    block: BlockId,
-    label: &'static str,
-) {
-    assert!(
-        state.transition_from_public_transaction(tx, block).is_ok(),
-        "{label}",
-    );
-}
-
-fn signed_create_stream(
-    program_id: ProgramId,
-    vault_id: VaultId,
-    stream_id: StreamId,
-    provider: AccountId,
-    rate: TokensPerSecond,
-    allocation: Balance,
-    accounts: &StreamIxAccounts,
-    nonce: Nonce,
-    owner: &PrivateKey,
-) -> PublicTransaction {
-    build_signed_public_tx(
-        program_id,
-        Instruction::CreateStream {
-            vault_id,
-            stream_id,
-            provider,
-            rate,
-            allocation,
-        },
-        accounts,
-        &[nonce],
-        &[owner],
-    )
-}
-
-fn signed_pause_stream(
-    program_id: ProgramId,
-    vault_id: VaultId,
-    stream_id: StreamId,
-    accounts: &StreamIxAccounts,
-    nonce: Nonce,
-    owner: &PrivateKey,
-) -> PublicTransaction {
-    build_signed_public_tx(
-        program_id,
-        Instruction::PauseStream {
-            vault_id,
-            stream_id,
-        },
-        accounts,
-        &[nonce],
-        &[owner],
-    )
-}
-
-fn signed_resume_stream(
-    program_id: ProgramId,
-    vault_id: VaultId,
-    stream_id: StreamId,
-    accounts: &StreamIxAccounts,
-    nonce: Nonce,
-    owner: &PrivateKey,
-) -> PublicTransaction {
-    build_signed_public_tx(
-        program_id,
-        Instruction::ResumeStream {
-            vault_id,
-            stream_id,
-        },
-        accounts,
-        &[nonce],
-        &[owner],
-    )
-}
-
-fn signed_sync_stream(
-    program_id: ProgramId,
-    vault_id: VaultId,
-    stream_id: StreamId,
-    accounts: &StreamIxAccounts,
-    nonce: Nonce,
-    owner: &PrivateKey,
-) -> PublicTransaction {
-    build_signed_public_tx(
-        program_id,
-        Instruction::SyncStream {
-            vault_id,
-            stream_id,
-        },
-        accounts,
-        &[nonce],
-        &[owner],
-    )
-}
-
-fn force_stream_state_closed(state: &mut V03State, stream_pda: AccountId) {
-    let mut cfg =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
-    cfg.state = StreamState::Closed;
-    let mut stream_account = state.get_account_by_id(stream_pda).clone();
-    stream_account.data = Data::try_from(cfg.to_bytes()).expect("stream payload fits");
-    state.force_insert_account(stream_pda, stream_account);
-}
 
 #[test]
 fn test_pause() {
@@ -211,10 +84,11 @@ fn test_pause() {
         "pause_stream failed",
     );
 
-    let cfg = StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
-    assert_eq!(cfg.state, StreamState::Paused);
-    assert_eq!(cfg.accrued, 0 as Balance);
-    assert_eq!(cfg.accrued_as_of, t0);
+    let s_paused =
+        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
+    assert_eq!(s_paused.state, StreamState::Paused);
+    assert_eq!(s_paused.accrued, 0 as Balance);
+    assert_eq!(s_paused.accrued_as_of, t0);
 }
 
 #[test]
@@ -294,10 +168,11 @@ fn test_resume() {
         "resume_stream failed",
     );
 
-    let cfg = StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
-    assert_eq!(cfg.state, StreamState::Active);
-    assert_eq!(cfg.accrued, 0 as Balance);
-    assert_eq!(cfg.accrued_as_of, t1);
+    let s_resumed =
+        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
+    assert_eq!(s_resumed.state, StreamState::Active);
+    assert_eq!(s_resumed.accrued, 0 as Balance);
+    assert_eq!(s_resumed.accrued_as_of, t1);
 }
 
 #[test]
@@ -966,11 +841,12 @@ fn test_resume_then_accrual_ignores_paused_gap() {
         "sync_stream after resume failed",
     );
 
-    let cfg = StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
+    let s_after_resume_and_accrual =
+        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
     let expected_accrued = 50 + (u128::from(rate) * u128::from(t2 - t_gap));
-    assert_eq!(cfg.accrued, expected_accrued);
-    assert_eq!(cfg.accrued_as_of, t2);
-    assert_eq!(cfg.state, StreamState::Active);
+    assert_eq!(s_after_resume_and_accrual.accrued, expected_accrued);
+    assert_eq!(s_after_resume_and_accrual.accrued_as_of, t2);
+    assert_eq!(s_after_resume_and_accrual.state, StreamState::Active);
 }
 
 #[test]

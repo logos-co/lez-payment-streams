@@ -8,4 +8,5 @@ mod deposit;
 mod initialize;
 mod pause_resume;
 mod serialization;
+mod top_up;
 mod withdraw;

@@ -52,6 +52,36 @@ pub const ERR_STREAM_NOT_ACTIVE: u32 = 6017;
 pub const ERR_STREAM_NOT_PAUSED: u32 = 6018;
 /// `resume_stream` when remaining allocation is zero ([`StreamConfig::remaining_allocation`]).
 pub const ERR_RESUME_ZERO_REMAINING_ALLOCATION: u32 = 6019;
+/// `top_up_stream` when post-`at_time` state is [`StreamState::Closed`].
+pub const ERR_STREAM_CLOSED: u32 = 6020;
+/// `top_up_stream` when `vault_total_allocated_increase` is zero.
+pub const ERR_ZERO_TOP_UP_AMOUNT: u32 = 6021;
+
+/// Increase [`VaultConfig::total_allocated`] by `vault_total_allocated_increase`, capped by unallocated vault liquidity.
+///
+/// Unallocated is `vault_holding_balance.saturating_sub(vault_total_allocated)`.
+/// This is vault-level bookkeeping only (how much of the holding balance is reserved across streams).
+/// For [`Instruction::CreateStream`], the increase equals the new stream's allocation; for
+/// [`Instruction::TopUpStream`], it equals the stream allocation delta.
+///
+/// Callers must reject zero `vault_total_allocated_increase` where the instruction forbids it
+/// ([`ERR_ZERO_STREAM_ALLOCATION`], [`ERR_ZERO_TOP_UP_AMOUNT`]).
+///
+/// [`ERR_TOTAL_ALLOCATED_OVERFLOW`] from `checked_add` is defensive; for `Balance` as `u128`,
+/// passing the unallocated check with realistic on-chain balances implies the sum fits in `u128`.
+pub fn commit_vault_total_allocated_increase(
+    vault_holding_balance: Balance,
+    vault_total_allocated: Balance,
+    vault_total_allocated_increase: Balance,
+) -> Result<Balance, u32> {
+    let unallocated = vault_holding_balance.saturating_sub(vault_total_allocated);
+    if vault_total_allocated_increase > unallocated {
+        return Err(ERR_ALLOCATION_EXCEEDS_UNALLOCATED);
+    }
+    vault_total_allocated
+        .checked_add(vault_total_allocated_increase)
+        .ok_or(ERR_TOTAL_ALLOCATED_OVERFLOW)
+}
 
 // ---- VaultConfig ---- //
 
@@ -401,6 +431,28 @@ impl StreamConfig {
         }
         Ok(())
     }
+
+    /// Transition a **paused** stream to [`StreamState::Active`] at chain time `now`.
+    ///
+    /// Sets [`StreamConfig::accrued_as_of`] to `now` so the next [`StreamConfig::at_time`] does not
+    /// treat wall-clock time spent paused as accrual time; the anchor is when streaming restarts.
+    /// [`StreamConfig::accrued`] is unchanged.
+    ///
+    /// Returns [`ERR_STREAM_NOT_PAUSED`] if state is not [`StreamState::Paused`].
+    /// Returns [`ERR_RESUME_ZERO_REMAINING_ALLOCATION`] if [`StreamConfig::remaining_allocation`]
+    /// is zero.
+    pub fn resume_from_paused_at(self, now: Timestamp) -> Result<Self, u32> {
+        if self.state != StreamState::Paused {
+            return Err(ERR_STREAM_NOT_PAUSED);
+        }
+        if self.remaining_allocation() == (0 as Balance) {
+            return Err(ERR_RESUME_ZERO_REMAINING_ALLOCATION);
+        }
+        let mut out = self;
+        out.state = StreamState::Active;
+        out.accrued_as_of = now;
+        Ok(out)
+    }
 }
 
 /// `ceil(rem / rate)` for `rate > 0`. For `rem == 0`, the quotient is zero.
@@ -441,81 +493,143 @@ mod stream_config_at_time_tests {
 
     #[test]
     fn remaining_allocation_saturating_sub() {
-        let s = stream_active(30, 100, 1, 0);
-        assert_eq!(s.remaining_allocation(), 70 as Balance);
-        let over = stream_active(150, 100, 1, 0);
-        assert_eq!(over.remaining_allocation(), 0 as Balance);
+        let s_active = stream_active(30, 100, 1, 0);
+        assert_eq!(s_active.remaining_allocation(), 70 as Balance);
+        let s_accrued_past_cap = stream_active(150, 100, 1, 0);
+        assert_eq!(s_accrued_past_cap.remaining_allocation(), 0 as Balance);
     }
 
     #[test]
     fn at_time_rejects_time_regression() {
-        let s = stream_active(0, 1000, 10, 100);
-        assert_eq!(s.at_time(99), Err(ERR_TIME_REGRESSION));
+        let s_active = stream_active(0, 1000, 10, 100);
+        assert_eq!(s_active.at_time(99), Err(ERR_TIME_REGRESSION));
     }
 
     #[test]
     fn at_time_rejects_accrued_above_allocation() {
-        let s = stream_active(500, 100, 10, 100);
-        assert_eq!(s.at_time(100), Err(ERR_STREAM_EXCEEDS_ALLOCATION));
+        let s_invalid = stream_active(500, 100, 10, 100);
+        assert_eq!(s_invalid.at_time(100), Err(ERR_STREAM_EXCEEDS_ALLOCATION));
     }
 
     #[test]
     fn at_time_rejects_zero_rate() {
-        let s = stream_active(0, 100, 0, 0);
-        assert_eq!(s.at_time(0), Err(ERR_ZERO_STREAM_RATE));
+        let s_zero_rate = stream_active(0, 100, 0, 0);
+        assert_eq!(s_zero_rate.at_time(0), Err(ERR_ZERO_STREAM_RATE));
     }
 
     #[test]
     fn at_time_rejects_zero_allocation() {
-        let s = stream_active(0, 0, 10, 0);
-        assert_eq!(s.at_time(0), Err(ERR_ZERO_STREAM_ALLOCATION));
+        let s_zero_allocation = stream_active(0, 0, 10, 0);
+        assert_eq!(s_zero_allocation.at_time(0), Err(ERR_ZERO_STREAM_ALLOCATION));
     }
 
     #[test]
     fn at_time_zero_delta_unchanged_accrued() {
-        let s = stream_active(50, 1000, 10, 100);
-        let o = s.at_time(100).unwrap();
-        assert_eq!(o.accrued, 50);
-        assert_eq!(o.accrued_as_of, 100);
-        assert_eq!(o.state, StreamState::Active);
+        let s_active = stream_active(50, 1000, 10, 100);
+        let s_at_same_clock = s_active.at_time(100).unwrap();
+        assert_eq!(s_at_same_clock.accrued, 50);
+        assert_eq!(s_at_same_clock.accrued_as_of, 100);
+        assert_eq!(s_at_same_clock.state, StreamState::Active);
     }
 
     #[test]
     fn at_time_linear_accrual() {
-        let s = stream_active(0, 1000, 10, 100);
-        let o = s.at_time(105).unwrap();
-        assert_eq!(o.accrued, 50);
-        assert_eq!(o.accrued_as_of, 105);
-        assert_eq!(o.state, StreamState::Active);
+        let s_active = stream_active(0, 1000, 10, 100);
+        let s_after_at_time = s_active.at_time(105).unwrap();
+        assert_eq!(s_after_at_time.accrued, 50);
+        assert_eq!(s_after_at_time.accrued_as_of, 105);
+        assert_eq!(s_after_at_time.state, StreamState::Active);
     }
 
     #[test]
     fn at_time_paused_no_accrual() {
-        let mut s = stream_active(100, 1000, 10, 100);
-        s.state = StreamState::Paused;
-        let o = s.at_time(200).unwrap();
-        assert_eq!(o.accrued, 100);
-        assert_eq!(o.accrued_as_of, 100);
+        let mut s_paused = stream_active(100, 1000, 10, 100);
+        s_paused.state = StreamState::Paused;
+        let s_unchanged = s_paused.at_time(200).unwrap();
+        assert_eq!(s_unchanged.accrued, 100);
+        assert_eq!(s_unchanged.accrued_as_of, 100);
     }
 
     #[test]
     fn at_time_caps_and_paused_accrued_as_of_depletion_instant() {
         // allocation 100, rate 10/s, t0=0, accrued 0 -> deplete at t=10
-        let s = stream_active(0, 100, 10, 0);
-        let o = s.at_time(50).unwrap();
-        assert_eq!(o.accrued, 100);
-        assert_eq!(o.state, StreamState::Paused);
-        assert_eq!(o.accrued_as_of, 10);
+        let s_active = stream_active(0, 100, 10, 0);
+        let s_depleted_paused = s_active.at_time(50).unwrap();
+        assert_eq!(s_depleted_paused.accrued, 100);
+        assert_eq!(s_depleted_paused.state, StreamState::Paused);
+        assert_eq!(s_depleted_paused.accrued_as_of, 10);
     }
 
     #[test]
     fn at_time_depletion_not_clock_t_when_t_past_instant() {
-        let s = stream_active(0, 100, 10, 0);
-        let o = s.at_time(100).unwrap();
-        assert_eq!(o.accrued_as_of, 10);
-        assert_eq!(o.accrued, 100);
-        assert_eq!(o.state, StreamState::Paused);
+        let s_active = stream_active(0, 100, 10, 0);
+        let s_depleted_paused = s_active.at_time(100).unwrap();
+        assert_eq!(s_depleted_paused.accrued_as_of, 10);
+        assert_eq!(s_depleted_paused.accrued, 100);
+        assert_eq!(s_depleted_paused.state, StreamState::Paused);
     }
+
+    #[test]
+    fn resume_from_paused_at_success() {
+        let mut s_paused = stream_active(10, 100, 5, 50);
+        s_paused.state = StreamState::Paused;
+        let now: Timestamp = 200;
+        let s_resumed = s_paused.resume_from_paused_at(now).unwrap();
+        assert_eq!(s_resumed.state, StreamState::Active);
+        assert_eq!(s_resumed.accrued_as_of, now);
+        assert_eq!(s_resumed.accrued, 10 as Balance);
+        assert_eq!(s_resumed.allocation, 100 as Balance);
+    }
+
+    #[test]
+    fn resume_from_paused_at_rejects_active() {
+        let s_active = stream_active(0, 100, 5, 0);
+        assert_eq!(
+            s_active.resume_from_paused_at(1),
+            Err(ERR_STREAM_NOT_PAUSED)
+        );
+    }
+
+    #[test]
+    fn resume_from_paused_at_rejects_closed() {
+        let mut s_closed = stream_active(0, 100, 5, 0);
+        s_closed.state = StreamState::Closed;
+        assert_eq!(
+            s_closed.resume_from_paused_at(1),
+            Err(ERR_STREAM_NOT_PAUSED)
+        );
+    }
+
+    #[test]
+    fn resume_from_paused_at_rejects_zero_remaining() {
+        let mut s_paused_fully_accrued = stream_active(100, 100, 5, 10);
+        s_paused_fully_accrued.state = StreamState::Paused;
+        assert_eq!(
+            s_paused_fully_accrued.resume_from_paused_at(20),
+            Err(ERR_RESUME_ZERO_REMAINING_ALLOCATION)
+        );
+    }
+}
+
+#[cfg(test)]
+mod commit_vault_total_allocated_increase_tests {
+    use super::*;
+
+    #[test]
+    fn commit_succeeds_within_unallocated() {
+        let new_vault_total_allocated =
+            commit_vault_total_allocated_increase(500, 200, 100).unwrap();
+        assert_eq!(new_vault_total_allocated, 300 as Balance);
+    }
+
+    #[test]
+    fn commit_rejects_exceeds_unallocated() {
+        assert_eq!(
+            commit_vault_total_allocated_increase(500, 400, 200),
+            Err(ERR_ALLOCATION_EXCEEDS_UNALLOCATED)
+        );
+    }
+
 }
 
 // ---- Instruction ---- //
@@ -552,5 +666,10 @@ pub enum Instruction {
     ResumeStream {
         vault_id: VaultId,
         stream_id: StreamId,
+    },
+    TopUpStream {
+        vault_id: VaultId,
+        stream_id: StreamId,
+        vault_total_allocated_increase: Balance,
     },
 }

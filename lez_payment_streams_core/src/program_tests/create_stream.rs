@@ -836,11 +836,11 @@ fn test_create_stream_second_stream_succeeds() {
     assert_eq!(vc.next_stream_id, 2);
     assert_eq!(vc.total_allocated, expected_total_allocated);
 
-    let cfg1 = StreamConfig::from_bytes(&state.get_account_by_id(stream1).data).expect("stream 1");
-    assert_eq!(cfg1.stream_id, 1);
-    assert_eq!(cfg1.provider, provider_b);
-    assert_eq!(cfg1.rate, second_stream_rate);
-    assert_eq!(cfg1.allocation, second_stream_allocation);
+    let s1 = StreamConfig::from_bytes(&state.get_account_by_id(stream1).data).expect("stream 1");
+    assert_eq!(s1.stream_id, 1);
+    assert_eq!(s1.provider, provider_b);
+    assert_eq!(s1.rate, second_stream_rate);
+    assert_eq!(s1.allocation, second_stream_allocation);
 }
 
 #[test]

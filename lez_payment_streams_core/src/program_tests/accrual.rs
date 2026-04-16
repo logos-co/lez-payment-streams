@@ -97,11 +97,11 @@ fn test_accrual_basic() {
         "sync_stream failed"
     );
 
-    let cfg =
+    let s_after_sync =
         StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream config");
-    assert_eq!(cfg.accrued, 50 as Balance);
-    assert_eq!(cfg.accrued_as_of, t1);
-    assert_eq!(cfg.state, StreamState::Active);
+    assert_eq!(s_after_sync.accrued, 50 as Balance);
+    assert_eq!(s_after_sync.accrued_as_of, t1);
+    assert_eq!(s_after_sync.state, StreamState::Active);
 }
 
 #[test]
@@ -174,11 +174,12 @@ fn test_accrual_caps_at_allocation() {
         .transition_from_public_transaction(&tx_sync, 4 as BlockId)
         .is_ok());
 
-    let cfg = StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("parse");
+    let s_depleted_paused =
+        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("parse");
     let expected_depletion_instant: Timestamp = (allocation / u128::from(rate)) as Timestamp;
-    assert_eq!(cfg.accrued, allocation);
-    assert_eq!(cfg.state, StreamState::Paused);
-    assert_eq!(cfg.accrued_as_of, expected_depletion_instant);
+    assert_eq!(s_depleted_paused.accrued, allocation);
+    assert_eq!(s_depleted_paused.state, StreamState::Paused);
+    assert_eq!(s_depleted_paused.accrued_as_of, expected_depletion_instant);
 }
 
 #[test]
@@ -295,10 +296,10 @@ fn test_sync_stream_second_stream_accrues() {
         "sync_stream stream 0 failed"
     );
 
-    let cfg0_after_first =
+    let s0_after_sync_t1 =
         StreamConfig::from_bytes(&state.get_account_by_id(stream0).data).expect("stream 0");
-    assert_eq!(cfg0_after_first.accrued, 50 as Balance);
-    assert_eq!(cfg0_after_first.accrued_as_of, t1);
+    assert_eq!(s0_after_sync_t1.accrued, 50 as Balance);
+    assert_eq!(s0_after_sync_t1.accrued_as_of, t1);
 
     force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t2));
 
@@ -321,13 +322,15 @@ fn test_sync_stream_second_stream_accrues() {
         "sync_stream stream 1 failed"
     );
 
-    let cfg0 = StreamConfig::from_bytes(&state.get_account_by_id(stream0).data).expect("stream 0");
-    assert_eq!(cfg0.accrued, cfg0_after_first.accrued);
-    assert_eq!(cfg0.accrued_as_of, cfg0_after_first.accrued_as_of);
+    let s0_unchanged =
+        StreamConfig::from_bytes(&state.get_account_by_id(stream0).data).expect("stream 0");
+    assert_eq!(s0_unchanged.accrued, s0_after_sync_t1.accrued);
+    assert_eq!(s0_unchanged.accrued_as_of, s0_after_sync_t1.accrued_as_of);
 
-    let cfg1 = StreamConfig::from_bytes(&state.get_account_by_id(stream1).data).expect("stream 1");
-    assert_eq!(cfg1.accrued, 50 as Balance);
-    assert_eq!(cfg1.accrued_as_of, t2);
+    let s1_after_sync_t2 =
+        StreamConfig::from_bytes(&state.get_account_by_id(stream1).data).expect("stream 1");
+    assert_eq!(s1_after_sync_t2.accrued, 50 as Balance);
+    assert_eq!(s1_after_sync_t2.accrued_as_of, t2);
 }
 
 #[test]
