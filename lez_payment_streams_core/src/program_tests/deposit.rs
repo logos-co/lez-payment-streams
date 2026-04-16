@@ -10,7 +10,8 @@ use crate::{
         assert_vault_state_unchanged, build_signed_public_tx, create_keypair,
         create_state_with_guest_program, derive_vault_pdas, state_with_initialized_vault,
     },
-    VaultConfig, VaultHolding, VaultId, ERR_VERSION_MISMATCH,
+    VaultConfig, VaultHolding, VaultId, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
+    ERR_VERSION_MISMATCH, ERR_ZERO_DEPOSIT_AMOUNT,
 };
 
 use super::common::{assert_execution_failed_with_code, DEFAULT_OWNER_GENESIS_BALANCE};
@@ -137,11 +138,7 @@ fn test_deposit_zero_amount_fails() {
     );
 
     let result = state.transition_from_public_transaction(&tx_deposit, block_deposit);
-    assert!(
-        result.is_err(),
-        "deposit with zero amount succeeded: {:?}",
-        result
-    );
+    assert_execution_failed_with_code(result, ERR_ZERO_DEPOSIT_AMOUNT);
 
     assert_vault_state_unchanged(
         &state,
@@ -197,11 +194,7 @@ fn test_deposit_wrong_vault_id_fails() {
     );
 
     let result = state.transition_from_public_transaction(&tx_deposit, block_deposit);
-    assert!(
-        result.is_err(),
-        "deposit with mismatched vault_id succeeded: {:?}",
-        result
-    );
+    assert_execution_failed_with_code(result, ERR_VAULT_ID_MISMATCH);
 
     assert_vault_state_unchanged(
         &state,
@@ -258,11 +251,8 @@ fn test_deposit_wrong_authenticated_transfer_program_id_fails() {
     );
 
     let result = state.transition_from_public_transaction(&tx_deposit, block_deposit);
-    assert!(
-        result.is_err(),
-        "deposit with wrong authenticated_transfer_program_id succeeded: {:?}",
-        result
-    );
+    // Failure is from the chained authenticated-transfer program, not a payment-streams `ERR_*`.
+    assert!(result.is_err());
 
     assert_vault_state_unchanged(
         &state,
@@ -316,11 +306,8 @@ fn test_deposit_insufficient_funds_fails() {
     );
 
     let result = state.transition_from_public_transaction(&tx_deposit, block_deposit);
-    assert!(
-        result.is_err(),
-        "deposit larger than owner balance succeeded: {:?}",
-        result
-    );
+    // Insufficient balance is enforced inside authenticated-transfer, not a lez custom code.
+    assert!(result.is_err());
 
     assert_vault_state_unchanged(
         &state,
@@ -338,7 +325,8 @@ fn test_deposit_owner_mismatch_fails() {
     let block_init = 1 as BlockId;
     let block_deposit = 2 as BlockId;
     let nonce_init = Nonce(0);
-    let nonce_deposit = Nonce(1);
+    // Signer is `other`; they have not transacted yet (only `owner` ran init).
+    let nonce_deposit = Nonce(0);
     let deposit_amount = 100 as Balance;
     let signer_account_balance = DEFAULT_OWNER_GENESIS_BALANCE;
 
@@ -402,11 +390,7 @@ fn test_deposit_owner_mismatch_fails() {
     );
 
     let result = state.transition_from_public_transaction(&tx_deposit, block_deposit);
-    assert!(
-        result.is_err(),
-        "deposit with non-owner funding account succeeded: {:?}",
-        result
-    );
+    assert_execution_failed_with_code(result, ERR_VAULT_OWNER_MISMATCH);
 
     assert_vault_state_unchanged(
         &state,

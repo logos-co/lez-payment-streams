@@ -24,6 +24,7 @@ use lez_payment_streams_core::{
     ERR_ZERO_WITHDRAW_AMOUNT,
     ERR_VERSION_MISMATCH,
     ERR_VAULT_ID_MISMATCH,
+    ERR_VAULT_OWNER_MISMATCH,
 };
 use nssa_core::account::{AccountId, Balance};
 use nssa_core::program::ProgramId;
@@ -106,9 +107,7 @@ mod lez_payment_streams {
         }
 
         if vault_config_state.owner != owner_account_id {
-            return Err(SpelError::Unauthorized {
-                message: "owner mismatch".into(),
-            });
+            return Err(spel_custom(ERR_VAULT_OWNER_MISMATCH, "owner mismatch"));
         }
 
         Ok(())

@@ -63,8 +63,8 @@ fn test_initialize_vault_then_reinitialize_fails() {
         VaultHolding::from_bytes(&vault_holding_account.data).expect("valid vault holding bytes");
     assert_eq!(vault_holding.version, DEFAULT_VERSION);
 
-    // negative test: re-initialization must fail (SPEL reports init-on-existing during account
-    // validation; the host sees an opaque transaction error, not a structured SpelError here).
+    // Re-initialization must fail: SPEL rejects `init` on an existing account during validation.
+    // The host does not surface a payment-streams `ERR_*` here, so we only assert `is_err()`.
     let instruction_reinit = Instruction::InitializeVault { vault_id };
     let tx_reinit = build_signed_public_tx(
         program_id,

@@ -13,7 +13,7 @@ use crate::{
     MockTimestamp, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig,
     VaultId, DEFAULT_VERSION, ERR_ALLOCATION_EXCEEDS_UNALLOCATED, ERR_INVALID_MOCK_TIMESTAMP,
     ERR_NEXT_STREAM_ID_OVERFLOW, ERR_STREAM_ID_MISMATCH, ERR_VAULT_ID_MISMATCH,
-    ERR_ZERO_STREAM_ALLOCATION, ERR_ZERO_STREAM_RATE,
+    ERR_VAULT_OWNER_MISMATCH, ERR_ZERO_STREAM_ALLOCATION, ERR_ZERO_STREAM_RATE,
 };
 
 use super::common::{
@@ -524,7 +524,8 @@ fn test_create_stream_owner_mismatch_fails() {
     let block_stream = 3 as BlockId;
     let nonce_init = Nonce(0);
     let nonce_deposit = Nonce(1);
-    let nonce_stream = Nonce(2);
+    // Signer is `other`; only `owner` ran init + deposit, so `other`'s nonce is still 0.
+    let nonce_stream = Nonce(0);
 
     let (owner_private_key, owner_account_id) = create_keypair(1);
     let (other_private_key, other_account_id) = create_keypair(2);
@@ -627,11 +628,7 @@ fn test_create_stream_owner_mismatch_fails() {
         ),
         block_stream,
     );
-    assert!(
-        result.is_err(),
-        "create_stream with non-owner signer succeeded: {:?}",
-        result
-    );
+    assert_execution_failed_with_code(result, ERR_VAULT_OWNER_MISMATCH);
     assert_eq!(
         state.get_account_by_id(vault_config_account_id).data,
         vault_config_before

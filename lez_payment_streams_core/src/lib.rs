@@ -44,6 +44,8 @@ pub const ERR_ALLOCATION_EXCEEDS_UNALLOCATED: u32 = 6012;
 pub const ERR_NEXT_STREAM_ID_OVERFLOW: u32 = 6013;
 pub const ERR_TIME_REGRESSION: u32 = 6014;
 pub const ERR_STREAM_EXCEEDS_ALLOCATION: u32 = 6015;
+/// Signer account is not [`VaultConfig::owner`] when the instruction requires the vault owner.
+pub const ERR_VAULT_OWNER_MISMATCH: u32 = 6016;
 
 // ---- VaultConfig ---- //
 
