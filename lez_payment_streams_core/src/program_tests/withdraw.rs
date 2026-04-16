@@ -8,14 +8,18 @@ use crate::Instruction;
 use crate::{
     test_helpers::{
         assert_vault_state_unchanged_with_recipient, build_signed_public_tx, create_keypair,
-        create_state_with_guest_program, derive_vault_pdas,
-        state_with_initialized_vault_with_recipient,
+        create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
+        force_mock_timestamp_account, state_with_initialized_vault_with_recipient,
     },
-    VaultConfig, VaultId, ERR_ARITHMETIC_OVERFLOW, ERR_INSUFFICIENT_FUNDS, ERR_VAULT_ID_MISMATCH,
-    ERR_VAULT_OWNER_MISMATCH, ERR_ZERO_WITHDRAW_AMOUNT,
+    MockTimestamp, TokensPerSecond, VaultConfig, VaultId, ERR_ARITHMETIC_OVERFLOW,
+    ERR_INSUFFICIENT_FUNDS, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
+    ERR_ZERO_WITHDRAW_AMOUNT,
 };
 
-use super::common::{assert_execution_failed_with_code, DEFAULT_OWNER_GENESIS_BALANCE};
+use super::common::{
+    assert_execution_failed_with_code, DEFAULT_MOCK_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE,
+    DEFAULT_STREAM_TEST_DEPOSIT,
+};
 
 #[test]
 fn test_withdraw() {
@@ -332,6 +336,167 @@ fn test_withdraw_exceeds_unallocated_fails() {
         recipient_balance_before,
         vault_config_data_before,
     );
+}
+
+#[test]
+fn test_withdraw_full_unallocated_with_stream_succeeds() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let allocation = 200 as Balance;
+    let withdraw_amount = deposit_amount - allocation;
+    let rate = 10 as TokensPerSecond;
+    let block_deposit = 2 as BlockId;
+    let block_stream = 3 as BlockId;
+    let block_withdraw = 4 as BlockId;
+    let nonce_deposit = Nonce(1);
+    let nonce_stream = Nonce(2);
+    let nonce_withdraw = Nonce(3);
+
+    let (_, mock_clock_account_id) = create_keypair(75);
+    let (_, provider_account_id) = create_keypair(48);
+
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        recipient_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_with_initialized_vault_with_recipient(owner_balance_start);
+
+    force_mock_timestamp_account(
+        &mut state,
+        mock_clock_account_id,
+        MockTimestamp::new(DEFAULT_MOCK_CLOCK_INITIAL_TS),
+    );
+
+    let account_ids_deposit = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
+    assert!(
+        state
+            .transition_from_public_transaction(
+                &build_signed_public_tx(
+                    program_id,
+                    Instruction::Deposit {
+                        vault_id,
+                        amount: deposit_amount,
+                        authenticated_transfer_program_id: Program::authenticated_transfer_program()
+                            .id(),
+                    },
+                    &account_ids_deposit,
+                    &[nonce_deposit],
+                    &[&owner_private_key],
+                ),
+                block_deposit,
+            )
+            .is_ok(),
+        "deposit failed"
+    );
+
+    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
+    let account_ids_create = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        stream_pda,
+        owner_account_id,
+        mock_clock_account_id,
+    ];
+    assert!(
+        state
+            .transition_from_public_transaction(
+                &build_signed_public_tx(
+                    program_id,
+                    Instruction::CreateStream {
+                        vault_id,
+                        stream_id: 0,
+                        provider: provider_account_id,
+                        rate,
+                        allocation,
+                    },
+                    &account_ids_create,
+                    &[nonce_stream],
+                    &[&owner_private_key],
+                ),
+                block_stream,
+            )
+            .is_ok(),
+        "create_stream failed"
+    );
+
+    let vault_config_before = state.get_account_by_id(vault_config_account_id);
+    let vault_config_state_before =
+        VaultConfig::from_bytes(&vault_config_before.data).expect("vault config");
+    let owner_after_funding = state.get_account_by_id(owner_account_id).balance;
+    let vault_holding_before_withdraw = state.get_account_by_id(vault_holding_account_id).balance;
+    let recipient_before_withdraw = state.get_account_by_id(recipient_account_id).balance;
+
+    let account_ids_withdraw = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+        recipient_account_id,
+    ];
+    assert!(
+        state
+            .transition_from_public_transaction(
+                &build_signed_public_tx(
+                    program_id,
+                    Instruction::Withdraw {
+                        vault_id,
+                        amount: withdraw_amount,
+                    },
+                    &account_ids_withdraw,
+                    &[nonce_withdraw],
+                    &[&owner_private_key],
+                ),
+                block_withdraw,
+            )
+            .is_ok(),
+        "withdraw failed"
+    );
+
+    let vault_config_after = state.get_account_by_id(vault_config_account_id);
+    let vault_config_state_after =
+        VaultConfig::from_bytes(&vault_config_after.data).expect("vault config");
+
+    assert_eq!(
+        state.get_account_by_id(owner_account_id).balance,
+        owner_after_funding
+    );
+    assert_eq!(
+        state.get_account_by_id(vault_holding_account_id).balance,
+        vault_holding_before_withdraw - withdraw_amount
+    );
+    assert_eq!(
+        state.get_account_by_id(recipient_account_id).balance,
+        recipient_before_withdraw + withdraw_amount
+    );
+    assert_eq!(
+        vault_config_state_after.total_allocated,
+        vault_config_state_before.total_allocated
+    );
+    assert_eq!(
+        vault_config_state_after.next_stream_id,
+        vault_config_state_before.next_stream_id
+    );
+    assert_eq!(
+        vault_config_state_after.version,
+        vault_config_state_before.version
+    );
+    assert_eq!(
+        vault_config_state_after.owner,
+        vault_config_state_before.owner
+    );
+    assert_eq!(
+        vault_config_state_after.vault_id,
+        vault_config_state_before.vault_id
+    );
+    assert_eq!(owner_after_funding, owner_balance_start - deposit_amount);
 }
 
 #[test]

@@ -8,13 +8,17 @@ use crate::Instruction;
 use crate::{
     test_helpers::{
         assert_vault_state_unchanged, build_signed_public_tx, create_keypair,
-        create_state_with_guest_program, derive_vault_pdas, state_with_initialized_vault,
+        create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
+        state_with_initialized_vault,
     },
-    VaultConfig, VaultHolding, VaultId, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
-    ERR_VERSION_MISMATCH, ERR_ZERO_DEPOSIT_AMOUNT,
+    TokensPerSecond, VaultConfig, VaultHolding, VaultId, ERR_VAULT_ID_MISMATCH,
+    ERR_VAULT_OWNER_MISMATCH, ERR_VERSION_MISMATCH, ERR_ZERO_DEPOSIT_AMOUNT,
 };
 
-use super::common::{assert_execution_failed_with_code, DEFAULT_OWNER_GENESIS_BALANCE};
+use super::common::{
+    assert_execution_failed_with_code, state_deposited_with_mock_clock,
+    DEFAULT_MOCK_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
+};
 
 #[test]
 fn test_deposit() {
@@ -93,6 +97,112 @@ fn test_deposit() {
     assert_eq!(
         vault_config_state_after.vault_id,
         vault_config_state_before.vault_id
+    );
+}
+
+#[test]
+fn test_deposit_after_create_stream_succeeds() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let initial_deposit = DEFAULT_STREAM_TEST_DEPOSIT;
+    let second_deposit = 50 as Balance;
+    let allocation = 200 as Balance;
+    let rate = 10 as TokensPerSecond;
+    let (_, mock_clock_account_id) = create_keypair(73);
+    let (_, provider_account_id) = create_keypair(40);
+
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_deposited_with_mock_clock(
+        owner_balance_start,
+        initial_deposit,
+        mock_clock_account_id,
+        DEFAULT_MOCK_CLOCK_INITIAL_TS,
+    );
+
+    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
+    let account_ids_create = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        stream_pda,
+        owner_account_id,
+        mock_clock_account_id,
+    ];
+    assert!(
+        state
+            .transition_from_public_transaction(
+                &build_signed_public_tx(
+                    program_id,
+                    Instruction::CreateStream {
+                        vault_id,
+                        stream_id: 0,
+                        provider: provider_account_id,
+                        rate,
+                        allocation,
+                    },
+                    &account_ids_create,
+                    &[Nonce(2)],
+                    &[&owner_private_key],
+                ),
+                3 as BlockId,
+            )
+            .is_ok(),
+        "create_stream failed"
+    );
+
+    let vc_after_stream =
+        VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
+            .expect("vault config");
+    let stream_data_after_create = state.get_account_by_id(stream_pda).data.clone();
+    let owner_before_second = state.get_account_by_id(owner_account_id).balance;
+    let holding_before_second = state.get_account_by_id(vault_holding_account_id).balance;
+
+    let account_ids_deposit = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
+    let result = state.transition_from_public_transaction(
+        &build_signed_public_tx(
+            program_id,
+            Instruction::Deposit {
+                vault_id,
+                amount: second_deposit,
+                authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+            },
+            &account_ids_deposit,
+            &[Nonce(3)],
+            &[&owner_private_key],
+        ),
+        4 as BlockId,
+    );
+    assert!(
+        result.is_ok(),
+        "second deposit failed: {:?}",
+        result
+    );
+
+    let vc_after =
+        VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
+            .expect("vault config");
+    assert_eq!(vc_after.total_allocated, vc_after_stream.total_allocated);
+    assert_eq!(vc_after.next_stream_id, vc_after_stream.next_stream_id);
+    assert_eq!(
+        state.get_account_by_id(owner_account_id).balance,
+        owner_before_second - second_deposit
+    );
+    assert_eq!(
+        state.get_account_by_id(vault_holding_account_id).balance,
+        holding_before_second + second_deposit
+    );
+    assert_eq!(
+        state.get_account_by_id(stream_pda).data,
+        stream_data_after_create
     );
 }
 
