@@ -10,6 +10,7 @@ use crate::{
     test_helpers::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
         derive_vault_pdas, force_mock_timestamp_account,
+        harness_mock_clock_and_provider_account_ids,
     },
     MockTimestamp, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultId,
     ERR_STREAM_ID_MISMATCH, ERR_TIME_REGRESSION, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
@@ -20,6 +21,7 @@ use super::common::{
     state_deposited_with_mock_clock, transition_ok, DEFAULT_MOCK_CLOCK_INITIAL_TS,
     DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
+use super::seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_PROVIDER_B};
 
 #[test]
 fn test_accrual_basic() {
@@ -30,8 +32,8 @@ fn test_accrual_basic() {
     let t0: Timestamp = 12_345;
     let t1: Timestamp = t0 + 5;
 
-    let (_, mock_clock_account_id) = create_keypair(77);
-    let (_, provider_account_id) = create_keypair(42);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let (
         mut state,
@@ -107,8 +109,8 @@ fn test_accrual_caps_at_allocation() {
     let t0: Timestamp = 0;
     let t1: Timestamp = 100;
 
-    let (_, mock_clock_account_id) = create_keypair(88);
-    let (_, provider_account_id) = create_keypair(43);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let (
         mut state,
@@ -189,9 +191,8 @@ fn test_sync_stream_second_stream_accrues() {
     let rate1 = 5 as TokensPerSecond;
     let allocation1 = 100 as Balance;
 
-    let (_, mock_clock_account_id) = create_keypair(70);
-    let (_, provider_a) = create_keypair(41);
-    let (_, provider_b) = create_keypair(42);
+    let (mock_clock_account_id, provider_a) = harness_mock_clock_and_provider_account_ids();
+    let (_, provider_b) = create_keypair(SEED_PROVIDER_B);
 
     let (
         mut state,
@@ -309,7 +310,8 @@ fn test_sync_stream_second_stream_accrues() {
 
 #[test]
 fn test_sync_stream_wrong_vault_id_fails() {
-    let (_, mock_clock_account_id) = create_keypair(71);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
     let t0: Timestamp = 50;
 
     let (
@@ -326,8 +328,6 @@ fn test_sync_stream_wrong_vault_id_fails() {
         mock_clock_account_id,
         t0,
     );
-
-    let (_, provider_account_id) = create_keypair(45);
     let stream_id = StreamId::MIN;
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, stream_id);
     let account_ids = [
@@ -384,14 +384,14 @@ fn test_sync_stream_owner_mismatch_fails() {
     // Signer is `other`; only `owner` ran init + deposit + create_stream.
     let nonce_sync = Nonce(0);
 
-    let (owner_private_key, owner_account_id) = create_keypair(1);
-    let (other_private_key, other_account_id) = create_keypair(2);
-    let (_, mock_clock_account_id) = create_keypair(77);
-    let (_, provider_account_id) = create_keypair(42);
+    let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
+    let (alt_signer_private_key, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let initial_accounts_data = vec![
         (owner_account_id, signer_account_balance),
-        (other_account_id, signer_account_balance),
+        (alt_signer_account_id, signer_account_balance),
     ];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
         .expect(
@@ -473,7 +473,7 @@ fn test_sync_stream_owner_mismatch_fails() {
         vault_config_account_id,
         vault_holding_account_id,
         stream_pda,
-        other_account_id,
+        alt_signer_account_id,
         mock_clock_account_id,
     ];
     let r = state.transition_from_public_transaction(
@@ -483,7 +483,7 @@ fn test_sync_stream_owner_mismatch_fails() {
             0,
             &account_ids_sync,
             nonce_sync,
-            &other_private_key,
+            &alt_signer_private_key,
         ),
         block_sync,
     );
@@ -492,7 +492,8 @@ fn test_sync_stream_owner_mismatch_fails() {
 
 #[test]
 fn test_sync_stream_stream_id_does_not_match_account_fails() {
-    let (_, mock_clock_account_id) = create_keypair(72);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
     let t0: Timestamp = 20;
 
     let (
@@ -509,8 +510,6 @@ fn test_sync_stream_stream_id_does_not_match_account_fails() {
         mock_clock_account_id,
         t0,
     );
-
-    let (_, provider_account_id) = create_keypair(46);
     let stream0 = derive_stream_pda(program_id, vault_config_account_id, 0);
     let account_ids = [
         vault_config_account_id,
@@ -553,7 +552,8 @@ fn test_sync_stream_stream_id_does_not_match_account_fails() {
 
 #[test]
 fn test_sync_stream_time_regression_fails() {
-    let (_, mock_clock_account_id) = create_keypair(99);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
     let t0: Timestamp = 100;
     let t_bad: Timestamp = 50;
 
@@ -571,8 +571,6 @@ fn test_sync_stream_time_regression_fails() {
         mock_clock_account_id,
         t0,
     );
-
-    let (_, provider_account_id) = create_keypair(44);
     let stream_id = StreamId::MIN;
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, stream_id);
     let account_ids = [

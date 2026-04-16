@@ -9,7 +9,8 @@ use crate::{
     test_helpers::{
         assert_vault_state_unchanged_with_recipient, build_signed_public_tx, create_keypair,
         create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
-        force_mock_timestamp_account, state_with_initialized_vault_with_recipient,
+        force_mock_timestamp_account, harness_mock_clock_and_provider_account_ids,
+        state_with_initialized_vault_with_recipient,
     },
     MockTimestamp, TokensPerSecond, VaultConfig, VaultId, ERR_ARITHMETIC_OVERFLOW,
     ERR_INSUFFICIENT_FUNDS, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
@@ -20,6 +21,7 @@ use super::common::{
     assert_execution_failed_with_code, DEFAULT_MOCK_CLOCK_INITIAL_TS,
     DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
+use super::seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_RECIPIENT};
 
 #[test]
 fn test_withdraw() {
@@ -352,8 +354,8 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
     let nonce_stream = Nonce(2);
     let nonce_withdraw = Nonce(3);
 
-    let (_, mock_clock_account_id) = create_keypair(75);
-    let (_, provider_account_id) = create_keypair(48);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let (
         mut state,
@@ -511,12 +513,12 @@ fn test_withdraw_owner_mismatch_fails() {
     // Signer is `other`; they have not transacted yet (only `owner` ran init).
     let nonce_withdraw = Nonce(0);
 
-    let (owner_private_key, owner_account_id) = create_keypair(1);
-    let (other_private_key, other_account_id) = create_keypair(2);
-    let (_, recipient_account_id) = create_keypair(88);
+    let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
+    let (alt_signer_private_key, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
+    let (_, recipient_account_id) = create_keypair(SEED_RECIPIENT);
     let initial_accounts_data = vec![
         (owner_account_id, signer_account_balance),
-        (other_account_id, signer_account_balance),
+        (alt_signer_account_id, signer_account_balance),
         (recipient_account_id, recipient_genesis_balance),
     ];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
@@ -548,7 +550,7 @@ fn test_withdraw_owner_mismatch_fails() {
     );
 
     let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
-    let other_balance_before = state.get_account_by_id(other_account_id).balance;
+    let alt_signer_balance_before = state.get_account_by_id(alt_signer_account_id).balance;
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
     let recipient_balance_before = state.get_account_by_id(recipient_account_id).balance;
     let vault_config_data_before = state
@@ -559,7 +561,7 @@ fn test_withdraw_owner_mismatch_fails() {
     let account_ids_withdraw = [
         vault_config_account_id,
         vault_holding_account_id,
-        other_account_id,
+        alt_signer_account_id,
         recipient_account_id,
     ];
     let tx_withdraw = build_signed_public_tx(
@@ -570,7 +572,7 @@ fn test_withdraw_owner_mismatch_fails() {
         },
         &account_ids_withdraw,
         &[nonce_withdraw],
-        &[&other_private_key],
+        &[&alt_signer_private_key],
     );
 
     let result = state.transition_from_public_transaction(&tx_withdraw, block_withdraw);
@@ -588,8 +590,8 @@ fn test_withdraw_owner_mismatch_fails() {
         vault_config_data_before,
     );
     assert_eq!(
-        state.get_account_by_id(other_account_id).balance,
-        other_balance_before
+        state.get_account_by_id(alt_signer_account_id).balance,
+        alt_signer_balance_before
     );
 }
 

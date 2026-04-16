@@ -6,7 +6,7 @@ use nssa_core::{
 };
 
 use crate::{
-    test_helpers::{create_keypair, force_mock_timestamp_account},
+    test_helpers::{force_mock_timestamp_account, harness_mock_clock_and_provider_account_ids},
     MockTimestamp, StreamConfig, StreamState, Timestamp, TokensPerSecond,
     ERR_ALLOCATION_EXCEEDS_UNALLOCATED, ERR_ARITHMETIC_OVERFLOW, ERR_STREAM_CLOSED,
     ERR_ZERO_TOP_UP_AMOUNT,
@@ -24,8 +24,8 @@ fn test_topup_resumes() {
     let t0: Timestamp = 0;
     let t1: Timestamp = 100;
     let t2: Timestamp = 250;
-    let (_, mock_clock_account_id) = create_keypair(201);
-    let (_, provider_account_id) = create_keypair(202);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let (
         mut state,
@@ -155,8 +155,8 @@ fn test_topup_resumes() {
 fn test_topup_active_increases_allocation() {
     let t0: Timestamp = 10;
     let t1: Timestamp = 20;
-    let (_, mock_clock_account_id) = create_keypair(203);
-    let (_, provider_account_id) = create_keypair(204);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let (
         mut state,
@@ -225,8 +225,8 @@ fn test_topup_active_increases_allocation() {
 fn test_topup_manual_pause_then_active() {
     let t0: Timestamp = 5;
     let t1: Timestamp = 15;
-    let (_, mock_clock_account_id) = create_keypair(205);
-    let (_, provider_account_id) = create_keypair(206);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let (
         mut state,
@@ -309,8 +309,8 @@ fn test_topup_manual_pause_then_active() {
 #[test]
 fn test_topup_zero_fails() {
     let t0 = DEFAULT_MOCK_CLOCK_INITIAL_TS;
-    let (_, mock_clock_account_id) = create_keypair(207);
-    let (_, provider_account_id) = create_keypair(208);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let (
         mut state,
@@ -370,8 +370,8 @@ fn test_topup_zero_fails() {
 #[test]
 fn test_topup_closed_fails() {
     let t0 = DEFAULT_MOCK_CLOCK_INITIAL_TS;
-    let (_, mock_clock_account_id) = create_keypair(209);
-    let (_, provider_account_id) = create_keypair(210);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let (
         mut state,
@@ -433,8 +433,8 @@ fn test_topup_closed_fails() {
 #[test]
 fn test_topup_exceeds_unallocated_fails() {
     let t0 = DEFAULT_MOCK_CLOCK_INITIAL_TS;
-    let (_, mock_clock_account_id) = create_keypair(211);
-    let (_, provider_account_id) = create_keypair(212);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let (
         mut state,
@@ -494,8 +494,8 @@ fn test_topup_exceeds_unallocated_fails() {
 #[test]
 fn test_topup_allocation_overflow_fails() {
     let t0 = DEFAULT_MOCK_CLOCK_INITIAL_TS;
-    let (_, mock_clock_account_id) = create_keypair(213);
-    let (_, provider_account_id) = create_keypair(214);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let (
         mut state,

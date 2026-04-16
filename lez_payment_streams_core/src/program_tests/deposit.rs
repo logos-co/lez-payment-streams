@@ -9,7 +9,7 @@ use crate::{
     test_helpers::{
         assert_vault_state_unchanged, build_signed_public_tx, create_keypair,
         create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
-        state_with_initialized_vault,
+        harness_mock_clock_and_provider_account_ids, state_with_initialized_vault,
     },
     TokensPerSecond, VaultConfig, VaultHolding, VaultId, ERR_VAULT_ID_MISMATCH,
     ERR_VAULT_OWNER_MISMATCH, ERR_VERSION_MISMATCH, ERR_ZERO_DEPOSIT_AMOUNT,
@@ -19,6 +19,7 @@ use super::common::{
     assert_execution_failed_with_code, state_deposited_with_mock_clock,
     DEFAULT_MOCK_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
+use super::seeds::{SEED_ALT_SIGNER, SEED_OWNER};
 
 #[test]
 fn test_deposit() {
@@ -107,8 +108,8 @@ fn test_deposit_after_create_stream_succeeds() {
     let second_deposit = 50 as Balance;
     let allocation = 200 as Balance;
     let rate = 10 as TokensPerSecond;
-    let (_, mock_clock_account_id) = create_keypair(73);
-    let (_, provider_account_id) = create_keypair(40);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let (
         mut state,
@@ -435,11 +436,11 @@ fn test_deposit_owner_mismatch_fails() {
     let deposit_amount = 100 as Balance;
     let signer_account_balance = DEFAULT_OWNER_GENESIS_BALANCE;
 
-    let (owner_private_key, owner_account_id) = create_keypair(1);
-    let (other_private_key, other_account_id) = create_keypair(2);
+    let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
+    let (alt_signer_private_key, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
     let initial_accounts_data = vec![
         (owner_account_id, signer_account_balance),
-        (other_account_id, signer_account_balance),
+        (alt_signer_account_id, signer_account_balance),
     ];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
         .expect(
@@ -470,7 +471,7 @@ fn test_deposit_owner_mismatch_fails() {
     );
 
     let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
-    let other_balance_before = state.get_account_by_id(other_account_id).balance;
+    let alt_signer_balance_before = state.get_account_by_id(alt_signer_account_id).balance;
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
     let vault_config_data_before = state
         .get_account_by_id(vault_config_account_id)
@@ -480,7 +481,7 @@ fn test_deposit_owner_mismatch_fails() {
     let account_ids_deposit = [
         vault_config_account_id,
         vault_holding_account_id,
-        other_account_id,
+        alt_signer_account_id,
     ];
     let tx_deposit = build_signed_public_tx(
         program_id,
@@ -491,7 +492,7 @@ fn test_deposit_owner_mismatch_fails() {
         },
         &account_ids_deposit,
         &[nonce_deposit],
-        &[&other_private_key],
+        &[&alt_signer_private_key],
     );
 
     let result = state.transition_from_public_transaction(&tx_deposit, block_deposit);
@@ -507,8 +508,8 @@ fn test_deposit_owner_mismatch_fails() {
         vault_config_data_before,
     );
     assert_eq!(
-        state.get_account_by_id(other_account_id).balance,
-        other_balance_before
+        state.get_account_by_id(alt_signer_account_id).balance,
+        alt_signer_balance_before
     );
 }
 

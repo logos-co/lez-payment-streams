@@ -3,6 +3,7 @@
 
 mod accrual;
 mod common;
+mod seeds;
 mod create_stream;
 mod deposit;
 mod initialize;

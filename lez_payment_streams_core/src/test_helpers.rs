@@ -18,6 +18,7 @@ use nssa_core::{
 use serde::Serialize;
 use spel_framework_core::pda::{compute_pda, seed_from_str};
 
+use crate::harness_seeds::{SEED_MOCK_CLOCK, SEED_OWNER, SEED_PROVIDER, SEED_RECIPIENT};
 use crate::{Instruction, MockTimestamp, StreamId, VaultId};
 
 fn workspace_root() -> PathBuf {
@@ -42,6 +43,13 @@ pub(crate) fn create_keypair(seed: u8) -> (PrivateKey, AccountId) {
     let public_key = PublicKey::new_from_private_key(&private_key);
     let account_id = AccountId::from(&public_key);
     (private_key, account_id)
+}
+
+/// Default mock timestamp account and stream provider [`AccountId`]s (see [`crate::harness_seeds`]).
+pub(crate) fn harness_mock_clock_and_provider_account_ids() -> (AccountId, AccountId) {
+    let (_, mock_clock_account_id) = create_keypair(SEED_MOCK_CLOCK);
+    let (_, provider_account_id) = create_keypair(SEED_PROVIDER);
+    (mock_clock_account_id, provider_account_id)
 }
 
 pub(crate) fn create_state_with_guest_program(
@@ -187,7 +195,7 @@ pub(crate) fn state_with_initialized_vault(
     AccountId,
     AccountId,
 ) {
-    let (owner_private_key, owner_account_id) = create_keypair(1);
+    let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
     let initial_accounts_data = vec![(owner_account_id, owner_balance)];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
         .expect(
@@ -245,8 +253,8 @@ pub(crate) fn state_with_initialized_vault_with_recipient(
     AccountId,
     AccountId,
 ) {
-    let (owner_private_key, owner_account_id) = create_keypair(1);
-    let (_, recipient_account_id) = create_keypair(88);
+    let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
+    let (_, recipient_account_id) = create_keypair(SEED_RECIPIENT);
     let initial_accounts_data = vec![
         (owner_account_id, owner_balance),
         (recipient_account_id, Balance::MIN),

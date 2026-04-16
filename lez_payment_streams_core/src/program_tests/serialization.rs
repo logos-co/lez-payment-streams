@@ -8,11 +8,17 @@ use nssa_core::account::AccountId;
 use crate::test_helpers::create_keypair;
 use crate::{StreamConfig, StreamState, Timestamp, VaultConfig, VaultHolding, VaultId};
 
+/// Fixed seeds for layout / determinism tests only; keep separate from [`super::seeds`] / [`crate::harness_seeds`].
+const SERIALIZATION_SEED_KEYPAIR: u8 = 7;
+const SERIALIZATION_SEED_PROVIDER: u8 = 5;
+
 #[test]
 fn test_keypair_is_deterministic_for_seed() {
-    let (_, first) = create_keypair(7);
-    let (_, second) = create_keypair(7);
-    assert_eq!(first, second);
+    for &seed in &[SERIALIZATION_SEED_KEYPAIR, SERIALIZATION_SEED_PROVIDER] {
+        let (_, first) = create_keypair(seed);
+        let (_, second) = create_keypair(seed);
+        assert_eq!(first, second);
+    }
 }
 
 #[test]
@@ -55,7 +61,7 @@ fn test_vault_holding_from_bytes_wrong_len_returns_none() {
 
 #[test]
 fn test_stream_config_roundtrip_serialization() {
-    let (_, provider) = create_keypair(5);
+    let (_, provider) = create_keypair(SERIALIZATION_SEED_PROVIDER);
     let s_original = StreamConfig::new(7, provider, 10, 200, 12_345);
     let serialized = s_original.to_bytes();
     let deserialized = StreamConfig::from_bytes(&serialized);
@@ -64,7 +70,7 @@ fn test_stream_config_roundtrip_serialization() {
 
 #[test]
 fn test_stream_config_from_bytes_wrong_len_returns_none() {
-    let (_, provider) = create_keypair(5);
+    let (_, provider) = create_keypair(SERIALIZATION_SEED_PROVIDER);
     let s_original = StreamConfig::new(7, provider, 10, 200, 12_345);
     let bytes = s_original.to_bytes();
     let short = &bytes[..bytes.len() - 1];
@@ -93,7 +99,7 @@ fn test_stream_config_from_bytes_invalid_stream_state_returns_none() {
     );
     let undefined_discriminant_after_max = highest_defined_discriminant + 1;
 
-    let (_, provider) = create_keypair(5);
+    let (_, provider) = create_keypair(SERIALIZATION_SEED_PROVIDER);
     let s_valid = StreamConfig::new(0, provider, 1, 1, 1);
     let mut serialized = s_valid.to_bytes();
     let timestamp_field_size = size_of::<Timestamp>();

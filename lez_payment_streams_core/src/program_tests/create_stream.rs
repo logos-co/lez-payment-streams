@@ -7,7 +7,8 @@ use crate::Instruction;
 use crate::{
     test_helpers::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
-        derive_vault_pdas, force_mock_timestamp_account, state_with_initialized_vault,
+        derive_vault_pdas, force_mock_timestamp_account, harness_mock_clock_and_provider_account_ids,
+        state_with_initialized_vault,
     },
     MockTimestamp, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig,
     VaultId, DEFAULT_VERSION, ERR_ALLOCATION_EXCEEDS_UNALLOCATED, ERR_INVALID_MOCK_TIMESTAMP,
@@ -20,13 +21,14 @@ use super::common::{
     transition_ok, DEFAULT_MOCK_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE,
     DEFAULT_STREAM_TEST_DEPOSIT,
 };
+use super::seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_PROVIDER_B};
 
 // ---- Create stream ---- //
 
 #[test]
 fn test_derive_stream_pda_stable() {
     let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
-    let (_, owner_account_id) = create_keypair(1);
+    let (_, owner_account_id) = create_keypair(SEED_OWNER);
     let initial_accounts_data = vec![(owner_account_id, owner_genesis_balance)];
     let (_, guest_program) = create_state_with_guest_program(&initial_accounts_data).expect(
         "guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok",
@@ -54,8 +56,8 @@ fn test_create_stream() {
     let nonce_deposit = Nonce(1);
     let nonce_stream = Nonce(2);
 
-    let (_, mock_clock_account_id) = create_keypair(77);
-    let (_, provider_account_id) = create_keypair(42);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let (
         mut state,
@@ -152,7 +154,8 @@ fn test_create_stream_exceeds_unallocated_fails() {
     let nonce_deposit = Nonce(1);
     let nonce_stream = Nonce(2);
 
-    let (_, mock_clock_account_id) = create_keypair(77);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let (
         mut state,
@@ -182,7 +185,6 @@ fn test_create_stream_exceeds_unallocated_fails() {
 
     let stream_id = StreamId::MIN;
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, stream_id);
-    let (_, provider_account_id) = create_keypair(42);
 
     let vault_config_before = state
         .get_account_by_id(vault_config_account_id)
@@ -234,8 +236,8 @@ fn test_create_stream_zero_rate_fails() {
     let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
     let allocation = 1 as Balance;
     let rate = 0 as TokensPerSecond;
-    let (_, mock_clock_account_id) = create_keypair(77);
-    let (_, provider_account_id) = create_keypair(42);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
     let (
         mut state,
         program_id,
@@ -283,8 +285,8 @@ fn test_create_stream_zero_allocation_fails() {
     let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
     let allocation = 0 as Balance;
     let rate = 1 as TokensPerSecond;
-    let (_, mock_clock_account_id) = create_keypair(77);
-    let (_, provider_account_id) = create_keypair(42);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
     let (
         mut state,
         program_id,
@@ -332,8 +334,8 @@ fn test_create_stream_stream_id_mismatch_fails() {
     let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
     let allocation = 1 as Balance;
     let rate = 1 as TokensPerSecond;
-    let (_, mock_clock_account_id) = create_keypair(77);
-    let (_, provider_account_id) = create_keypair(42);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
     let (
         mut state,
         program_id,
@@ -385,8 +387,8 @@ fn test_create_stream_listed_stream_account_can_differ_from_derived_pda_for_stre
     let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
     let allocation = 1 as Balance;
     let rate = 1 as TokensPerSecond;
-    let (_, mock_clock_account_id) = create_keypair(77);
-    let (_, provider_account_id) = create_keypair(42);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
     let (
         mut state,
         program_id,
@@ -445,8 +447,8 @@ fn test_create_stream_wrong_vault_id_fails() {
     let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
     let allocation = 1 as Balance;
     let rate = 1 as TokensPerSecond;
-    let (_, mock_clock_account_id) = create_keypair(77);
-    let (_, provider_account_id) = create_keypair(42);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
     let (
         mut state,
         program_id,
@@ -500,14 +502,14 @@ fn test_create_stream_owner_mismatch_fails() {
     // Signer is `other`; only `owner` ran init + deposit, so `other`'s nonce is still 0.
     let nonce_stream = Nonce(0);
 
-    let (owner_private_key, owner_account_id) = create_keypair(1);
-    let (other_private_key, other_account_id) = create_keypair(2);
-    let (_, mock_clock_account_id) = create_keypair(77);
-    let (_, provider_account_id) = create_keypair(42);
+    let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
+    let (alt_signer_private_key, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
 
     let initial_accounts_data = vec![
         (owner_account_id, signer_account_balance),
-        (other_account_id, signer_account_balance),
+        (alt_signer_account_id, signer_account_balance),
     ];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
         .expect(
@@ -570,7 +572,7 @@ fn test_create_stream_owner_mismatch_fails() {
         vault_config_account_id,
         vault_holding_account_id,
         stream_pda,
-        other_account_id,
+        alt_signer_account_id,
         mock_clock_account_id,
     ];
     let result = state.transition_from_public_transaction(
@@ -583,7 +585,7 @@ fn test_create_stream_owner_mismatch_fails() {
             allocation,
             &account_ids_stream,
             nonce_stream,
-            &other_private_key,
+            &alt_signer_private_key,
         ),
         block_stream,
     );
@@ -601,8 +603,8 @@ fn test_create_stream_invalid_mock_timestamp_fails() {
     let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
     let allocation = 1 as Balance;
     let rate = 1 as TokensPerSecond;
-    let (_, mock_clock_account_id) = create_keypair(77);
-    let (_, provider_account_id) = create_keypair(42);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
     let (
         mut state,
         program_id,
@@ -652,8 +654,8 @@ fn test_create_stream_allocation_equals_unallocated_succeeds() {
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
     let mock_clock_initial_ts = 99 as Timestamp;
     let rate = 1 as TokensPerSecond;
-    let (_, mock_clock_account_id) = create_keypair(77);
-    let (_, provider_account_id) = create_keypair(42);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
     let (
         mut state,
         program_id,
@@ -712,9 +714,8 @@ fn test_create_stream_second_stream_succeeds() {
     let expected_total_allocated = first_stream_allocation + second_stream_allocation;
     let first_stream_rate = 2 as TokensPerSecond;
     let second_stream_rate = 3 as TokensPerSecond;
-    let (_, mock_clock_account_id) = create_keypair(77);
-    let (_, provider_a) = create_keypair(42);
-    let (_, provider_b) = create_keypair(43);
+    let (mock_clock_account_id, provider_a) = harness_mock_clock_and_provider_account_ids();
+    let (_, provider_b) = create_keypair(SEED_PROVIDER_B);
     let (
         mut state,
         program_id,
@@ -802,8 +803,8 @@ fn test_create_stream_next_stream_id_overflow_fails() {
     let mock_clock_initial_ts = DEFAULT_MOCK_CLOCK_INITIAL_TS;
     let allocation = 1 as Balance;
     let rate = 1 as TokensPerSecond;
-    let (_, mock_clock_account_id) = create_keypair(77);
-    let (_, provider_account_id) = create_keypair(42);
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
     let (
         mut state,
         program_id,

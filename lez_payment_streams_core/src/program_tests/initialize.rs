@@ -11,11 +11,12 @@ use nssa_core::{
 };
 
 use super::common::DEFAULT_OWNER_GENESIS_BALANCE;
+use super::seeds::SEED_OWNER;
 
 #[test]
 fn test_initialize_vault_then_reinitialize_fails() {
     let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
-    let (owner_private_key, owner_account_id) = create_keypair(1);
+    let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
     let initial_accounts_data = vec![(owner_account_id, owner_genesis_balance)];
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
         .expect(

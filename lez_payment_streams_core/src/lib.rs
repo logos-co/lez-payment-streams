@@ -6,6 +6,9 @@ use nssa_core::program::ProgramId;
 use core::mem::size_of;
 
 #[cfg(test)]
+mod harness_seeds;
+
+#[cfg(test)]
 mod test_helpers;
 
 #[cfg(test)]
