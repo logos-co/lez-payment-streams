@@ -52,6 +52,33 @@ mod lez_payment_streams {
         }
     }
 
+    #[derive(Clone, Copy)]
+    enum ResumeFromPausedInstruction {
+        ResumeStream,
+        TopUpStream,
+    }
+
+    fn spel_resume_from_paused_at_err(code: u32, ix: ResumeFromPausedInstruction) -> SpelError {
+        let message = match (code, ix) {
+            (ERR_STREAM_NOT_PAUSED, ResumeFromPausedInstruction::ResumeStream) => {
+                "stream is not paused after accrual fold"
+            }
+            (ERR_STREAM_NOT_PAUSED, ResumeFromPausedInstruction::TopUpStream) => {
+                "stream is not paused after top-up"
+            }
+            (
+                ERR_RESUME_ZERO_REMAINING_ALLOCATION,
+                ResumeFromPausedInstruction::ResumeStream,
+            ) => "remaining allocation is zero",
+            (
+                ERR_RESUME_ZERO_REMAINING_ALLOCATION,
+                ResumeFromPausedInstruction::TopUpStream,
+            ) => "remaining allocation is zero after top-up",
+            _ => "resume_from_paused_at failed",
+        };
+        spel_custom(code, message)
+    }
+
     fn parse_mock_timestamp(meta: &AccountWithMetadata) -> Result<MockTimestamp, SpelError> {
         MockTimestamp::from_bytes(&meta.account.data).ok_or_else(|| {
             spel_custom(ERR_INVALID_MOCK_TIMESTAMP, "invalid mock timestamp account data")
@@ -550,14 +577,7 @@ mod lez_payment_streams {
 
         stream_config_state = stream_config_state
             .resume_from_paused_at(now)
-            .map_err(|code| {
-                let msg = match code {
-                    ERR_STREAM_NOT_PAUSED => "stream is not paused after accrual fold",
-                    ERR_RESUME_ZERO_REMAINING_ALLOCATION => "remaining allocation is zero",
-                    _ => "resume_from_paused_at failed",
-                };
-                spel_custom(code, msg)
-            })?;
+            .map_err(|code| spel_resume_from_paused_at_err(code, ResumeFromPausedInstruction::ResumeStream))?;
 
         let vault_config_account = vault_config_with_meta.account;
         let mut stream_account = stream_config_with_meta.account;
@@ -648,16 +668,7 @@ mod lez_payment_streams {
             // Same `accrued_as_of = now` anchor as `resume_stream`; see `resume_from_paused_at`.
             stream_config_state = stream_config_state
                 .resume_from_paused_at(now)
-                .map_err(|code| {
-                    let msg = match code {
-                        ERR_STREAM_NOT_PAUSED => "stream is not paused after top-up",
-                        ERR_RESUME_ZERO_REMAINING_ALLOCATION => {
-                            "remaining allocation is zero after top-up"
-                        }
-                        _ => "resume_from_paused_at failed",
-                    };
-                    spel_custom(code, msg)
-                })?;
+                .map_err(|code| spel_resume_from_paused_at_err(code, ResumeFromPausedInstruction::TopUpStream))?;
         }
 
         let mut vault_config_account = vault_config_with_meta.account;

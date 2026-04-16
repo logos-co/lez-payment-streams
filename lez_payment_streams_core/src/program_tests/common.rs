@@ -28,6 +28,16 @@ pub(crate) const DEFAULT_STREAM_TEST_DEPOSIT: Balance = 500;
 /// Account order for stream instructions: vault config, holding, stream PDA, owner, mock clock.
 pub(crate) type StreamIxAccounts = [AccountId; 5];
 
+fn signed_stream_public_tx(
+    program_id: ProgramId,
+    instruction: Instruction,
+    accounts: &StreamIxAccounts,
+    nonce: Nonce,
+    owner: &PrivateKey,
+) -> PublicTransaction {
+    build_signed_public_tx(program_id, instruction, accounts, &[nonce], &[owner])
+}
+
 pub(crate) fn first_stream_accounts(
     program_id: ProgramId,
     vault_config_account_id: AccountId,
@@ -58,7 +68,7 @@ pub(crate) fn signed_create_stream(
     nonce: Nonce,
     owner: &PrivateKey,
 ) -> PublicTransaction {
-    build_signed_public_tx(
+    signed_stream_public_tx(
         program_id,
         Instruction::CreateStream {
             vault_id,
@@ -68,8 +78,8 @@ pub(crate) fn signed_create_stream(
             allocation,
         },
         accounts,
-        &[nonce],
-        &[owner],
+        nonce,
+        owner,
     )
 }
 
@@ -81,15 +91,15 @@ pub(crate) fn signed_sync_stream(
     nonce: Nonce,
     owner: &PrivateKey,
 ) -> PublicTransaction {
-    build_signed_public_tx(
+    signed_stream_public_tx(
         program_id,
         Instruction::SyncStream {
             vault_id,
             stream_id,
         },
         accounts,
-        &[nonce],
-        &[owner],
+        nonce,
+        owner,
     )
 }
 
@@ -101,15 +111,15 @@ pub(crate) fn signed_pause_stream(
     nonce: Nonce,
     owner: &PrivateKey,
 ) -> PublicTransaction {
-    build_signed_public_tx(
+    signed_stream_public_tx(
         program_id,
         Instruction::PauseStream {
             vault_id,
             stream_id,
         },
         accounts,
-        &[nonce],
-        &[owner],
+        nonce,
+        owner,
     )
 }
 
@@ -121,15 +131,15 @@ pub(crate) fn signed_resume_stream(
     nonce: Nonce,
     owner: &PrivateKey,
 ) -> PublicTransaction {
-    build_signed_public_tx(
+    signed_stream_public_tx(
         program_id,
         Instruction::ResumeStream {
             vault_id,
             stream_id,
         },
         accounts,
-        &[nonce],
-        &[owner],
+        nonce,
+        owner,
     )
 }
 
@@ -142,7 +152,7 @@ pub(crate) fn signed_top_up_stream(
     nonce: Nonce,
     owner: &PrivateKey,
 ) -> PublicTransaction {
-    build_signed_public_tx(
+    signed_stream_public_tx(
         program_id,
         Instruction::TopUpStream {
             vault_id,
@@ -150,8 +160,8 @@ pub(crate) fn signed_top_up_stream(
             vault_total_allocated_increase,
         },
         accounts,
-        &[nonce],
-        &[owner],
+        nonce,
+        owner,
     )
 }
 
@@ -241,31 +251,20 @@ pub(crate) fn state_deposited_with_mock_clock(
 
     let block_deposit = 2 as BlockId;
     let nonce_deposit = Nonce(1);
-    let account_ids_deposit = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-    ];
-    assert!(
-        state
-            .transition_from_public_transaction(
-                &build_signed_public_tx(
-                    program_id,
-                    Instruction::Deposit {
-                        vault_id,
-                        amount: deposit_amount,
-                        authenticated_transfer_program_id: Program::authenticated_transfer_program(
-                        )
-                        .id(),
-                    },
-                    &account_ids_deposit,
-                    &[nonce_deposit],
-                    &[&owner_private_key],
-                ),
-                block_deposit,
-            )
-            .is_ok(),
-        "deposit failed"
+    transition_ok(
+        &mut state,
+        &signed_deposit(
+            program_id,
+            vault_id,
+            deposit_amount,
+            vault_config_account_id,
+            vault_holding_account_id,
+            owner_account_id,
+            nonce_deposit,
+            &owner_private_key,
+        ),
+        block_deposit,
+        "deposit failed",
     );
 
     force_mock_timestamp_account(
