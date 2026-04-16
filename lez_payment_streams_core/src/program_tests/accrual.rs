@@ -460,8 +460,9 @@ fn test_sync_stream_owner_mismatch_fails() {
                     Instruction::Deposit {
                         vault_id,
                         amount: deposit_amount,
-                        authenticated_transfer_program_id: Program::authenticated_transfer_program()
-                            .id(),
+                        authenticated_transfer_program_id: Program::authenticated_transfer_program(
+                        )
+                        .id(),
                     },
                     &[
                         vault_config_account_id,

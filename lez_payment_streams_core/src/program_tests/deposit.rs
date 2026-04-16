@@ -181,15 +181,10 @@ fn test_deposit_after_create_stream_succeeds() {
         ),
         4 as BlockId,
     );
-    assert!(
-        result.is_ok(),
-        "second deposit failed: {:?}",
-        result
-    );
+    assert!(result.is_ok(), "second deposit failed: {:?}", result);
 
-    let vc_after =
-        VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
-            .expect("vault config");
+    let vc_after = VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
+        .expect("vault config");
     assert_eq!(vc_after.total_allocated, vc_after_stream.total_allocated);
     assert_eq!(vc_after.next_stream_id, vc_after_stream.next_stream_id);
     assert_eq!(

@@ -46,6 +46,12 @@ pub const ERR_TIME_REGRESSION: u32 = 6014;
 pub const ERR_STREAM_EXCEEDS_ALLOCATION: u32 = 6015;
 /// Signer account is not [`VaultConfig::owner`] when the instruction requires the vault owner.
 pub const ERR_VAULT_OWNER_MISMATCH: u32 = 6016;
+/// `pause_stream` when post-`at_time` state is not [`StreamState::Active`].
+pub const ERR_STREAM_NOT_ACTIVE: u32 = 6017;
+/// `resume_stream` when post-`at_time` state is not [`StreamState::Paused`].
+pub const ERR_STREAM_NOT_PAUSED: u32 = 6018;
+/// `resume_stream` when remaining allocation is zero ([`StreamConfig::remaining_allocation`]).
+pub const ERR_RESUME_ZERO_REMAINING_ALLOCATION: u32 = 6019;
 
 // ---- VaultConfig ---- //
 
@@ -261,8 +267,7 @@ impl StreamConfig {
         offset += size_of::<StreamState>();
 
         let size = size_of::<Timestamp>();
-        let accrued_as_of =
-            Timestamp::from_le_bytes(data[offset..offset + size].try_into().ok()?);
+        let accrued_as_of = Timestamp::from_le_bytes(data[offset..offset + size].try_into().ok()?);
 
         Some(Self {
             version,
@@ -313,15 +318,20 @@ impl StreamConfig {
         }
     }
 
+    /// Remaining allocation: portion of `allocation` not yet accrued (`allocation - accrued`, floored at zero).
+    pub fn remaining_allocation(&self) -> Balance {
+        self.allocation.saturating_sub(self.accrued)
+    }
+
     /// Lazy accrual: compute stream state as of chain time `t`.
     ///
     /// Returns the stream unchanged when [`StreamState::Paused`] or [`StreamState::Closed`], or when
     /// `t` equals [`StreamConfig::accrued_as_of`] (no elapsed accrual interval).
     ///
     /// For a stream that was [`StreamState::Active`] with `t` strictly after
-    /// [`StreamConfig::accrued_as_of`]: if accrued amount at `t` is strictly below `allocation`,
-    /// the result stays **Active**. If it reaches the cap, the result is **Paused**
-    /// (accrual-induced pause; see `design.md`).
+    /// [`StreamConfig::accrued_as_of`]: while [`StreamConfig::remaining_allocation`] stays positive
+    /// after folding the interval, the result stays **Active**. When remaining allocation reaches
+    /// zero, the result is **Paused** (accrual-induced pause; see `design.md`).
     ///
     /// Returns [`ERR_ZERO_STREAM_RATE`], [`ERR_ZERO_STREAM_ALLOCATION`], or [`ERR_STREAM_EXCEEDS_ALLOCATION`]
     /// when stored fields violate the same constraints as `create_stream` (non-zero rate and
@@ -353,17 +363,20 @@ impl StreamConfig {
         // Here `t > base_as_of`, so `delta > 0`.
         let delta = t - base_as_of;
         let accrued_during_delta = u128::from(rate).saturating_mul(u128::from(delta));
-        let new_accrued = base_accrued.saturating_add(accrued_during_delta).min(allocation);
+        let new_accrued = base_accrued
+            .saturating_add(accrued_during_delta)
+            .min(allocation);
 
         let mut out = self.clone();
         out.accrued = new_accrued;
 
-        if new_accrued == allocation {
+        if out.remaining_allocation() == (0 as Balance) {
             // Stream is depleted, transition to Paused.
             out.state = StreamState::Paused;
-            // Calculate time of depletion.
-            let remained_to_accrue: Balance = allocation.saturating_sub(base_accrued);
-            let time_to_depletion = div_ceil_u128(remained_to_accrue, rate).ok_or(ERR_ARITHMETIC_OVERFLOW)?;
+            // Remaining allocation at interval start (`accrued_as_of`), before applying this delta.
+            let remaining_allocation_before_interval = self.remaining_allocation();
+            let time_to_depletion = div_ceil_u128(remaining_allocation_before_interval, rate)
+                .ok_or(ERR_ARITHMETIC_OVERFLOW)?;
             let depleted_at = base_as_of
                 .checked_add(time_to_depletion)
                 .ok_or(ERR_ARITHMETIC_OVERFLOW)?;
@@ -389,7 +402,6 @@ impl StreamConfig {
         Ok(())
     }
 }
-
 
 /// `ceil(rem / rate)` for `rate > 0`. For `rem == 0`, the quotient is zero.
 fn div_ceil_u128(rem: u128, rate: u64) -> Option<u64> {
@@ -425,6 +437,14 @@ mod stream_config_at_time_tests {
             state: StreamState::Active,
             accrued_as_of,
         }
+    }
+
+    #[test]
+    fn remaining_allocation_saturating_sub() {
+        let s = stream_active(30, 100, 1, 0);
+        assert_eq!(s.remaining_allocation(), 70 as Balance);
+        let over = stream_active(150, 100, 1, 0);
+        assert_eq!(over.remaining_allocation(), 0 as Balance);
     }
 
     #[test]
@@ -522,6 +542,14 @@ pub enum Instruction {
         allocation: Balance,
     },
     SyncStream {
+        vault_id: VaultId,
+        stream_id: StreamId,
+    },
+    PauseStream {
+        vault_id: VaultId,
+        stream_id: StreamId,
+    },
+    ResumeStream {
         vault_id: VaultId,
         stream_id: StreamId,
     },

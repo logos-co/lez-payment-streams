@@ -6,5 +6,6 @@ mod common;
 mod create_stream;
 mod deposit;
 mod initialize;
+mod pause_resume;
 mod serialization;
 mod withdraw;

@@ -156,6 +156,18 @@ The handler checks the signer against
 
 Claim: provider only.
 
+## Pause and resume
+
+`PauseStream` and `ResumeStream` use the same account layout as `SyncStream`
+(config, holding, stream, owner signer, read-only mock clock).
+Handlers run `StreamConfig::at_time(now)` first, then apply the transition.
+
+`PauseStream` requires the post-`at_time` state to be `Active`.
+`ResumeStream` requires `Paused` and `accrued < allocation`.
+On successful resume, set `state` to `Active`, set `accrued_as_of` to `now`,
+and leave `accrued` unchanged so time while paused does not accrue later.
+Invalid transitions fail with `ERR_*` (not no-ops).
+
 ## Accrual behavior
 
 Lazy accrual on mutating stream instructions only

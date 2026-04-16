@@ -17,8 +17,8 @@ use crate::{
 };
 
 use super::common::{
-    assert_execution_failed_with_code, DEFAULT_MOCK_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE,
-    DEFAULT_STREAM_TEST_DEPOSIT,
+    assert_execution_failed_with_code, DEFAULT_MOCK_CLOCK_INITIAL_TS,
+    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
 
 #[test]
@@ -385,8 +385,9 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
                     Instruction::Deposit {
                         vault_id,
                         amount: deposit_amount,
-                        authenticated_transfer_program_id: Program::authenticated_transfer_program()
-                            .id(),
+                        authenticated_transfer_program_id: Program::authenticated_transfer_program(
+                        )
+                        .id(),
                     },
                     &account_ids_deposit,
                     &[nonce_deposit],
