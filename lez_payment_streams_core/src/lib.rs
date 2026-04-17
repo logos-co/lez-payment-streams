@@ -60,31 +60,6 @@ pub const ERR_STREAM_CLOSED: u32 = 6020;
 /// `top_up_stream` when `vault_total_allocated_increase` is zero.
 pub const ERR_ZERO_TOP_UP_AMOUNT: u32 = 6021;
 
-/// Increase [`VaultConfig::total_allocated`] by `vault_total_allocated_increase`, capped by unallocated vault liquidity.
-///
-/// Unallocated is `vault_holding_balance.saturating_sub(vault_total_allocated)`.
-/// This is vault-level bookkeeping only (how much of the holding balance is reserved across streams).
-/// For [`Instruction::CreateStream`], the increase equals the new stream's allocation; for
-/// [`Instruction::TopUpStream`], it equals the stream allocation delta.
-///
-/// Callers must reject zero `vault_total_allocated_increase` where the instruction forbids it
-/// ([`ERR_ZERO_STREAM_ALLOCATION`], [`ERR_ZERO_TOP_UP_AMOUNT`]).
-///
-/// [`ERR_TOTAL_ALLOCATED_OVERFLOW`] from `checked_add` is defensive; for `Balance` as `u128`,
-/// passing the unallocated check with realistic on-chain balances implies the sum fits in `u128`.
-pub fn commit_vault_total_allocated_increase(
-    vault_holding_balance: Balance,
-    vault_total_allocated: Balance,
-    vault_total_allocated_increase: Balance,
-) -> Result<Balance, u32> {
-    let unallocated = vault_holding_balance.saturating_sub(vault_total_allocated);
-    if vault_total_allocated_increase > unallocated {
-        return Err(ERR_ALLOCATION_EXCEEDS_UNALLOCATED);
-    }
-    vault_total_allocated
-        .checked_add(vault_total_allocated_increase)
-        .ok_or(ERR_TOTAL_ALLOCATED_OVERFLOW)
-}
 
 // ---- VaultConfig ---- //
 
@@ -201,6 +176,34 @@ impl VaultHolding {
     pub fn new_with_version(version: VersionId) -> Self {
         Self { version }
     }
+}
+
+// ---- Vault bookkeeping ---- //
+
+/// Increase [`VaultConfig::total_allocated`] by `vault_total_allocated_increase`, capped by unallocated vault liquidity.
+///
+/// Unallocated is `vault_holding_balance.saturating_sub(vault_total_allocated)`.
+/// This is vault-level bookkeeping only (how much of the holding balance is reserved across streams).
+/// For [`Instruction::CreateStream`], the increase equals the new stream's allocation; for
+/// [`Instruction::TopUpStream`], it equals the stream allocation delta.
+///
+/// Callers must reject zero `vault_total_allocated_increase` where the instruction forbids it
+/// ([`ERR_ZERO_STREAM_ALLOCATION`], [`ERR_ZERO_TOP_UP_AMOUNT`]).
+///
+/// [`ERR_TOTAL_ALLOCATED_OVERFLOW`] from `checked_add` is defensive; for `Balance` as `u128`,
+/// passing the unallocated check with realistic on-chain balances implies the sum fits in `u128`.
+pub fn commit_vault_total_allocated_increase(
+    vault_holding_balance: Balance,
+    vault_total_allocated: Balance,
+    vault_total_allocated_increase: Balance,
+) -> Result<Balance, u32> {
+    let unallocated = vault_holding_balance.saturating_sub(vault_total_allocated);
+    if vault_total_allocated_increase > unallocated {
+        return Err(ERR_ALLOCATION_EXCEEDS_UNALLOCATED);
+    }
+    vault_total_allocated
+        .checked_add(vault_total_allocated_increase)
+        .ok_or(ERR_TOTAL_ALLOCATED_OVERFLOW)
 }
 
 // ---- StreamConfig ---- //
