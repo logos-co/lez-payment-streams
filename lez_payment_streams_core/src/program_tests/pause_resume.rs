@@ -13,7 +13,7 @@ use crate::{
         derive_vault_pdas, force_mock_timestamp_account, harness_mock_clock_and_provider_account_ids,
     },
     MockTimestamp, StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId,
-    ERR_RESUME_ZERO_REMAINING_ALLOCATION, ERR_STREAM_NOT_ACTIVE, ERR_STREAM_NOT_PAUSED,
+    ERR_RESUME_ZERO_UNACCRUED, ERR_STREAM_NOT_ACTIVE, ERR_STREAM_NOT_PAUSED,
     ERR_TIME_REGRESSION, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
 };
 
@@ -451,7 +451,7 @@ fn test_resume_zero_remaining_fails() {
         ),
         5 as BlockId,
     );
-    assert_execution_failed_with_code(r, ERR_RESUME_ZERO_REMAINING_ALLOCATION);
+    assert_execution_failed_with_code(r, ERR_RESUME_ZERO_UNACCRUED);
 }
 
 #[test]

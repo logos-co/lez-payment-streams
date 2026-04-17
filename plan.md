@@ -216,23 +216,32 @@ Tests:
 `test_resume_zero_remaining` must fail,
 `test_topup_resumes`.
 
-### 6. Close and claim
+### 6. Close stream
 
 Decision log updates in `design.md`:
 - close authorization rules
-- claim semantics by state
 - unaccrued return accounting on close
 
 Impl:
-add `close_stream` and `claim` handlers.
+add `close_stream` handler.
 
 Tests:
 `test_close_returns_unaccrued`,
-`test_claim_transfers_balance`,
-`test_claim_after_close`,
 `test_close_already_closed` must fail.
 
-### 7. Negative tests and invariants
+### 7. Claim
+
+Decision log updates in `design.md`:
+- claim semantics by state
+
+Impl:
+add `claim` handler.
+
+Tests:
+`test_claim_transfers_balance`,
+`test_claim_after_close`.
+
+### 8. Negative tests and invariants
 
 Decision log updates in `design.md`:
 - invariant checklist
@@ -246,7 +255,7 @@ invalid transitions,
 overflow or underflow,
 and operations on non-existent accounts.
 
-### 8. Shielded execution tests
+### 9. Shielded execution tests
 
 Decision log updates in `design.md`:
 - public and shielded parity assumptions
@@ -259,7 +268,7 @@ and `transition_from_privacy_preserving_transaction`.
 Add tests only,
 no new program logic.
 
-### 9. RFC promotion batch
+### 10. RFC promotion batch
 
 This is the first step that edits the RFC.
 Promote stable decisions from `design.md`
@@ -278,7 +287,7 @@ Include:
 - time source and accrual behavior
 - execution mode notes
 
-### 10. RFC polish and review
+### 11. RFC polish and review
 
 Finalize Security and Privacy Considerations
 and References in the RFC.
@@ -287,7 +296,7 @@ implemented behavior,
 `design.md`,
 and RFC text.
 Revisit **unallocated** vs legacy “available” wording in the RFC
-(see step 9 terminology note).
+(see step 10 terminology note).
 
 ## Final polish (implementation)
 

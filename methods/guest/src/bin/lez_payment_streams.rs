@@ -17,7 +17,7 @@ use lez_payment_streams_core::{
     ERR_INSUFFICIENT_FUNDS,
     ERR_INVALID_MOCK_TIMESTAMP,
     ERR_NEXT_STREAM_ID_OVERFLOW,
-    ERR_RESUME_ZERO_REMAINING_ALLOCATION,
+    ERR_RESUME_ZERO_UNACCRUED,
     ERR_STREAM_CLOSED,
     ERR_STREAM_EXCEEDS_ALLOCATION,
     ERR_STREAM_ID_MISMATCH,
@@ -67,13 +67,13 @@ mod lez_payment_streams {
                 "stream is not paused after top-up"
             }
             (
-                ERR_RESUME_ZERO_REMAINING_ALLOCATION,
+                ERR_RESUME_ZERO_UNACCRUED,
                 ResumeFromPausedInstruction::ResumeStream,
-            ) => "remaining allocation is zero",
+            ) => "unaccrued is zero",
             (
-                ERR_RESUME_ZERO_REMAINING_ALLOCATION,
+                ERR_RESUME_ZERO_UNACCRUED,
                 ResumeFromPausedInstruction::TopUpStream,
-            ) => "remaining allocation is zero after top-up",
+            ) => "unaccrued is zero after top-up",
             _ => "resume_from_paused_at failed",
         };
         spel_custom(code, message)

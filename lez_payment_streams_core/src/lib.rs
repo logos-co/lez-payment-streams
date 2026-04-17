@@ -53,12 +53,16 @@ pub const ERR_VAULT_OWNER_MISMATCH: u32 = 6016;
 pub const ERR_STREAM_NOT_ACTIVE: u32 = 6017;
 /// `resume_stream` when post-`at_time` state is not [`StreamState::Paused`].
 pub const ERR_STREAM_NOT_PAUSED: u32 = 6018;
-/// `resume_stream` when remaining allocation is zero ([`StreamConfig::remaining_allocation`]).
-pub const ERR_RESUME_ZERO_REMAINING_ALLOCATION: u32 = 6019;
+/// `resume_stream` when [`StreamConfig::unaccrued`] is zero.
+pub const ERR_RESUME_ZERO_UNACCRUED: u32 = 6019;
 /// `top_up_stream` when post-`at_time` state is [`StreamState::Closed`].
 pub const ERR_STREAM_CLOSED: u32 = 6020;
 /// `top_up_stream` when `vault_total_allocated_increase` is zero.
 pub const ERR_ZERO_TOP_UP_AMOUNT: u32 = 6021;
+/// `claim` / `close` bookkeeping when `total_allocated` would go negative.
+pub const ERR_TOTAL_ALLOCATED_UNDERFLOW: u32 = 6022;
+/// Decrease helper when `delta` is zero.
+pub const ERR_ZERO_TOTAL_ALLOCATED_DECREMENT: u32 = 6023;
 
 
 // ---- VaultConfig ---- //
@@ -204,6 +208,22 @@ pub fn commit_vault_total_allocated_increase(
     vault_total_allocated
         .checked_add(vault_total_allocated_increase)
         .ok_or(ERR_TOTAL_ALLOCATED_OVERFLOW)
+}
+
+/// Decrease [`VaultConfig::total_allocated`] by `delta` (for `claim`, `close`, etc.).
+///
+/// Rejects `delta == 0` with [`ERR_ZERO_TOTAL_ALLOCATED_DECREMENT`].
+/// Rejects `delta > vault_total_allocated` with [`ERR_TOTAL_ALLOCATED_UNDERFLOW`].
+pub fn commit_vault_total_allocated_decrease(
+    vault_total_allocated: Balance,
+    delta: Balance,
+) -> Result<Balance, u32> {
+    if delta == 0 {
+        return Err(ERR_ZERO_TOTAL_ALLOCATED_DECREMENT);
+    }
+    vault_total_allocated
+        .checked_sub(delta)
+        .ok_or(ERR_TOTAL_ALLOCATED_UNDERFLOW)
 }
 
 // ---- StreamConfig ---- //
@@ -354,8 +374,8 @@ impl StreamConfig {
         }
     }
 
-    /// Remaining allocation: portion of `allocation` not yet accrued (`allocation - accrued`, floored at zero).
-    pub fn remaining_allocation(&self) -> Balance {
+    /// Portion of `allocation` not yet accrued (`allocation - accrued`, floored at zero). See `design.md` (`unaccrued`).
+    pub fn unaccrued(&self) -> Balance {
         self.allocation.saturating_sub(self.accrued)
     }
 
@@ -365,13 +385,12 @@ impl StreamConfig {
     /// `t` equals [`StreamConfig::accrued_as_of`] (no elapsed accrual interval).
     ///
     /// For a stream that was [`StreamState::Active`] with `t` strictly after
-    /// [`StreamConfig::accrued_as_of`]: while [`StreamConfig::remaining_allocation`] stays positive
-    /// after folding the interval, the result stays **Active**. When remaining allocation reaches
-    /// zero, the result is **Paused** (accrual-induced pause; see `design.md`).
+    /// [`StreamConfig::accrued_as_of`]: while [`StreamConfig::unaccrued`] stays positive
+    /// after folding the interval, the result stays Active. When unaccrued reaches
+    /// zero, the result is Paused (accrual-induced pause; see `design.md`).
     ///
     /// Returns [`ERR_ZERO_STREAM_RATE`], [`ERR_ZERO_STREAM_ALLOCATION`], or [`ERR_STREAM_EXCEEDS_ALLOCATION`]
-    /// when stored fields violate the same constraints as `create_stream` (non-zero rate and
-    /// allocation; `accrued` not above `allocation`). Returns [`ERR_TIME_REGRESSION`] if `t` is
+    /// when stored fields violate [`StreamConfig::validate_invariants`]. Returns [`ERR_TIME_REGRESSION`] if `t` is
     /// strictly before [`StreamConfig::accrued_as_of`].
     pub fn at_time(&self, t: Timestamp) -> Result<Self, u32> {
         self.validate_invariants()?;
@@ -406,12 +425,12 @@ impl StreamConfig {
         let mut out = self.clone();
         out.accrued = new_accrued;
 
-        if out.remaining_allocation() == (0 as Balance) {
+        if out.unaccrued() == (0 as Balance) {
             // Stream is depleted, transition to Paused.
             out.state = StreamState::Paused;
-            // Remaining allocation at interval start (`accrued_as_of`), before applying this delta.
-            let remaining_allocation_before_interval = self.remaining_allocation();
-            let time_to_depletion = div_ceil_u128(remaining_allocation_before_interval, rate)
+            // Unaccrued at interval start (`accrued_as_of`), before applying this delta.
+            let unaccrued_before_interval = self.unaccrued();
+            let time_to_depletion = div_ceil_u128(unaccrued_before_interval, rate)
                 .ok_or(ERR_ARITHMETIC_OVERFLOW)?;
             let depleted_at = base_as_of
                 .checked_add(time_to_depletion)
@@ -424,16 +443,23 @@ impl StreamConfig {
         }
     }
 
-    /// Same structural checks as `create_stream` on rate and allocation, plus `accrued <= allocation`.
+    /// Structural checks: `accrued <= allocation`; positive `rate` when `allocation > 0`;
+    /// `allocation == 0` only for idle `Paused` or tombstone `Closed` (both with `accrued == 0`).
     pub fn validate_invariants(&self) -> Result<(), u32> {
-        if self.rate == 0 {
-            return Err(ERR_ZERO_STREAM_RATE);
-        }
-        if self.allocation == 0 {
-            return Err(ERR_ZERO_STREAM_ALLOCATION);
-        }
         if self.accrued > self.allocation {
             return Err(ERR_STREAM_EXCEEDS_ALLOCATION);
+        }
+        if self.allocation == 0 {
+            if self.accrued != 0 {
+                return Err(ERR_STREAM_EXCEEDS_ALLOCATION);
+            }
+            return match self.state {
+                StreamState::Active => Err(ERR_ZERO_STREAM_ALLOCATION),
+                StreamState::Paused | StreamState::Closed => Ok(()),
+            };
+        }
+        if self.rate == 0 {
+            return Err(ERR_ZERO_STREAM_RATE);
         }
         Ok(())
     }
@@ -445,14 +471,13 @@ impl StreamConfig {
     /// [`StreamConfig::accrued`] is unchanged.
     ///
     /// Returns [`ERR_STREAM_NOT_PAUSED`] if state is not [`StreamState::Paused`].
-    /// Returns [`ERR_RESUME_ZERO_REMAINING_ALLOCATION`] if [`StreamConfig::remaining_allocation`]
-    /// is zero.
+    /// Returns [`ERR_RESUME_ZERO_UNACCRUED`] if [`StreamConfig::unaccrued`] is zero.
     pub fn resume_from_paused_at(self, now: Timestamp) -> Result<Self, u32> {
         if self.state != StreamState::Paused {
             return Err(ERR_STREAM_NOT_PAUSED);
         }
-        if self.remaining_allocation() == (0 as Balance) {
-            return Err(ERR_RESUME_ZERO_REMAINING_ALLOCATION);
+        if self.unaccrued() == (0 as Balance) {
+            return Err(ERR_RESUME_ZERO_UNACCRUED);
         }
         let mut out = self;
         out.state = StreamState::Active;
@@ -498,11 +523,11 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn remaining_allocation_saturating_sub() {
+    fn unaccrued_saturating_sub() {
         let s_active = stream_active(30, 100, 1, 0);
-        assert_eq!(s_active.remaining_allocation(), 70 as Balance);
+        assert_eq!(s_active.unaccrued(), 70 as Balance);
         let s_accrued_past_cap = stream_active(150, 100, 1, 0);
-        assert_eq!(s_accrued_past_cap.remaining_allocation(), 0 as Balance);
+        assert_eq!(s_accrued_past_cap.unaccrued(), 0 as Balance);
     }
 
     #[test]
@@ -524,9 +549,28 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn at_time_rejects_zero_allocation() {
+    fn at_time_rejects_zero_allocation_when_active() {
         let s_zero_allocation = stream_active(0, 0, 10, 0);
         assert_eq!(s_zero_allocation.at_time(0), Err(ERR_ZERO_STREAM_ALLOCATION));
+    }
+
+    #[test]
+    fn at_time_idle_paused_zero_allocation_unchanged() {
+        let mut s = stream_active(0, 0, 10, 100);
+        s.state = StreamState::Paused;
+        assert!(s.validate_invariants().is_ok());
+        let s_after = s.at_time(200).unwrap();
+        assert_eq!(s_after.accrued, 0);
+        assert_eq!(s_after.allocation, 0);
+        assert_eq!(s_after.state, StreamState::Paused);
+        assert_eq!(s_after.accrued_as_of, 100);
+    }
+
+    #[test]
+    fn validate_closed_tombstone_zero_zero() {
+        let mut s = stream_active(0, 0, 0, 0);
+        s.state = StreamState::Closed;
+        assert!(s.validate_invariants().is_ok());
     }
 
     #[test]
@@ -607,12 +651,12 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn resume_from_paused_at_rejects_zero_remaining() {
+    fn resume_from_paused_at_rejects_zero_unaccrued() {
         let mut s_paused_fully_accrued = stream_active(100, 100, 5, 10);
         s_paused_fully_accrued.state = StreamState::Paused;
         assert_eq!(
             s_paused_fully_accrued.resume_from_paused_at(20),
-            Err(ERR_RESUME_ZERO_REMAINING_ALLOCATION)
+            Err(ERR_RESUME_ZERO_UNACCRUED)
         );
     }
 }
@@ -636,6 +680,33 @@ mod commit_vault_total_allocated_increase_tests {
         );
     }
 
+}
+
+#[cfg(test)]
+mod commit_vault_total_allocated_decrease_tests {
+    use super::*;
+
+    #[test]
+    fn decrease_succeeds() {
+        let next = commit_vault_total_allocated_decrease(300, 100).unwrap();
+        assert_eq!(next, 200 as Balance);
+    }
+
+    #[test]
+    fn decrease_rejects_zero_delta() {
+        assert_eq!(
+            commit_vault_total_allocated_decrease(300, 0),
+            Err(ERR_ZERO_TOTAL_ALLOCATED_DECREMENT)
+        );
+    }
+
+    #[test]
+    fn decrease_rejects_underflow() {
+        assert_eq!(
+            commit_vault_total_allocated_decrease(100, 200),
+            Err(ERR_TOTAL_ALLOCATED_UNDERFLOW)
+        );
+    }
 }
 
 // ---- Instruction ---- //
