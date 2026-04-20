@@ -208,6 +208,21 @@ Handler shape: deserialize vault and stream, structural vault validation, stream
 If `decrease_total_allocated_by` is zero, `total_allocated` is unchanged.
 A second close attempt fails with `ERR_STREAM_CLOSED` from `close_at_time` (stream already closed after the accrual fold).
 
+## Claim (lifecycle step 7)
+
+Account order (fixed): `VaultConfig` PDA (mut), `VaultHolding` (mut), stream PDA (mut), vault owner account (mut, not a signer), provider account (mut, signer), mock clock (read-only).
+The owner account matches `VaultConfig.owner` (same binding as `close_stream`); index 4 is the stream’s `provider` from `StreamConfig`, which receives the payout.
+
+Only the provider may sign.
+The guest checks `signer == StreamConfig.provider`; otherwise `ERR_CLAIM_UNAUTHORIZED` (6025).
+
+Handler shape: structural vault validation (`validate_vault_structural`), deserialize stream, `validate_stream_config_for_vault`, then `StreamConfig::claim_at_time(now, vault_config.total_allocated)` using the mock clock.
+`claim_at_time` folds accrual with `at_time(now)` internally, then pays the full post-fold `accrued` amount, reduces `allocation` and `total_allocated` by that payout, and sets `accrued` to zero without changing `state` (`Active`, `Paused`, or `Closed` unchanged).
+
+Native transfer: debit `VaultHolding.balance` by the payout and credit the provider account, using the same checked arithmetic pattern as `withdraw`.
+Host validation requires the provider account to already exist in public state with a non-default `program_owner` before the balance credit (same pattern as funding a withdraw recipient in tests).
+If post-fold `accrued == 0`, `claim_at_time` fails with `ERR_ZERO_CLAIM_AMOUNT` (6024).
+
 ## Accrual behavior
 
 Lazy accrual on mutating stream instructions only (pause, resume, top-up, close, claim).

@@ -195,8 +195,27 @@ pub(crate) fn state_with_initialized_vault(
     AccountId,
     AccountId,
 ) {
+    state_with_initialized_vault_with_preseeded_genesis_accounts(owner_balance, &[])
+}
+
+/// Same as [`state_with_initialized_vault`], but genesis also pre-seeds extra accounts (same layout
+/// as [`V03State::new_with_genesis_accounts`]), e.g. the stream [`StreamConfig::provider`] at
+/// balance `0` for claim (NSSA balance rules), or a withdraw recipient.
+pub(crate) fn state_with_initialized_vault_with_preseeded_genesis_accounts(
+    owner_balance: Balance,
+    extra_genesis: &[(AccountId, Balance)],
+) -> (
+    V03State,
+    ProgramId,
+    PrivateKey,
+    AccountId,
+    VaultId,
+    AccountId,
+    AccountId,
+) {
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
-    let initial_accounts_data = vec![(owner_account_id, owner_balance)];
+    let mut initial_accounts_data = vec![(owner_account_id, owner_balance)];
+    initial_accounts_data.extend_from_slice(extra_genesis);
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
         .expect(
             "guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok",
@@ -253,41 +272,18 @@ pub(crate) fn state_with_initialized_vault_with_recipient(
     AccountId,
     AccountId,
 ) {
-    let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
     let (_, recipient_account_id) = create_keypair(SEED_RECIPIENT);
-    let initial_accounts_data = vec![
-        (owner_account_id, owner_balance),
-        (recipient_account_id, Balance::MIN),
-    ];
-    let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
-        .expect(
-            "guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok",
-        );
-    let program_id = guest_program.id();
-
-    let vault_id = VaultId::from(1u64);
-    let (vault_config_account_id, vault_holding_account_id) =
-        derive_vault_pdas(program_id, owner_account_id, vault_id);
-    let account_ids_init = [
+    let (
+        state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-        owner_account_id,
-    ];
-
-    let block_init = 1 as BlockId;
-    let nonce_init = Nonce(0);
-    let tx_init = build_signed_public_tx(
-        program_id,
-        Instruction::InitializeVault { vault_id },
-        &account_ids_init,
-        &[nonce_init],
-        &[&owner_private_key],
-    );
-    let result_init = state.transition_from_public_transaction(&tx_init, block_init);
-    assert!(
-        result_init.is_ok(),
-        "initialize_vault tx failed: {:?}",
-        result_init
+    ) = state_with_initialized_vault_with_preseeded_genesis_accounts(
+        owner_balance,
+        &[(recipient_account_id, Balance::MIN)],
     );
 
     (

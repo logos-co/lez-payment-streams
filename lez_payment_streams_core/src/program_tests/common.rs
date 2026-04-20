@@ -13,7 +13,7 @@ use crate::Instruction;
 use crate::{
     test_helpers::{
         build_signed_public_tx, derive_stream_pda, force_mock_timestamp_account,
-        state_with_initialized_vault,
+        state_with_initialized_vault, state_with_initialized_vault_with_preseeded_genesis_accounts,
     },
     MockTimestamp, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultId,
 };
@@ -30,6 +30,9 @@ pub(crate) type StreamIxAccounts = [AccountId; 5];
 
 /// `close_stream`: vault config, holding, stream PDA, owner (vault pubkey), authority (signer), mock clock.
 pub(crate) type CloseStreamIxAccounts = [AccountId; 6];
+
+/// `claim`: same six slots as [`CloseStreamIxAccounts`], but index 4 is the stream provider (signer, payout recipient); index 3 is the vault owner (not a signer).
+pub(crate) type ClaimStreamIxAccounts = CloseStreamIxAccounts;
 
 fn signed_stream_public_tx(
     program_id: ProgramId,
@@ -185,6 +188,23 @@ pub(crate) fn signed_close_stream(
     )
 }
 
+pub(crate) fn signed_claim_stream(
+    program_id: ProgramId,
+    vault_id: VaultId,
+    stream_id: StreamId,
+    accounts: &ClaimStreamIxAccounts,
+    nonce: Nonce,
+    provider: &PrivateKey,
+) -> PublicTransaction {
+    build_signed_public_tx(
+        program_id,
+        Instruction::Claim { vault_id, stream_id },
+        accounts,
+        &[nonce],
+        &[provider],
+    )
+}
+
 /// Deposit layout: vault config, vault holding, owner (signer).
 pub(crate) fn signed_deposit(
     program_id: ProgramId,
@@ -259,6 +279,57 @@ pub(crate) fn state_deposited_with_mock_clock(
     AccountId,
     AccountId,
 ) {
+    state_deposited_with_mock_clock_impl(
+        owner_balance_start,
+        deposit_amount,
+        mock_clock_account_id,
+        initial_ts,
+        &[],
+    )
+}
+
+/// Like [`state_deposited_with_mock_clock`], but includes `stream_provider_account_id` in genesis with
+/// balance `0` so `claim` can credit that account (NSSA requires non-default `program_owner` when an
+/// account’s balance changes).
+pub(crate) fn state_deposited_with_mock_clock_and_provider(
+    owner_balance_start: Balance,
+    deposit_amount: Balance,
+    mock_clock_account_id: AccountId,
+    initial_ts: Timestamp,
+    stream_provider_account_id: AccountId,
+) -> (
+    V03State,
+    ProgramId,
+    PrivateKey,
+    AccountId,
+    VaultId,
+    AccountId,
+    AccountId,
+) {
+    state_deposited_with_mock_clock_impl(
+        owner_balance_start,
+        deposit_amount,
+        mock_clock_account_id,
+        initial_ts,
+        &[(stream_provider_account_id, 0 as Balance)],
+    )
+}
+
+fn state_deposited_with_mock_clock_impl(
+    owner_balance_start: Balance,
+    deposit_amount: Balance,
+    mock_clock_account_id: AccountId,
+    initial_ts: Timestamp,
+    extra_genesis: &[(AccountId, Balance)],
+) -> (
+    V03State,
+    ProgramId,
+    PrivateKey,
+    AccountId,
+    VaultId,
+    AccountId,
+    AccountId,
+) {
     let (
         mut state,
         program_id,
@@ -267,7 +338,11 @@ pub(crate) fn state_deposited_with_mock_clock(
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_with_initialized_vault(owner_balance_start);
+    ) = if extra_genesis.is_empty() {
+        state_with_initialized_vault(owner_balance_start)
+    } else {
+        state_with_initialized_vault_with_preseeded_genesis_accounts(owner_balance_start, extra_genesis)
+    };
 
     let block_deposit = 2 as BlockId;
     let nonce_deposit = Nonce(1);

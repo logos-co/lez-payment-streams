@@ -15,6 +15,7 @@ use lez_payment_streams_core::{
     VaultId,
     ERR_ARITHMETIC_OVERFLOW,
     ERR_CLOSE_UNAUTHORIZED,
+    ERR_CLAIM_UNAUTHORIZED,
     ERR_INSUFFICIENT_FUNDS,
     ERR_INVALID_MOCK_TIMESTAMP,
     ERR_NEXT_STREAM_ID_OVERFLOW,
@@ -39,7 +40,7 @@ use nssa_core::program::ProgramId;
 #[cfg(target_arch = "riscv32")]
 risc0_zkvm::guest::entry!(main);
 
-#[lez_program]
+#[lez_program(instruction = "lez_payment_streams_core::Instruction")]
 mod lez_payment_streams {
     #![cfg_attr(not(target_arch = "riscv32"), allow(dead_code))]
 
@@ -738,7 +739,7 @@ mod lez_payment_streams {
             return Err(spel_custom(ERR_VAULT_OWNER_MISMATCH, "owner account does not match vault"));
         }
 
-        let mut stream_config_state =
+        let stream_config_state =
             StreamConfig::from_bytes(&stream_config_with_meta.account.data).ok_or_else(|| {
                 SpelError::DeserializationError {
                     account_index: 2,
@@ -778,6 +779,92 @@ mod lez_payment_streams {
             AccountPostState::new(stream_account),
             AccountPostState::new(owner_with_meta.account),
             AccountPostState::new(authority_with_meta.account),
+            AccountPostState::new(mock_timestamp_with_meta.account),
+        ]))
+    }
+
+    /// Claim accrued liquidity to the stream provider as of mock clock time (`at_time` runs inside
+    /// [`StreamConfig::claim_at_time`]).
+    #[instruction]
+    pub fn claim(
+        #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
+        vault_config_with_meta: AccountWithMetadata,
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
+        vault_holding_with_meta: AccountWithMetadata,
+        #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
+        stream_config_with_meta: AccountWithMetadata,
+        #[account(mut)]
+        owner_with_meta: AccountWithMetadata,
+        #[account(mut, signer)]
+        provider_with_meta: AccountWithMetadata,
+        mock_timestamp_with_meta: AccountWithMetadata,
+        vault_id: VaultId,
+        stream_id: StreamId,
+    ) -> SpelResult {
+        let (mut vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
+            &vault_config_with_meta,
+            &vault_holding_with_meta,
+        )?;
+
+        validate_vault_structural(
+            &vault_config_state,
+            &vault_holding_state,
+            vault_id,
+        )?;
+
+        if owner_with_meta.account_id != vault_config_state.owner {
+            return Err(spel_custom(ERR_VAULT_OWNER_MISMATCH, "owner account does not match vault"));
+        }
+
+        let stream_config_state =
+            StreamConfig::from_bytes(&stream_config_with_meta.account.data).ok_or_else(|| {
+                SpelError::DeserializationError {
+                    account_index: 2,
+                    message: "invalid stream config data".into(),
+                }
+            })?;
+
+        validate_stream_config_for_vault(
+            &stream_config_state,
+            &vault_config_state,
+            &vault_holding_state,
+            stream_id,
+        )?;
+
+        if provider_with_meta.account_id != stream_config_state.provider {
+            return Err(spel_custom(ERR_CLAIM_UNAUTHORIZED, "not stream provider"));
+        }
+
+        let now = parse_mock_timestamp(&mock_timestamp_with_meta)?.timestamp;
+
+        let (next_vault_total_allocated, payout, stream_after_claim) = stream_config_state
+            .claim_at_time(now, vault_config_state.total_allocated)
+            .map_err(|code| spel_custom(code, "claim_at_time failed"))?;
+
+        vault_config_state.total_allocated = next_vault_total_allocated;
+
+        let mut holding_account = vault_holding_with_meta.account;
+        holding_account.balance = holding_account.balance.checked_sub(payout).ok_or_else(|| {
+            spel_custom(ERR_INSUFFICIENT_FUNDS, "vault holding balance underflow")
+        })?;
+
+        let mut provider_account = provider_with_meta.account;
+        provider_account.balance = provider_account.balance.checked_add(payout).ok_or_else(|| {
+            spel_custom(ERR_ARITHMETIC_OVERFLOW, "provider balance overflow")
+        })?;
+
+        let mut vault_config_account = vault_config_with_meta.account;
+        vault_config_account.data = vault_config_state.to_bytes().try_into().unwrap();
+
+        let mut stream_account = stream_config_with_meta.account;
+        stream_account.data = stream_after_claim.to_bytes().try_into().unwrap();
+
+        Ok(SpelOutput::states_only(vec![
+            AccountPostState::new(vault_config_account),
+            AccountPostState::new(holding_account),
+            AccountPostState::new(stream_account),
+            AccountPostState::new(owner_with_meta.account),
+            AccountPostState::new(provider_account),
             AccountPostState::new(mock_timestamp_with_meta.account),
         ]))
     }

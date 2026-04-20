@@ -63,6 +63,10 @@ pub const ERR_ZERO_TOP_UP_AMOUNT: u32 = 6021;
 pub const ERR_TOTAL_ALLOCATED_UNDERFLOW: u32 = 6022;
 /// `close_stream` when the signer is neither the vault owner nor the stream provider.
 pub const ERR_CLOSE_UNAUTHORIZED: u32 = 6023;
+/// `claim` when post-`at_time` [`StreamConfig::accrued`] is zero.
+pub const ERR_ZERO_CLAIM_AMOUNT: u32 = 6024;
+/// `claim` when the signer is not [`StreamConfig::provider`].
+pub const ERR_CLAIM_UNAUTHORIZED: u32 = 6025;
 
 // ---- VaultConfig ---- //
 
@@ -423,12 +427,12 @@ impl StreamConfig {
             .saturating_add(accrued_over_elapsed_seconds)
             .min(allocation);
 
-        let mut out = self.clone();
-        out.accrued = new_accrued;
+        let mut stream_after_accrual = self.clone();
+        stream_after_accrual.accrued = new_accrued;
 
-        if out.unaccrued() == (0 as Balance) {
+        if stream_after_accrual.unaccrued() == (0 as Balance) {
             // Stream is depleted, transition to Paused.
-            out.state = StreamState::Paused;
+            stream_after_accrual.state = StreamState::Paused;
             // Unaccrued at interval start (`accrued_as_of`), before folding elapsed time into accrued.
             let unaccrued_before_interval = self.unaccrued();
             let time_to_depletion = div_ceil_u128(unaccrued_before_interval, rate)
@@ -436,11 +440,11 @@ impl StreamConfig {
             let depleted_at = base_as_of
                 .checked_add(time_to_depletion)
                 .ok_or(ERR_ARITHMETIC_OVERFLOW)?;
-            out.accrued_as_of = depleted_at;
-            Ok(out)
+            stream_after_accrual.accrued_as_of = depleted_at;
+            Ok(stream_after_accrual)
         } else {
-            out.accrued_as_of = t;
-            Ok(out)
+            stream_after_accrual.accrued_as_of = t;
+            Ok(stream_after_accrual)
         }
     }
 
@@ -480,10 +484,10 @@ impl StreamConfig {
         if self.unaccrued() == (0 as Balance) {
             return Err(ERR_RESUME_ZERO_UNACCRUED);
         }
-        let mut out = self;
-        out.state = StreamState::Active;
-        out.accrued_as_of = now;
-        Ok(out)
+        let mut stream_after_resume = self;
+        stream_after_resume.state = StreamState::Active;
+        stream_after_resume.accrued_as_of = now;
+        Ok(stream_after_resume)
     }
 
     /// Close the stream as of chain time `now`: first applies [`StreamConfig::at_time`], then
@@ -500,20 +504,48 @@ impl StreamConfig {
         now: Timestamp,
         vault_total_allocated: Balance,
     ) -> Result<(Balance, Self), u32> {
-        let stream_config_after_at_time = self.at_time(now)?;
-        if stream_config_after_at_time.state == StreamState::Closed {
+        let stream_config_now = self.at_time(now)?;
+        if stream_config_now.state == StreamState::Closed {
             return Err(ERR_STREAM_CLOSED);
         }
-        let unaccrued_amount = stream_config_after_at_time.unaccrued();
+        let unaccrued_amount = stream_config_now.unaccrued();
         let next_vault_total_allocated = checked_total_allocated_after_release(
             vault_total_allocated,
             unaccrued_amount,
         )?;
-        let accrued = stream_config_after_at_time.accrued;
-        let mut out = stream_config_after_at_time;
-        out.state = StreamState::Closed;
-        out.allocation = accrued;
-        Ok((next_vault_total_allocated, out))
+        let accrued = stream_config_now.accrued;
+        let mut stream_after_close = stream_config_now;
+        stream_after_close.state = StreamState::Closed;
+        stream_after_close.allocation = accrued;
+        Ok((next_vault_total_allocated, stream_after_close))
+    }
+
+    /// Claim post-`at_time` [`StreamConfig::accrued`] as of chain time `now`: applies
+    /// [`StreamConfig::at_time`], then reduces `allocation` and zeros `accrued`. Does not change
+    /// [`StreamState`].
+    ///
+    /// Returns [`ERR_ZERO_CLAIM_AMOUNT`] if `accrued` is zero after the fold. Other errors
+    /// propagate from [`StreamConfig::at_time`] or vault release arithmetic.
+    pub fn claim_at_time(
+        self,
+        now: Timestamp,
+        vault_total_allocated: Balance,
+    ) -> Result<(Balance, Balance, Self), u32> {
+        let stream_config_now = self.at_time(now)?;
+        let payout = stream_config_now.accrued;
+        if payout == (0 as Balance) {
+            return Err(ERR_ZERO_CLAIM_AMOUNT);
+        }
+        let next_vault_total_allocated =
+            checked_total_allocated_after_release(vault_total_allocated, payout)?;
+        let mut stream_after_claim = stream_config_now;
+        stream_after_claim.allocation = stream_after_claim
+            .allocation
+            .checked_sub(payout)
+            .ok_or(ERR_ARITHMETIC_OVERFLOW)?;
+        stream_after_claim.accrued = 0 as Balance;
+        stream_after_claim.validate_invariants()?;
+        Ok((next_vault_total_allocated, payout, stream_after_claim))
     }
 }
 
@@ -736,6 +768,82 @@ mod stream_config_at_time_tests {
 }
 
 #[cfg(test)]
+mod claim_at_time_tests {
+    use super::*;
+
+    fn account(n: u8) -> AccountId {
+        AccountId::new([n; 32])
+    }
+
+    fn stream_active(
+        accrued: Balance,
+        allocation: Balance,
+        rate: TokensPerSecond,
+        accrued_as_of: Timestamp,
+    ) -> StreamConfig {
+        StreamConfig {
+            version: DEFAULT_VERSION,
+            stream_id: 0,
+            provider: account(2),
+            rate,
+            allocation,
+            accrued,
+            state: StreamState::Active,
+            accrued_as_of,
+        }
+    }
+
+    #[test]
+    fn claim_at_time_rejects_zero_accrued() {
+        let s = stream_active(0, 100, 10, 0);
+        assert_eq!(s.claim_at_time(0, 100 as Balance), Err(ERR_ZERO_CLAIM_AMOUNT));
+    }
+
+    #[test]
+    fn claim_at_time_active_partial_payout() {
+        let s = stream_active(0, 100, 10, 0);
+        let vault_total: Balance = 100;
+        let now: Timestamp = 5;
+        let (next_total, payout, stream_after_claim) = s.claim_at_time(now, vault_total).unwrap();
+        assert_eq!(payout, 50 as Balance);
+        assert_eq!(next_total, 50 as Balance);
+        assert_eq!(stream_after_claim.accrued, 0 as Balance);
+        assert_eq!(stream_after_claim.allocation, 50 as Balance);
+        assert_eq!(stream_after_claim.state, StreamState::Active);
+    }
+
+    #[test]
+    fn claim_at_time_paused_drains_to_zero() {
+        let mut s = stream_active(80, 80, 1, 0);
+        s.state = StreamState::Paused;
+        let (next_total, payout, stream_after_claim) = s.claim_at_time(0, 80 as Balance).unwrap();
+        assert_eq!(payout, 80 as Balance);
+        assert_eq!(next_total, 0 as Balance);
+        assert_eq!(stream_after_claim.allocation, 0 as Balance);
+        assert_eq!(stream_after_claim.accrued, 0 as Balance);
+        assert_eq!(stream_after_claim.state, StreamState::Paused);
+    }
+
+    #[test]
+    fn claim_at_time_closed_residual() {
+        let mut s = stream_active(30, 30, 1, 0);
+        s.state = StreamState::Closed;
+        let (next_total, payout, stream_after_claim) = s.claim_at_time(0, 30 as Balance).unwrap();
+        assert_eq!(payout, 30 as Balance);
+        assert_eq!(next_total, 0 as Balance);
+        assert_eq!(stream_after_claim.allocation, 0 as Balance);
+        assert_eq!(stream_after_claim.accrued, 0 as Balance);
+        assert_eq!(stream_after_claim.state, StreamState::Closed);
+    }
+
+    #[test]
+    fn claim_at_time_propagates_at_time_error() {
+        let s = stream_active(0, 1000, 10, 100);
+        assert_eq!(s.claim_at_time(99, 100 as Balance), Err(ERR_TIME_REGRESSION));
+    }
+}
+
+#[cfg(test)]
 mod checked_total_allocated_after_add_tests {
     use super::*;
 
@@ -822,6 +930,10 @@ pub enum Instruction {
         vault_total_allocated_increase: Balance,
     },
     CloseStream {
+        vault_id: VaultId,
+        stream_id: StreamId,
+    },
+    Claim {
         vault_id: VaultId,
         stream_id: StreamId,
     },
