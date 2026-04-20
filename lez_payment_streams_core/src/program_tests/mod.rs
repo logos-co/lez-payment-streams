@@ -2,6 +2,7 @@
 //! Covers vault flows, streams, and layout or harness primitives (see submodules).
 
 mod accrual;
+mod close_stream;
 mod common;
 mod seeds;
 mod create_stream;

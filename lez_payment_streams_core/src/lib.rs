@@ -35,7 +35,7 @@ pub const ERR_ZERO_DEPOSIT_AMOUNT: u32 = 6001;
 pub const ERR_VERSION_MISMATCH: u32 = 6002;
 pub const ERR_VAULT_ID_MISMATCH: u32 = 6003;
 pub const ERR_INSUFFICIENT_FUNDS: u32 = 6004;
-/// Addition, division, or other arithmetic does not fit the target type (e.g. balance, timestamp delta).
+/// Addition, division, or other arithmetic does not fit the target type (e.g. balance, timestamps).
 pub const ERR_ARITHMETIC_OVERFLOW: u32 = 6005;
 pub const ERR_ZERO_WITHDRAW_AMOUNT: u32 = 6006;
 pub const ERR_ZERO_STREAM_RATE: u32 = 6007;
@@ -61,9 +61,8 @@ pub const ERR_STREAM_CLOSED: u32 = 6020;
 pub const ERR_ZERO_TOP_UP_AMOUNT: u32 = 6021;
 /// `claim` / `close` bookkeeping when `total_allocated` would go negative.
 pub const ERR_TOTAL_ALLOCATED_UNDERFLOW: u32 = 6022;
-/// Decrease helper when `delta` is zero.
-pub const ERR_ZERO_TOTAL_ALLOCATED_DECREMENT: u32 = 6023;
-
+/// `close_stream` when the signer is neither the vault owner nor the stream provider.
+pub const ERR_CLOSE_UNAUTHORIZED: u32 = 6023;
 
 // ---- VaultConfig ---- //
 
@@ -184,45 +183,47 @@ impl VaultHolding {
 
 // ---- Vault bookkeeping ---- //
 
-/// Increase [`VaultConfig::total_allocated`] by `vault_total_allocated_increase`, capped by unallocated vault liquidity.
+/// Returns `Ok(next_total_allocated)` after increasing [`VaultConfig::total_allocated`] by
+/// `increase_total_allocated_by`, capped by unallocated vault liquidity. Does not mutate on-chain
+/// state; the guest writes the result.
 ///
 /// Unallocated is `vault_holding_balance.saturating_sub(vault_total_allocated)`.
-/// This is vault-level bookkeeping only (how much of the holding balance is reserved across streams).
-/// For [`Instruction::CreateStream`], the increase equals the new stream's allocation; for
-/// [`Instruction::TopUpStream`], it equals the stream allocation delta.
+/// For [`Instruction::CreateStream`], `increase_total_allocated_by` is the new stream's allocation; for
+/// [`Instruction::TopUpStream`], it is the top-up added to stream allocation.
 ///
-/// Callers must reject zero `vault_total_allocated_increase` where the instruction forbids it
+/// Callers must reject zero `increase_total_allocated_by` where the instruction forbids it
 /// ([`ERR_ZERO_STREAM_ALLOCATION`], [`ERR_ZERO_TOP_UP_AMOUNT`]).
 ///
 /// [`ERR_TOTAL_ALLOCATED_OVERFLOW`] from `checked_add` is defensive; for `Balance` as `u128`,
 /// passing the unallocated check with realistic on-chain balances implies the sum fits in `u128`.
-pub fn commit_vault_total_allocated_increase(
+pub fn checked_total_allocated_after_add(
     vault_holding_balance: Balance,
     vault_total_allocated: Balance,
-    vault_total_allocated_increase: Balance,
+    increase_total_allocated_by: Balance,
 ) -> Result<Balance, u32> {
     let unallocated = vault_holding_balance.saturating_sub(vault_total_allocated);
-    if vault_total_allocated_increase > unallocated {
+    if increase_total_allocated_by > unallocated {
         return Err(ERR_ALLOCATION_EXCEEDS_UNALLOCATED);
     }
     vault_total_allocated
-        .checked_add(vault_total_allocated_increase)
+        .checked_add(increase_total_allocated_by)
         .ok_or(ERR_TOTAL_ALLOCATED_OVERFLOW)
 }
 
-/// Decrease [`VaultConfig::total_allocated`] by `delta` (for `claim`, `close`, etc.).
+/// Returns `Ok(next_total_allocated)` after decreasing [`VaultConfig::total_allocated`] by
+/// `decrease_total_allocated_by` (for `claim`, `close`, etc.). Does not mutate on-chain state.
 ///
-/// Rejects `delta == 0` with [`ERR_ZERO_TOTAL_ALLOCATED_DECREMENT`].
-/// Rejects `delta > vault_total_allocated` with [`ERR_TOTAL_ALLOCATED_UNDERFLOW`].
-pub fn commit_vault_total_allocated_decrease(
+/// A `decrease_total_allocated_by` of zero returns `Ok(vault_total_allocated)` unchanged (e.g. close when fully accrued).
+/// Rejects `decrease_total_allocated_by > vault_total_allocated` with [`ERR_TOTAL_ALLOCATED_UNDERFLOW`].
+pub fn checked_total_allocated_after_release(
     vault_total_allocated: Balance,
-    delta: Balance,
+    decrease_total_allocated_by: Balance,
 ) -> Result<Balance, u32> {
-    if delta == 0 {
-        return Err(ERR_ZERO_TOTAL_ALLOCATED_DECREMENT);
+    if decrease_total_allocated_by == 0 {
+        return Ok(vault_total_allocated);
     }
     vault_total_allocated
-        .checked_sub(delta)
+        .checked_sub(decrease_total_allocated_by)
         .ok_or(ERR_TOTAL_ALLOCATED_UNDERFLOW)
 }
 
@@ -415,11 +416,11 @@ impl StreamConfig {
 
         // Tokens accrued by chain time `t`: `base_accrued + rate * (t - base_as_of)` with
         // saturating add, then capped at `allocation` ("saturated" = capped at the ceiling).
-        // Here `t > base_as_of`, so `delta > 0`.
-        let delta = t - base_as_of;
-        let accrued_during_delta = u128::from(rate).saturating_mul(u128::from(delta));
+        // Here `t > base_as_of`, so the elapsed interval is positive.
+        let elapsed_seconds = t - base_as_of;
+        let accrued_over_elapsed_seconds = u128::from(rate).saturating_mul(u128::from(elapsed_seconds));
         let new_accrued = base_accrued
-            .saturating_add(accrued_during_delta)
+            .saturating_add(accrued_over_elapsed_seconds)
             .min(allocation);
 
         let mut out = self.clone();
@@ -428,7 +429,7 @@ impl StreamConfig {
         if out.unaccrued() == (0 as Balance) {
             // Stream is depleted, transition to Paused.
             out.state = StreamState::Paused;
-            // Unaccrued at interval start (`accrued_as_of`), before applying this delta.
+            // Unaccrued at interval start (`accrued_as_of`), before folding elapsed time into accrued.
             let unaccrued_before_interval = self.unaccrued();
             let time_to_depletion = div_ceil_u128(unaccrued_before_interval, rate)
                 .ok_or(ERR_ARITHMETIC_OVERFLOW)?;
@@ -483,6 +484,36 @@ impl StreamConfig {
         out.state = StreamState::Active;
         out.accrued_as_of = now;
         Ok(out)
+    }
+
+    /// Close the stream as of chain time `now`: first applies [`StreamConfig::at_time`], then
+    /// releases [`StreamConfig::unaccrued`] from `vault_total_allocated` and sets state to
+    /// [`StreamState::Closed`] with `allocation` reduced to current [`StreamConfig::accrued`].
+    ///
+    /// On success, returns the updated vault **`total_allocated`** aggregate (see [`VaultConfig`])
+    /// and the closed stream.
+    ///
+    /// Returns [`ERR_STREAM_CLOSED`] if the stream is already closed after the accrual fold.
+    /// Other errors propagate from [`StreamConfig::at_time`] (e.g. [`ERR_TIME_REGRESSION`]).
+    pub fn close_at_time(
+        self,
+        now: Timestamp,
+        vault_total_allocated: Balance,
+    ) -> Result<(Balance, Self), u32> {
+        let stream_config_after_at_time = self.at_time(now)?;
+        if stream_config_after_at_time.state == StreamState::Closed {
+            return Err(ERR_STREAM_CLOSED);
+        }
+        let unaccrued_amount = stream_config_after_at_time.unaccrued();
+        let next_vault_total_allocated = checked_total_allocated_after_release(
+            vault_total_allocated,
+            unaccrued_amount,
+        )?;
+        let accrued = stream_config_after_at_time.accrued;
+        let mut out = stream_config_after_at_time;
+        out.state = StreamState::Closed;
+        out.allocation = accrued;
+        Ok((next_vault_total_allocated, out))
     }
 }
 
@@ -574,7 +605,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn at_time_zero_delta_unchanged_accrued() {
+    fn at_time_when_t_equals_accrued_as_of_unchanged_accrued() {
         let s_active = stream_active(50, 1000, 10, 100);
         let s_at_same_clock = s_active.at_time(100).unwrap();
         assert_eq!(s_at_same_clock.accrued, 50);
@@ -659,51 +690,92 @@ mod stream_config_at_time_tests {
             Err(ERR_RESUME_ZERO_UNACCRUED)
         );
     }
-}
-
-#[cfg(test)]
-mod commit_vault_total_allocated_increase_tests {
-    use super::*;
 
     #[test]
-    fn commit_succeeds_within_unallocated() {
-        let new_vault_total_allocated =
-            commit_vault_total_allocated_increase(500, 200, 100).unwrap();
-        assert_eq!(new_vault_total_allocated, 300 as Balance);
+    fn close_at_time_folds_accrual_before_releasing() {
+        let s = stream_active(0, 100, 10, 0);
+        let vault_total: Balance = 100;
+        let now: Timestamp = 5;
+        let (next_vault_total_allocated, closed) = s.close_at_time(now, vault_total).unwrap();
+        assert_eq!(next_vault_total_allocated, 50 as Balance);
+        assert_eq!(closed.state, StreamState::Closed);
+        assert_eq!(closed.allocation, 50 as Balance);
+        assert_eq!(closed.accrued, 50 as Balance);
     }
 
     #[test]
-    fn commit_rejects_exceeds_unallocated() {
+    fn close_at_time_releases_unaccrued() {
+        let s = stream_active(30, 100, 1, 0);
+        let vault_total: Balance = 100;
+        let now: Timestamp = 0;
+        let (next_vault_total_allocated, closed) = s.close_at_time(now, vault_total).unwrap();
+        assert_eq!(next_vault_total_allocated, 30 as Balance);
+        assert_eq!(closed.state, StreamState::Closed);
+        assert_eq!(closed.allocation, 30 as Balance);
+        assert_eq!(closed.accrued, 30 as Balance);
+    }
+
+    #[test]
+    fn close_at_time_zero_unaccrued_no_vault_change() {
+        let mut s = stream_active(100, 100, 1, 0);
+        s.state = StreamState::Paused;
+        let vault_total: Balance = 100;
+        let now: Timestamp = 0;
+        let (next_vault_total_allocated, closed) = s.close_at_time(now, vault_total).unwrap();
+        assert_eq!(next_vault_total_allocated, vault_total);
+        assert_eq!(closed.state, StreamState::Closed);
+        assert_eq!(closed.allocation, 100 as Balance);
+    }
+
+    #[test]
+    fn close_at_time_rejects_already_closed() {
+        let mut s = stream_active(0, 100, 1, 0);
+        s.state = StreamState::Closed;
+        assert_eq!(s.close_at_time(100, 100 as Balance), Err(ERR_STREAM_CLOSED));
+    }
+}
+
+#[cfg(test)]
+mod checked_total_allocated_after_add_tests {
+    use super::*;
+
+    #[test]
+    fn add_succeeds_within_unallocated() {
+        let next_vault_total_allocated =
+            checked_total_allocated_after_add(500, 200, 100).unwrap();
+        assert_eq!(next_vault_total_allocated, 300 as Balance);
+    }
+
+    #[test]
+    fn add_rejects_exceeds_unallocated() {
         assert_eq!(
-            commit_vault_total_allocated_increase(500, 400, 200),
+            checked_total_allocated_after_add(500, 400, 200),
             Err(ERR_ALLOCATION_EXCEEDS_UNALLOCATED)
         );
     }
-
 }
 
 #[cfg(test)]
-mod commit_vault_total_allocated_decrease_tests {
+mod checked_total_allocated_after_release_tests {
     use super::*;
 
     #[test]
-    fn decrease_succeeds() {
-        let next = commit_vault_total_allocated_decrease(300, 100).unwrap();
-        assert_eq!(next, 200 as Balance);
+    fn release_succeeds() {
+        let next_vault_total_allocated =
+            checked_total_allocated_after_release(300, 100).unwrap();
+        assert_eq!(next_vault_total_allocated, 200 as Balance);
     }
 
     #[test]
-    fn decrease_rejects_zero_delta() {
-        assert_eq!(
-            commit_vault_total_allocated_decrease(300, 0),
-            Err(ERR_ZERO_TOTAL_ALLOCATED_DECREMENT)
-        );
+    fn release_noop_when_decrease_total_allocated_by_zero() {
+        let next_vault_total_allocated = checked_total_allocated_after_release(300, 0).unwrap();
+        assert_eq!(next_vault_total_allocated, 300 as Balance);
     }
 
     #[test]
-    fn decrease_rejects_underflow() {
+    fn release_rejects_underflow() {
         assert_eq!(
-            commit_vault_total_allocated_decrease(100, 200),
+            checked_total_allocated_after_release(100, 200),
             Err(ERR_TOTAL_ALLOCATED_UNDERFLOW)
         );
     }
@@ -748,5 +820,9 @@ pub enum Instruction {
         vault_id: VaultId,
         stream_id: StreamId,
         vault_total_allocated_increase: Balance,
+    },
+    CloseStream {
+        vault_id: VaultId,
+        stream_id: StreamId,
     },
 }

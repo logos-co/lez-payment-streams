@@ -28,6 +28,9 @@ pub(crate) const DEFAULT_STREAM_TEST_DEPOSIT: Balance = 500;
 /// Account order for stream instructions: vault config, holding, stream PDA, owner, mock clock.
 pub(crate) type StreamIxAccounts = [AccountId; 5];
 
+/// `close_stream`: vault config, holding, stream PDA, owner (vault pubkey), authority (signer), mock clock.
+pub(crate) type CloseStreamIxAccounts = [AccountId; 6];
+
 fn signed_stream_public_tx(
     program_id: ProgramId,
     instruction: Instruction,
@@ -162,6 +165,23 @@ pub(crate) fn signed_top_up_stream(
         accounts,
         nonce,
         owner,
+    )
+}
+
+pub(crate) fn signed_close_stream(
+    program_id: ProgramId,
+    vault_id: VaultId,
+    stream_id: StreamId,
+    accounts: &CloseStreamIxAccounts,
+    nonce: Nonce,
+    authority: &PrivateKey,
+) -> PublicTransaction {
+    build_signed_public_tx(
+        program_id,
+        Instruction::CloseStream { vault_id, stream_id },
+        accounts,
+        &[nonce],
+        &[authority],
     )
 }
 

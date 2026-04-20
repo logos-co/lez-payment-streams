@@ -142,7 +142,7 @@ Idle `Paused` stream: `allocation == 0` and `accrued == 0` is allowed after a fu
 `Resume` remains invalid while `allocation - accrued == 0`.
 `Closed` is terminal streaming (no further accrual or top-up); do not treat it as the idle zero-commitment case.
 
-`CloseStream` (lifecycle step 6): after `at_time`, release `unaccrued` to the owner: decrease `total_allocated` by `allocation - accrued`, set `state` to `Closed`, and set stream `allocation` to the post-close commitment (only provider-owed liquidity remains—typically `allocation == accrued` until subsequent `claim` zeros both).
+`CloseStream` (lifecycle step 6): `close_at_time` applies `at_time` then releases `unaccrued` to the owner: decrease `total_allocated` by `allocation - accrued`, set `state` to `Closed`, and set stream `allocation` to the post-close commitment (only provider-owed liquidity remains—typically `allocation == accrued` until subsequent `claim` zeros both).
 Double-close MUST fail.
 
 Optional cash audit (off-chain or future on-chain counters): cumulative `deposit − withdraw − claim_payouts = B` if you define those totals; not required for MVP if each instruction conserves `B` locally.
@@ -186,12 +186,27 @@ Handlers run `StreamConfig::at_time(now)` first.
 - Reject if post-`at_time` state is `CLOSED` (`ERR_STREAM_CLOSED`).
 - Reject `vault_total_allocated_increase == 0` (`ERR_ZERO_TOP_UP_AMOUNT`).
 - Reserve liquidity the same way as `CreateStream`: increase `StreamConfig.allocation` and `VaultConfig.total_allocated` by the same amount, capped by unallocated vault balance (`vault_holding.balance - total_allocated`).
-  No native transfer; use `commit_vault_total_allocated_increase` in core.
+  No native transfer; use `checked_total_allocated_after_add` in core.
   On stream `allocation` `checked_add` failure, `ERR_ARITHMETIC_OVERFLOW`.
 
 If post-`at_time` state is `Paused`, after the allocation bump the handler calls the same resume transition as `ResumeStream` via `StreamConfig::resume_from_paused_at(now)`: `Active`, `accrued_as_of = now`, `accrued` unchanged (spec: top-up must yield `ACTIVE`; pause wall time must not count as accrual on the next fold).
 
 If state is already `Active`, only allocation and `total_allocated` change.
+
+## CloseStream (lifecycle step 6)
+
+Account order (fixed): `VaultConfig` PDA (mut), `VaultHolding` (mut), stream PDA (mut), owner account (mut, not a signer), `authority` (signer), mock clock (read-only).
+
+Vault checks use a small split: `validate_vault_structural` enforces matching versions, instruction `vault_id`, and related structural rules (`ERR_VERSION_MISMATCH`, `ERR_VAULT_ID_MISMATCH`).
+The instruction passes the vault owner as an explicit account; the guest requires that account’s id to equal `VaultConfig.owner` (defense in depth alongside PDA binding).
+`validate_vault_owner_signer` and `validate_vault_config` (structural then owner-as-signer) remain the pattern for instructions whose signer must be the vault owner.
+
+Close authorization: the signer must be the vault owner or the stream provider; otherwise `ERR_CLOSE_UNAUTHORIZED`.
+
+Handler shape: deserialize vault and stream, structural vault validation, stream alignment with the vault, then `StreamConfig::close_at_time(now, vault_config.total_allocated)` using the mock clock.
+`close_at_time` applies `StreamConfig::at_time(now)` internally, then releases unaccrued liquidity by lowering `total_allocated` via `checked_total_allocated_after_release`.
+If `decrease_total_allocated_by` is zero, `total_allocated` is unchanged.
+A second close attempt fails with `ERR_STREAM_CLOSED` from `close_at_time` (stream already closed after the accrual fold).
 
 ## Accrual behavior
 
