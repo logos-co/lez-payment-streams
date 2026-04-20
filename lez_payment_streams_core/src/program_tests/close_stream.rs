@@ -1,4 +1,4 @@
-//! Guest-backed tests for `close_stream`.
+//! `close_stream` payouts and authorization.
 
 use nssa_core::{
     account::{Balance, Nonce},
@@ -16,7 +16,7 @@ use super::common::{
     state_deposited_with_mock_clock, transition_ok, CloseStreamIxAccounts, force_stream_state_closed,
     DEFAULT_MOCK_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
-use super::seeds::{SEED_MOCK_CLOCK, SEED_PROVIDER};
+use crate::harness_seeds::{SEED_MOCK_CLOCK, SEED_PROVIDER};
 
 #[test]
 fn test_close_returns_unaccrued() {

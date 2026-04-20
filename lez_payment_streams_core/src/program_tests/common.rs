@@ -1,5 +1,8 @@
-//! Shared constants and helpers for the sibling `program_tests::*` modules.
-//! This file does not define any `#[test]` functions (those live in modules).
+//! Constants and helpers for [`crate::program_tests`] submodules.
+//!
+//! Default balances, account-layout type aliases, signed [`Instruction`] builders,
+//! deposit fixtures with mock clock, `transition_ok`, and test-only stream tweaks.
+//! Guest deployment, genesis, PDAs, and raw tx wiring live in [`crate::test_helpers`].
 
 use nssa::{
     error::NssaError, program::Program, PrivateKey, ProgramId, PublicTransaction, V03State,
@@ -31,7 +34,9 @@ pub(crate) type StreamIxAccounts = [AccountId; 5];
 /// `close_stream`: vault config, holding, stream PDA, owner (vault pubkey), authority (signer), mock clock.
 pub(crate) type CloseStreamIxAccounts = [AccountId; 6];
 
-/// `claim`: same six slots as [`CloseStreamIxAccounts`], but index 4 is the stream provider (signer, payout recipient); index 3 is the vault owner (not a signer).
+/// `claim`: same six slots as [`CloseStreamIxAccounts`].
+/// Index 4, stream provider (signer, payout).
+/// Index 3, vault owner (non-signer).
 pub(crate) type ClaimStreamIxAccounts = CloseStreamIxAccounts;
 
 fn signed_stream_public_tx(
@@ -242,7 +247,7 @@ pub(crate) fn transition_ok(
     );
 }
 
-/// Test-only: set stream lifecycle to `Closed` without going through `close_stream`.
+/// Test-only: set stream state to `Closed` by rewriting the stream account (bypasses `close_stream`).
 pub(crate) fn force_stream_state_closed(state: &mut V03State, stream_pda: AccountId) {
     let mut stream_cfg =
         StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
@@ -263,8 +268,10 @@ pub(crate) fn assert_execution_failed_with_code(result: Result<(), NssaError>, c
     }
 }
 
-/// Vault initialized, one deposit, mock clock inserted; ready for `create_stream` at block 3 / nonce 2.
-/// Typical args: [`DEFAULT_OWNER_GENESIS_BALANCE`], [`DEFAULT_STREAM_TEST_DEPOSIT`], clock id, [`DEFAULT_MOCK_CLOCK_INITIAL_TS`].
+/// Vault after `initialize_vault`, one deposit, mock clock installed.
+/// Typical next step is `create_stream` at block 3, nonce 2.
+/// Args often match [`DEFAULT_OWNER_GENESIS_BALANCE`], [`DEFAULT_STREAM_TEST_DEPOSIT`],
+/// clock id, [`DEFAULT_MOCK_CLOCK_INITIAL_TS`].
 pub(crate) fn state_deposited_with_mock_clock(
     owner_balance_start: Balance,
     deposit_amount: Balance,
@@ -288,9 +295,9 @@ pub(crate) fn state_deposited_with_mock_clock(
     )
 }
 
-/// Like [`state_deposited_with_mock_clock`], but includes `stream_provider_account_id` in genesis with
-/// balance `0` so `claim` can credit that account (NSSA requires non-default `program_owner` when an
-/// account’s balance changes).
+/// Like [`state_deposited_with_mock_clock`],
+/// with `stream_provider_account_id` in genesis at balance `0`
+/// so `claim` can credit it (NSSA needs a non-default `program_owner` when balances move).
 pub(crate) fn state_deposited_with_mock_clock_and_provider(
     owner_balance_start: Balance,
     deposit_amount: Balance,

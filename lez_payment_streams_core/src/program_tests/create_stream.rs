@@ -1,3 +1,5 @@
+//! `create_stream` integration tests (happy paths, bounds, account layout).
+
 use nssa_core::{
     account::{Account, Balance, Data, Nonce},
     program::BlockId,
@@ -21,9 +23,7 @@ use super::common::{
     transition_ok, DEFAULT_MOCK_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE,
     DEFAULT_STREAM_TEST_DEPOSIT,
 };
-use super::seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_PROVIDER_B};
-
-// ---- Create stream ---- //
+use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_PROVIDER_B};
 
 #[test]
 fn test_derive_stream_pda_stable() {
@@ -133,7 +133,7 @@ fn test_create_stream() {
     assert_eq!(stream_cfg.provider, provider_account_id);
     assert_eq!(stream_cfg.rate, rate);
     assert_eq!(stream_cfg.allocation, allocation);
-    assert_eq!(stream_cfg.accrued, Balance::MIN);
+    assert_eq!(stream_cfg.accrued, 0 as Balance);
     assert_eq!(stream_cfg.state, StreamState::Active);
     assert_eq!(stream_cfg.accrued_as_of, initial_ts);
 
@@ -377,9 +377,9 @@ fn test_create_stream_stream_id_mismatch_fails() {
     assert_execution_failed_with_code(result, ERR_STREAM_ID_MISMATCH);
 }
 
-/// If the stream position lists a different address than `derive_stream_pda(program_id, vault_config, stream_id)`,
-/// execution still succeeds and writes stream state to the **listed** account. The canonical PDA
-/// for `stream_id` is not populated unless that address appears in the transaction.
+/// List an arbitrary stream account address.
+/// Write state to that account even when it differs from `derive_stream_pda(program_id, vault_config, stream_id)`.
+/// Update only listed accounts.
 #[test]
 fn test_create_stream_listed_stream_account_can_differ_from_derived_pda_for_stream_id() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
@@ -823,7 +823,7 @@ fn test_create_stream_next_stream_id_overflow_fails() {
     let mut vc = VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
         .expect("vault config");
     vc.next_stream_id = u64::MAX;
-    vc.total_allocated = Balance::MIN;
+    vc.total_allocated = 0 as Balance;
     let mut config_account = state.get_account_by_id(vault_config_account_id).clone();
     config_account.data =
         Data::try_from(vc.to_bytes()).expect("vault config payload fits Data limits");

@@ -193,7 +193,7 @@ If post-`at_time` state is `Paused`, after the allocation bump the handler calls
 
 If state is already `Active`, only allocation and `total_allocated` change.
 
-## CloseStream (lifecycle step 6)
+## CloseStream
 
 Account order (fixed): `VaultConfig` PDA (mut), `VaultHolding` (mut), stream PDA (mut), owner account (mut, not a signer), `authority` (signer), mock clock (read-only).
 
@@ -208,7 +208,7 @@ Handler shape: deserialize vault and stream, structural vault validation, stream
 If `decrease_total_allocated_by` is zero, `total_allocated` is unchanged.
 A second close attempt fails with `ERR_STREAM_CLOSED` from `close_at_time` (stream already closed after the accrual fold).
 
-## Claim (lifecycle step 7)
+## Claim
 
 Account order (fixed): `VaultConfig` PDA (mut), `VaultHolding` (mut), stream PDA (mut), vault owner account (mut, not a signer), provider account (mut, signer), mock clock (read-only).
 The owner account matches `VaultConfig.owner` (same binding as `close_stream`); index 4 is the stream’s `provider` from `StreamConfig`, which receives the payout.

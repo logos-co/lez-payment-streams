@@ -1,5 +1,7 @@
-//! Layout roundtrips for vault and stream account payloads,
-//! plus deterministic test harness keys (`create_keypair`).
+//! Vault and stream account payload roundtrips.
+//! Use deterministic [`crate::test_helpers::create_keypair`] outputs in layout tests.
+//!
+//! Use local byte constants separate from [`crate::harness_seeds`] so stream state experiments stay isolated.
 
 use std::mem::size_of;
 
@@ -8,7 +10,8 @@ use nssa_core::account::AccountId;
 use crate::test_helpers::create_keypair;
 use crate::{StreamConfig, StreamState, Timestamp, VaultConfig, VaultHolding, VaultId};
 
-/// Fixed seeds for layout / determinism tests only; keep separate from [`super::seeds`] / [`crate::harness_seeds`].
+/// Seed constants for layout tests only.
+/// Distinct from [`crate::harness_seeds`] integration values.
 const SERIALIZATION_SEED_KEYPAIR: u8 = 7;
 const SERIALIZATION_SEED_PROVIDER: u8 = 5;
 
@@ -82,8 +85,7 @@ fn test_stream_config_from_bytes_wrong_len_returns_none() {
 
 #[test]
 fn test_stream_config_from_bytes_invalid_stream_state_returns_none() {
-    // Use one past the largest defined `StreamState` discriminant so the byte is never a valid
-    // variant, without hard-coding a magic invalid value. Keep the list in sync when adding variants.
+    // Pick `highest_defined_discriminant + 1` so the byte is outside every [`StreamState`] variant without a magic constant. Update the table when adding states.
     let highest_defined_discriminant = [
         StreamState::Active,
         StreamState::Paused,

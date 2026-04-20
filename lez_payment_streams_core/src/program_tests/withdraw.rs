@@ -1,3 +1,5 @@
+//! `withdraw` to third-party recipients.
+
 use nssa::program::Program;
 use nssa_core::{
     account::{Balance, Nonce},
@@ -21,7 +23,7 @@ use super::common::{
     assert_execution_failed_with_code, DEFAULT_MOCK_CLOCK_INITIAL_TS,
     DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
-use super::seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_RECIPIENT};
+use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_RECIPIENT};
 
 #[test]
 fn test_withdraw() {

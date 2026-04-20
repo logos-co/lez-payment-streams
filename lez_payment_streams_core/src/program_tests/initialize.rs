@@ -1,3 +1,5 @@
+//! `initialize_vault` PDAs and vault bytes.
+
 use crate::Instruction;
 use crate::{
     test_helpers::{
@@ -11,7 +13,7 @@ use nssa_core::{
 };
 
 use super::common::DEFAULT_OWNER_GENESIS_BALANCE;
-use super::seeds::SEED_OWNER;
+use crate::harness_seeds::SEED_OWNER;
 
 #[test]
 fn test_initialize_vault_then_reinitialize_fails() {
@@ -37,7 +39,7 @@ fn test_initialize_vault_then_reinitialize_fails() {
         owner_account_id,
     ];
 
-    // one nonce per _signer_ account (not every account!)
+    // One nonce per signer account.
     let instruction_init = Instruction::InitializeVault { vault_id };
     let tx_init = build_signed_public_tx(
         program_id,
@@ -57,15 +59,14 @@ fn test_initialize_vault_then_reinitialize_fails() {
     assert_eq!(vault_config.owner, owner_account_id);
     assert_eq!(vault_config.vault_id, vault_id);
     assert_eq!(vault_config.next_stream_id, StreamId::MIN);
-    assert_eq!(vault_config.total_allocated, Balance::MIN);
+    assert_eq!(vault_config.total_allocated, 0 as Balance);
     let vault_holding_account = state.get_account_by_id(vault_holding_account_id);
     assert_eq!(vault_holding_account.data.len(), VaultHolding::SIZE);
     let vault_holding =
         VaultHolding::from_bytes(&vault_holding_account.data).expect("valid vault holding bytes");
     assert_eq!(vault_holding.version, DEFAULT_VERSION);
 
-    // Re-initialization must fail: SPEL rejects `init` on an existing account during validation.
-    // The host does not surface a payment-streams `ERR_*` here, so we only assert `is_err()`.
+    // Second `init` hits SPEL validation before program `ERR_*` strings. Expect `is_err()` only.
     let instruction_reinit = Instruction::InitializeVault { vault_id };
     let tx_reinit = build_signed_public_tx(
         program_id,

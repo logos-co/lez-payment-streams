@@ -1,4 +1,4 @@
-//! Guest-backed tests for `claim`.
+//! Test `claim` payouts to the provider.
 
 use nssa_core::{
     account::{Balance, Nonce},
@@ -17,7 +17,7 @@ use super::common::{
     ClaimStreamIxAccounts, CloseStreamIxAccounts, DEFAULT_OWNER_GENESIS_BALANCE,
     DEFAULT_STREAM_TEST_DEPOSIT,
 };
-use super::seeds::{SEED_MOCK_CLOCK, SEED_PROVIDER};
+use crate::harness_seeds::{SEED_MOCK_CLOCK, SEED_PROVIDER};
 
 #[test]
 fn test_claim_transfers_balance() {

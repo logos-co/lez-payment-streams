@@ -1,4 +1,4 @@
-//! Guest-backed accrual tests (`sync_stream` + `StreamConfig::at_time`).
+//! Cover sync_stream plus [`crate::StreamConfig::at_time`] folding.
 
 use nssa_core::{
     account::{Balance, Nonce},
@@ -21,7 +21,7 @@ use super::common::{
     state_deposited_with_mock_clock, transition_ok, DEFAULT_MOCK_CLOCK_INITIAL_TS,
     DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
-use super::seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_PROVIDER_B};
+use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_PROVIDER_B};
 
 #[test]
 fn test_accrual_basic() {

@@ -1,17 +1,16 @@
-//! Deterministic [`crate::test_helpers::create_keypair`] seeds for integration tests.
+//! Deterministic [`crate::test_helpers::create_keypair`] byte seeds for tests.
 //!
-//! # Bands
+//! Bands:
 //!
-//! - `0x01`–`0x0F`: core identities (owner, alternate signer).
-//! - `0x10`–`0x1F`: default harness accounts — mock timestamp clock, stream providers (A/B),
-//!   withdraw recipient. Reuse these for any test that needs one clock and one or two providers;
-//!   each test gets a fresh [`nssa::V03State`], so distinct byte values per file are unnecessary.
+//! - `0x01`–`0x0F`: owner and alternate signer.
+//! - `0x10`–`0x1F`: mock clock, stream providers A and B, withdraw recipient.
+//! Reuse across tests. Each test run gets a new [`nssa::V03State`], so one value per role is enough.
 //!
-//! Add new `pub(crate) const` values in `0x20`+ only when a **single** test needs more distinct
-//! accounts than this band provides (e.g. a third provider).
+//! Add `0x20`+ only when one test needs extra distinct accounts (e.g. a third provider).
 //!
-//! New tests should use names from this module instead of raw numeric literals.
-//! [`crate::program_tests::serialization`] keeps its own literals for determinism checks.
+//! Prefer named constants here over raw bytes.
+//! [`crate::program_tests::serialization`] keeps its own literals for layout checks.
+//! Other program tests import via `use crate::harness_seeds::{...}`.
 
 // ---- 0x01–0x0F core ---- //
 

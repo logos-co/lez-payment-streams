@@ -1,4 +1,4 @@
-//! `top_up_stream` allocation increases and pause handling.
+//! `resume_stream` success and failure cases.
 
 use nssa_core::{
     account::{Balance, Nonce},
@@ -8,22 +8,20 @@ use nssa_core::{
 use crate::{
     test_helpers::{force_mock_timestamp_account, harness_mock_clock_and_provider_account_ids},
     MockTimestamp, StreamConfig, StreamState, Timestamp, TokensPerSecond,
-    ERR_ALLOCATION_EXCEEDS_UNALLOCATED, ERR_ARITHMETIC_OVERFLOW, ERR_STREAM_CLOSED,
-    ERR_ZERO_TOP_UP_AMOUNT,
+    ERR_RESUME_ZERO_UNACCRUED, ERR_STREAM_NOT_PAUSED,
 };
 
 use super::common::{
     assert_execution_failed_with_code, first_stream_accounts, force_stream_state_closed,
-    signed_create_stream, signed_deposit, signed_pause_stream, signed_sync_stream,
-    signed_top_up_stream, state_deposited_with_mock_clock, transition_ok,
-    DEFAULT_MOCK_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
+    signed_create_stream, signed_pause_stream, signed_resume_stream, signed_sync_stream,
+    state_deposited_with_mock_clock, transition_ok,
+    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
 
 #[test]
-fn test_topup_resumes() {
-    let t0: Timestamp = 0;
-    let t1: Timestamp = 100;
-    let t2: Timestamp = 250;
+fn test_resume() {
+    let t0: Timestamp = 100;
+    let t1: Timestamp = 200;
     let (mock_clock_account_id, provider_account_id) =
         harness_mock_clock_and_provider_account_ids();
 
@@ -43,6 +41,150 @@ fn test_topup_resumes() {
     );
 
     let (stream_id, stream_pda, account_ids) = first_stream_accounts(
+        program_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+        mock_clock_account_id,
+    );
+
+    transition_ok(
+        &mut state,
+        &signed_create_stream(
+            program_id,
+            vault_id,
+            stream_id,
+            provider_account_id,
+            5 as TokensPerSecond,
+            400 as Balance,
+            &account_ids,
+            Nonce(2),
+            &owner_private_key,
+        ),
+        3 as BlockId,
+        "create_stream failed",
+    );
+
+    transition_ok(
+        &mut state,
+        &signed_pause_stream(
+            program_id,
+            vault_id,
+            stream_id,
+            &account_ids,
+            Nonce(3),
+            &owner_private_key,
+        ),
+        4 as BlockId,
+        "pause_stream failed",
+    );
+
+    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
+
+    transition_ok(
+        &mut state,
+        &signed_resume_stream(
+            program_id,
+            vault_id,
+            stream_id,
+            &account_ids,
+            Nonce(4),
+            &owner_private_key,
+        ),
+        5 as BlockId,
+        "resume_stream failed",
+    );
+
+    let s_resumed =
+        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
+    assert_eq!(s_resumed.state, StreamState::Active);
+    assert_eq!(s_resumed.accrued, 0 as Balance);
+    assert_eq!(s_resumed.accrued_as_of, t1);
+}
+
+#[test]
+fn test_resume_active_fails() {
+    let t0: Timestamp = 50;
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
+
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_deposited_with_mock_clock(
+        DEFAULT_OWNER_GENESIS_BALANCE,
+        DEFAULT_STREAM_TEST_DEPOSIT,
+        mock_clock_account_id,
+        t0,
+    );
+
+    let (stream_id, _, account_ids) = first_stream_accounts(
+        program_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+        mock_clock_account_id,
+    );
+
+    transition_ok(
+        &mut state,
+        &signed_create_stream(
+            program_id,
+            vault_id,
+            stream_id,
+            provider_account_id,
+            1 as TokensPerSecond,
+            400 as Balance,
+            &account_ids,
+            Nonce(2),
+            &owner_private_key,
+        ),
+        3 as BlockId,
+        "create_stream failed",
+    );
+
+    let r = state.transition_from_public_transaction(
+        &signed_resume_stream(
+            program_id,
+            vault_id,
+            stream_id,
+            &account_ids,
+            Nonce(3),
+            &owner_private_key,
+        ),
+        4 as BlockId,
+    );
+    assert_execution_failed_with_code(r, ERR_STREAM_NOT_PAUSED);
+}
+
+#[test]
+fn test_resume_zero_remaining_fails() {
+    let t0: Timestamp = 0;
+    let t1: Timestamp = 100;
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
+
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_deposited_with_mock_clock(
+        DEFAULT_OWNER_GENESIS_BALANCE,
+        DEFAULT_STREAM_TEST_DEPOSIT,
+        mock_clock_account_id,
+        t0,
+    );
+
+    let (stream_id, _, account_ids) = first_stream_accounts(
         program_id,
         vault_config_account_id,
         vault_holding_account_id,
@@ -83,78 +225,114 @@ fn test_topup_resumes() {
         "sync_stream failed",
     );
 
-    let s_depleted_paused =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
-    assert_eq!(s_depleted_paused.state, StreamState::Paused);
-    assert_eq!(s_depleted_paused.accrued, 100 as Balance);
-
-    transition_ok(
-        &mut state,
-        &signed_deposit(
+    let r = state.transition_from_public_transaction(
+        &signed_resume_stream(
             program_id,
             vault_id,
-            200 as Balance,
-            vault_config_account_id,
-            vault_holding_account_id,
-            owner_account_id,
+            stream_id,
+            &account_ids,
             Nonce(4),
             &owner_private_key,
         ),
         5 as BlockId,
-        "deposit failed",
+    );
+    assert_execution_failed_with_code(r, ERR_RESUME_ZERO_UNACCRUED);
+}
+
+#[test]
+fn test_resume_twice_fails() {
+    let t0: Timestamp = 10;
+    let t1: Timestamp = 20;
+    let (mock_clock_account_id, provider_account_id) =
+        harness_mock_clock_and_provider_account_ids();
+
+    let (
+        mut state,
+        program_id,
+        owner_private_key,
+        owner_account_id,
+        vault_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+    ) = state_deposited_with_mock_clock(
+        DEFAULT_OWNER_GENESIS_BALANCE,
+        DEFAULT_STREAM_TEST_DEPOSIT,
+        mock_clock_account_id,
+        t0,
     );
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t2));
+    let (stream_id, _, account_ids) = first_stream_accounts(
+        program_id,
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+        mock_clock_account_id,
+    );
 
     transition_ok(
         &mut state,
-        &signed_top_up_stream(
+        &signed_create_stream(
             program_id,
             vault_id,
             stream_id,
-            200 as Balance,
+            provider_account_id,
+            1 as TokensPerSecond,
+            500 as Balance,
+            &account_ids,
+            Nonce(2),
+            &owner_private_key,
+        ),
+        3 as BlockId,
+        "create_stream failed",
+    );
+
+    transition_ok(
+        &mut state,
+        &signed_pause_stream(
+            program_id,
+            vault_id,
+            stream_id,
+            &account_ids,
+            Nonce(3),
+            &owner_private_key,
+        ),
+        4 as BlockId,
+        "pause_stream failed",
+    );
+
+    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
+
+    transition_ok(
+        &mut state,
+        &signed_resume_stream(
+            program_id,
+            vault_id,
+            stream_id,
+            &account_ids,
+            Nonce(4),
+            &owner_private_key,
+        ),
+        5 as BlockId,
+        "resume_stream failed",
+    );
+
+    let r = state.transition_from_public_transaction(
+        &signed_resume_stream(
+            program_id,
+            vault_id,
+            stream_id,
             &account_ids,
             Nonce(5),
             &owner_private_key,
         ),
         6 as BlockId,
-        "top_up_stream failed",
     );
-
-    let s_after_top_up =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
-    assert_eq!(s_after_top_up.state, StreamState::Active);
-    assert_eq!(s_after_top_up.accrued_as_of, t2);
-    assert_eq!(s_after_top_up.allocation, 300 as Balance);
-    assert_eq!(s_after_top_up.accrued, 100 as Balance);
-
-    let t3: Timestamp = 260;
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t3));
-
-    transition_ok(
-        &mut state,
-        &signed_sync_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            &account_ids,
-            Nonce(6),
-            &owner_private_key,
-        ),
-        7 as BlockId,
-        "sync_stream after top-up failed",
-    );
-
-    let s_after_follow_up_sync =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
-    assert_eq!(s_after_follow_up_sync.accrued, 200 as Balance);
-    assert_eq!(s_after_follow_up_sync.state, StreamState::Active);
+    assert_execution_failed_with_code(r, ERR_STREAM_NOT_PAUSED);
 }
 
 #[test]
-fn test_topup_active_increases_allocation() {
-    let t0: Timestamp = 10;
-    let t1: Timestamp = 20;
+fn test_resume_closed_fails() {
+    let t0: Timestamp = 8;
     let (mock_clock_account_id, provider_account_id) =
         harness_mock_clock_and_provider_account_ids();
 
@@ -198,33 +376,28 @@ fn test_topup_active_increases_allocation() {
         "create_stream failed",
     );
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
+    force_stream_state_closed(&mut state, stream_pda);
 
-    transition_ok(
-        &mut state,
-        &signed_top_up_stream(
+    let r = state.transition_from_public_transaction(
+        &signed_resume_stream(
             program_id,
             vault_id,
             stream_id,
-            100 as Balance,
             &account_ids,
             Nonce(3),
             &owner_private_key,
         ),
         4 as BlockId,
-        "top_up_stream failed",
     );
-
-    let s_after_top_up =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
-    assert_eq!(s_after_top_up.state, StreamState::Active);
-    assert_eq!(s_after_top_up.allocation, 400 as Balance);
+    assert_execution_failed_with_code(r, ERR_STREAM_NOT_PAUSED);
 }
 
 #[test]
-fn test_topup_manual_pause_then_active() {
-    let t0: Timestamp = 5;
-    let t1: Timestamp = 15;
+fn test_resume_then_accrual_ignores_paused_gap() {
+    let t0: Timestamp = 100;
+    let t1: Timestamp = 105;
+    let t_gap: Timestamp = 200;
+    let t2: Timestamp = 210;
     let (mock_clock_account_id, provider_account_id) =
         harness_mock_clock_and_provider_account_ids();
 
@@ -251,6 +424,8 @@ fn test_topup_manual_pause_then_active() {
         mock_clock_account_id,
     );
 
+    let rate = 10 as TokensPerSecond;
+    let allocation = 500 as Balance;
     transition_ok(
         &mut state,
         &signed_create_stream(
@@ -258,14 +433,29 @@ fn test_topup_manual_pause_then_active() {
             vault_id,
             stream_id,
             provider_account_id,
-            1 as TokensPerSecond,
-            400 as Balance,
+            rate,
+            allocation,
             &account_ids,
             Nonce(2),
             &owner_private_key,
         ),
         3 as BlockId,
         "create_stream failed",
+    );
+
+    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
+    transition_ok(
+        &mut state,
+        &signed_sync_stream(
+            program_id,
+            vault_id,
+            stream_id,
+            &account_ids,
+            Nonce(3),
+            &owner_private_key,
+        ),
+        4 as BlockId,
+        "sync_stream failed",
     );
 
     transition_ok(
@@ -275,288 +465,47 @@ fn test_topup_manual_pause_then_active() {
             vault_id,
             stream_id,
             &account_ids,
-            Nonce(3),
-            &owner_private_key,
-        ),
-        4 as BlockId,
-        "pause_stream failed",
-    );
-
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
-
-    transition_ok(
-        &mut state,
-        &signed_top_up_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            50 as Balance,
-            &account_ids,
             Nonce(4),
             &owner_private_key,
         ),
         5 as BlockId,
-        "top_up_stream failed",
+        "pause_stream failed",
     );
 
-    let s_resumed_after_top_up =
+    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t_gap));
+    transition_ok(
+        &mut state,
+        &signed_resume_stream(
+            program_id,
+            vault_id,
+            stream_id,
+            &account_ids,
+            Nonce(5),
+            &owner_private_key,
+        ),
+        6 as BlockId,
+        "resume_stream failed",
+    );
+
+    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t2));
+    transition_ok(
+        &mut state,
+        &signed_sync_stream(
+            program_id,
+            vault_id,
+            stream_id,
+            &account_ids,
+            Nonce(6),
+            &owner_private_key,
+        ),
+        7 as BlockId,
+        "sync_stream after resume failed",
+    );
+
+    let s_after_resume_and_accrual =
         StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
-    assert_eq!(s_resumed_after_top_up.state, StreamState::Active);
-    assert_eq!(s_resumed_after_top_up.accrued_as_of, t1);
-    assert_eq!(s_resumed_after_top_up.allocation, 450 as Balance);
-}
-
-#[test]
-fn test_topup_zero_fails() {
-    let t0 = DEFAULT_MOCK_CLOCK_INITIAL_TS;
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
-
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
-        DEFAULT_OWNER_GENESIS_BALANCE,
-        DEFAULT_STREAM_TEST_DEPOSIT,
-        mock_clock_account_id,
-        t0,
-    );
-
-    let (stream_id, _, account_ids) = first_stream_accounts(
-        program_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        mock_clock_account_id,
-    );
-
-    transition_ok(
-        &mut state,
-        &signed_create_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            provider_account_id,
-            1 as TokensPerSecond,
-            100 as Balance,
-            &account_ids,
-            Nonce(2),
-            &owner_private_key,
-        ),
-        3 as BlockId,
-        "create_stream failed",
-    );
-
-    let r = state.transition_from_public_transaction(
-        &signed_top_up_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            0 as Balance,
-            &account_ids,
-            Nonce(3),
-            &owner_private_key,
-        ),
-        4 as BlockId,
-    );
-    assert_execution_failed_with_code(r, ERR_ZERO_TOP_UP_AMOUNT);
-}
-
-#[test]
-fn test_topup_closed_fails() {
-    let t0 = DEFAULT_MOCK_CLOCK_INITIAL_TS;
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
-
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
-        DEFAULT_OWNER_GENESIS_BALANCE,
-        DEFAULT_STREAM_TEST_DEPOSIT,
-        mock_clock_account_id,
-        t0,
-    );
-
-    let (stream_id, stream_pda, account_ids) = first_stream_accounts(
-        program_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        mock_clock_account_id,
-    );
-
-    transition_ok(
-        &mut state,
-        &signed_create_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            provider_account_id,
-            2 as TokensPerSecond,
-            200 as Balance,
-            &account_ids,
-            Nonce(2),
-            &owner_private_key,
-        ),
-        3 as BlockId,
-        "create_stream failed",
-    );
-
-    force_stream_state_closed(&mut state, stream_pda);
-
-    let r = state.transition_from_public_transaction(
-        &signed_top_up_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            10 as Balance,
-            &account_ids,
-            Nonce(3),
-            &owner_private_key,
-        ),
-        4 as BlockId,
-    );
-    assert_execution_failed_with_code(r, ERR_STREAM_CLOSED);
-}
-
-#[test]
-fn test_topup_exceeds_unallocated_fails() {
-    let t0 = DEFAULT_MOCK_CLOCK_INITIAL_TS;
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
-
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
-        DEFAULT_OWNER_GENESIS_BALANCE,
-        DEFAULT_STREAM_TEST_DEPOSIT,
-        mock_clock_account_id,
-        t0,
-    );
-
-    let (stream_id, _, account_ids) = first_stream_accounts(
-        program_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        mock_clock_account_id,
-    );
-
-    transition_ok(
-        &mut state,
-        &signed_create_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            provider_account_id,
-            1 as TokensPerSecond,
-            DEFAULT_STREAM_TEST_DEPOSIT,
-            &account_ids,
-            Nonce(2),
-            &owner_private_key,
-        ),
-        3 as BlockId,
-        "create_stream failed",
-    );
-
-    let r = state.transition_from_public_transaction(
-        &signed_top_up_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            1 as Balance,
-            &account_ids,
-            Nonce(3),
-            &owner_private_key,
-        ),
-        4 as BlockId,
-    );
-    assert_execution_failed_with_code(r, ERR_ALLOCATION_EXCEEDS_UNALLOCATED);
-}
-
-#[test]
-fn test_topup_allocation_overflow_fails() {
-    let t0 = DEFAULT_MOCK_CLOCK_INITIAL_TS;
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
-
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
-        DEFAULT_OWNER_GENESIS_BALANCE,
-        DEFAULT_STREAM_TEST_DEPOSIT,
-        mock_clock_account_id,
-        t0,
-    );
-
-    let (stream_id, stream_pda, account_ids) = first_stream_accounts(
-        program_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        mock_clock_account_id,
-    );
-
-    transition_ok(
-        &mut state,
-        &signed_create_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            provider_account_id,
-            1 as TokensPerSecond,
-            100 as Balance,
-            &account_ids,
-            Nonce(2),
-            &owner_private_key,
-        ),
-        3 as BlockId,
-        "create_stream failed",
-    );
-
-    let mut s_near_max_allocation =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
-    s_near_max_allocation.allocation = Balance::MAX - 5;
-    s_near_max_allocation.accrued = 0 as Balance;
-    let mut stream_account = state.get_account_by_id(stream_pda).clone();
-    stream_account.data = nssa_core::account::Data::try_from(s_near_max_allocation.to_bytes())
-        .expect("stream payload fits");
-    state.force_insert_account(stream_pda, stream_account);
-
-    let r = state.transition_from_public_transaction(
-        &signed_top_up_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            20 as Balance,
-            &account_ids,
-            Nonce(3),
-            &owner_private_key,
-        ),
-        4 as BlockId,
-    );
-    assert_execution_failed_with_code(r, ERR_ARITHMETIC_OVERFLOW);
+    let expected_accrued = 50 + (u128::from(rate) * u128::from(t2 - t_gap));
+    assert_eq!(s_after_resume_and_accrual.accrued, expected_accrued);
+    assert_eq!(s_after_resume_and_accrual.accrued_as_of, t2);
+    assert_eq!(s_after_resume_and_accrual.state, StreamState::Active);
 }

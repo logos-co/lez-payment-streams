@@ -1,6 +1,9 @@
-#![allow(dead_code)]
-
-//! Block id and nonce ladder for tests: see [`build_signed_public_tx`] and [`state_with_initialized_vault`].
+//! NSSA test harness: deploy the guest, build genesis ([`create_state_with_guest_program`]),
+//! derive PDAs, sign txs ([`build_signed_public_tx`], [`state_with_initialized_vault`]).
+//!
+//! After you have a [`nssa::V03State`] and program id,
+//! see [`crate::program_tests::common`] for deposit fixtures,
+//! [`Instruction`] builders, and helpers like `transition_ok`.
 
 use std::fs;
 use std::path::PathBuf;
@@ -68,7 +71,7 @@ pub(crate) fn create_state_with_guest_program(
     Some((state, guest_program))
 }
 
-pub(crate) fn build_public_tx<T: Serialize>(
+fn build_public_tx<T: Serialize>(
     program_id: ProgramId,
     account_ids: &[AccountId],
     nonces: &[Nonce],
@@ -86,12 +89,13 @@ pub(crate) fn build_public_tx<T: Serialize>(
     PublicTransaction::new(message, witness_set)
 }
 
-/// Build a signed public transaction for a vault program instruction.
+/// Build a signed public tx for a vault program instruction.
 ///
-/// Argument order is meant for call sites: program id, instruction payload, account list,
-/// signer nonces, then signer private keys. Caller submits with
-/// [`V03State::transition_from_public_transaction`].
-/// Typical ladder: `initialize_vault` at block `1` / `Nonce(0)`; next public tx at block `2` / `Nonce(1)` per signer; further txs increment block and nonce (e.g. stream tests often use block `3` / `Nonce(2)`).
+/// Arguments: program id, instruction, accounts, signer nonces, signer keys.
+/// Submit via [`V03State::transition_from_public_transaction`].
+/// Example ladder: `initialize_vault` at block 1, `Nonce(0)`.
+/// Next public tx usually block 2, `Nonce(1)`.
+/// Stream flows often use block 3, `Nonce(2)`.
 pub(crate) fn build_signed_public_tx<T: Serialize>(
     program_id: ProgramId,
     instruction: T,
@@ -148,7 +152,7 @@ pub(crate) fn derive_vault_pdas(
     (vault_config_account_id, vault_holding_account_id)
 }
 
-/// Stream PDA: `[b"stream_config", vault_config_pda, stream_id]` (matches SPEL `create_stream` seeds).
+/// Stream PDA seeds: `stream_config`, vault config PDA, `stream_id` (same as SPEL `create_stream`).
 pub(crate) fn derive_stream_pda(
     program_id: ProgramId,
     vault_config_account_id: AccountId,
@@ -163,11 +167,10 @@ pub(crate) fn derive_stream_pda(
     )
 }
 
-/// Insert or replace a read-only mock clock account (tests only).
+/// Insert or replace a read-only mock clock account (tests).
 ///
-/// Prefer advancing time with [`MockTimestamp::advance_by`] / [`MockTimestamp::increment`] when
-/// building a [`MockTimestamp`] value. This helper accepts any `clock` payload, including a lower
-/// [`MockTimestamp::timestamp`] than before, for negative tests (e.g. time regression).
+/// For forward-only clocks, use [`MockTimestamp::advance_by`] or [`MockTimestamp::increment`].
+/// This helper sets any [`MockTimestamp`] payload, including regressions for failure tests.
 pub(crate) fn force_mock_timestamp_account(
     state: &mut V03State,
     account_id: AccountId,
@@ -175,15 +178,15 @@ pub(crate) fn force_mock_timestamp_account(
 ) {
     let account = Account {
         program_owner: Program::authenticated_transfer_program().id(),
-        balance: Balance::MIN,
+        balance: 0 as Balance,
         data: Data::try_from(clock.to_bytes()).expect("mock clock payload fits Data limits"),
         ..Account::default()
     };
     state.force_insert_account(account_id, account);
 }
 
-/// Single-owner genesis, guest deployed, `initialize_vault` applied.
-/// Next public tx should use `block_id` `2` and signer nonce `Nonce(1)`.
+/// Single-owner genesis with guest deployed and `initialize_vault` done.
+/// Next public tx is usually block 2, signer nonce `Nonce(1)`.
 pub(crate) fn state_with_initialized_vault(
     owner_balance: Balance,
 ) -> (
@@ -198,12 +201,12 @@ pub(crate) fn state_with_initialized_vault(
     state_with_initialized_vault_with_preseeded_genesis_accounts(owner_balance, &[])
 }
 
-/// Same as [`state_with_initialized_vault`], but genesis also pre-seeds extra accounts (same layout
-/// as [`V03State::new_with_genesis_accounts`]), e.g. the stream [`StreamConfig::provider`] at
-/// balance `0` for claim (NSSA balance rules), or a withdraw recipient.
+/// Like [`state_with_initialized_vault`],
+/// with extra genesis rows ([`V03State::new_with_genesis_accounts`] layout).
+/// Typical uses: provider at `0` for `claim`, or a withdraw recipient.
 pub(crate) fn state_with_initialized_vault_with_preseeded_genesis_accounts(
     owner_balance: Balance,
-    extra_genesis: &[(AccountId, Balance)],
+    extra_genesis_accounts: &[(AccountId, Balance)],
 ) -> (
     V03State,
     ProgramId,
@@ -215,7 +218,7 @@ pub(crate) fn state_with_initialized_vault_with_preseeded_genesis_accounts(
 ) {
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
     let mut initial_accounts_data = vec![(owner_account_id, owner_balance)];
-    initial_accounts_data.extend_from_slice(extra_genesis);
+    initial_accounts_data.extend_from_slice(extra_genesis_accounts);
     let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
         .expect(
             "guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok",
@@ -258,8 +261,8 @@ pub(crate) fn state_with_initialized_vault_with_preseeded_genesis_accounts(
     )
 }
 
-/// Like [`state_with_initialized_vault`], but genesis also includes `recipient_account_id` with
-/// balance `0` for four-account withdraw tests.
+/// Like [`state_with_initialized_vault`],
+/// plus `recipient_account_id` at balance `0` for four-account withdraw flows.
 pub(crate) fn state_with_initialized_vault_with_recipient(
     owner_balance: Balance,
 ) -> (
@@ -283,7 +286,7 @@ pub(crate) fn state_with_initialized_vault_with_recipient(
         vault_holding_account_id,
     ) = state_with_initialized_vault_with_preseeded_genesis_accounts(
         owner_balance,
-        &[(recipient_account_id, Balance::MIN)],
+        &[(recipient_account_id, 0 as Balance)],
     );
 
     (

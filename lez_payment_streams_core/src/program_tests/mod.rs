@@ -1,15 +1,15 @@
-//! Guest-backed integration tests using in-process [`nssa::V03State`].
-//! Covers vault flows, streams, and layout or harness primitives (see submodules).
+//! Integration tests against the guest in an in-process [`nssa::V03State`].
+//! Test vault setup, deposits, streams, and serialization helpers.
 
 mod accrual;
 mod claim;
 mod close_stream;
 mod common;
-mod seeds;
 mod create_stream;
 mod deposit;
 mod initialize;
-mod pause_resume;
+mod pause_stream;
+mod resume_stream;
 mod serialization;
 mod top_up;
 mod withdraw;

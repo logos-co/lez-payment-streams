@@ -47,6 +47,8 @@ mod lez_payment_streams {
     #[allow(unused_imports)]
     use super::*;
 
+    // SPEL error mapping, mock clock parsing, vault and stream validation, shared loaders.
+
     fn spel_custom(code: u32, message: &'static str) -> SpelError {
         SpelError::Custom {
             code,
@@ -100,8 +102,8 @@ mod lez_payment_streams {
         }
     }
 
-    /// Parse vault config and holding from the standard two-account layout used by vault mutating
-    /// instructions. Account indices match SPEL `#[account]` order: config first, holding second.
+    /// Read vault config and holding from the usual two-account layout for vault instructions.
+    /// SPEL order: config, then holding.
     fn parse_vault_config_and_holding(
         vault_config_with_meta: &AccountWithMetadata,
         vault_holding_with_meta: &AccountWithMetadata,
@@ -125,7 +127,7 @@ mod lez_payment_streams {
         Ok((vault_config_state, vault_holding_state))
     }
 
-    /// Version alignment between vault accounts and `vault_id` argument (no signer).
+    /// Check vault config, holding, and instruction `vault_id` agree (no signer check).
     fn validate_vault_structural(
         vault_config_state: &VaultConfig,
         vault_holding_state: &VaultHolding,
@@ -153,8 +155,8 @@ mod lez_payment_streams {
         Ok(())
     }
 
-    /// Structural checks plus vault owner signer (deposit, withdraw, create_stream, top_up, and
-    /// owner-only stream instructions).
+    /// Structural validation plus vault owner as signer
+    /// (deposit, withdraw, `create_stream`, `top_up`, owner-only stream paths).
     fn validate_vault_config(
         vault_config_state: &VaultConfig,
         vault_holding_state: &VaultHolding,
@@ -166,10 +168,11 @@ mod lez_payment_streams {
         Ok(())
     }
 
-    /// After deserializing a [`StreamConfig`], check version alignment with vault accounts,
-    /// `stream_id` vs PDA argument, vault existence bound, and core stream invariants (rate,
-    /// allocation, accrued cap). Call after [`validate_vault_config`] or structural validation for
-    /// close when the signer may be the provider.
+    /// Validate a deserialized [`StreamConfig`]:
+    /// versions match vault accounts, `stream_id` fits the vault,
+    /// PDA arg matches, invariants hold.
+    /// Call after [`validate_vault_config`] for owner-signed instructions.
+    /// Call after [`validate_vault_structural`] for `close_stream` when the provider signs.
     fn validate_stream_config_for_vault(
         stream_config: &StreamConfig,
         vault_config_state: &VaultConfig,
@@ -205,8 +208,7 @@ mod lez_payment_streams {
             .map_err(stream_invariant_err)
     }
 
-    /// Vault config and holding, deserialized stream, and mock clock `now` for owner stream
-    /// instructions that share the `sync_stream` account layout (indices 0–4).
+    /// Load vault config, holding, stream, and mock clock `now` for owner stream instructions with the `sync_stream` five-account layout.
     fn load_vault_stream_and_clock(
         vault_config_with_meta: &AccountWithMetadata,
         vault_holding_with_meta: &AccountWithMetadata,
@@ -248,16 +250,19 @@ mod lez_payment_streams {
         Ok((vault_config_state, vault_holding_state, stream_config_state, now))
     }
 
-    // How `authenticated_transfer` encodes the debit amount in `ChainedCall::instruction_data`.
-    // Kept as a named step for clarity, not because we expect reuse: deposit is the only
-    // path that moves funds from an external signer balance into this program.
+    // Serialize the debit amount for `authenticated_transfer` inside `ChainedCall::instruction_data` (`deposit` only today).
     fn serialize_transfer_amount(amount: Balance) -> Result<Vec<u32>, SpelError> {
         risc0_zkvm::serde::to_vec(&amount).map_err(|_| SpelError::SerializationError {
             message: "failed to serialize transfer amount".into(),
         })
     }
 
-    /// Initialize a vault.
+    // Instructions follow `lez_payment_streams_core::Instruction`.
+    // Vault: `initialize_vault`, `deposit`, `withdraw`.
+    // Streams: `create_stream`, `sync_stream`, `pause_stream`, `resume_stream`, `top_up_stream`.
+    // `close_stream`, `claim`.
+
+    /// Create vault config and holding PDAs for `vault_id`.
     #[instruction]
     pub fn initialize_vault(
         #[account(init, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
@@ -476,7 +481,7 @@ mod lez_payment_streams {
         ]))
     }
 
-    /// Apply lazy accrual through the mock clock `now` and persist stream state (owner only).
+    /// Run [`StreamConfig::at_time`] with mock clock `now` and write the stream (owner).
     #[instruction]
     pub fn sync_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
@@ -613,8 +618,9 @@ mod lez_payment_streams {
         ]))
     }
 
-    /// Add allocation to an existing stream from vault unallocated balance; if paused, resume with
-    /// the same `accrued_as_of = now` anchor as `resume_stream` (`StreamConfig::resume_from_paused_at`).
+    /// Add vault-funded allocation to the stream.
+    /// For Paused streams, resume with `accrued_as_of = now`
+    /// like [`StreamConfig::resume_from_paused_at`] in `resume_stream`.
     #[instruction]
     pub fn top_up_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
@@ -707,7 +713,8 @@ mod lez_payment_streams {
         ]))
     }
 
-    /// Close as of mock clock time (folds accrual, then closes); vault owner or stream provider may authorize.
+    /// Close at mock clock time after accrual fold.
+    /// Require vault owner or stream provider as signer.
     #[instruction]
     pub fn close_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
@@ -783,8 +790,8 @@ mod lez_payment_streams {
         ]))
     }
 
-    /// Claim accrued liquidity to the stream provider as of mock clock time (`at_time` runs inside
-    /// [`StreamConfig::claim_at_time`]).
+    /// Pay accrued liquidity to the stream provider.
+    /// Delegate payout math to [`StreamConfig::claim_at_time`] with mock clock `now`.
     #[instruction]
     pub fn claim(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
