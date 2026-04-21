@@ -186,7 +186,10 @@ pub(crate) fn signed_close_stream(
 ) -> PublicTransaction {
     build_signed_public_tx(
         program_id,
-        Instruction::CloseStream { vault_id, stream_id },
+        Instruction::CloseStream {
+            vault_id,
+            stream_id,
+        },
         accounts,
         &[nonce],
         &[authority],
@@ -203,7 +206,10 @@ pub(crate) fn signed_claim_stream(
 ) -> PublicTransaction {
     build_signed_public_tx(
         program_id,
-        Instruction::Claim { vault_id, stream_id },
+        Instruction::Claim {
+            vault_id,
+            stream_id,
+        },
         accounts,
         &[nonce],
         &[provider],
@@ -348,7 +354,10 @@ fn state_deposited_with_mock_clock_impl(
     ) = if extra_genesis.is_empty() {
         state_with_initialized_vault(owner_balance_start)
     } else {
-        state_with_initialized_vault_with_preseeded_genesis_accounts(owner_balance_start, extra_genesis)
+        state_with_initialized_vault_with_preseeded_genesis_accounts(
+            owner_balance_start,
+            extra_genesis,
+        )
     };
 
     let block_deposit = 2 as BlockId;

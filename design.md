@@ -73,6 +73,8 @@ Tests may synthesize this with `MockTimestamp::to_bytes` or mutate host-side acc
 
 On-chain parsing should use structural checks and an explicit set of supported wire layouts per version rather than rejecting all but `version == DEFAULT_VERSION`, so newer clock layouts can coexist when the program still only needs the same timestamp fields from the prefix.
 
+Guest clock loading uses two shared paths: owner-signed stream instructions (`SyncStream`, pause, resume, top-up) load via `load_vault_stream_and_clock` (signer is the vault owner). `CloseStream` and `Claim` use structural vault checks, bind the explicit vault owner account to `VaultConfig.owner`, then load stream state and the mock clock via `load_vault_stream_and_clock_with_explicit_owner` (the transaction signer is authority or provider, not necessarily the owner account).
+
 ## Accounting
 
 VaultHolding stores no application fields beyond `version`.

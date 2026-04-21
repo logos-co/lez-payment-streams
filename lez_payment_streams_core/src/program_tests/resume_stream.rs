@@ -14,8 +14,8 @@ use crate::{
 use super::common::{
     assert_execution_failed_with_code, first_stream_accounts, force_stream_state_closed,
     signed_create_stream, signed_pause_stream, signed_resume_stream, signed_sync_stream,
-    state_deposited_with_mock_clock, transition_ok,
-    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
+    state_deposited_with_mock_clock, transition_ok, DEFAULT_OWNER_GENESIS_BALANCE,
+    DEFAULT_STREAM_TEST_DEPOSIT,
 };
 
 #[test]

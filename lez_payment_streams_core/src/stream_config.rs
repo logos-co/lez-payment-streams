@@ -8,7 +8,7 @@ use nssa_core::account::{AccountId, Balance};
 
 use crate::error_codes::*;
 use crate::vault::checked_total_allocated_after_release;
-use crate::{DEFAULT_VERSION, StreamId, Timestamp, TokensPerSecond, VersionId};
+use crate::{StreamId, Timestamp, TokensPerSecond, VersionId, DEFAULT_VERSION};
 
 /// Stream lifecycle. One byte on the wire (ordinal), Borsh-style.
 #[repr(u8)]
@@ -196,7 +196,8 @@ impl StreamConfig {
         // saturating add, then capped at `allocation` ("saturated" = capped at the ceiling).
         // Here `t > base_as_of`, so the elapsed interval is positive.
         let elapsed_seconds = t - base_as_of;
-        let accrued_over_elapsed_seconds = u128::from(rate).saturating_mul(u128::from(elapsed_seconds));
+        let accrued_over_elapsed_seconds =
+            u128::from(rate).saturating_mul(u128::from(elapsed_seconds));
         let new_accrued = base_accrued
             .saturating_add(accrued_over_elapsed_seconds)
             .min(allocation);
@@ -209,8 +210,8 @@ impl StreamConfig {
             stream_after_accrual.state = StreamState::Paused;
             // Unaccrued at interval start (`accrued_as_of`), before folding elapsed time into accrued.
             let unaccrued_before_interval = self.unaccrued();
-            let time_to_depletion = div_ceil_u128(unaccrued_before_interval, rate)
-                .ok_or(ERR_ARITHMETIC_OVERFLOW)?;
+            let time_to_depletion =
+                div_ceil_u128(unaccrued_before_interval, rate).ok_or(ERR_ARITHMETIC_OVERFLOW)?;
             let depleted_at = base_as_of
                 .checked_add(time_to_depletion)
                 .ok_or(ERR_ARITHMETIC_OVERFLOW)?;
@@ -280,10 +281,8 @@ impl StreamConfig {
             return Err(ERR_STREAM_CLOSED);
         }
         let unaccrued_amount = stream_config_now.unaccrued();
-        let next_vault_total_allocated = checked_total_allocated_after_release(
-            vault_total_allocated,
-            unaccrued_amount,
-        )?;
+        let next_vault_total_allocated =
+            checked_total_allocated_after_release(vault_total_allocated, unaccrued_amount)?;
         let accrued = stream_config_now.accrued;
         let mut stream_after_close = stream_config_now;
         stream_after_close.state = StreamState::Closed;
@@ -331,9 +330,9 @@ fn div_ceil_u128(rem: u128, rate: u64) -> Option<u64> {
 
 #[cfg(test)]
 mod stream_test_fixtures {
-    use nssa_core::account::{AccountId, Balance};
     use super::{StreamConfig, StreamState};
-    use crate::{DEFAULT_VERSION, Timestamp, TokensPerSecond};
+    use crate::{Timestamp, TokensPerSecond, DEFAULT_VERSION};
+    use nssa_core::account::{AccountId, Balance};
 
     fn account(n: u8) -> AccountId {
         AccountId::new([n; 32])
@@ -395,7 +394,10 @@ mod stream_config_at_time_tests {
     #[test]
     fn at_time_rejects_zero_allocation_when_active() {
         let s_zero_allocation = stream_active(0, 0, 10, 0);
-        assert_eq!(s_zero_allocation.at_time(0), Err(ERR_ZERO_STREAM_ALLOCATION));
+        assert_eq!(
+            s_zero_allocation.at_time(0),
+            Err(ERR_ZERO_STREAM_ALLOCATION)
+        );
     }
 
     #[test]
@@ -559,7 +561,10 @@ mod claim_at_time_tests {
     #[test]
     fn claim_at_time_rejects_zero_accrued() {
         let s = stream_active(0, 100, 10, 0);
-        assert_eq!(s.claim_at_time(0, 100 as Balance), Err(ERR_ZERO_CLAIM_AMOUNT));
+        assert_eq!(
+            s.claim_at_time(0, 100 as Balance),
+            Err(ERR_ZERO_CLAIM_AMOUNT)
+        );
     }
 
     #[test]
@@ -602,6 +607,9 @@ mod claim_at_time_tests {
     #[test]
     fn claim_at_time_propagates_at_time_error() {
         let s = stream_active(0, 1000, 10, 100);
-        assert_eq!(s.claim_at_time(99, 100 as Balance), Err(ERR_TIME_REGRESSION));
+        assert_eq!(
+            s.claim_at_time(99, 100 as Balance),
+            Err(ERR_TIME_REGRESSION)
+        );
     }
 }

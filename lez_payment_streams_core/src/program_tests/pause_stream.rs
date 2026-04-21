@@ -10,7 +10,8 @@ use crate::Instruction;
 use crate::{
     test_helpers::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
-        derive_vault_pdas, force_mock_timestamp_account, harness_mock_clock_and_provider_account_ids,
+        derive_vault_pdas, force_mock_timestamp_account,
+        harness_mock_clock_and_provider_account_ids,
     },
     MockTimestamp, StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId,
     ERR_STREAM_NOT_ACTIVE, ERR_TIME_REGRESSION, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
@@ -18,8 +19,7 @@ use crate::{
 
 use super::common::{
     assert_execution_failed_with_code, first_stream_accounts, force_stream_state_closed,
-    signed_create_stream, signed_pause_stream,
-    state_deposited_with_mock_clock, transition_ok,
+    signed_create_stream, signed_pause_stream, state_deposited_with_mock_clock, transition_ok,
     DEFAULT_MOCK_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER};

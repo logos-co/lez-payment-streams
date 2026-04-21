@@ -174,8 +174,7 @@ mod checked_total_allocated_after_add_tests {
 
     #[test]
     fn add_succeeds_within_unallocated() {
-        let next_vault_total_allocated =
-            checked_total_allocated_after_add(500, 200, 100).unwrap();
+        let next_vault_total_allocated = checked_total_allocated_after_add(500, 200, 100).unwrap();
         assert_eq!(next_vault_total_allocated, 300 as Balance);
     }
 
@@ -197,8 +196,7 @@ mod checked_total_allocated_after_release_tests {
 
     #[test]
     fn release_succeeds() {
-        let next_vault_total_allocated =
-            checked_total_allocated_after_release(300, 100).unwrap();
+        let next_vault_total_allocated = checked_total_allocated_after_release(300, 100).unwrap();
         assert_eq!(next_vault_total_allocated, 200 as Balance);
     }
 
