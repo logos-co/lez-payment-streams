@@ -10,7 +10,8 @@ use crate::Instruction;
 use crate::{
     test_helpers::{
         assert_vault_state_unchanged_with_recipient, build_signed_public_tx, create_keypair,
-        create_state_with_guest_program, derive_stream_pda, derive_vault_pdas, force_clock_account,
+        create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
+        force_clock_account_monotonic,
         harness_clock_01_and_provider_account_ids, patch_vault_config,
         state_with_initialized_vault_with_recipient,
     },
@@ -355,7 +356,7 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
 
     let mut wr = state_with_initialized_vault_with_recipient(owner_balance_start);
 
-    force_clock_account(
+    force_clock_account_monotonic(
         &mut wr.vault.state,
         clock_id,
         0,
@@ -659,4 +660,65 @@ fn test_withdraw_recipient_balance_overflow_fails() {
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(result, ERR_ARITHMETIC_OVERFLOW);
+}
+
+#[test]
+fn test_withdraw_recipient_not_present_in_state_fails() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = 100 as Balance;
+    let withdraw_amount = 10 as Balance;
+    let mut wr = state_with_initialized_vault_with_recipient(owner_balance_start);
+    let (_, unknown_recipient_id) = create_keypair(0x99);
+
+    assert!(
+        wr.vault
+            .state
+            .transition_from_public_transaction(
+                &build_signed_public_tx(
+                    wr.vault.program_id,
+                    Instruction::Deposit {
+                        vault_id: wr.vault.vault_id,
+                        amount: deposit_amount,
+                        authenticated_transfer_program_id: Program::authenticated_transfer_program(
+                        )
+                        .id(),
+                    },
+                    &[
+                        wr.vault.vault_config_account_id,
+                        wr.vault.vault_holding_account_id,
+                        wr.vault.owner_account_id,
+                    ],
+                    &[Nonce(1)],
+                    &[&wr.vault.owner_private_key],
+                ),
+                2 as BlockId,
+                crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
+            )
+            .is_ok(),
+        "deposit failed"
+    );
+
+    let result = wr.vault.state.transition_from_public_transaction(
+        &build_signed_public_tx(
+            wr.vault.program_id,
+            Instruction::Withdraw {
+                vault_id: wr.vault.vault_id,
+                amount: withdraw_amount,
+            },
+            &[
+                wr.vault.vault_config_account_id,
+                wr.vault.vault_holding_account_id,
+                wr.vault.owner_account_id,
+                unknown_recipient_id,
+            ],
+            &[Nonce(2)],
+            &[&wr.vault.owner_private_key],
+        ),
+        3 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
+    assert!(
+        result.is_err(),
+        "withdraw to an account id absent from public state should fail: {result:?}"
+    );
 }

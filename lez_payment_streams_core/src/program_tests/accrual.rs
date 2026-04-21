@@ -9,7 +9,8 @@ use crate::Instruction;
 use crate::{
     test_helpers::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
-        derive_vault_pdas, force_clock_account, harness_clock_01_and_provider_account_ids,
+        derive_vault_pdas, force_clock_account_monotonic, force_clock_account_unchecked,
+        harness_clock_01_and_provider_account_ids,
         patch_stream_config, patch_vault_config,
     },
     StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultId,
@@ -68,7 +69,7 @@ fn test_accrual_basic() {
         "create_stream failed",
     );
 
-    force_clock_account(&mut dep.vault.state, clock_id, 0, t1);
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
 
     transition_ok(
         &mut dep.vault.state,
@@ -136,7 +137,7 @@ fn test_accrual_caps_at_allocation() {
         "create_stream failed",
     );
 
-    force_clock_account(&mut dep.vault.state, clock_id, 0, t1);
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
 
     transition_ok(
         &mut dep.vault.state,
@@ -234,7 +235,7 @@ fn test_sync_stream_second_stream_accrues() {
         "second create_stream failed",
     );
 
-    force_clock_account(&mut dep.vault.state, clock_id, 0, t1);
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
 
     transition_ok(
         &mut dep.vault.state,
@@ -255,7 +256,7 @@ fn test_sync_stream_second_stream_accrues() {
     assert_eq!(s0_after_sync_t1.accrued, 50 as Balance);
     assert_eq!(s0_after_sync_t1.accrued_as_of, t1);
 
-    force_clock_account(&mut dep.vault.state, clock_id, 0, t2);
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t2);
 
     transition_ok(
         &mut dep.vault.state,
@@ -402,7 +403,7 @@ fn test_sync_stream_owner_mismatch_fails() {
         "deposit failed",
     );
 
-    force_clock_account(
+    force_clock_account_monotonic(
         &mut state,
         clock_id,
         0,
@@ -590,7 +591,7 @@ fn test_sync_stream_time_regression_fails() {
         "create_stream failed",
     );
 
-    force_clock_account(&mut dep.vault.state, clock_id, 0, t_bad);
+    force_clock_account_unchecked(&mut dep.vault.state, clock_id, 0, t_bad);
 
     let r = dep.vault.state.transition_from_public_transaction(
         &signed_sync_stream(
@@ -605,4 +606,209 @@ fn test_sync_stream_time_regression_fails() {
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ERR_TIME_REGRESSION);
+}
+
+/// After one `sync_stream` has folded accrual to clock `t1`, a second `sync_stream` without
+/// advancing the clock leaves stream bytes unchanged (`at_time` no-op when `now == accrued_as_of`).
+#[test]
+fn test_sync_stream_twice_same_clock_is_no_op() {
+    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let t0: Timestamp = 50;
+    let t1: Timestamp = 60;
+
+    let mut dep = state_deposited_with_clock(
+        DEFAULT_OWNER_GENESIS_BALANCE,
+        DEFAULT_STREAM_TEST_DEPOSIT,
+        clock_id,
+        t0,
+    );
+    let stream_id = StreamId::MIN;
+    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, stream_id);
+    let account_ids = [
+        dep.vault.vault_config_account_id,
+        dep.vault.vault_holding_account_id,
+        stream_pda,
+        dep.vault.owner_account_id,
+        clock_id,
+    ];
+
+    transition_ok(
+        &mut dep.vault.state,
+        &signed_create_stream(
+            dep.vault.program_id,
+            dep.vault.vault_id,
+            stream_id,
+            provider_account_id,
+            1,
+            400,
+            &account_ids,
+            Nonce(2),
+            &dep.vault.owner_private_key,
+        ),
+        3 as BlockId,
+        "create_stream failed",
+    );
+
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
+
+    transition_ok(
+        &mut dep.vault.state,
+        &signed_sync_stream(
+            dep.vault.program_id,
+            dep.vault.vault_id,
+            stream_id,
+            &account_ids,
+            Nonce(3),
+            &dep.vault.owner_private_key,
+        ),
+        4 as BlockId,
+        "sync_stream first",
+    );
+
+    let data_after_first_sync = dep.vault.state.get_account_by_id(stream_pda).data.clone();
+
+    transition_ok(
+        &mut dep.vault.state,
+        &signed_sync_stream(
+            dep.vault.program_id,
+            dep.vault.vault_id,
+            stream_id,
+            &account_ids,
+            Nonce(4),
+            &dep.vault.owner_private_key,
+        ),
+        5 as BlockId,
+        "sync_stream second same clock",
+    );
+
+    let data_after_second_sync = dep.vault.state.get_account_by_id(stream_pda).data.clone();
+    assert_eq!(
+        data_after_second_sync, data_after_first_sync,
+        "second sync at same clock should be a no-op on stream bytes"
+    );
+}
+
+/// Advancing the clock enough in one `sync_stream` depletes allocation; stream ends `Paused` with
+/// `accrued_as_of` at the depletion instant (per design accrual rules).
+#[test]
+fn test_sync_stream_depletion_via_at_time_paused() {
+    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let t0: Timestamp = 1;
+    let t_deplete: Timestamp = 11;
+
+    let mut dep = state_deposited_with_clock(
+        DEFAULT_OWNER_GENESIS_BALANCE,
+        DEFAULT_STREAM_TEST_DEPOSIT,
+        clock_id,
+        t0,
+    );
+    let stream_id = StreamId::MIN;
+    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, stream_id);
+    let account_ids = [
+        dep.vault.vault_config_account_id,
+        dep.vault.vault_holding_account_id,
+        stream_pda,
+        dep.vault.owner_account_id,
+        clock_id,
+    ];
+
+    let rate = 10 as TokensPerSecond;
+    let allocation = 100 as Balance;
+    transition_ok(
+        &mut dep.vault.state,
+        &signed_create_stream(
+            dep.vault.program_id,
+            dep.vault.vault_id,
+            stream_id,
+            provider_account_id,
+            rate,
+            allocation,
+            &account_ids,
+            Nonce(2),
+            &dep.vault.owner_private_key,
+        ),
+        3 as BlockId,
+        "create_stream failed",
+    );
+
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t_deplete);
+
+    transition_ok(
+        &mut dep.vault.state,
+        &signed_sync_stream(
+            dep.vault.program_id,
+            dep.vault.vault_id,
+            stream_id,
+            &account_ids,
+            Nonce(3),
+            &dep.vault.owner_private_key,
+        ),
+        4 as BlockId,
+        "sync_stream deplete",
+    );
+
+    let sc = StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
+    assert_eq!(sc.state, StreamState::Paused);
+    assert_eq!(sc.accrued, allocation);
+    assert_eq!(sc.accrued_as_of, t_deplete);
+}
+
+/// Guest accepts maximum `Timestamp` on the clock wire (`u64::MAX`) for `sync_stream` after create.
+#[test]
+fn test_sync_stream_with_timestamp_max_clock() {
+    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let t0: Timestamp = 1;
+
+    let mut dep = state_deposited_with_clock(
+        DEFAULT_OWNER_GENESIS_BALANCE,
+        DEFAULT_STREAM_TEST_DEPOSIT,
+        clock_id,
+        t0,
+    );
+    let stream_id = StreamId::MIN;
+    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, stream_id);
+    let account_ids = [
+        dep.vault.vault_config_account_id,
+        dep.vault.vault_holding_account_id,
+        stream_pda,
+        dep.vault.owner_account_id,
+        clock_id,
+    ];
+
+    transition_ok(
+        &mut dep.vault.state,
+        &signed_create_stream(
+            dep.vault.program_id,
+            dep.vault.vault_id,
+            stream_id,
+            provider_account_id,
+            1,
+            400,
+            &account_ids,
+            Nonce(2),
+            &dep.vault.owner_private_key,
+        ),
+        3 as BlockId,
+        "create_stream failed",
+    );
+
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, Timestamp::MAX);
+
+    transition_ok(
+        &mut dep.vault.state,
+        &signed_sync_stream(
+            dep.vault.program_id,
+            dep.vault.vault_id,
+            stream_id,
+            &account_ids,
+            Nonce(3),
+            &dep.vault.owner_private_key,
+        ),
+        4 as BlockId,
+        "sync_stream at Timestamp::MAX",
+    );
+
+    let sc = StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
+    assert_eq!(sc.state, StreamState::Paused);
+    assert_eq!(sc.accrued, 400 as Balance);
 }

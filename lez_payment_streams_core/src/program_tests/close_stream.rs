@@ -6,7 +6,7 @@ use nssa_core::{
 };
 
 use crate::{
-    test_helpers::{create_keypair, derive_stream_pda, force_clock_account},
+    test_helpers::{create_keypair, derive_stream_pda, force_clock_account_monotonic},
     StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig,
     CLOCK_01_PROGRAM_ACCOUNT_ID, ERR_CLOSE_UNAUTHORIZED, ERR_STREAM_CLOSED,
 };
@@ -70,7 +70,7 @@ fn test_close_returns_unaccrued() {
             .expect("vault config");
     assert_eq!(vault_before.total_allocated, allocation);
 
-    force_clock_account(&mut dep.vault.state, clock_id, 0, t1);
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
 
     transition_ok(
         &mut dep.vault.state,
@@ -176,7 +176,7 @@ fn test_close_stream_unauthorized_fails() {
         "create_stream failed",
     );
 
-    force_clock_account(&mut dep.vault.state, clock_id, 0, t1);
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
 
     transition_ok(
         &mut dep.vault.state,

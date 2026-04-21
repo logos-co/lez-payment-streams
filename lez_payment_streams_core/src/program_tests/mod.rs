@@ -7,6 +7,7 @@ mod close_stream;
 mod common;
 mod create_stream;
 mod deposit;
+mod invariants;
 mod initialize;
 mod pause_stream;
 mod resume_stream;

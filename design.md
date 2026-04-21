@@ -315,10 +315,67 @@ Testing:
 
 - Exercise `at_time` with unit tests in the core crate, and guest-backed `program_tests` via `SyncStream` that persist updated stream data.
 
-Tests use `force_clock_account` to set Borsh clock payload and `program_owner` to the clock program id on a genesis clock account id; see `test_helpers` rustdoc.
 Harnesses take clock ids from genesis (`harness_clock_01_and_provider_account_ids`), not from a synthetic clock seed keypair.
 
-Test harness hygiene for clock payloads (monotonic-by-default helpers and escape hatches for negative tests) is tracked as a separate tightening pass in `plan.md`, not a blocker for core accrual behavior.
+Clock helpers in `test_helpers` (plan step 4):
+
+- `force_clock_account_unchecked` overwrites the clock payload with no ordering check.
+  Use for time-regression and any case that must repeat the same `(timestamp, block_id)` pair.
+- `force_clock_account_monotonic` asserts in debug builds that the new `(timestamp, block_id)` is strictly after the previous pair (lexicographic on `(timestamp, block_id)`), then calls unchecked.
+  Happy-path tests should use this by default.
+- `state_deposited_with_clock` uses monotonic for the post-deposit clock write.
+  When `initial_ts == 0`, it uses `block_id == 1` for that first write so the payload is not `(0, 0)`; otherwise the next monotonic write with `block_id == 0` would not advance the pair.
+
+Withdraw to a recipient that does not exist in public state fails host-side before program execution (see `program_tests::withdraw::test_withdraw_recipient_not_present_in_state_fails`), analogous to the claim provider account precondition.
+
+## Spec audit (step 4)
+
+Cross-walked `rfc-index/docs/ift-ts/raw/payment-streams.md` and this document against `methods/guest/src/bin/lez_payment_streams.rs` and `lez_payment_streams_core`.
+The RFC file is not edited in this step; normative deltas are listed under RFC proposal candidates for `plan.md` step 8.
+
+### Authorization matrix (wrong signer)
+
+Each row is the account that must sign; tests assert `ERR_VAULT_OWNER_MISMATCH` (6016), `ERR_CLAIM_UNAUTHORIZED` (6025), `ERR_CLOSE_UNAUTHORIZED` (6023), or host witness validation as noted.
+
+| Instruction | Signer | Negative coverage |
+| --- | --- | --- |
+| `initialize_vault` | owner (third account) | `initialize::test_initialize_vault_wrong_signer_witness_fails` (host Unauthorized) |
+| `deposit` | owner | `deposit::test_deposit_owner_mismatch_fails` |
+| `withdraw` | owner | `withdraw::test_withdraw_owner_mismatch_fails` |
+| `create_stream` | owner | `create_stream::test_create_stream_owner_mismatch_fails` |
+| `sync_stream` | owner | `accrual::test_sync_stream_owner_mismatch_fails` |
+| `pause_stream` | owner | `pause_stream::test_pause_stream_owner_mismatch_fails` |
+| `resume_stream` | owner | `resume_stream::test_resume_stream_owner_mismatch_fails` |
+| `top_up_stream` | owner | `top_up::test_top_up_stream_owner_mismatch_fails` |
+| `close_stream` | authority (owner or provider) | `close_stream::test_close_stream_unauthorized_fails` |
+| `claim` | provider | `claim::test_claim_unauthorized_fails` |
+
+### Arithmetic and boundary coverage (inventory)
+
+Already covered before step 4 (guest or core tests): `next_stream_id` overflow (`create_stream`), `total_allocated` / allocation limits (`create_stream`, `top_up`, `deposit`), top-up allocation overflow (`top_up`), recipient balance overflow on withdraw, zero-amount guards, invalid clock account.
+
+Added or highlighted in step 4:
+
+- `accrual::test_sync_stream_with_timestamp_max_clock` exercises `Timestamp::MAX` on the clock wire with `sync_stream`.
+- Core `stream_config` and `vault` unit tests continue to cover saturating accrual and checked `total_allocated` helpers.
+
+### Missing or weak tests (addressed in step 4)
+
+- Solvency and conservation over multi-step flows: `program_tests::invariants` (`assert_vault_conservation_invariants` in `program_tests/common.rs`).
+- `sync_stream` same-clock idempotence and depletion-via-sync: `accrual` tests `test_sync_stream_twice_same_clock_is_no_op`, `test_sync_stream_depletion_via_at_time_paused`.
+- Withdraw recipient missing from state: `withdraw::test_withdraw_recipient_not_present_in_state_fails`.
+- PDA parity documentation: `create_stream::test_derive_stream_pda_stable` comments aligned with guest `pda = [...]` order.
+- Resume and top-up owner mismatch: dedicated tests above.
+
+### Behavior gaps
+
+None found that required guest or production core changes during this audit; existing behavior matched the checked sections of the RFC and this design doc for the flows under test.
+
+### RFC proposal candidates (step 8 seed)
+
+- Clarify in the RFC that withdraw, like claim, assumes the payout recipient account is already present in the execution environment where the host validates accounts (or document the observable failure mode when it is absent).
+- Optional: add a normative solvency invariant (`holding.balance >= total_allocated`, `total_allocated` vs sum of stream allocations) if the RFC should mirror implementation tests.
+- Clock granularity and test harness conventions (system clock ids, monotonic time in tests) may warrant a short testing appendix in the RFC if not already covered under Security and Privacy Considerations.
 
 ## Versioning
 

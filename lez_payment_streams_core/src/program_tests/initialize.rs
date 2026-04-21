@@ -90,3 +90,44 @@ fn test_initialize_vault_then_reinitialize_fails() {
         result
     );
 }
+
+#[test]
+fn test_initialize_vault_wrong_signer_witness_fails() {
+    let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
+    let (_, owner_account_id) = create_keypair(SEED_OWNER);
+    let (alt_private_key, _) = create_keypair(crate::harness_seeds::SEED_ALT_SIGNER);
+    let initial_accounts_data = vec![(owner_account_id, owner_genesis_balance)];
+    let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
+        .expect(
+            "guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok",
+        );
+    let program_id = guest_program.id();
+
+    let vault_id = VaultId::from(1u64);
+    let block_init = 1 as BlockId;
+    let nonce_init = Nonce(0);
+    let (vault_config_account_id, vault_holding_account_id) =
+        derive_vault_pdas(program_id, owner_account_id, vault_id);
+    let account_ids = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
+
+    let tx_wrong_signer = build_signed_public_tx(
+        program_id,
+        Instruction::InitializeVault { vault_id },
+        &account_ids,
+        &[nonce_init],
+        &[&alt_private_key],
+    );
+    let result = state.transition_from_public_transaction(
+        &tx_wrong_signer,
+        block_init,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
+    assert!(
+        result.is_err(),
+        "initialize_vault with non-owner witness should fail: {result:?}"
+    );
+}

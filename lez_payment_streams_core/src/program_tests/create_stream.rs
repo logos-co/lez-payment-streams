@@ -9,7 +9,8 @@ use crate::Instruction;
 use crate::{
     test_helpers::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
-        derive_vault_pdas, force_clock_account, harness_clock_01_and_provider_account_ids,
+        derive_vault_pdas, force_clock_account_monotonic,
+        harness_clock_01_and_provider_account_ids,
         patch_vault_config, state_with_initialized_vault,
     },
     StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig, VaultId,
@@ -35,7 +36,17 @@ fn test_derive_stream_pda_stable() {
     );
     let program_id = guest_program.id();
     let vault_id = VaultId::from(1u64);
-    let (vault_config_account_id, _) = derive_vault_pdas(program_id, owner_account_id, vault_id);
+    // PDA seed order must match the guest `#[account(..., pda = [...])]` attributes in
+    // `methods/guest/src/bin/lez_payment_streams.rs` (`initialize_vault` / `create_stream`):
+    // vault_config: `vault_config`, owner, vault_id;
+    // vault_holding: `vault_holding`, vault_config account id, `native`;
+    // stream_config: `stream_config`, vault_config account id, stream_id.
+    let (vault_config_account_id, vault_holding_account_id) =
+        derive_vault_pdas(program_id, owner_account_id, vault_id);
+    assert_ne!(
+        vault_config_account_id, vault_holding_account_id,
+        "vault config and holding PDAs must differ"
+    );
     let s0 = derive_stream_pda(program_id, vault_config_account_id, 0);
     let s0_b = derive_stream_pda(program_id, vault_config_account_id, 0);
     assert_eq!(s0, s0_b);
@@ -77,7 +88,7 @@ fn test_create_stream() {
     );
 
     let initial_ts: Timestamp = 12_345;
-    force_clock_account(&mut v.state, clock_id, 0, initial_ts);
+    force_clock_account_monotonic(&mut v.state, clock_id, 0, initial_ts);
 
     let stream_id = StreamId::MIN;
     let stream_pda = derive_stream_pda(v.program_id, v.vault_config_account_id, stream_id);
@@ -493,7 +504,7 @@ fn test_create_stream_owner_mismatch_fails() {
     );
 
     let mock_clock_ts_after_deposit = DEFAULT_CLOCK_INITIAL_TS;
-    force_clock_account(
+    force_clock_account_monotonic(
         &mut state,
         clock_id,
         0,

@@ -6,9 +6,11 @@ use nssa_core::{
 };
 
 use crate::{
-    test_helpers::{force_clock_account, harness_clock_01_and_provider_account_ids},
+    test_helpers::{
+        force_clock_account_monotonic, harness_clock_01_and_provider_account_ids, patch_vault_config,
+    },
     StreamConfig, StreamState, Timestamp, TokensPerSecond, ERR_ALLOCATION_EXCEEDS_UNALLOCATED,
-    ERR_ARITHMETIC_OVERFLOW, ERR_STREAM_CLOSED, ERR_ZERO_TOP_UP_AMOUNT,
+    ERR_ARITHMETIC_OVERFLOW, ERR_STREAM_CLOSED, ERR_VAULT_OWNER_MISMATCH, ERR_ZERO_TOP_UP_AMOUNT,
 };
 
 use super::common::{
@@ -51,7 +53,7 @@ fn test_topup_resumes() {
         "create_stream failed",
     );
 
-    force_clock_account(&mut dep.vault.state, clock_id, 0, t1);
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
 
     transition_ok(
         &mut dep.vault.state,
@@ -88,7 +90,7 @@ fn test_topup_resumes() {
         "deposit failed",
     );
 
-    force_clock_account(&mut dep.vault.state, clock_id, 0, t2);
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t2);
 
     transition_ok(
         &mut dep.vault.state,
@@ -113,7 +115,7 @@ fn test_topup_resumes() {
     assert_eq!(s_after_top_up.accrued, 100 as Balance);
 
     let t3: Timestamp = 260;
-    force_clock_account(&mut dep.vault.state, clock_id, 0, t3);
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t3);
 
     transition_ok(
         &mut dep.vault.state,
@@ -167,7 +169,7 @@ fn test_topup_active_increases_allocation() {
         "create_stream failed",
     );
 
-    force_clock_account(&mut dep.vault.state, clock_id, 0, t1);
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
 
     transition_ok(
         &mut dep.vault.state,
@@ -236,7 +238,7 @@ fn test_topup_manual_pause_then_active() {
         "pause_stream failed",
     );
 
-    force_clock_account(&mut dep.vault.state, clock_id, 0, t1);
+    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
 
     transition_ok(
         &mut dep.vault.state,
@@ -457,4 +459,55 @@ fn test_topup_allocation_overflow_fails() {
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ERR_ARITHMETIC_OVERFLOW);
+}
+
+#[test]
+fn test_top_up_stream_owner_mismatch_fails() {
+    let t0 = DEFAULT_CLOCK_INITIAL_TS;
+    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+
+    let mut dep = state_deposited_with_clock(
+        DEFAULT_OWNER_GENESIS_BALANCE,
+        DEFAULT_STREAM_TEST_DEPOSIT,
+        clock_id,
+        t0,
+    );
+
+    let (stream_id, _, account_ids) = first_stream_ix_accounts(&dep);
+
+    transition_ok(
+        &mut dep.vault.state,
+        &signed_create_stream(
+            dep.vault.program_id,
+            dep.vault.vault_id,
+            stream_id,
+            provider_account_id,
+            1 as TokensPerSecond,
+            100 as Balance,
+            &account_ids,
+            Nonce(2),
+            &dep.vault.owner_private_key,
+        ),
+        3 as BlockId,
+        "create_stream failed",
+    );
+
+    patch_vault_config(&mut dep.vault.state, dep.vault.vault_config_account_id, |vc| {
+        vc.owner = provider_account_id;
+    });
+
+    let r = dep.vault.state.transition_from_public_transaction(
+        &signed_top_up_stream(
+            dep.vault.program_id,
+            dep.vault.vault_id,
+            stream_id,
+            1 as Balance,
+            &account_ids,
+            Nonce(3),
+            &dep.vault.owner_private_key,
+        ),
+        4 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
+    assert_execution_failed_with_code(r, ERR_VAULT_OWNER_MISMATCH);
 }

@@ -15,11 +15,11 @@ use nssa_core::{
 use crate::Instruction;
 use crate::{
     test_helpers::{
-        build_signed_public_tx, derive_stream_pda, force_clock_account,
-        state_with_initialized_vault, state_with_initialized_vault_with_preseeded_genesis_accounts,
-        VaultFixture,
+        build_signed_public_tx, derive_stream_pda, force_clock_account_monotonic,
+        state_with_initialized_vault,
+        state_with_initialized_vault_with_preseeded_genesis_accounts, VaultFixture,
     },
-    StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultId,
+    StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig, VaultId,
 };
 
 /// After one deposit and initial clock write (see [`state_deposited_with_clock`]).
@@ -281,6 +281,40 @@ pub(crate) fn transition_ok(
     );
 }
 
+/// `VaultHolding.balance >= VaultConfig.total_allocated` and
+/// `total_allocated` equals the sum of `StreamConfig.allocation` for stream ids
+/// `0 .. next_stream_id` with full stream account payloads.
+pub(crate) fn assert_vault_conservation_invariants(
+    state: &V03State,
+    program_id: ProgramId,
+    vault: &VaultFixture,
+) {
+    let vc = VaultConfig::from_bytes(&state.get_account_by_id(vault.vault_config_account_id).data)
+        .expect("vault config");
+    let holding_bal: Balance = state.get_account_by_id(vault.vault_holding_account_id).balance;
+    assert!(
+        holding_bal >= vc.total_allocated,
+        "solvency: holding {holding_bal} < total_allocated {}",
+        vc.total_allocated
+    );
+    let mut sum: Balance = 0;
+    for stream_id in 0u64..vc.next_stream_id {
+        let pda = derive_stream_pda(program_id, vault.vault_config_account_id, stream_id);
+        let data = &state.get_account_by_id(pda).data;
+        if data.len() != StreamConfig::SIZE {
+            continue;
+        }
+        let sc = StreamConfig::from_bytes(data).expect("stream row");
+        sum = sum
+            .checked_add(sc.allocation)
+            .expect("allocation sum overflow");
+    }
+    assert_eq!(
+        sum, vc.total_allocated,
+        "conservation: sum(stream.allocation) must equal total_allocated"
+    );
+}
+
 /// Test-only: set stream state to `Closed` by rewriting the stream account (bypasses `close_stream`).
 pub(crate) fn force_stream_state_closed(state: &mut V03State, stream_pda: AccountId) {
     let mut stream_cfg =
@@ -385,7 +419,7 @@ pub(crate) fn claim_stream_prelude_synced_at_t1(
         3 as BlockId,
         "create_stream failed",
     );
-    force_clock_account(
+    force_clock_account_monotonic(
         &mut with_provider.deposited.vault.state,
         clock_id,
         0,
@@ -446,7 +480,11 @@ fn state_deposited_with_clock_impl(
         "deposit failed",
     );
 
-    force_clock_account(&mut vault.state, clock_id, 0, initial_ts);
+    // When `initial_ts == 0`, use `block_id == 1` so the first payload is not `(0, 0)`; otherwise a
+    // test's first `force_clock_account_monotonic(..., 0, 0)` would not advance `(timestamp,
+    // block_id)` strictly past the fixture write.
+    let init_block_id = if initial_ts == 0 { 1u64 } else { 0u64 };
+    force_clock_account_monotonic(&mut vault.state, clock_id, init_block_id, initial_ts);
 
     DepositedVaultFixture { vault, clock_id }
 }

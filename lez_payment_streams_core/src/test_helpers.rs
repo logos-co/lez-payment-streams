@@ -4,6 +4,10 @@
 //! After you have a [`nssa::V03State`] and program id,
 //! see [`crate::program_tests::common`] for deposit fixtures,
 //! [`Instruction`] builders, and helpers like `transition_ok`.
+//!
+//! Clock overrides: prefer [`force_clock_account_monotonic`] for forward-only time; use
+//! [`force_clock_account_unchecked`] when the clock must move backward or repeat the same
+//! `(timestamp, block_id)` (for example time-regression failure tests).
 
 use std::fs;
 use std::path::PathBuf;
@@ -167,7 +171,10 @@ pub(crate) fn derive_stream_pda(
 }
 
 /// Overwrite a system clock account payload for tests (Borsh [`ClockAccountData`], clock program owner).
-pub(crate) fn force_clock_account(
+///
+/// Does not enforce time order. Use for negative tests (time regression) and any case where the
+/// clock must move backward or repeat an identical `(timestamp, block_id)` pair.
+pub(crate) fn force_clock_account_unchecked(
     state: &mut V03State,
     clock_account_id: AccountId,
     block_id: u64,
@@ -186,6 +193,27 @@ pub(crate) fn force_clock_account(
         ..Account::default()
     };
     state.force_insert_account(clock_account_id, account);
+}
+
+/// Like [`force_clock_account_unchecked`], but in debug builds asserts the new payload is strictly
+/// after the previous `(timestamp, block_id)` when the account already holds a parsable
+/// [`ClockAccountData`] (otherwise the first write is unconstrained).
+pub(crate) fn force_clock_account_monotonic(
+    state: &mut V03State,
+    clock_account_id: AccountId,
+    block_id: u64,
+    timestamp: nssa_core::Timestamp,
+) {
+    let prev_acc = state.get_account_by_id(clock_account_id);
+    if let Some(prev) = ClockAccountData::from_bytes_slice(&prev_acc.data) {
+        let before = (prev.timestamp, prev.block_id);
+        let after = (timestamp, block_id);
+        debug_assert!(
+            after > before,
+            "force_clock_account_monotonic: clock must move strictly forward (was {before:?}, set {after:?})",
+        );
+    }
+    force_clock_account_unchecked(state, clock_account_id, block_id, timestamp);
 }
 
 /// Rewrite `VaultConfig` account data in the test harness (bypasses normal transitions).
