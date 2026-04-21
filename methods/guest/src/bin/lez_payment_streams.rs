@@ -426,6 +426,8 @@ mod lez_payment_streams {
         let mut vault_holding = vault_holding;
         let mut withdraw_to = withdraw_to;
 
+        let recipient_was_default = withdraw_to.account == Account::default();
+
         vault_holding.account.balance = vault_holding.account.balance.checked_sub(amount).ok_or_else(|| {
             spel_custom(ERR_INSUFFICIENT_FUNDS, "vault holding balance underflow")
         })?;
@@ -434,8 +436,30 @@ mod lez_payment_streams {
             spel_custom(ERR_ARITHMETIC_OVERFLOW, "recipient balance overflow")
         })?;
 
-        Ok(SpelOutput::execute(
-            vec![vault_config, vault_holding, owner, withdraw_to],
+        let withdraw_to_claim = if recipient_was_default {
+            AutoClaim::Claimed(Claim::Authorized)
+        } else {
+            AutoClaim::None
+        };
+
+        let vault_config_account = vault_config.account;
+        let vault_holding_account = vault_holding.account;
+        let owner_account = owner.account;
+        let withdraw_to_account = withdraw_to.account;
+
+        Ok(SpelOutput::execute_with_claims(
+            &[
+                vault_config_account,
+                vault_holding_account,
+                owner_account,
+                withdraw_to_account,
+            ],
+            &[
+                AutoClaim::None,
+                AutoClaim::None,
+                AutoClaim::None,
+                withdraw_to_claim,
+            ],
             vec![],
         ))
     }

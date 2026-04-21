@@ -8,6 +8,8 @@ This document covers what the spec leaves open.
 
 Host, guest, and examples use the same LEZ checkout: `nssa_core` / `nssa` (tests) from `logos-execution-zone` git tag `v0.2.0-rc1`, so there is a single `nssa_core` in the graph alongside SPEL.
 
+`lez_payment_streams_core` enables `nssa_core`’s `host` feature so tests can use `EncryptionScheme::decrypt` and viewing-key types when asserting privacy-preserving outputs.
+
 SPEL is pinned to git revision `3457c7431e9b5b88661ed87b53677511ef88d113` on `https://github.com/logos-co/spel.git` (includes `SpelOutput::execute` and the macro rewrite to `execute_with_claims` for `vec![account, …]` patterns).
 
 ## Duplicated helpers in the core crate
@@ -32,6 +34,55 @@ Use the field name `clock_id` for the system clock account passed on the instruc
 
 `claim_stream_prelude_synced_at_t1` runs `create_stream` then advances the clock to `t1` and `sync_stream`.
 It assumes the same ladder as manual claim tests: `initialize_vault` at block 1 / `Nonce(0)`, `deposit` at block 2 / `Nonce(1)`, `create_stream` at block 3 / `Nonce(2)`, `sync_stream` at block 4 / `Nonce(3)`.
+
+## Privacy-preserving execution (NSSA) and step 5 tests
+
+Host coverage lives in `lez_payment_streams_core/src/program_tests/shielded_execution.rs`.
+
+### NSSA transition rule and visibility
+
+`ValidatedStateDiff::from_privacy_preserving_transaction` rejects a privacy-preserving message when both `new_commitments` and `new_nullifiers` are empty.
+The privacy-preserving circuit only produces those for accounts with visibility `1` (authenticated private) or `2` (new private); visibility `0` is public.
+Therefore an all-public visibility mask cannot reach a successful PP state transition, even if program execution is otherwise valid.
+
+Visibility semantics follow LEZ `PrivacyPreservingCircuitInput` (`0` public, `1` / `2` private with commitments, nullifiers when spending, ciphertexts).
+**Mixed visibility** (public PDAs and clock plus at least one private slot) is the workable default for this program under current NSSA rules.
+
+### PDAs, clock, and npk identities
+
+Vault and stream accounts are PDAs derived from `(program_id, seeds)`; the system clock accounts are platform-defined.
+They appear as public (`0`) rows in PP execution.
+Private rows use `AccountId::from(npk)` (nullifier public key) and note-style updates; that model does not replace PDA or clock identities without a deeper custody or protocol change.
+
+### What “private” means in the current MVP
+
+Per-slot shielding (for example a withdraw payout encoded as a new private commitment) does not hide that the payment-stream program ran, which vault PDAs were touched, or stream parameters stored on PDAs.
+
+### Public versus shielded parity
+
+The guest’s balance and accrual rules are the same whether transitions are applied via `transition_from_public_transaction` or `transition_from_privacy_preserving_transaction`.
+Shielded tests assert the same vault holding and `VaultConfig` invariants as the public `withdraw` ladder for the covered flow.
+
+### Timestamp and clock in PP flows
+
+PP `Message` values carry `timestamp_validity_window` (and block window) from program outputs; `transition_from_privacy_preserving_transaction` must receive a `(block_id, timestamp)` pair that satisfies those windows.
+Tests reuse the same system clock ids and `TEST_PUBLIC_TX_TIMESTAMP` convention as public `program_tests` unless a case intentionally exercises bounds.
+
+### Guest rebuild policy
+
+After changes to the guest or to wire types shared with the guest, rebuild the methods crate before relying on `program_tests` (for example `cargo build -p lez_payment_streams-methods`).
+
+### `withdraw` and PP claim metadata
+
+The LEZ privacy-preserving circuit requires that default-owned accounts which change during execution carry an ownership **claim** in the program output so the circuit can set `program_owner` to the executing program before checking “modified but not claimed” invariants.
+
+For `withdraw`, when the payout recipient’s pre-state is `Account::default()`, the guest now returns that row with `AutoClaim::Claimed(Claim::Authorized)` via `SpelOutput::execute_with_claims` so PP execution matches NSSA’s stricter path while public withdrawals to existing default genesis accounts remain unchanged in observable balances.
+
+### Deposit and PP (not covered end-to-end)
+
+`deposit` lists only three top-level accounts (vault config, vault holding, owner) and chains `authenticated_transfer_program` internally.
+There is no extra account slot to attach a visibility-`2` row for NSSA’s non-empty commitment or nullifier rule without changing the instruction surface or protocol, so step 5 does not add a full PP `deposit` transition test.
+A future design could add an explicit shielding leg or extend the account list if product requirements demand deposit through the PP circuit.
 
 ## Account types and relationships
 

@@ -11,6 +11,7 @@ mod invariants;
 mod initialize;
 mod pause_stream;
 mod resume_stream;
+mod shielded_execution;
 mod serialization;
 mod top_up;
 mod withdraw;

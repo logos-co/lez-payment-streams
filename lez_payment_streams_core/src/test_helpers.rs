@@ -35,6 +35,14 @@ fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
+/// Load the payment-streams guest [`Program`] for PP `execute_and_prove` (same blob as deployment).
+pub(crate) fn load_guest_program() -> Program {
+    let guest_bytecode = fs::read(guest_binary_path()).expect(
+        "guest binary missing; run `cargo build -p lez_payment_streams-methods`",
+    );
+    Program::new(guest_bytecode).expect("guest bytecode should be a valid Program")
+}
+
 fn guest_binary_path() -> PathBuf {
     // `Program::new` expects the risc0 `ProgramBinary` blob (`*.bin`), not the raw ELF.
     // Produced by `cargo build -p lez_payment_streams-methods` (`risc0_build::embed_methods`).

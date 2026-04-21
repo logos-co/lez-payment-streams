@@ -379,6 +379,10 @@ Decision log updates in `design.md`:
 - timestamp constraints in private flow
   (clock granularity choice per instruction)
 
+Normative detail for NSSA visibility, PP transition rules, the `withdraw` claim metadata change, and deposit PP limitations is recorded under **Privacy-preserving execution (NSSA) and step 5 tests** in `design.md`.
+
+RFC-level privacy goals, how the current guest contradicts them, and protocol directions beyond step 5 are spelled out in the section Transition to private execution (after the numbered Plan steps).
+
 ### 6. Remaining refactor
 
 With public and shielded suites green,
@@ -464,6 +468,57 @@ Review consistency across:
 implemented behavior,
 `design.md` (or its successor reviewer doc),
 and RFC text.
+
+## Transition to private execution
+
+This section ties the payment-streams RFC privacy posture to the present SPEL guest and NSSA PP model.
+It replaces the earlier step 5 “privacy posture and evolution” bullets, which are merged here.
+
+### RFC goals (cited)
+
+The specification states that an initial privacy goal is unlinkability between off-chain requests and on-chain funding.
+It also states that vault deposits must not reveal the depositor’s identity, and that stream creation should not reveal which vault funded the stream.
+
+### Contradictions in the current design
+
+The MVP guest and account layout do not satisfy those goals on-chain.
+
+- Unlinkability between off-chain requests and on-chain funding is not achieved when the same public `AccountId` signs funding transactions, appears in vault PDA seeds, and is stored as `VaultConfig.owner`.
+- Vault deposits today require a mutable signer that the guest checks against `VaultConfig.owner` (`deposit` account list and `validate_vault_config`).
+  Observers see that identity as the source of funds moving into the vault holding.
+- Stream creation lists vault config and holding PDAs and initializes `stream_config` with a PDA that includes the vault config account in its seed path.
+  That binds each stream account to a specific vault in a recoverable way, so “which vault funded this stream” is visible from derivation and transaction effects.
+- Privacy-preserving execution with mixed visibility (step 5) improves payout-side confidentiality for instructions that support it (for example `withdraw` to a private recipient slot).
+  It does not remove public PDAs, clock accounts, or the structural vault–stream link above without further protocol work.
+
+### Protocol design changes (broad strokes)
+
+Addressing the RFC goals requires guest and account-model changes, not only PP harnessing or relayers.
+
+- Deposits must allow funding without publishing the depositor as the vault owner in the same transaction shape as today.
+  That implies at least one of: a separate funder role with an authorization credential the guest verifies; a shielded or pooled funding leg; or an extended instruction surface so NSSA mixed visibility can cover the funding source row while semantics stay sound.
+- Vault identity may need to stop being derived solely from a public owner key plus `vault_id` if observers must not infer who created or funds the vault from PDA derivation alone.
+- Stream–vault unlinkability needs structural decoupling, for example indirection through a commitment or pool root, stream PDAs that do not name `vault_config` in seeds, or custody that moves allocation bookkeeping off transparent per-vault PDAs.
+- Unlinkability from off-chain requests may require anonymous ingress (relayer with economic cost, blinded deposits, or note-style spends) coordinated with the above, not only RPC privacy.
+
+Clock accounts remain platform-defined time anchors; even strong privacy modes assume public time validity, not a hidden global clock.
+
+### Near-term evolution (within the current account model)
+
+These items are incremental and align with step 5’s scope (PP where the instruction layout already allows NSSA’s non-empty commitment or nullifier rule).
+
+- Withdraw (done in step 5): mixed visibility with a private payout recipient (visibility `2` on the recipient slot), `execute_and_prove`, and `transition_from_privacy_preserving_transaction`; vault PDAs, owner signer, and clock stay on public legs where the guest requires them.
+- Claim: same private-recipient pattern for the provider payout is plausible if signer rules and `SpelOutput` claim metadata match NSSA expectations.
+- Deposit: the current three-account instruction does not provide an extra slot for a private visibility row, so end-to-end PP deposit is blocked until the instruction layout or custody model changes (see `design.md`).
+- Stream lifecycle instructions (`create_stream`, `sync_stream`, pause, resume, top-up, close): PDAs and clock remain public identifiers; privacy gains stay on payout legs until stream and vault identities are redesigned.
+
+### Longer-term directions
+
+Track these in RFC proposal work (plan step 8) and product design rather than in the MVP guest alone.
+
+- Move sensitive balances or stream metadata off transparent PDAs (shielded pool style custody or commitment-only state) while still reading time from platform system clocks.
+- Introduce npk-oriented identities for roles that are today fixed `AccountId` fields in `VaultConfig` or stream config, coordinated with NSSA, SPEL signer rules, and PDA derivation.
+- Private execution for PDA-shaped identities likely needs execution-zone or guest features beyond visibility masks on the current account list.
 
 ## Cross-cutting Deliverables
 
