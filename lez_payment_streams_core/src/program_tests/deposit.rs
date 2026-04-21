@@ -31,40 +31,35 @@ fn test_deposit() {
     let block_deposit = 2 as BlockId;
     let nonce_deposit = Nonce(1);
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_with_initialized_vault(owner_balance_before);
+    let mut fx = state_with_initialized_vault(owner_balance_before);
     let account_ids = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
+        fx.vault_config_account_id,
+        fx.vault_holding_account_id,
+        fx.owner_account_id,
     ];
 
-    let vault_config_before = state.get_account_by_id(vault_config_account_id);
+    let vault_config_before = fx.state.get_account_by_id(fx.vault_config_account_id);
     let vault_config_state_before =
         VaultConfig::from_bytes(&vault_config_before.data).expect("valid vault config bytes");
     let instruction_deposit = Instruction::Deposit {
-        vault_id,
+        vault_id: fx.vault_id,
         amount: deposit_amount,
         authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
     };
     let tx_deposit = build_signed_public_tx(
-        program_id,
+        fx.program_id,
         instruction_deposit,
         &account_ids,
         &[nonce_deposit],
-        &[&owner_private_key],
+        &[&fx.owner_private_key],
     );
 
-    let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
+    let vault_holding_balance_before = fx
+        .state
+        .get_account_by_id(fx.vault_holding_account_id)
+        .balance;
 
-    let result_deposit = state.transition_from_public_transaction(
+    let result_deposit = fx.state.transition_from_public_transaction(
         &tx_deposit,
         block_deposit,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
@@ -75,9 +70,12 @@ fn test_deposit() {
         result_deposit
     );
 
-    let owner_balance_after = state.get_account_by_id(owner_account_id).balance;
-    let vault_holding_balance_after = state.get_account_by_id(vault_holding_account_id).balance;
-    let vault_config_after = state.get_account_by_id(vault_config_account_id);
+    let owner_balance_after = fx.state.get_account_by_id(fx.owner_account_id).balance;
+    let vault_holding_balance_after = fx
+        .state
+        .get_account_by_id(fx.vault_holding_account_id)
+        .balance;
+    let vault_config_after = fx.state.get_account_by_id(fx.vault_config_account_id);
     let vault_config_state_after =
         VaultConfig::from_bytes(&vault_config_after.data).expect("valid vault config bytes");
 
@@ -115,38 +113,35 @@ fn test_deposit_after_create_stream_succeeds() {
     let second_deposit = 50 as Balance;
     let allocation = 200 as Balance;
     let rate = 10 as TokensPerSecond;
-    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_clock(
+    let mut dep = state_deposited_with_clock(
         owner_balance_start,
         initial_deposit,
-        mock_clock_account_id,
+        clock_id,
         DEFAULT_CLOCK_INITIAL_TS,
     );
 
-    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
+    let stream_pda = derive_stream_pda(
+        dep.vault.program_id,
+        dep.vault.vault_config_account_id,
+        0,
+    );
     let account_ids_create = [
-        vault_config_account_id,
-        vault_holding_account_id,
+        dep.vault.vault_config_account_id,
+        dep.vault.vault_holding_account_id,
         stream_pda,
-        owner_account_id,
-        mock_clock_account_id,
+        dep.vault.owner_account_id,
+        clock_id,
     ];
     assert!(
-        state
+        dep.vault
+            .state
             .transition_from_public_transaction(
                 &build_signed_public_tx(
-                    program_id,
+                    dep.vault.program_id,
                     Instruction::CreateStream {
-                        vault_id,
+                        vault_id: dep.vault.vault_id,
                         stream_id: 0,
                         provider: provider_account_id,
                         rate,
@@ -154,7 +149,7 @@ fn test_deposit_after_create_stream_succeeds() {
                     },
                     &account_ids_create,
                     &[Nonce(2)],
-                    &[&owner_private_key],
+                    &[&dep.vault.owner_private_key],
                 ),
                 3 as BlockId,
                 crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
@@ -163,49 +158,77 @@ fn test_deposit_after_create_stream_succeeds() {
         "create_stream failed"
     );
 
-    let vc_after_stream =
-        VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
-            .expect("vault config");
-    let stream_data_after_create = state.get_account_by_id(stream_pda).data.clone();
-    let owner_before_second = state.get_account_by_id(owner_account_id).balance;
-    let holding_before_second = state.get_account_by_id(vault_holding_account_id).balance;
+    let vc_after_stream = VaultConfig::from_bytes(
+        &dep.vault
+            .state
+            .get_account_by_id(dep.vault.vault_config_account_id)
+            .data,
+    )
+    .expect("vault config");
+    let stream_data_after_create = dep
+        .vault
+        .state
+        .get_account_by_id(stream_pda)
+        .data
+        .clone();
+    let owner_before_second = dep
+        .vault
+        .state
+        .get_account_by_id(dep.vault.owner_account_id)
+        .balance;
+    let holding_before_second = dep
+        .vault
+        .state
+        .get_account_by_id(dep.vault.vault_holding_account_id)
+        .balance;
 
     let account_ids_deposit = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
+        dep.vault.vault_config_account_id,
+        dep.vault.vault_holding_account_id,
+        dep.vault.owner_account_id,
     ];
-    let result = state.transition_from_public_transaction(
+    let result = dep.vault.state.transition_from_public_transaction(
         &build_signed_public_tx(
-            program_id,
+            dep.vault.program_id,
             Instruction::Deposit {
-                vault_id,
+                vault_id: dep.vault.vault_id,
                 amount: second_deposit,
                 authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
             },
             &account_ids_deposit,
             &[Nonce(3)],
-            &[&owner_private_key],
+            &[&dep.vault.owner_private_key],
         ),
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert!(result.is_ok(), "second deposit failed: {:?}", result);
 
-    let vc_after = VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
-        .expect("vault config");
+    let vc_after = VaultConfig::from_bytes(
+        &dep.vault
+            .state
+            .get_account_by_id(dep.vault.vault_config_account_id)
+            .data,
+    )
+    .expect("vault config");
     assert_eq!(vc_after.total_allocated, vc_after_stream.total_allocated);
     assert_eq!(vc_after.next_stream_id, vc_after_stream.next_stream_id);
     assert_eq!(
-        state.get_account_by_id(owner_account_id).balance,
+        dep.vault
+            .state
+            .get_account_by_id(dep.vault.owner_account_id)
+            .balance,
         owner_before_second - second_deposit
     );
     assert_eq!(
-        state.get_account_by_id(vault_holding_account_id).balance,
+        dep.vault
+            .state
+            .get_account_by_id(dep.vault.vault_holding_account_id)
+            .balance,
         holding_before_second + second_deposit
     );
     assert_eq!(
-        state.get_account_by_id(stream_pda).data,
+        dep.vault.state.get_account_by_id(stream_pda).data,
         stream_data_after_create
     );
 }
@@ -217,41 +240,37 @@ fn test_deposit_zero_amount_fails() {
     let nonce_deposit = Nonce(1);
     let deposit_amount = 0 as Balance;
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_with_initialized_vault(owner_balance_start);
+    let mut fx = state_with_initialized_vault(owner_balance_start);
     let account_ids = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
+        fx.vault_config_account_id,
+        fx.vault_holding_account_id,
+        fx.owner_account_id,
     ];
 
-    let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
-    let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
-    let vault_config_data_before = state
-        .get_account_by_id(vault_config_account_id)
+    let owner_balance_before = fx.state.get_account_by_id(fx.owner_account_id).balance;
+    let vault_holding_balance_before = fx
+        .state
+        .get_account_by_id(fx.vault_holding_account_id)
+        .balance;
+    let vault_config_data_before = fx
+        .state
+        .get_account_by_id(fx.vault_config_account_id)
         .data
         .clone();
 
     let tx_deposit = build_signed_public_tx(
-        program_id,
+        fx.program_id,
         Instruction::Deposit {
-            vault_id,
+            vault_id: fx.vault_id,
             amount: deposit_amount,
             authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
         },
         &account_ids,
         &[nonce_deposit],
-        &[&owner_private_key],
+        &[&fx.owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(
+    let result = fx.state.transition_from_public_transaction(
         &tx_deposit,
         block_deposit,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
@@ -259,10 +278,10 @@ fn test_deposit_zero_amount_fails() {
     assert_execution_failed_with_code(result, ERR_ZERO_DEPOSIT_AMOUNT);
 
     assert_vault_state_unchanged(
-        &state,
-        owner_account_id,
-        vault_holding_account_id,
-        vault_config_account_id,
+        &fx.state,
+        fx.owner_account_id,
+        fx.vault_holding_account_id,
+        fx.vault_config_account_id,
         owner_balance_before,
         vault_holding_balance_before,
         vault_config_data_before,
@@ -276,44 +295,40 @@ fn test_deposit_wrong_vault_id_fails() {
     let nonce_deposit = Nonce(1);
     let deposit_amount = 100 as Balance;
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_with_initialized_vault(owner_balance_start);
-    patch_vault_config(&mut state, vault_config_account_id, |vc| {
+    let mut fx = state_with_initialized_vault(owner_balance_start);
+    patch_vault_config(&mut fx.state, fx.vault_config_account_id, |vc| {
         vc.vault_id = VaultId::from(999u64);
     });
     let account_ids = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
+        fx.vault_config_account_id,
+        fx.vault_holding_account_id,
+        fx.owner_account_id,
     ];
 
-    let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
-    let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
-    let vault_config_data_before = state
-        .get_account_by_id(vault_config_account_id)
+    let owner_balance_before = fx.state.get_account_by_id(fx.owner_account_id).balance;
+    let vault_holding_balance_before = fx
+        .state
+        .get_account_by_id(fx.vault_holding_account_id)
+        .balance;
+    let vault_config_data_before = fx
+        .state
+        .get_account_by_id(fx.vault_config_account_id)
         .data
         .clone();
 
     let tx_deposit = build_signed_public_tx(
-        program_id,
+        fx.program_id,
         Instruction::Deposit {
-            vault_id,
+            vault_id: fx.vault_id,
             amount: deposit_amount,
             authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
         },
         &account_ids,
         &[nonce_deposit],
-        &[&owner_private_key],
+        &[&fx.owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(
+    let result = fx.state.transition_from_public_transaction(
         &tx_deposit,
         block_deposit,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
@@ -321,10 +336,10 @@ fn test_deposit_wrong_vault_id_fails() {
     assert_execution_failed_with_code(result, ERR_VAULT_ID_MISMATCH);
 
     assert_vault_state_unchanged(
-        &state,
-        owner_account_id,
-        vault_holding_account_id,
-        vault_config_account_id,
+        &fx.state,
+        fx.owner_account_id,
+        fx.vault_holding_account_id,
+        fx.vault_config_account_id,
         owner_balance_before,
         vault_holding_balance_before,
         vault_config_data_before,
@@ -338,43 +353,39 @@ fn test_deposit_wrong_authenticated_transfer_program_id_fails() {
     let nonce_deposit = Nonce(1);
     let deposit_amount = 100 as Balance;
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_with_initialized_vault(owner_balance_start);
+    let mut fx = state_with_initialized_vault(owner_balance_start);
     let account_ids = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
+        fx.vault_config_account_id,
+        fx.vault_holding_account_id,
+        fx.owner_account_id,
     ];
 
-    let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
-    let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
-    let vault_config_data_before = state
-        .get_account_by_id(vault_config_account_id)
+    let owner_balance_before = fx.state.get_account_by_id(fx.owner_account_id).balance;
+    let vault_holding_balance_before = fx
+        .state
+        .get_account_by_id(fx.vault_holding_account_id)
+        .balance;
+    let vault_config_data_before = fx
+        .state
+        .get_account_by_id(fx.vault_config_account_id)
         .data
         .clone();
 
     // Chained transfer must target `Program::authenticated_transfer_program().id()`; using the
     // payment-streams guest `program_id` here is deliberately wrong and fails chained execution.
     let tx_deposit = build_signed_public_tx(
-        program_id,
+        fx.program_id,
         Instruction::Deposit {
-            vault_id,
+            vault_id: fx.vault_id,
             amount: deposit_amount,
-            authenticated_transfer_program_id: program_id,
+            authenticated_transfer_program_id: fx.program_id,
         },
         &account_ids,
         &[nonce_deposit],
-        &[&owner_private_key],
+        &[&fx.owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(
+    let result = fx.state.transition_from_public_transaction(
         &tx_deposit,
         block_deposit,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
@@ -383,10 +394,10 @@ fn test_deposit_wrong_authenticated_transfer_program_id_fails() {
     assert!(result.is_err());
 
     assert_vault_state_unchanged(
-        &state,
-        owner_account_id,
-        vault_holding_account_id,
-        vault_config_account_id,
+        &fx.state,
+        fx.owner_account_id,
+        fx.vault_holding_account_id,
+        fx.vault_config_account_id,
         owner_balance_before,
         vault_holding_balance_before,
         vault_config_data_before,
@@ -400,40 +411,36 @@ fn test_deposit_insufficient_funds_fails() {
     let genesis_owner_balance = 100 as Balance;
     let deposit_amount = 200 as Balance;
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_with_initialized_vault(genesis_owner_balance);
+    let mut fx = state_with_initialized_vault(genesis_owner_balance);
     let account_ids = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
+        fx.vault_config_account_id,
+        fx.vault_holding_account_id,
+        fx.owner_account_id,
     ];
 
-    let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
-    let vault_config_data_before = state
-        .get_account_by_id(vault_config_account_id)
+    let vault_holding_balance_before = fx
+        .state
+        .get_account_by_id(fx.vault_holding_account_id)
+        .balance;
+    let vault_config_data_before = fx
+        .state
+        .get_account_by_id(fx.vault_config_account_id)
         .data
         .clone();
 
     let tx_deposit = build_signed_public_tx(
-        program_id,
+        fx.program_id,
         Instruction::Deposit {
-            vault_id,
+            vault_id: fx.vault_id,
             amount: deposit_amount,
             authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
         },
         &account_ids,
         &[nonce_deposit],
-        &[&owner_private_key],
+        &[&fx.owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(
+    let result = fx.state.transition_from_public_transaction(
         &tx_deposit,
         block_deposit,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
@@ -442,10 +449,10 @@ fn test_deposit_insufficient_funds_fails() {
     assert!(result.is_err());
 
     assert_vault_state_unchanged(
-        &state,
-        owner_account_id,
-        vault_holding_account_id,
-        vault_config_account_id,
+        &fx.state,
+        fx.owner_account_id,
+        fx.vault_holding_account_id,
+        fx.vault_config_account_id,
         genesis_owner_balance,
         vault_holding_balance_before,
         vault_config_data_before,
@@ -554,36 +561,32 @@ fn test_deposit_owner_mismatch_fails() {
 fn test_deposit_vault_holding_version_mismatch_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = 10 as Balance;
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_with_initialized_vault(owner_balance_start);
+    let mut fx = state_with_initialized_vault(owner_balance_start);
 
-    let mut holding = state.get_account_by_id(vault_holding_account_id).clone();
+    let mut holding = fx
+        .state
+        .get_account_by_id(fx.vault_holding_account_id)
+        .clone();
     holding.data = Data::try_from(VaultHolding::new_with_version(2).to_bytes())
         .expect("vault holding payload fits Data limits");
-    state.force_insert_account(vault_holding_account_id, holding);
+    fx.state
+        .force_insert_account(fx.vault_holding_account_id, holding);
 
-    let result = state.transition_from_public_transaction(
+    let result = fx.state.transition_from_public_transaction(
         &build_signed_public_tx(
-            program_id,
+            fx.program_id,
             Instruction::Deposit {
-                vault_id,
+                vault_id: fx.vault_id,
                 amount: deposit_amount,
                 authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
             },
             &[
-                vault_config_account_id,
-                vault_holding_account_id,
-                owner_account_id,
+                fx.vault_config_account_id,
+                fx.vault_holding_account_id,
+                fx.owner_account_id,
             ],
             &[Nonce(1)],
-            &[&owner_private_key],
+            &[&fx.owner_private_key],
         ),
         2 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,

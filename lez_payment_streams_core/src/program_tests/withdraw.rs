@@ -34,34 +34,25 @@ fn test_withdraw() {
     let nonce_deposit = Nonce(1);
     let nonce_withdraw = Nonce(2);
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        recipient_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_with_initialized_vault_with_recipient(owner_balance_start);
+    let mut wr = state_with_initialized_vault_with_recipient(owner_balance_start);
 
     let account_ids_deposit = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
+        wr.vault.vault_config_account_id,
+        wr.vault.vault_holding_account_id,
+        wr.vault.owner_account_id,
     ];
     let tx_deposit = build_signed_public_tx(
-        program_id,
+        wr.vault.program_id,
         Instruction::Deposit {
-            vault_id,
+            vault_id: wr.vault.vault_id,
             amount: deposit_amount,
             authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
         },
         &account_ids_deposit,
         &[nonce_deposit],
-        &[&owner_private_key],
+        &[&wr.vault.owner_private_key],
     );
-    let result_deposit = state.transition_from_public_transaction(
+    let result_deposit = wr.vault.state.transition_from_public_transaction(
         &tx_deposit,
         block_deposit,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
@@ -72,30 +63,30 @@ fn test_withdraw() {
         result_deposit
     );
 
-    let vault_config_before = state.get_account_by_id(vault_config_account_id);
+    let vault_config_before = wr.vault.state.get_account_by_id(wr.vault.vault_config_account_id);
     let vault_config_state_before =
         VaultConfig::from_bytes(&vault_config_before.data).expect("valid vault config bytes");
-    let owner_after_deposit = state.get_account_by_id(owner_account_id).balance;
-    let vault_holding_before_withdraw = state.get_account_by_id(vault_holding_account_id).balance;
-    let recipient_before_withdraw = state.get_account_by_id(recipient_account_id).balance;
+    let owner_after_deposit = wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance;
+    let vault_holding_before_withdraw = wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance;
+    let recipient_before_withdraw = wr.vault.state.get_account_by_id(wr.recipient_account_id).balance;
 
     let account_ids_withdraw = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        recipient_account_id,
+        wr.vault.vault_config_account_id,
+        wr.vault.vault_holding_account_id,
+        wr.vault.owner_account_id,
+        wr.recipient_account_id,
     ];
     let tx_withdraw = build_signed_public_tx(
-        program_id,
+        wr.vault.program_id,
         Instruction::Withdraw {
-            vault_id,
+            vault_id: wr.vault.vault_id,
             amount: withdraw_amount,
         },
         &account_ids_withdraw,
         &[nonce_withdraw],
-        &[&owner_private_key],
+        &[&wr.vault.owner_private_key],
     );
-    let result_withdraw = state.transition_from_public_transaction(
+    let result_withdraw = wr.vault.state.transition_from_public_transaction(
         &tx_withdraw,
         block_withdraw,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
@@ -106,20 +97,20 @@ fn test_withdraw() {
         result_withdraw
     );
 
-    let vault_config_after = state.get_account_by_id(vault_config_account_id);
+    let vault_config_after = wr.vault.state.get_account_by_id(wr.vault.vault_config_account_id);
     let vault_config_state_after =
         VaultConfig::from_bytes(&vault_config_after.data).expect("valid vault config bytes");
 
     assert_eq!(
-        state.get_account_by_id(owner_account_id).balance,
+        wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance,
         owner_after_deposit
     );
     assert_eq!(
-        state.get_account_by_id(vault_holding_account_id).balance,
+        wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance,
         vault_holding_before_withdraw - withdraw_amount
     );
     assert_eq!(
-        state.get_account_by_id(recipient_account_id).balance,
+        wr.vault.state.get_account_by_id(wr.recipient_account_id).balance,
         recipient_before_withdraw + withdraw_amount
     );
     assert_eq!(
@@ -152,43 +143,36 @@ fn test_withdraw_zero_amount_fails() {
     let block_withdraw = 2 as BlockId;
     let nonce_withdraw = Nonce(1);
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        recipient_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_with_initialized_vault_with_recipient(owner_balance_start);
+    let mut wr = state_with_initialized_vault_with_recipient(owner_balance_start);
     let account_ids = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        recipient_account_id,
+        wr.vault.vault_config_account_id,
+        wr.vault.vault_holding_account_id,
+        wr.vault.owner_account_id,
+        wr.recipient_account_id,
     ];
 
-    let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
-    let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
-    let recipient_balance_before = state.get_account_by_id(recipient_account_id).balance;
-    let vault_config_data_before = state
-        .get_account_by_id(vault_config_account_id)
+    let owner_balance_before = wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance;
+    let vault_holding_balance_before = wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance;
+    let recipient_balance_before = wr.vault.state.get_account_by_id(wr.recipient_account_id).balance;
+    let vault_config_data_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.vault_config_account_id)
         .data
         .clone();
 
     let tx_withdraw = build_signed_public_tx(
-        program_id,
+        wr.vault.program_id,
         Instruction::Withdraw {
-            vault_id,
+            vault_id: wr.vault.vault_id,
             amount: withdraw_amount,
         },
         &account_ids,
         &[nonce_withdraw],
-        &[&owner_private_key],
+        &[&wr.vault.owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(
+    let result = wr.vault.state.transition_from_public_transaction(
         &tx_withdraw,
         block_withdraw,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
@@ -196,11 +180,11 @@ fn test_withdraw_zero_amount_fails() {
     assert_execution_failed_with_code(result, ERR_ZERO_WITHDRAW_AMOUNT);
 
     assert_vault_state_unchanged_with_recipient(
-        &state,
-        owner_account_id,
-        vault_holding_account_id,
-        vault_config_account_id,
-        recipient_account_id,
+        &wr.vault.state,
+        wr.vault.owner_account_id,
+        wr.vault.vault_holding_account_id,
+        wr.vault.vault_config_account_id,
+        wr.recipient_account_id,
         owner_balance_before,
         vault_holding_balance_before,
         recipient_balance_before,
@@ -214,46 +198,39 @@ fn test_withdraw_wrong_vault_id_fails() {
     let withdraw_amount = 100 as Balance;
     let block_withdraw = 2 as BlockId;
     let nonce_withdraw = Nonce(1);
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        recipient_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_with_initialized_vault_with_recipient(owner_balance_start);
-    patch_vault_config(&mut state, vault_config_account_id, |vc| {
+    let mut wr = state_with_initialized_vault_with_recipient(owner_balance_start);
+    patch_vault_config(&mut wr.vault.state, wr.vault.vault_config_account_id, |vc| {
         vc.vault_id = VaultId::from(999u64);
     });
     let account_ids = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        recipient_account_id,
+        wr.vault.vault_config_account_id,
+        wr.vault.vault_holding_account_id,
+        wr.vault.owner_account_id,
+        wr.recipient_account_id,
     ];
 
-    let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
-    let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
-    let recipient_balance_before = state.get_account_by_id(recipient_account_id).balance;
-    let vault_config_data_before = state
-        .get_account_by_id(vault_config_account_id)
+    let owner_balance_before = wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance;
+    let vault_holding_balance_before = wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance;
+    let recipient_balance_before = wr.vault.state.get_account_by_id(wr.recipient_account_id).balance;
+    let vault_config_data_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.vault_config_account_id)
         .data
         .clone();
 
     let tx_withdraw = build_signed_public_tx(
-        program_id,
+        wr.vault.program_id,
         Instruction::Withdraw {
-            vault_id,
+            vault_id: wr.vault.vault_id,
             amount: withdraw_amount,
         },
         &account_ids,
         &[nonce_withdraw],
-        &[&owner_private_key],
+        &[&wr.vault.owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(
+    let result = wr.vault.state.transition_from_public_transaction(
         &tx_withdraw,
         block_withdraw,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
@@ -261,11 +238,11 @@ fn test_withdraw_wrong_vault_id_fails() {
     assert_execution_failed_with_code(result, ERR_VAULT_ID_MISMATCH);
 
     assert_vault_state_unchanged_with_recipient(
-        &state,
-        owner_account_id,
-        vault_holding_account_id,
-        vault_config_account_id,
-        recipient_account_id,
+        &wr.vault.state,
+        wr.vault.owner_account_id,
+        wr.vault.vault_holding_account_id,
+        wr.vault.vault_config_account_id,
+        wr.recipient_account_id,
         owner_balance_before,
         vault_holding_balance_before,
         recipient_balance_before,
@@ -283,35 +260,27 @@ fn test_withdraw_exceeds_unallocated_fails() {
     let deposit_amount = 100 as Balance;
     let withdraw_amount = deposit_amount + 1 as Balance;
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        recipient_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_with_initialized_vault_with_recipient(owner_balance_start);
+    let mut wr = state_with_initialized_vault_with_recipient(owner_balance_start);
 
     let account_ids_deposit = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
+        wr.vault.vault_config_account_id,
+        wr.vault.vault_holding_account_id,
+        wr.vault.owner_account_id,
     ];
     let tx_deposit = build_signed_public_tx(
-        program_id,
+        wr.vault.program_id,
         Instruction::Deposit {
-            vault_id,
+            vault_id: wr.vault.vault_id,
             amount: deposit_amount,
             authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
         },
         &account_ids_deposit,
         &[nonce_deposit],
-        &[&owner_private_key],
+        &[&wr.vault.owner_private_key],
     );
     assert!(
-        state
+        wr.vault
+            .state
             .transition_from_public_transaction(
                 &tx_deposit,
                 block_deposit,
@@ -321,32 +290,34 @@ fn test_withdraw_exceeds_unallocated_fails() {
         "deposit failed"
     );
 
-    let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
-    let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
-    let recipient_balance_before = state.get_account_by_id(recipient_account_id).balance;
-    let vault_config_data_before = state
-        .get_account_by_id(vault_config_account_id)
+    let owner_balance_before = wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance;
+    let vault_holding_balance_before = wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance;
+    let recipient_balance_before = wr.vault.state.get_account_by_id(wr.recipient_account_id).balance;
+    let vault_config_data_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.vault_config_account_id)
         .data
         .clone();
 
     let account_ids_withdraw = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        recipient_account_id,
+        wr.vault.vault_config_account_id,
+        wr.vault.vault_holding_account_id,
+        wr.vault.owner_account_id,
+        wr.recipient_account_id,
     ];
     let tx_withdraw = build_signed_public_tx(
-        program_id,
+        wr.vault.program_id,
         Instruction::Withdraw {
-            vault_id,
+            vault_id: wr.vault.vault_id,
             amount: withdraw_amount,
         },
         &account_ids_withdraw,
         &[nonce_withdraw],
-        &[&owner_private_key],
+        &[&wr.vault.owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(
+    let result = wr.vault.state.transition_from_public_transaction(
         &tx_withdraw,
         block_withdraw,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
@@ -354,11 +325,11 @@ fn test_withdraw_exceeds_unallocated_fails() {
     assert_execution_failed_with_code(result, ERR_INSUFFICIENT_FUNDS);
 
     assert_vault_state_unchanged_with_recipient(
-        &state,
-        owner_account_id,
-        vault_holding_account_id,
-        vault_config_account_id,
-        recipient_account_id,
+        &wr.vault.state,
+        wr.vault.owner_account_id,
+        wr.vault.vault_holding_account_id,
+        wr.vault.vault_config_account_id,
+        wr.recipient_account_id,
         owner_balance_before,
         vault_holding_balance_before,
         recipient_balance_before,
@@ -380,38 +351,30 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
     let nonce_stream = Nonce(2);
     let nonce_withdraw = Nonce(3);
 
-    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        recipient_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_with_initialized_vault_with_recipient(owner_balance_start);
+    let mut wr = state_with_initialized_vault_with_recipient(owner_balance_start);
 
     force_clock_account(
-        &mut state,
-        mock_clock_account_id,
+        &mut wr.vault.state,
+        clock_id,
         0,
         DEFAULT_CLOCK_INITIAL_TS,
     );
 
     let account_ids_deposit = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
+        wr.vault.vault_config_account_id,
+        wr.vault.vault_holding_account_id,
+        wr.vault.owner_account_id,
     ];
     assert!(
-        state
+        wr.vault
+            .state
             .transition_from_public_transaction(
                 &build_signed_public_tx(
-                    program_id,
+                    wr.vault.program_id,
                     Instruction::Deposit {
-                        vault_id,
+                        vault_id: wr.vault.vault_id,
                         amount: deposit_amount,
                         authenticated_transfer_program_id: Program::authenticated_transfer_program(
                         )
@@ -419,7 +382,7 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
                     },
                     &account_ids_deposit,
                     &[nonce_deposit],
-                    &[&owner_private_key],
+                    &[&wr.vault.owner_private_key],
                 ),
                 block_deposit,
                 crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
@@ -428,21 +391,22 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
         "deposit failed"
     );
 
-    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
+    let stream_pda = derive_stream_pda(wr.vault.program_id, wr.vault.vault_config_account_id, 0);
     let account_ids_create = [
-        vault_config_account_id,
-        vault_holding_account_id,
+        wr.vault.vault_config_account_id,
+        wr.vault.vault_holding_account_id,
         stream_pda,
-        owner_account_id,
-        mock_clock_account_id,
+        wr.vault.owner_account_id,
+        clock_id,
     ];
     assert!(
-        state
+        wr.vault
+            .state
             .transition_from_public_transaction(
                 &build_signed_public_tx(
-                    program_id,
+                    wr.vault.program_id,
                     Instruction::CreateStream {
-                        vault_id,
+                        vault_id: wr.vault.vault_id,
                         stream_id: 0,
                         provider: provider_account_id,
                         rate,
@@ -450,7 +414,7 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
                     },
                     &account_ids_create,
                     &[nonce_stream],
-                    &[&owner_private_key],
+                    &[&wr.vault.owner_private_key],
                 ),
                 block_stream,
                 crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
@@ -459,31 +423,32 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
         "create_stream failed"
     );
 
-    let vault_config_before = state.get_account_by_id(vault_config_account_id);
+    let vault_config_before = wr.vault.state.get_account_by_id(wr.vault.vault_config_account_id);
     let vault_config_state_before =
         VaultConfig::from_bytes(&vault_config_before.data).expect("vault config");
-    let owner_after_funding = state.get_account_by_id(owner_account_id).balance;
-    let vault_holding_before_withdraw = state.get_account_by_id(vault_holding_account_id).balance;
-    let recipient_before_withdraw = state.get_account_by_id(recipient_account_id).balance;
+    let owner_after_funding = wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance;
+    let vault_holding_before_withdraw = wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance;
+    let recipient_before_withdraw = wr.vault.state.get_account_by_id(wr.recipient_account_id).balance;
 
     let account_ids_withdraw = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        recipient_account_id,
+        wr.vault.vault_config_account_id,
+        wr.vault.vault_holding_account_id,
+        wr.vault.owner_account_id,
+        wr.recipient_account_id,
     ];
     assert!(
-        state
+        wr.vault
+            .state
             .transition_from_public_transaction(
                 &build_signed_public_tx(
-                    program_id,
+                    wr.vault.program_id,
                     Instruction::Withdraw {
-                        vault_id,
+                        vault_id: wr.vault.vault_id,
                         amount: withdraw_amount,
                     },
                     &account_ids_withdraw,
                     &[nonce_withdraw],
-                    &[&owner_private_key],
+                    &[&wr.vault.owner_private_key],
                 ),
                 block_withdraw,
                 crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
@@ -492,20 +457,20 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
         "withdraw failed"
     );
 
-    let vault_config_after = state.get_account_by_id(vault_config_account_id);
+    let vault_config_after = wr.vault.state.get_account_by_id(wr.vault.vault_config_account_id);
     let vault_config_state_after =
         VaultConfig::from_bytes(&vault_config_after.data).expect("vault config");
 
     assert_eq!(
-        state.get_account_by_id(owner_account_id).balance,
+        wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance,
         owner_after_funding
     );
     assert_eq!(
-        state.get_account_by_id(vault_holding_account_id).balance,
+        wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance,
         vault_holding_before_withdraw - withdraw_amount
     );
     assert_eq!(
-        state.get_account_by_id(recipient_account_id).balance,
+        wr.vault.state.get_account_by_id(wr.recipient_account_id).balance,
         recipient_before_withdraw + withdraw_amount
     );
     assert_eq!(
@@ -640,36 +605,28 @@ fn test_withdraw_recipient_balance_overflow_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = 100 as Balance;
     let withdraw_amount = 10 as Balance;
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        recipient_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_with_initialized_vault_with_recipient(owner_balance_start);
+    let mut wr = state_with_initialized_vault_with_recipient(owner_balance_start);
 
     assert!(
-        state
+        wr.vault
+            .state
             .transition_from_public_transaction(
                 &build_signed_public_tx(
-                    program_id,
+                    wr.vault.program_id,
                     Instruction::Deposit {
-                        vault_id,
+                        vault_id: wr.vault.vault_id,
                         amount: deposit_amount,
                         authenticated_transfer_program_id: Program::authenticated_transfer_program(
                         )
                         .id(),
                     },
                     &[
-                        vault_config_account_id,
-                        vault_holding_account_id,
-                        owner_account_id
+                        wr.vault.vault_config_account_id,
+                        wr.vault.vault_holding_account_id,
+                        wr.vault.owner_account_id,
                     ],
                     &[Nonce(1)],
-                    &[&owner_private_key],
+                    &[&wr.vault.owner_private_key],
                 ),
                 2 as BlockId,
                 crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
@@ -678,25 +635,25 @@ fn test_withdraw_recipient_balance_overflow_fails() {
         "deposit failed"
     );
 
-    let mut recipient = state.get_account_by_id(recipient_account_id).clone();
+    let mut recipient = wr.vault.state.get_account_by_id(wr.recipient_account_id).clone();
     recipient.balance = Balance::MAX - 5;
-    state.force_insert_account(recipient_account_id, recipient);
+    wr.vault.state.force_insert_account(wr.recipient_account_id, recipient);
 
-    let result = state.transition_from_public_transaction(
+    let result = wr.vault.state.transition_from_public_transaction(
         &build_signed_public_tx(
-            program_id,
+            wr.vault.program_id,
             Instruction::Withdraw {
-                vault_id,
+                vault_id: wr.vault.vault_id,
                 amount: withdraw_amount,
             },
             &[
-                vault_config_account_id,
-                vault_holding_account_id,
-                owner_account_id,
-                recipient_account_id,
+                wr.vault.vault_config_account_id,
+                wr.vault.vault_holding_account_id,
+                wr.vault.owner_account_id,
+                wr.recipient_account_id,
             ],
             &[Nonce(2)],
-            &[&owner_private_key],
+            &[&wr.vault.owner_private_key],
         ),
         3 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,

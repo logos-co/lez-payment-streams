@@ -6,130 +6,111 @@ use nssa_core::{
 };
 
 use crate::{
-    test_helpers::{create_keypair, derive_stream_pda, force_clock_account},
-    StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig,
-    CLOCK_01_PROGRAM_ACCOUNT_ID, ERR_CLAIM_UNAUTHORIZED, ERR_ZERO_CLAIM_AMOUNT,
+    test_helpers::create_keypair,
+    StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultConfig, CLOCK_01_PROGRAM_ACCOUNT_ID,
+    ERR_CLAIM_UNAUTHORIZED, ERR_ZERO_CLAIM_AMOUNT,
 };
 
 use super::common::{
-    assert_execution_failed_with_code, signed_claim_stream, signed_close_stream,
-    signed_create_stream, signed_sync_stream, state_deposited_with_clock_and_provider,
-    transition_ok, ClaimStreamIxAccounts, CloseStreamIxAccounts, DEFAULT_OWNER_GENESIS_BALANCE,
-    DEFAULT_STREAM_TEST_DEPOSIT,
+    assert_execution_failed_with_code, claim_stream_prelude_synced_at_t1, signed_claim_stream,
+    signed_close_stream, transition_ok, ClaimStreamIxAccounts, CloseStreamIxAccounts,
+    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_PROVIDER};
+
+const CLAIM_T0: Timestamp = 12_345;
+const CLAIM_T1: Timestamp = CLAIM_T0 + 5;
+const CLAIM_ALLOCATION: Balance = 200;
+const CLAIM_RATE: TokensPerSecond = 10;
 
 #[test]
 fn test_claim_transfers_balance() {
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
-    let allocation = 200 as Balance;
-    let rate = 10 as TokensPerSecond;
-    let t0: Timestamp = 12_345;
-    let t1: Timestamp = t0 + 5;
-
-    let mock_clock_account_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
+    let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
     let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_clock_and_provider(
+    let mut scenario = claim_stream_prelude_synced_at_t1(
         DEFAULT_OWNER_GENESIS_BALANCE,
         deposit_amount,
-        mock_clock_account_id,
-        t0,
+        clock_id,
+        CLAIM_T0,
+        CLAIM_T1,
+        provider_private_key,
         provider_account_id,
+        CLAIM_RATE,
+        CLAIM_ALLOCATION,
     );
+    let wp = &mut scenario.with_provider;
+    let stream_id = scenario.stream_id;
+    let stream_pda = scenario.stream_pda;
 
-    let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, stream_id);
-
-    let stream_accounts_owner = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        stream_pda,
-        owner_account_id,
-        mock_clock_account_id,
-    ];
-    transition_ok(
-        &mut state,
-        &signed_create_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            provider_account_id,
-            rate,
-            allocation,
-            &stream_accounts_owner,
-            Nonce(2),
-            &owner_private_key,
-        ),
-        3 as BlockId,
-        "create_stream failed",
-    );
-
-    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
-
-    transition_ok(
-        &mut state,
-        &signed_sync_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            &stream_accounts_owner,
-            Nonce(3),
-            &owner_private_key,
-        ),
-        4 as BlockId,
-        "sync_stream failed",
-    );
-
-    let provider_balance_before = state.get_account_by_id(provider_account_id).balance;
+    let provider_balance_before = wp
+        .deposited
+        .vault
+        .state
+        .get_account_by_id(wp.provider_account_id)
+        .balance;
 
     let claim_accounts: ClaimStreamIxAccounts = [
-        vault_config_account_id,
-        vault_holding_account_id,
+        wp.deposited.vault.vault_config_account_id,
+        wp.deposited.vault.vault_holding_account_id,
         stream_pda,
-        owner_account_id,
-        provider_account_id,
-        mock_clock_account_id,
+        wp.deposited.vault.owner_account_id,
+        wp.provider_account_id,
+        wp.deposited.clock_id,
     ];
 
     transition_ok(
-        &mut state,
+        &mut wp.deposited.vault.state,
         &signed_claim_stream(
-            program_id,
-            vault_id,
+            wp.deposited.vault.program_id,
+            wp.deposited.vault.vault_id,
             stream_id,
             &claim_accounts,
             Nonce(0),
-            &provider_private_key,
+            &wp.provider_private_key,
         ),
         5 as BlockId,
         "claim failed",
     );
 
     let payout = 50 as Balance;
-    let vault_after =
-        VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
-            .expect("vault config");
-    assert_eq!(vault_after.total_allocated, allocation - payout);
+    let vault_after = VaultConfig::from_bytes(
+        &wp.deposited
+            .vault
+            .state
+            .get_account_by_id(wp.deposited.vault.vault_config_account_id)
+            .data,
+    )
+    .expect("vault config");
+    assert_eq!(vault_after.total_allocated, CLAIM_ALLOCATION - payout);
 
-    let stream_after =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
+    let stream_after = StreamConfig::from_bytes(
+        &wp.deposited
+            .vault
+            .state
+            .get_account_by_id(stream_pda)
+            .data,
+    )
+    .expect("stream");
     assert_eq!(stream_after.state, StreamState::Active);
     assert_eq!(stream_after.accrued, 0 as Balance);
-    assert_eq!(stream_after.allocation, allocation - payout);
+    assert_eq!(stream_after.allocation, CLAIM_ALLOCATION - payout);
 
-    let holding_after = state.get_account_by_id(vault_holding_account_id).balance;
+    let holding_after = wp
+        .deposited
+        .vault
+        .state
+        .get_account_by_id(wp.deposited.vault.vault_holding_account_id)
+        .balance;
     assert_eq!(holding_after, deposit_amount - payout);
 
-    let provider_balance_after = state.get_account_by_id(provider_account_id).balance;
+    let provider_balance_after = wp
+        .deposited
+        .vault
+        .state
+        .get_account_by_id(wp.provider_account_id)
+        .balance;
     assert_eq!(
         provider_balance_after,
         provider_balance_before.saturating_add(payout)
@@ -139,87 +120,38 @@ fn test_claim_transfers_balance() {
 #[test]
 fn test_claim_unauthorized_fails() {
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
-    let allocation = 200 as Balance;
-    let rate = 10 as TokensPerSecond;
-    let t0: Timestamp = 12_345;
-    let t1: Timestamp = t0 + 5;
-
-    let mock_clock_account_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
-    let (_, provider_account_id) = create_keypair(SEED_PROVIDER);
+    let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
+    let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
     let (alt_signer_private_key, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_clock_and_provider(
+    let mut scenario = claim_stream_prelude_synced_at_t1(
         DEFAULT_OWNER_GENESIS_BALANCE,
         deposit_amount,
-        mock_clock_account_id,
-        t0,
+        clock_id,
+        CLAIM_T0,
+        CLAIM_T1,
+        provider_private_key,
         provider_account_id,
+        CLAIM_RATE,
+        CLAIM_ALLOCATION,
     );
-
-    let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, stream_id);
-
-    let stream_accounts_owner = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        stream_pda,
-        owner_account_id,
-        mock_clock_account_id,
-    ];
-    transition_ok(
-        &mut state,
-        &signed_create_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            provider_account_id,
-            rate,
-            allocation,
-            &stream_accounts_owner,
-            Nonce(2),
-            &owner_private_key,
-        ),
-        3 as BlockId,
-        "create_stream failed",
-    );
-
-    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
-
-    transition_ok(
-        &mut state,
-        &signed_sync_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            &stream_accounts_owner,
-            Nonce(3),
-            &owner_private_key,
-        ),
-        4 as BlockId,
-        "sync_stream failed",
-    );
+    let wp = &mut scenario.with_provider;
+    let stream_id = scenario.stream_id;
+    let stream_pda = scenario.stream_pda;
 
     let claim_accounts: ClaimStreamIxAccounts = [
-        vault_config_account_id,
-        vault_holding_account_id,
+        wp.deposited.vault.vault_config_account_id,
+        wp.deposited.vault.vault_holding_account_id,
         stream_pda,
-        owner_account_id,
+        wp.deposited.vault.owner_account_id,
         alt_signer_account_id,
-        mock_clock_account_id,
+        wp.deposited.clock_id,
     ];
 
-    let r = state.transition_from_public_transaction(
+    let r = wp.deposited.vault.state.transition_from_public_transaction(
         &signed_claim_stream(
-            program_id,
-            vault_id,
+            wp.deposited.vault.program_id,
+            wp.deposited.vault.vault_id,
             stream_id,
             &claim_accounts,
             Nonce(0),
@@ -234,138 +166,100 @@ fn test_claim_unauthorized_fails() {
 #[test]
 fn test_claim_after_close() {
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
-    let allocation = 200 as Balance;
-    let rate = 10 as TokensPerSecond;
-    let t0: Timestamp = 12_345;
-    let t1: Timestamp = t0 + 5;
-
-    let mock_clock_account_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
+    let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
     let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_clock_and_provider(
+    let mut scenario = claim_stream_prelude_synced_at_t1(
         DEFAULT_OWNER_GENESIS_BALANCE,
         deposit_amount,
-        mock_clock_account_id,
-        t0,
+        clock_id,
+        CLAIM_T0,
+        CLAIM_T1,
+        provider_private_key,
         provider_account_id,
+        CLAIM_RATE,
+        CLAIM_ALLOCATION,
     );
-
-    let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, stream_id);
-
-    let stream_accounts = [
-        vault_config_account_id,
-        vault_holding_account_id,
-        stream_pda,
-        owner_account_id,
-        mock_clock_account_id,
-    ];
-    transition_ok(
-        &mut state,
-        &signed_create_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            provider_account_id,
-            rate,
-            allocation,
-            &stream_accounts,
-            Nonce(2),
-            &owner_private_key,
-        ),
-        3 as BlockId,
-        "create_stream failed",
-    );
-
-    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
-
-    transition_ok(
-        &mut state,
-        &signed_sync_stream(
-            program_id,
-            vault_id,
-            stream_id,
-            &stream_accounts,
-            Nonce(3),
-            &owner_private_key,
-        ),
-        4 as BlockId,
-        "sync_stream failed",
-    );
+    let wp = &mut scenario.with_provider;
+    let stream_id = scenario.stream_id;
+    let stream_pda = scenario.stream_pda;
 
     let close_accounts: CloseStreamIxAccounts = [
-        vault_config_account_id,
-        vault_holding_account_id,
+        wp.deposited.vault.vault_config_account_id,
+        wp.deposited.vault.vault_holding_account_id,
         stream_pda,
-        owner_account_id,
-        provider_account_id,
-        mock_clock_account_id,
+        wp.deposited.vault.owner_account_id,
+        wp.provider_account_id,
+        wp.deposited.clock_id,
     ];
 
     transition_ok(
-        &mut state,
+        &mut wp.deposited.vault.state,
         &signed_close_stream(
-            program_id,
-            vault_id,
+            wp.deposited.vault.program_id,
+            wp.deposited.vault.vault_id,
             stream_id,
             &close_accounts,
             Nonce(0),
-            &provider_private_key,
+            &wp.provider_private_key,
         ),
         5 as BlockId,
         "close_stream failed",
     );
 
     let claim_accounts: ClaimStreamIxAccounts = [
-        vault_config_account_id,
-        vault_holding_account_id,
+        wp.deposited.vault.vault_config_account_id,
+        wp.deposited.vault.vault_holding_account_id,
         stream_pda,
-        owner_account_id,
-        provider_account_id,
-        mock_clock_account_id,
+        wp.deposited.vault.owner_account_id,
+        wp.provider_account_id,
+        wp.deposited.clock_id,
     ];
 
     transition_ok(
-        &mut state,
+        &mut wp.deposited.vault.state,
         &signed_claim_stream(
-            program_id,
-            vault_id,
+            wp.deposited.vault.program_id,
+            wp.deposited.vault.vault_id,
             stream_id,
             &claim_accounts,
             Nonce(1),
-            &provider_private_key,
+            &wp.provider_private_key,
         ),
         6 as BlockId,
         "claim failed",
     );
 
-    let vault_after =
-        VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
-            .expect("vault config");
+    let vault_after = VaultConfig::from_bytes(
+        &wp.deposited
+            .vault
+            .state
+            .get_account_by_id(wp.deposited.vault.vault_config_account_id)
+            .data,
+    )
+    .expect("vault config");
     assert_eq!(vault_after.total_allocated, 0 as Balance);
 
-    let stream_after =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
+    let stream_after = StreamConfig::from_bytes(
+        &wp.deposited
+            .vault
+            .state
+            .get_account_by_id(stream_pda)
+            .data,
+    )
+    .expect("stream");
     assert_eq!(stream_after.state, StreamState::Closed);
     assert_eq!(stream_after.allocation, 0 as Balance);
     assert_eq!(stream_after.accrued, 0 as Balance);
 
-    let r = state.transition_from_public_transaction(
+    let r = wp.deposited.vault.state.transition_from_public_transaction(
         &signed_claim_stream(
-            program_id,
-            vault_id,
+            wp.deposited.vault.program_id,
+            wp.deposited.vault.vault_id,
             stream_id,
             &claim_accounts,
             Nonce(2),
-            &provider_private_key,
+            &wp.provider_private_key,
         ),
         7 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,

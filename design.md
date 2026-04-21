@@ -20,6 +20,19 @@ If `clock_core` changes upstream, this file must be updated by hand until we swi
 We avoid a `spel-framework-core` dev-dependency on the core crate because it would introduce a second `nssa_core` (from SPEL’s own LEZ pin) and break type identity with the main dependency.
 When the dependency graph allows exactly one `nssa_core`, tests should call SPEL’s helpers instead so host-derived PDAs cannot drift from the guest (see `plan.md` step 6 and step 3).
 
+## Test fixtures (host `program_tests`)
+
+In-process tests build layered fixtures instead of long tuple returns.
+
+1. `VaultFixture` — after `initialize_vault` (from `state_with_initialized_vault*` in `test_helpers.rs`).
+2. `DepositedVaultFixture` — embeds `VaultFixture` plus `clock_id` after one `deposit` and `force_clock_account` to `initial_ts` (`state_deposited_with_clock` in `program_tests/common.rs`).
+3. `DepositedVaultWithProviderFixture` — embeds `DepositedVaultFixture` plus provider key and `AccountId` when genesis includes the provider at balance zero (`state_deposited_with_clock_and_provider`).
+
+Use the field name `clock_id` for the system clock account passed on the instruction account list (not “mock clock”).
+
+`claim_stream_prelude_synced_at_t1` runs `create_stream` then advances the clock to `t1` and `sync_stream`.
+It assumes the same ladder as manual claim tests: `initialize_vault` at block 1 / `Nonce(0)`, `deposit` at block 2 / `Nonce(1)`, `create_stream` at block 3 / `Nonce(2)`, `sync_stream` at block 4 / `Nonce(3)`.
+
 ## Account types and relationships
 
 A single LEZ program manages three account types:

@@ -202,6 +202,23 @@ pub(crate) fn patch_vault_config(
     state.force_insert_account(vault_config_account_id, acc);
 }
 
+/// Genesis plus `initialize_vault` (see [`state_with_initialized_vault`]).
+pub(crate) struct VaultFixture {
+    pub state: V03State,
+    pub program_id: ProgramId,
+    pub owner_private_key: PrivateKey,
+    pub owner_account_id: AccountId,
+    pub vault_id: VaultId,
+    pub vault_config_account_id: AccountId,
+    pub vault_holding_account_id: AccountId,
+}
+
+/// Like [`VaultFixture`], with a zero-balance recipient in genesis for withdraw tests.
+pub(crate) struct VaultFixtureWithRecipient {
+    pub vault: VaultFixture,
+    pub recipient_account_id: AccountId,
+}
+
 /// Rewrite `StreamConfig` account data in the test harness (bypasses normal transitions).
 pub(crate) fn patch_stream_config(
     state: &mut V03State,
@@ -218,17 +235,7 @@ pub(crate) fn patch_stream_config(
 
 /// Single-owner genesis with guest deployed and `initialize_vault` done.
 /// Next public tx is usually block 2, signer nonce `Nonce(1)`.
-pub(crate) fn state_with_initialized_vault(
-    owner_balance: Balance,
-) -> (
-    V03State,
-    ProgramId,
-    PrivateKey,
-    AccountId,
-    VaultId,
-    AccountId,
-    AccountId,
-) {
+pub(crate) fn state_with_initialized_vault(owner_balance: Balance) -> VaultFixture {
     state_with_initialized_vault_with_preseeded_genesis_accounts(owner_balance, &[])
 }
 
@@ -238,15 +245,7 @@ pub(crate) fn state_with_initialized_vault(
 pub(crate) fn state_with_initialized_vault_with_preseeded_genesis_accounts(
     owner_balance: Balance,
     extra_genesis_accounts: &[(AccountId, Balance)],
-) -> (
-    V03State,
-    ProgramId,
-    PrivateKey,
-    AccountId,
-    VaultId,
-    AccountId,
-    AccountId,
-) {
+) -> VaultFixture {
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
     let mut initial_accounts_data = vec![(owner_account_id, owner_balance)];
     initial_accounts_data.extend_from_slice(extra_genesis_accounts);
@@ -281,7 +280,7 @@ pub(crate) fn state_with_initialized_vault_with_preseeded_genesis_accounts(
         result_init
     );
 
-    (
+    VaultFixture {
         state,
         program_id,
         owner_private_key,
@@ -289,47 +288,24 @@ pub(crate) fn state_with_initialized_vault_with_preseeded_genesis_accounts(
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    )
+    }
 }
 
 /// Like [`state_with_initialized_vault`],
 /// plus `recipient_account_id` at balance `0` for four-account withdraw flows.
 pub(crate) fn state_with_initialized_vault_with_recipient(
     owner_balance: Balance,
-) -> (
-    V03State,
-    ProgramId,
-    PrivateKey,
-    AccountId,
-    AccountId,
-    VaultId,
-    AccountId,
-    AccountId,
-) {
+) -> VaultFixtureWithRecipient {
     let (_, recipient_account_id) = create_keypair(SEED_RECIPIENT);
-    let (
-        state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_with_initialized_vault_with_preseeded_genesis_accounts(
+    let vault = state_with_initialized_vault_with_preseeded_genesis_accounts(
         owner_balance,
         &[(recipient_account_id, 0 as Balance)],
     );
 
-    (
-        state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
+    VaultFixtureWithRecipient {
+        vault,
         recipient_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    )
+    }
 }
 
 pub(crate) fn assert_vault_state_unchanged(

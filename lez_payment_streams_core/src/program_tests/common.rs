@@ -17,9 +17,31 @@ use crate::{
     test_helpers::{
         build_signed_public_tx, derive_stream_pda, force_clock_account,
         state_with_initialized_vault, state_with_initialized_vault_with_preseeded_genesis_accounts,
+        VaultFixture,
     },
     StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultId,
 };
+
+/// After one deposit and initial clock write (see [`state_deposited_with_clock`]).
+pub(crate) struct DepositedVaultFixture {
+    pub vault: VaultFixture,
+    pub clock_id: AccountId,
+}
+
+/// Like [`DepositedVaultFixture`], with provider key material for `claim` flows.
+pub(crate) struct DepositedVaultWithProviderFixture {
+    pub deposited: DepositedVaultFixture,
+    pub provider_private_key: PrivateKey,
+    pub provider_account_id: AccountId,
+}
+
+/// First stream created and synced at `t1` after [`state_deposited_with_clock_and_provider`].
+pub(crate) struct ClaimStreamSyncedScenario {
+    pub with_provider: DepositedVaultWithProviderFixture,
+    pub stream_id: StreamId,
+    pub stream_pda: AccountId,
+    pub _stream_ix_accounts: StreamIxAccounts,
+}
 
 /// Timestamp argument for [`V03State::transition_from_public_transaction`] in tests.
 pub(crate) const TEST_PUBLIC_TX_TIMESTAMP: Timestamp = 0;
@@ -52,21 +74,22 @@ fn signed_stream_public_tx(
     build_signed_public_tx(program_id, instruction, accounts, &[nonce], &[owner])
 }
 
-pub(crate) fn first_stream_accounts(
-    program_id: ProgramId,
-    vault_config_account_id: AccountId,
-    vault_holding_account_id: AccountId,
-    owner_account_id: AccountId,
-    clock_account_id: AccountId,
+/// First stream (`StreamId::MIN`) account layout for owner-signed stream instructions.
+pub(crate) fn first_stream_ix_accounts(
+    deposited: &DepositedVaultFixture,
 ) -> (StreamId, AccountId, StreamIxAccounts) {
     let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(program_id, vault_config_account_id, stream_id);
+    let stream_pda = derive_stream_pda(
+        deposited.vault.program_id,
+        deposited.vault.vault_config_account_id,
+        stream_id,
+    );
     let account_ids = [
-        vault_config_account_id,
-        vault_holding_account_id,
+        deposited.vault.vault_config_account_id,
+        deposited.vault.vault_holding_account_id,
         stream_pda,
-        owner_account_id,
-        clock_account_id,
+        deposited.vault.owner_account_id,
+        deposited.clock_id,
     ];
     (stream_id, stream_pda, account_ids)
 }
@@ -286,112 +309,144 @@ pub(crate) fn assert_execution_failed_with_code(result: Result<(), NssaError>, c
 pub(crate) fn state_deposited_with_clock(
     owner_balance_start: Balance,
     deposit_amount: Balance,
-    clock_account_id: AccountId,
+    clock_id: AccountId,
     initial_ts: Timestamp,
-) -> (
-    V03State,
-    ProgramId,
-    PrivateKey,
-    AccountId,
-    VaultId,
-    AccountId,
-    AccountId,
-) {
+) -> DepositedVaultFixture {
     state_deposited_with_clock_impl(
         owner_balance_start,
         deposit_amount,
-        clock_account_id,
+        clock_id,
         initial_ts,
-        &[],
+        None,
     )
 }
 
 /// Like [`state_deposited_with_clock`],
-/// with `stream_provider_account_id` in genesis at balance `0`
+/// with `provider_account_id` in genesis at balance `0`
 /// so `claim` can credit it (NSSA needs a non-default `program_owner` when balances move).
 pub(crate) fn state_deposited_with_clock_and_provider(
     owner_balance_start: Balance,
     deposit_amount: Balance,
-    clock_account_id: AccountId,
+    clock_id: AccountId,
     initial_ts: Timestamp,
-    stream_provider_account_id: AccountId,
-) -> (
-    V03State,
-    ProgramId,
-    PrivateKey,
-    AccountId,
-    VaultId,
-    AccountId,
-    AccountId,
-) {
-    state_deposited_with_clock_impl(
+    provider_private_key: PrivateKey,
+    provider_account_id: AccountId,
+) -> DepositedVaultWithProviderFixture {
+    let deposited = state_deposited_with_clock_impl(
         owner_balance_start,
         deposit_amount,
-        clock_account_id,
+        clock_id,
         initial_ts,
-        &[(stream_provider_account_id, 0 as Balance)],
-    )
+        Some((provider_account_id, 0 as Balance)),
+    );
+    DepositedVaultWithProviderFixture {
+        deposited,
+        provider_private_key,
+        provider_account_id,
+    }
+}
+
+/// `initialize_vault` (block 1), `deposit` (block 2, `Nonce(1)`), `create_stream` (block 3, `Nonce(2)`),
+/// clock advanced to `t1`, then `sync_stream` (block 4, `Nonce(3)`).
+pub(crate) fn claim_stream_prelude_synced_at_t1(
+    owner_genesis_balance: Balance,
+    deposit_amount: Balance,
+    clock_id: AccountId,
+    t0: Timestamp,
+    t1: Timestamp,
+    provider_private_key: PrivateKey,
+    provider_account_id: AccountId,
+    rate: TokensPerSecond,
+    allocation: Balance,
+) -> ClaimStreamSyncedScenario {
+    let mut with_provider = state_deposited_with_clock_and_provider(
+        owner_genesis_balance,
+        deposit_amount,
+        clock_id,
+        t0,
+        provider_private_key,
+        provider_account_id,
+    );
+    let (stream_id, stream_pda, stream_ix_accounts) =
+        first_stream_ix_accounts(&with_provider.deposited);
+    transition_ok(
+        &mut with_provider.deposited.vault.state,
+        &signed_create_stream(
+            with_provider.deposited.vault.program_id,
+            with_provider.deposited.vault.vault_id,
+            stream_id,
+            provider_account_id,
+            rate,
+            allocation,
+            &stream_ix_accounts,
+            Nonce(2),
+            &with_provider.deposited.vault.owner_private_key,
+        ),
+        3 as BlockId,
+        "create_stream failed",
+    );
+    force_clock_account(
+        &mut with_provider.deposited.vault.state,
+        clock_id,
+        0,
+        t1,
+    );
+    transition_ok(
+        &mut with_provider.deposited.vault.state,
+        &signed_sync_stream(
+            with_provider.deposited.vault.program_id,
+            with_provider.deposited.vault.vault_id,
+            stream_id,
+            &stream_ix_accounts,
+            Nonce(3),
+            &with_provider.deposited.vault.owner_private_key,
+        ),
+        4 as BlockId,
+        "sync_stream failed",
+    );
+    ClaimStreamSyncedScenario {
+        with_provider,
+        stream_id,
+        stream_pda,
+        _stream_ix_accounts: stream_ix_accounts,
+    }
 }
 
 fn state_deposited_with_clock_impl(
     owner_balance_start: Balance,
     deposit_amount: Balance,
-    clock_account_id: AccountId,
+    clock_id: AccountId,
     initial_ts: Timestamp,
-    extra_genesis: &[(AccountId, Balance)],
-) -> (
-    V03State,
-    ProgramId,
-    PrivateKey,
-    AccountId,
-    VaultId,
-    AccountId,
-    AccountId,
-) {
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = if extra_genesis.is_empty() {
-        state_with_initialized_vault(owner_balance_start)
-    } else {
+    extra_genesis: Option<(AccountId, Balance)>,
+) -> DepositedVaultFixture {
+    let mut vault = if let Some((account_id, balance)) = extra_genesis {
         state_with_initialized_vault_with_preseeded_genesis_accounts(
             owner_balance_start,
-            extra_genesis,
+            &[(account_id, balance)],
         )
+    } else {
+        state_with_initialized_vault(owner_balance_start)
     };
 
     let block_deposit = 2 as BlockId;
     let nonce_deposit = Nonce(1);
     transition_ok(
-        &mut state,
+        &mut vault.state,
         &signed_deposit(
-            program_id,
-            vault_id,
+            vault.program_id,
+            vault.vault_id,
             deposit_amount,
-            vault_config_account_id,
-            vault_holding_account_id,
-            owner_account_id,
+            vault.vault_config_account_id,
+            vault.vault_holding_account_id,
+            vault.owner_account_id,
             nonce_deposit,
-            &owner_private_key,
+            &vault.owner_private_key,
         ),
         block_deposit,
         "deposit failed",
     );
 
-    force_clock_account(&mut state, clock_account_id, 0, initial_ts);
+    force_clock_account(&mut vault.state, clock_id, 0, initial_ts);
 
-    (
-        state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    )
+    DepositedVaultFixture { vault, clock_id }
 }

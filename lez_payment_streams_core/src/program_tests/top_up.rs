@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::common::{
-    assert_execution_failed_with_code, first_stream_accounts, force_stream_state_closed,
+    assert_execution_failed_with_code, first_stream_ix_accounts, force_stream_state_closed,
     signed_create_stream, signed_deposit, signed_pause_stream, signed_sync_stream,
     signed_top_up_stream, state_deposited_with_clock, transition_ok, DEFAULT_CLOCK_INITIAL_TS,
     DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
@@ -23,128 +23,114 @@ fn test_topup_resumes() {
     let t0: Timestamp = 0;
     let t1: Timestamp = 100;
     let t2: Timestamp = 250;
-    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_clock(
+    let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
-        mock_clock_account_id,
+        clock_id,
         t0,
     );
 
-    let (stream_id, stream_pda, account_ids) = first_stream_accounts(
-        program_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        mock_clock_account_id,
-    );
+    let (stream_id, stream_pda, account_ids) = first_stream_ix_accounts(&dep);
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_create_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             provider_account_id,
             10 as TokensPerSecond,
             100 as Balance,
             &account_ids,
             Nonce(2),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         3 as BlockId,
         "create_stream failed",
     );
 
-    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
+    force_clock_account(&mut dep.vault.state, clock_id, 0, t1);
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_sync_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             &account_ids,
             Nonce(3),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         4 as BlockId,
         "sync_stream failed",
     );
 
     let s_depleted_paused =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
     assert_eq!(s_depleted_paused.state, StreamState::Paused);
     assert_eq!(s_depleted_paused.accrued, 100 as Balance);
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_deposit(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             200 as Balance,
-            vault_config_account_id,
-            vault_holding_account_id,
-            owner_account_id,
+            dep.vault.vault_config_account_id,
+            dep.vault.vault_holding_account_id,
+            dep.vault.owner_account_id,
             Nonce(4),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         5 as BlockId,
         "deposit failed",
     );
 
-    force_clock_account(&mut state, mock_clock_account_id, 0, t2);
+    force_clock_account(&mut dep.vault.state, clock_id, 0, t2);
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_top_up_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             200 as Balance,
             &account_ids,
             Nonce(5),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         6 as BlockId,
         "top_up_stream failed",
     );
 
     let s_after_top_up =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
     assert_eq!(s_after_top_up.state, StreamState::Active);
     assert_eq!(s_after_top_up.accrued_as_of, t2);
     assert_eq!(s_after_top_up.allocation, 300 as Balance);
     assert_eq!(s_after_top_up.accrued, 100 as Balance);
 
     let t3: Timestamp = 260;
-    force_clock_account(&mut state, mock_clock_account_id, 0, t3);
+    force_clock_account(&mut dep.vault.state, clock_id, 0, t3);
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_sync_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             &account_ids,
             Nonce(6),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         7 as BlockId,
         "sync_stream after top-up failed",
     );
 
     let s_after_follow_up_sync =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
     assert_eq!(s_after_follow_up_sync.accrued, 200 as Balance);
     assert_eq!(s_after_follow_up_sync.state, StreamState::Active);
 }
@@ -153,67 +139,53 @@ fn test_topup_resumes() {
 fn test_topup_active_increases_allocation() {
     let t0: Timestamp = 10;
     let t1: Timestamp = 20;
-    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_clock(
+    let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
-        mock_clock_account_id,
+        clock_id,
         t0,
     );
 
-    let (stream_id, stream_pda, account_ids) = first_stream_accounts(
-        program_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        mock_clock_account_id,
-    );
+    let (stream_id, stream_pda, account_ids) = first_stream_ix_accounts(&dep);
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_create_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             provider_account_id,
             2 as TokensPerSecond,
             300 as Balance,
             &account_ids,
             Nonce(2),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         3 as BlockId,
         "create_stream failed",
     );
 
-    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
+    force_clock_account(&mut dep.vault.state, clock_id, 0, t1);
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_top_up_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             100 as Balance,
             &account_ids,
             Nonce(3),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         4 as BlockId,
         "top_up_stream failed",
     );
 
     let s_after_top_up =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
     assert_eq!(s_after_top_up.state, StreamState::Active);
     assert_eq!(s_after_top_up.allocation, 400 as Balance);
 }
@@ -222,81 +194,67 @@ fn test_topup_active_increases_allocation() {
 fn test_topup_manual_pause_then_active() {
     let t0: Timestamp = 5;
     let t1: Timestamp = 15;
-    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_clock(
+    let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
-        mock_clock_account_id,
+        clock_id,
         t0,
     );
 
-    let (stream_id, stream_pda, account_ids) = first_stream_accounts(
-        program_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        mock_clock_account_id,
-    );
+    let (stream_id, stream_pda, account_ids) = first_stream_ix_accounts(&dep);
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_create_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             provider_account_id,
             1 as TokensPerSecond,
             400 as Balance,
             &account_ids,
             Nonce(2),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         3 as BlockId,
         "create_stream failed",
     );
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_pause_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             &account_ids,
             Nonce(3),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         4 as BlockId,
         "pause_stream failed",
     );
 
-    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
+    force_clock_account(&mut dep.vault.state, clock_id, 0, t1);
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_top_up_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             50 as Balance,
             &account_ids,
             Nonce(4),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         5 as BlockId,
         "top_up_stream failed",
     );
 
     let s_resumed_after_top_up =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
     assert_eq!(s_resumed_after_top_up.state, StreamState::Active);
     assert_eq!(s_resumed_after_top_up.accrued_as_of, t1);
     assert_eq!(s_resumed_after_top_up.allocation, 450 as Balance);
@@ -305,57 +263,43 @@ fn test_topup_manual_pause_then_active() {
 #[test]
 fn test_topup_zero_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
-    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_clock(
+    let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
-        mock_clock_account_id,
+        clock_id,
         t0,
     );
 
-    let (stream_id, _, account_ids) = first_stream_accounts(
-        program_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        mock_clock_account_id,
-    );
+    let (stream_id, _, account_ids) = first_stream_ix_accounts(&dep);
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_create_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             provider_account_id,
             1 as TokensPerSecond,
             100 as Balance,
             &account_ids,
             Nonce(2),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         3 as BlockId,
         "create_stream failed",
     );
 
-    let r = state.transition_from_public_transaction(
+    let r = dep.vault.state.transition_from_public_transaction(
         &signed_top_up_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             0 as Balance,
             &account_ids,
             Nonce(3),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
@@ -366,59 +310,45 @@ fn test_topup_zero_fails() {
 #[test]
 fn test_topup_closed_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
-    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_clock(
+    let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
-        mock_clock_account_id,
+        clock_id,
         t0,
     );
 
-    let (stream_id, stream_pda, account_ids) = first_stream_accounts(
-        program_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        mock_clock_account_id,
-    );
+    let (stream_id, stream_pda, account_ids) = first_stream_ix_accounts(&dep);
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_create_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             provider_account_id,
             2 as TokensPerSecond,
             200 as Balance,
             &account_ids,
             Nonce(2),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         3 as BlockId,
         "create_stream failed",
     );
 
-    force_stream_state_closed(&mut state, stream_pda);
+    force_stream_state_closed(&mut dep.vault.state, stream_pda);
 
-    let r = state.transition_from_public_transaction(
+    let r = dep.vault.state.transition_from_public_transaction(
         &signed_top_up_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             10 as Balance,
             &account_ids,
             Nonce(3),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
@@ -429,57 +359,43 @@ fn test_topup_closed_fails() {
 #[test]
 fn test_topup_exceeds_unallocated_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
-    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_clock(
+    let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
-        mock_clock_account_id,
+        clock_id,
         t0,
     );
 
-    let (stream_id, _, account_ids) = first_stream_accounts(
-        program_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        mock_clock_account_id,
-    );
+    let (stream_id, _, account_ids) = first_stream_ix_accounts(&dep);
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_create_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             provider_account_id,
             1 as TokensPerSecond,
             DEFAULT_STREAM_TEST_DEPOSIT,
             &account_ids,
             Nonce(2),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         3 as BlockId,
         "create_stream failed",
     );
 
-    let r = state.transition_from_public_transaction(
+    let r = dep.vault.state.transition_from_public_transaction(
         &signed_top_up_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             1 as Balance,
             &account_ids,
             Nonce(3),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
@@ -490,66 +406,52 @@ fn test_topup_exceeds_unallocated_fails() {
 #[test]
 fn test_topup_allocation_overflow_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
-    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
-    let (
-        mut state,
-        program_id,
-        owner_private_key,
-        owner_account_id,
-        vault_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-    ) = state_deposited_with_clock(
+    let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
-        mock_clock_account_id,
+        clock_id,
         t0,
     );
 
-    let (stream_id, stream_pda, account_ids) = first_stream_accounts(
-        program_id,
-        vault_config_account_id,
-        vault_holding_account_id,
-        owner_account_id,
-        mock_clock_account_id,
-    );
+    let (stream_id, stream_pda, account_ids) = first_stream_ix_accounts(&dep);
 
     transition_ok(
-        &mut state,
+        &mut dep.vault.state,
         &signed_create_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             provider_account_id,
             1 as TokensPerSecond,
             100 as Balance,
             &account_ids,
             Nonce(2),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         3 as BlockId,
         "create_stream failed",
     );
 
     let mut s_near_max_allocation =
-        StreamConfig::from_bytes(&state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
     s_near_max_allocation.allocation = Balance::MAX - 5;
     s_near_max_allocation.accrued = 0 as Balance;
-    let mut stream_account = state.get_account_by_id(stream_pda).clone();
+    let mut stream_account = dep.vault.state.get_account_by_id(stream_pda).clone();
     stream_account.data = nssa_core::account::Data::try_from(s_near_max_allocation.to_bytes())
         .expect("stream payload fits");
-    state.force_insert_account(stream_pda, stream_account);
+    dep.vault.state.force_insert_account(stream_pda, stream_account);
 
-    let r = state.transition_from_public_transaction(
+    let r = dep.vault.state.transition_from_public_transaction(
         &signed_top_up_stream(
-            program_id,
-            vault_id,
+            dep.vault.program_id,
+            dep.vault.vault_id,
             stream_id,
             20 as Balance,
             &account_ids,
             Nonce(3),
-            &owner_private_key,
+            &dep.vault.owner_private_key,
         ),
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
