@@ -3,7 +3,7 @@
 use nssa::program::Program;
 use nssa_core::{
     account::{Balance, Data, Nonce},
-    program::BlockId,
+    BlockId,
 };
 
 use crate::Instruction;
@@ -11,15 +11,16 @@ use crate::{
     test_helpers::{
         assert_vault_state_unchanged, build_signed_public_tx, create_keypair,
         create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
-        harness_mock_clock_and_provider_account_ids, state_with_initialized_vault,
+        harness_clock_01_and_provider_account_ids, patch_vault_config,
+        state_with_initialized_vault,
     },
     TokensPerSecond, VaultConfig, VaultHolding, VaultId, ERR_VAULT_ID_MISMATCH,
     ERR_VAULT_OWNER_MISMATCH, ERR_VERSION_MISMATCH, ERR_ZERO_DEPOSIT_AMOUNT,
 };
 
 use super::common::{
-    assert_execution_failed_with_code, state_deposited_with_mock_clock,
-    DEFAULT_MOCK_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
+    assert_execution_failed_with_code, state_deposited_with_clock, DEFAULT_CLOCK_INITIAL_TS,
+    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER};
 
@@ -63,7 +64,11 @@ fn test_deposit() {
 
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
 
-    let result_deposit = state.transition_from_public_transaction(&tx_deposit, block_deposit);
+    let result_deposit = state.transition_from_public_transaction(
+        &tx_deposit,
+        block_deposit,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     assert!(
         result_deposit.is_ok(),
         "deposit tx failed: {:?}",
@@ -110,8 +115,7 @@ fn test_deposit_after_create_stream_succeeds() {
     let second_deposit = 50 as Balance;
     let allocation = 200 as Balance;
     let rate = 10 as TokensPerSecond;
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let (
         mut state,
@@ -121,11 +125,11 @@ fn test_deposit_after_create_stream_succeeds() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         owner_balance_start,
         initial_deposit,
         mock_clock_account_id,
-        DEFAULT_MOCK_CLOCK_INITIAL_TS,
+        DEFAULT_CLOCK_INITIAL_TS,
     );
 
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
@@ -153,6 +157,7 @@ fn test_deposit_after_create_stream_succeeds() {
                     &[&owner_private_key],
                 ),
                 3 as BlockId,
+                crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
             )
             .is_ok(),
         "create_stream failed"
@@ -183,6 +188,7 @@ fn test_deposit_after_create_stream_succeeds() {
             &[&owner_private_key],
         ),
         4 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert!(result.is_ok(), "second deposit failed: {:?}", result);
 
@@ -245,7 +251,11 @@ fn test_deposit_zero_amount_fails() {
         &[&owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(&tx_deposit, block_deposit);
+    let result = state.transition_from_public_transaction(
+        &tx_deposit,
+        block_deposit,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     assert_execution_failed_with_code(result, ERR_ZERO_DEPOSIT_AMOUNT);
 
     assert_vault_state_unchanged(
@@ -264,7 +274,6 @@ fn test_deposit_wrong_vault_id_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let block_deposit = 2 as BlockId;
     let nonce_deposit = Nonce(1);
-    let wrong_vault_id = VaultId::from(999u64);
     let deposit_amount = 100 as Balance;
 
     let (
@@ -272,10 +281,13 @@ fn test_deposit_wrong_vault_id_fails() {
         program_id,
         owner_private_key,
         owner_account_id,
-        _vault_id,
+        vault_id,
         vault_config_account_id,
         vault_holding_account_id,
     ) = state_with_initialized_vault(owner_balance_start);
+    patch_vault_config(&mut state, vault_config_account_id, |vc| {
+        vc.vault_id = VaultId::from(999u64);
+    });
     let account_ids = [
         vault_config_account_id,
         vault_holding_account_id,
@@ -292,7 +304,7 @@ fn test_deposit_wrong_vault_id_fails() {
     let tx_deposit = build_signed_public_tx(
         program_id,
         Instruction::Deposit {
-            vault_id: wrong_vault_id,
+            vault_id,
             amount: deposit_amount,
             authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
         },
@@ -301,7 +313,11 @@ fn test_deposit_wrong_vault_id_fails() {
         &[&owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(&tx_deposit, block_deposit);
+    let result = state.transition_from_public_transaction(
+        &tx_deposit,
+        block_deposit,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     assert_execution_failed_with_code(result, ERR_VAULT_ID_MISMATCH);
 
     assert_vault_state_unchanged(
@@ -358,7 +374,11 @@ fn test_deposit_wrong_authenticated_transfer_program_id_fails() {
         &[&owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(&tx_deposit, block_deposit);
+    let result = state.transition_from_public_transaction(
+        &tx_deposit,
+        block_deposit,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     // Failure is from the chained authenticated-transfer program, not a payment-streams `ERR_*`.
     assert!(result.is_err());
 
@@ -413,7 +433,11 @@ fn test_deposit_insufficient_funds_fails() {
         &[&owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(&tx_deposit, block_deposit);
+    let result = state.transition_from_public_transaction(
+        &tx_deposit,
+        block_deposit,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     // Insufficient balance is enforced inside authenticated-transfer, not a lez custom code.
     assert!(result.is_err());
 
@@ -433,13 +457,12 @@ fn test_deposit_owner_mismatch_fails() {
     let block_init = 1 as BlockId;
     let block_deposit = 2 as BlockId;
     let nonce_init = Nonce(0);
-    // Signer is `other`; they have not transacted yet (only `owner` ran init).
-    let nonce_deposit = Nonce(0);
+    let nonce_deposit = Nonce(1);
     let deposit_amount = 100 as Balance;
     let signer_account_balance = DEFAULT_OWNER_GENESIS_BALANCE;
 
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
-    let (alt_signer_private_key, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
+    let (_, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
     let initial_accounts_data = vec![
         (owner_account_id, signer_account_balance),
         (alt_signer_account_id, signer_account_balance),
@@ -465,7 +488,11 @@ fn test_deposit_owner_mismatch_fails() {
         &[nonce_init],
         &[&owner_private_key],
     );
-    let result_init = state.transition_from_public_transaction(&tx_init, block_init);
+    let result_init = state.transition_from_public_transaction(
+        &tx_init,
+        block_init,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     assert!(
         result_init.is_ok(),
         "initialize_vault tx failed: {:?}",
@@ -475,6 +502,10 @@ fn test_deposit_owner_mismatch_fails() {
     let owner_balance_before = state.get_account_by_id(owner_account_id).balance;
     let alt_signer_balance_before = state.get_account_by_id(alt_signer_account_id).balance;
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
+
+    patch_vault_config(&mut state, vault_config_account_id, |vc| {
+        vc.owner = alt_signer_account_id;
+    });
     let vault_config_data_before = state
         .get_account_by_id(vault_config_account_id)
         .data
@@ -483,7 +514,7 @@ fn test_deposit_owner_mismatch_fails() {
     let account_ids_deposit = [
         vault_config_account_id,
         vault_holding_account_id,
-        alt_signer_account_id,
+        owner_account_id,
     ];
     let tx_deposit = build_signed_public_tx(
         program_id,
@@ -494,10 +525,14 @@ fn test_deposit_owner_mismatch_fails() {
         },
         &account_ids_deposit,
         &[nonce_deposit],
-        &[&alt_signer_private_key],
+        &[&owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(&tx_deposit, block_deposit);
+    let result = state.transition_from_public_transaction(
+        &tx_deposit,
+        block_deposit,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     assert_execution_failed_with_code(result, ERR_VAULT_OWNER_MISMATCH);
 
     assert_vault_state_unchanged(
@@ -551,6 +586,7 @@ fn test_deposit_vault_holding_version_mismatch_fails() {
             &[&owner_private_key],
         ),
         2 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(result, ERR_VERSION_MISMATCH);
 }

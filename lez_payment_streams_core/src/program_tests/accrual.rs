@@ -2,23 +2,23 @@
 
 use nssa_core::{
     account::{Balance, Nonce},
-    program::BlockId,
+    BlockId,
 };
 
 use crate::Instruction;
 use crate::{
     test_helpers::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
-        derive_vault_pdas, force_mock_timestamp_account,
-        harness_mock_clock_and_provider_account_ids,
+        derive_vault_pdas, force_clock_account, harness_clock_01_and_provider_account_ids,
+        patch_stream_config, patch_vault_config,
     },
-    MockTimestamp, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultId,
+    StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultId,
     ERR_STREAM_ID_MISMATCH, ERR_TIME_REGRESSION, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
 };
 
 use super::common::{
     assert_execution_failed_with_code, signed_create_stream, signed_deposit, signed_sync_stream,
-    state_deposited_with_mock_clock, transition_ok, DEFAULT_MOCK_CLOCK_INITIAL_TS,
+    state_deposited_with_clock, transition_ok, DEFAULT_CLOCK_INITIAL_TS,
     DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_PROVIDER_B};
@@ -32,8 +32,7 @@ fn test_accrual_basic() {
     let t0: Timestamp = 12_345;
     let t1: Timestamp = t0 + 5;
 
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let (
         mut state,
@@ -43,7 +42,7 @@ fn test_accrual_basic() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         owner_balance_start,
         deposit_amount,
         mock_clock_account_id,
@@ -77,7 +76,7 @@ fn test_accrual_basic() {
         "create_stream failed",
     );
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
+    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
 
     transition_ok(
         &mut state,
@@ -109,8 +108,7 @@ fn test_accrual_caps_at_allocation() {
     let t0: Timestamp = 0;
     let t1: Timestamp = 100;
 
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let (
         mut state,
@@ -120,7 +118,7 @@ fn test_accrual_caps_at_allocation() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         owner_balance_start,
         deposit_amount,
         mock_clock_account_id,
@@ -154,7 +152,7 @@ fn test_accrual_caps_at_allocation() {
         "create_stream failed",
     );
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
+    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
 
     transition_ok(
         &mut state,
@@ -191,7 +189,7 @@ fn test_sync_stream_second_stream_accrues() {
     let rate1 = 5 as TokensPerSecond;
     let allocation1 = 100 as Balance;
 
-    let (mock_clock_account_id, provider_a) = harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_a) = harness_clock_01_and_provider_account_ids();
     let (_, provider_b) = create_keypair(SEED_PROVIDER_B);
 
     let (
@@ -202,7 +200,7 @@ fn test_sync_stream_second_stream_accrues() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         owner_balance_start,
         deposit_amount,
         mock_clock_account_id,
@@ -260,7 +258,7 @@ fn test_sync_stream_second_stream_accrues() {
         "second create_stream failed",
     );
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
+    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
 
     transition_ok(
         &mut state,
@@ -281,7 +279,7 @@ fn test_sync_stream_second_stream_accrues() {
     assert_eq!(s0_after_sync_t1.accrued, 50 as Balance);
     assert_eq!(s0_after_sync_t1.accrued_as_of, t1);
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t2));
+    force_clock_account(&mut state, mock_clock_account_id, 0, t2);
 
     transition_ok(
         &mut state,
@@ -310,8 +308,7 @@ fn test_sync_stream_second_stream_accrues() {
 
 #[test]
 fn test_sync_stream_wrong_vault_id_fails() {
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
     let t0: Timestamp = 50;
 
     let (
@@ -319,10 +316,10 @@ fn test_sync_stream_wrong_vault_id_fails() {
         program_id,
         owner_private_key,
         owner_account_id,
-        _vault_id,
+        vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
         mock_clock_account_id,
@@ -342,7 +339,7 @@ fn test_sync_stream_wrong_vault_id_fails() {
         &mut state,
         &signed_create_stream(
             program_id,
-            _vault_id,
+            vault_id,
             stream_id,
             provider_account_id,
             1,
@@ -355,17 +352,21 @@ fn test_sync_stream_wrong_vault_id_fails() {
         "create_stream failed",
     );
 
-    let wrong_vault_id = VaultId::from(999u64);
+    patch_vault_config(&mut state, vault_config_account_id, |vc| {
+        vc.vault_id = VaultId::from(999u64);
+    });
+
     let r = state.transition_from_public_transaction(
         &signed_sync_stream(
             program_id,
-            wrong_vault_id,
+            vault_id,
             stream_id,
             &account_ids,
             Nonce(3),
             &owner_private_key,
         ),
         4 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ERR_VAULT_ID_MISMATCH);
 }
@@ -381,13 +382,11 @@ fn test_sync_stream_owner_mismatch_fails() {
     let nonce_init = Nonce(0);
     let nonce_deposit = Nonce(1);
     let nonce_stream = Nonce(2);
-    // Signer is `other`; only `owner` ran init + deposit + create_stream.
-    let nonce_sync = Nonce(0);
+    let nonce_sync = Nonce(3);
 
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
-    let (alt_signer_private_key, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (_, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let initial_accounts_data = vec![
         (owner_account_id, signer_account_balance),
@@ -435,10 +434,11 @@ fn test_sync_stream_owner_mismatch_fails() {
         "deposit failed",
     );
 
-    force_mock_timestamp_account(
+    force_clock_account(
         &mut state,
         mock_clock_account_id,
-        MockTimestamp::new(DEFAULT_MOCK_CLOCK_INITIAL_TS),
+        0,
+        DEFAULT_CLOCK_INITIAL_TS,
     );
 
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
@@ -469,11 +469,15 @@ fn test_sync_stream_owner_mismatch_fails() {
         "create_stream failed",
     );
 
+    patch_vault_config(&mut state, vault_config_account_id, |vc| {
+        vc.owner = alt_signer_account_id;
+    });
+
     let account_ids_sync = [
         vault_config_account_id,
         vault_holding_account_id,
         stream_pda,
-        alt_signer_account_id,
+        owner_account_id,
         mock_clock_account_id,
     ];
     let r = state.transition_from_public_transaction(
@@ -483,17 +487,17 @@ fn test_sync_stream_owner_mismatch_fails() {
             0,
             &account_ids_sync,
             nonce_sync,
-            &alt_signer_private_key,
+            &owner_private_key,
         ),
         block_sync,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ERR_VAULT_OWNER_MISMATCH);
 }
 
 #[test]
 fn test_sync_stream_stream_id_does_not_match_account_fails() {
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
     let t0: Timestamp = 20;
 
     let (
@@ -504,7 +508,7 @@ fn test_sync_stream_stream_id_does_not_match_account_fails() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
         mock_clock_account_id,
@@ -536,24 +540,60 @@ fn test_sync_stream_stream_id_does_not_match_account_fails() {
         "create_stream failed",
     );
 
+    let stream1 = derive_stream_pda(program_id, vault_config_account_id, 1);
+    let accounts_s1 = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        stream1,
+        owner_account_id,
+        mock_clock_account_id,
+    ];
+    transition_ok(
+        &mut state,
+        &signed_create_stream(
+            program_id,
+            vault_id,
+            1,
+            provider_account_id,
+            1,
+            100,
+            &accounts_s1,
+            Nonce(3),
+            &owner_private_key,
+        ),
+        4 as BlockId,
+        "create_stream stream 1 failed",
+    );
+
+    patch_stream_config(&mut state, stream1, |sc| {
+        sc.stream_id = 0;
+    });
+
+    let account_ids_sync_s1 = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        stream1,
+        owner_account_id,
+        mock_clock_account_id,
+    ];
     let r = state.transition_from_public_transaction(
         &signed_sync_stream(
             program_id,
             vault_id,
             1,
-            &account_ids,
-            Nonce(3),
+            &account_ids_sync_s1,
+            Nonce(4),
             &owner_private_key,
         ),
-        4 as BlockId,
+        5 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ERR_STREAM_ID_MISMATCH);
 }
 
 #[test]
 fn test_sync_stream_time_regression_fails() {
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
     let t0: Timestamp = 100;
     let t_bad: Timestamp = 50;
 
@@ -565,7 +605,7 @@ fn test_sync_stream_time_regression_fails() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
         mock_clock_account_id,
@@ -598,7 +638,7 @@ fn test_sync_stream_time_regression_fails() {
         "create_stream failed",
     );
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t_bad));
+    force_clock_account(&mut state, mock_clock_account_id, 0, t_bad);
 
     let r = state.transition_from_public_transaction(
         &signed_sync_stream(
@@ -610,6 +650,7 @@ fn test_sync_stream_time_regression_fails() {
             &owner_private_key,
         ),
         4 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ERR_TIME_REGRESSION);
 }

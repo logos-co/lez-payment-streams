@@ -9,7 +9,7 @@ use crate::{
 };
 use nssa_core::{
     account::{Balance, Nonce},
-    program::BlockId,
+    BlockId,
 };
 
 use super::common::DEFAULT_OWNER_GENESIS_BALANCE;
@@ -49,7 +49,11 @@ fn test_initialize_vault_then_reinitialize_fails() {
         &[&owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(&tx_init, block_init);
+    let result = state.transition_from_public_transaction(
+        &tx_init,
+        block_init,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     assert!(result.is_ok(), "initialize_vault tx failed: {:?}", result);
     let vault_config_account = state.get_account_by_id(vault_config_account_id);
     assert_eq!(vault_config_account.data.len(), VaultConfig::SIZE);
@@ -75,7 +79,11 @@ fn test_initialize_vault_then_reinitialize_fails() {
         &[nonce_reinit],
         &[&owner_private_key],
     );
-    let result = state.transition_from_public_transaction(&tx_reinit, block_reinit);
+    let result = state.transition_from_public_transaction(
+        &tx_reinit,
+        block_reinit,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     assert!(
         result.is_err(),
         "repeated initialize_vault tx succeeded: {:?}",

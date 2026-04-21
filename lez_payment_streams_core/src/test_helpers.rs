@@ -8,6 +8,10 @@
 use std::fs;
 use std::path::PathBuf;
 
+use crate::harness_seeds::{SEED_OWNER, SEED_PROVIDER, SEED_RECIPIENT};
+use crate::test_pda::{compute_pda, seed_from_str};
+use crate::{ClockAccountData, CLOCK_01_PROGRAM_ACCOUNT_ID};
+use crate::{Instruction, StreamConfig, StreamId, VaultConfig, VaultId};
 use nssa::{
     program::Program,
     program_deployment_transaction::{Message as DeployMessage, ProgramDeploymentTransaction},
@@ -16,13 +20,9 @@ use nssa::{
 };
 use nssa_core::{
     account::{Account, AccountId, Balance, Data, Nonce},
-    program::BlockId,
+    BlockId,
 };
 use serde::Serialize;
-use spel_framework_core::pda::{compute_pda, seed_from_str};
-
-use crate::harness_seeds::{SEED_MOCK_CLOCK, SEED_OWNER, SEED_PROVIDER, SEED_RECIPIENT};
-use crate::{Instruction, MockTimestamp, StreamId, VaultId};
 
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -48,11 +48,10 @@ pub(crate) fn create_keypair(seed: u8) -> (PrivateKey, AccountId) {
     (private_key, account_id)
 }
 
-/// Default mock timestamp account and stream provider [`AccountId`]s (see [`crate::harness_seeds`]).
-pub(crate) fn harness_mock_clock_and_provider_account_ids() -> (AccountId, AccountId) {
-    let (_, mock_clock_account_id) = create_keypair(SEED_MOCK_CLOCK);
-    let (_, provider_account_id) = create_keypair(SEED_PROVIDER);
-    (mock_clock_account_id, provider_account_id)
+/// System `CLOCK_01` account id (genesis) and stream provider [`AccountId`] from [`crate::harness_seeds`].
+pub(crate) fn harness_clock_01_and_provider_account_ids() -> (AccountId, AccountId) {
+    let provider_account_id = create_keypair(SEED_PROVIDER).1;
+    (CLOCK_01_PROGRAM_ACCOUNT_ID, provider_account_id)
 }
 
 pub(crate) fn create_state_with_guest_program(
@@ -60,7 +59,7 @@ pub(crate) fn create_state_with_guest_program(
 ) -> Option<(V03State, Program)> {
     let guest_bytecode = fs::read(guest_binary_path()).ok()?;
     let guest_program = Program::new(guest_bytecode.clone()).ok()?;
-    let mut state = V03State::new_with_genesis_accounts(initial_accounts_data, &[]);
+    let mut state = V03State::new_with_genesis_accounts(initial_accounts_data, &[], 0u64);
 
     let deploy_message = DeployMessage::new(guest_bytecode);
     let deploy_tx = ProgramDeploymentTransaction::new(deploy_message);
@@ -167,22 +166,54 @@ pub(crate) fn derive_stream_pda(
     )
 }
 
-/// Insert or replace a read-only mock clock account (tests).
-///
-/// For forward-only clocks, use [`MockTimestamp::advance_by`] or [`MockTimestamp::increment`].
-/// This helper sets any [`MockTimestamp`] payload, including regressions for failure tests.
-pub(crate) fn force_mock_timestamp_account(
+/// Overwrite a system clock account payload for tests (Borsh [`ClockAccountData`], clock program owner).
+pub(crate) fn force_clock_account(
     state: &mut V03State,
-    account_id: AccountId,
-    clock: MockTimestamp,
+    clock_account_id: AccountId,
+    block_id: u64,
+    timestamp: nssa_core::Timestamp,
 ) {
+    let clock_program_id = Program::clock().id();
+    let data = ClockAccountData {
+        block_id,
+        timestamp,
+    }
+    .to_bytes();
     let account = Account {
-        program_owner: Program::authenticated_transfer_program().id(),
+        program_owner: clock_program_id,
         balance: 0 as Balance,
-        data: Data::try_from(clock.to_bytes()).expect("mock clock payload fits Data limits"),
+        data: Data::try_from(data).expect("clock payload fits Data limits"),
         ..Account::default()
     };
-    state.force_insert_account(account_id, account);
+    state.force_insert_account(clock_account_id, account);
+}
+
+/// Rewrite `VaultConfig` account data in the test harness (bypasses normal transitions).
+pub(crate) fn patch_vault_config(
+    state: &mut V03State,
+    vault_config_account_id: AccountId,
+    f: impl FnOnce(&mut VaultConfig),
+) {
+    let existing = state.get_account_by_id(vault_config_account_id).clone();
+    let mut vc = VaultConfig::from_bytes(&existing.data).expect("vault config");
+    f(&mut vc);
+    let mut acc = existing;
+    acc.data = Data::try_from(vc.to_bytes()).expect("vault config payload fits Data");
+    state.force_insert_account(vault_config_account_id, acc);
+}
+
+/// Rewrite `StreamConfig` account data in the test harness (bypasses normal transitions).
+pub(crate) fn patch_stream_config(
+    state: &mut V03State,
+    stream_account_id: AccountId,
+    f: impl FnOnce(&mut StreamConfig),
+) {
+    let existing = state.get_account_by_id(stream_account_id).clone();
+    let mut sc = StreamConfig::from_bytes(&existing.data).expect("stream config");
+    f(&mut sc);
+    let mut acc = existing;
+    acc.data = Data::try_from(sc.to_bytes()).expect("stream config payload fits Data");
+    state.force_insert_account(stream_account_id, acc);
 }
 
 /// Single-owner genesis with guest deployed and `initialize_vault` done.
@@ -243,7 +274,7 @@ pub(crate) fn state_with_initialized_vault_with_preseeded_genesis_accounts(
         &[nonce_init],
         &[&owner_private_key],
     );
-    let result_init = state.transition_from_public_transaction(&tx_init, block_init);
+    let result_init = state.transition_from_public_transaction(&tx_init, block_init, 0u64);
     assert!(
         result_init.is_ok(),
         "initialize_vault tx failed: {:?}",

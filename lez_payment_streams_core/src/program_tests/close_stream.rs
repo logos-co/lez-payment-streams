@@ -2,22 +2,22 @@
 
 use nssa_core::{
     account::{Balance, Nonce},
-    program::BlockId,
+    BlockId,
 };
 
 use crate::{
-    test_helpers::{create_keypair, derive_stream_pda, force_mock_timestamp_account},
-    MockTimestamp, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig,
-    ERR_CLOSE_UNAUTHORIZED, ERR_STREAM_CLOSED,
+    test_helpers::{create_keypair, derive_stream_pda, force_clock_account},
+    StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig,
+    CLOCK_01_PROGRAM_ACCOUNT_ID, ERR_CLOSE_UNAUTHORIZED, ERR_STREAM_CLOSED,
 };
 
 use super::common::{
     assert_execution_failed_with_code, force_stream_state_closed, signed_close_stream,
-    signed_create_stream, signed_sync_stream, state_deposited_with_mock_clock, transition_ok,
-    CloseStreamIxAccounts, DEFAULT_MOCK_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE,
+    signed_create_stream, signed_sync_stream, state_deposited_with_clock, transition_ok,
+    CloseStreamIxAccounts, DEFAULT_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE,
     DEFAULT_STREAM_TEST_DEPOSIT,
 };
-use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_MOCK_CLOCK, SEED_PROVIDER};
+use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_PROVIDER};
 
 #[test]
 fn test_close_returns_unaccrued() {
@@ -28,7 +28,7 @@ fn test_close_returns_unaccrued() {
     let t0: Timestamp = 12_345;
     let t1: Timestamp = t0 + 5;
 
-    let (_, mock_clock_account_id) = create_keypair(SEED_MOCK_CLOCK);
+    let mock_clock_account_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
     let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
 
     let (
@@ -39,7 +39,7 @@ fn test_close_returns_unaccrued() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         owner_balance_start,
         deposit_amount,
         mock_clock_account_id,
@@ -78,7 +78,7 @@ fn test_close_returns_unaccrued() {
             .expect("vault config");
     assert_eq!(vault_before.total_allocated, allocation);
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
+    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
 
     transition_ok(
         &mut state,
@@ -142,7 +142,7 @@ fn test_close_stream_unauthorized_fails() {
     let t0: Timestamp = 12_345;
     let t1: Timestamp = t0 + 5;
 
-    let (_, mock_clock_account_id) = create_keypair(SEED_MOCK_CLOCK);
+    let mock_clock_account_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
     let (_, provider_account_id) = create_keypair(SEED_PROVIDER);
     let (alt_signer_private_key, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
 
@@ -154,7 +154,7 @@ fn test_close_stream_unauthorized_fails() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         owner_balance_start,
         deposit_amount,
         mock_clock_account_id,
@@ -188,7 +188,7 @@ fn test_close_stream_unauthorized_fails() {
         "create_stream failed",
     );
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
+    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
 
     transition_ok(
         &mut state,
@@ -223,13 +223,14 @@ fn test_close_stream_unauthorized_fails() {
             &alt_signer_private_key,
         ),
         5 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ERR_CLOSE_UNAUTHORIZED);
 }
 
 #[test]
 fn test_close_already_closed_fails() {
-    let (_, mock_clock_account_id) = create_keypair(SEED_MOCK_CLOCK);
+    let mock_clock_account_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
     let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
 
     let (
@@ -240,11 +241,11 @@ fn test_close_already_closed_fails() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
         mock_clock_account_id,
-        DEFAULT_MOCK_CLOCK_INITIAL_TS,
+        DEFAULT_CLOCK_INITIAL_TS,
     );
 
     let stream_id = StreamId::MIN;
@@ -295,6 +296,7 @@ fn test_close_already_closed_fails() {
             &provider_private_key,
         ),
         4 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ERR_STREAM_CLOSED);
 }

@@ -4,7 +4,8 @@ use spel_framework::prelude::*;
 
 use lez_payment_streams_core::{
     checked_total_allocated_after_add,
-    MockTimestamp,
+    ClockAccountData,
+    CLOCK_PROGRAM_ACCOUNT_IDS,
     StreamConfig,
     StreamId,
     StreamState,
@@ -17,7 +18,7 @@ use lez_payment_streams_core::{
     ERR_CLOSE_UNAUTHORIZED,
     ERR_CLAIM_UNAUTHORIZED,
     ERR_INSUFFICIENT_FUNDS,
-    ERR_INVALID_MOCK_TIMESTAMP,
+    ERR_INVALID_CLOCK_ACCOUNT,
     ERR_NEXT_STREAM_ID_OVERFLOW,
     ERR_RESUME_ZERO_UNACCRUED,
     ERR_STREAM_CLOSED,
@@ -46,8 +47,6 @@ mod lez_payment_streams {
 
     #[allow(unused_imports)]
     use super::*;
-
-    // SPEL error mapping, mock clock parsing, vault and stream validation, shared loaders.
 
     fn spel_custom(code: u32, message: &'static str) -> SpelError {
         SpelError::Custom {
@@ -83,10 +82,20 @@ mod lez_payment_streams {
         spel_custom(code, message)
     }
 
-    fn parse_mock_timestamp(meta: &AccountWithMetadata) -> Result<MockTimestamp, SpelError> {
-        MockTimestamp::from_bytes(&meta.account.data).ok_or_else(|| {
-            spel_custom(ERR_INVALID_MOCK_TIMESTAMP, "invalid mock timestamp account data")
-        })
+    fn parse_clock_account(meta: &AccountWithMetadata) -> Result<Timestamp, SpelError> {
+        if !CLOCK_PROGRAM_ACCOUNT_IDS
+            .iter()
+            .any(|id| *id == meta.account_id)
+        {
+            return Err(spel_custom(
+                ERR_INVALID_CLOCK_ACCOUNT,
+                "not a system clock account",
+            ));
+        }
+        let parsed = ClockAccountData::from_bytes_slice(meta.account.data.as_ref()).ok_or_else(
+            || spel_custom(ERR_INVALID_CLOCK_ACCOUNT, "invalid clock account data"),
+        )?;
+        Ok(parsed.timestamp)
     }
 
     fn stream_invariant_err(code: u32) -> SpelError {
@@ -102,14 +111,12 @@ mod lez_payment_streams {
         }
     }
 
-    /// Read vault config and holding from the usual two-account layout for vault instructions.
-    /// SPEL order: config, then holding.
     fn parse_vault_config_and_holding(
-        vault_config_with_meta: &AccountWithMetadata,
-        vault_holding_with_meta: &AccountWithMetadata,
+        vault_config: &AccountWithMetadata,
+        vault_holding: &AccountWithMetadata,
     ) -> Result<(VaultConfig, VaultHolding), SpelError> {
         let vault_config_state =
-            VaultConfig::from_bytes(&vault_config_with_meta.account.data).ok_or_else(|| {
+            VaultConfig::from_bytes(&vault_config.account.data).ok_or_else(|| {
                 SpelError::DeserializationError {
                     account_index: 0,
                     message: "invalid vault config data".into(),
@@ -117,7 +124,7 @@ mod lez_payment_streams {
             })?;
 
         let vault_holding_state =
-            VaultHolding::from_bytes(&vault_holding_with_meta.account.data).ok_or_else(|| {
+            VaultHolding::from_bytes(&vault_holding.account.data).ok_or_else(|| {
                 SpelError::DeserializationError {
                     account_index: 1,
                     message: "invalid vault holding data".into(),
@@ -127,7 +134,6 @@ mod lez_payment_streams {
         Ok((vault_config_state, vault_holding_state))
     }
 
-    /// Check vault config, holding, and instruction `vault_id` agree (no signer check).
     fn validate_vault_structural(
         vault_config_state: &VaultConfig,
         vault_holding_state: &VaultHolding,
@@ -155,8 +161,6 @@ mod lez_payment_streams {
         Ok(())
     }
 
-    /// Structural validation plus vault owner as signer
-    /// (deposit, withdraw, `create_stream`, `top_up`, owner-only stream paths).
     fn validate_vault_config(
         vault_config_state: &VaultConfig,
         vault_holding_state: &VaultHolding,
@@ -168,11 +172,6 @@ mod lez_payment_streams {
         Ok(())
     }
 
-    /// Validate a deserialized [`StreamConfig`]:
-    /// versions match vault accounts, `stream_id` fits the vault,
-    /// PDA arg matches, invariants hold.
-    /// Call after [`validate_vault_config`] for owner-signed instructions.
-    /// Call after [`validate_vault_structural`] for `close_stream` / `claim` when the signer is not the vault owner.
     fn validate_stream_config_for_vault(
         stream_config: &StreamConfig,
         vault_config_state: &VaultConfig,
@@ -208,19 +207,18 @@ mod lez_payment_streams {
             .map_err(stream_invariant_err)
     }
 
-    /// Load vault config, holding, stream, and mock clock `now` for owner stream instructions with the `sync_stream` five-account layout.
     fn load_vault_stream_and_clock(
-        vault_config_with_meta: &AccountWithMetadata,
-        vault_holding_with_meta: &AccountWithMetadata,
-        stream_config_with_meta: &AccountWithMetadata,
-        mock_timestamp_with_meta: &AccountWithMetadata,
+        vault_config: &AccountWithMetadata,
+        vault_holding: &AccountWithMetadata,
+        stream_config: &AccountWithMetadata,
+        clock_account: &AccountWithMetadata,
         vault_id: VaultId,
         stream_id: StreamId,
         owner_account_id: AccountId,
     ) -> Result<(VaultConfig, VaultHolding, StreamConfig, Timestamp), SpelError> {
         let (vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
-            vault_config_with_meta,
-            vault_holding_with_meta,
+            vault_config,
+            vault_holding,
         )?;
 
         validate_vault_config(
@@ -231,7 +229,7 @@ mod lez_payment_streams {
         )?;
 
         let stream_config_state =
-            StreamConfig::from_bytes(&stream_config_with_meta.account.data).ok_or_else(|| {
+            StreamConfig::from_bytes(&stream_config.account.data).ok_or_else(|| {
                 SpelError::DeserializationError {
                     account_index: 2,
                     message: "invalid stream config data".into(),
@@ -245,26 +243,23 @@ mod lez_payment_streams {
             stream_id,
         )?;
 
-        let now = parse_mock_timestamp(mock_timestamp_with_meta)?.timestamp;
+        let now = parse_clock_account(clock_account)?;
 
         Ok((vault_config_state, vault_holding_state, stream_config_state, now))
     }
 
-    /// Load vault, stream, and mock clock `now` for instructions where the vault owner is not the transaction signer.
-    /// The explicit `owner_account_id` must match [`VaultConfig::owner`] (same check as owner-signed instructions).
-    /// Used by `close_stream` and `claim`.
     fn load_vault_stream_and_clock_with_explicit_owner(
-        vault_config_with_meta: &AccountWithMetadata,
-        vault_holding_with_meta: &AccountWithMetadata,
-        stream_config_with_meta: &AccountWithMetadata,
-        mock_timestamp_with_meta: &AccountWithMetadata,
+        vault_config: &AccountWithMetadata,
+        vault_holding: &AccountWithMetadata,
+        stream_config: &AccountWithMetadata,
+        clock_account: &AccountWithMetadata,
         vault_id: VaultId,
         stream_id: StreamId,
         owner_account_id: AccountId,
     ) -> Result<(VaultConfig, VaultHolding, StreamConfig, Timestamp), SpelError> {
         let (vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
-            vault_config_with_meta,
-            vault_holding_with_meta,
+            vault_config,
+            vault_holding,
         )?;
 
         validate_vault_structural(
@@ -276,7 +271,7 @@ mod lez_payment_streams {
         validate_vault_owner_signer(&vault_config_state, owner_account_id)?;
 
         let stream_config_state =
-            StreamConfig::from_bytes(&stream_config_with_meta.account.data).ok_or_else(|| {
+            StreamConfig::from_bytes(&stream_config.account.data).ok_or_else(|| {
                 SpelError::DeserializationError {
                     account_index: 2,
                     message: "invalid stream config data".into(),
@@ -290,76 +285,69 @@ mod lez_payment_streams {
             stream_id,
         )?;
 
-        let now = parse_mock_timestamp(mock_timestamp_with_meta)?.timestamp;
+        let now = parse_clock_account(clock_account)?;
 
         Ok((vault_config_state, vault_holding_state, stream_config_state, now))
     }
 
-    /// Post states for owner-signed stream instructions with the standard five-account layout:
-    /// vault config, vault holding, stream, owner signer, mock clock (read-only echo).
-    fn states_only_five_owner_stream_sync_layout(
+    fn execute_five_owner_stream_accounts(
         vault_config_account: Account,
         vault_holding_account: Account,
         stream_account: Account,
         owner_account: Account,
-        mock_clock_account: Account,
+        clock_account: Account,
     ) -> SpelOutput {
-        SpelOutput::states_only(vec![
-            AccountPostState::new(vault_config_account),
-            AccountPostState::new(vault_holding_account),
-            AccountPostState::new(stream_account),
-            AccountPostState::new(owner_account),
-            AccountPostState::new(mock_clock_account),
-        ])
+        SpelOutput::execute(
+            vec![
+                vault_config_account,
+                vault_holding_account,
+                stream_account,
+                owner_account,
+                clock_account,
+            ],
+            vec![],
+        )
     }
 
-    // Serialize the debit amount for `authenticated_transfer` inside `ChainedCall::instruction_data` (`deposit` only today).
     fn serialize_transfer_amount(amount: Balance) -> Result<Vec<u32>, SpelError> {
         risc0_zkvm::serde::to_vec(&amount).map_err(|_| SpelError::SerializationError {
             message: "failed to serialize transfer amount".into(),
         })
     }
 
-    // Instructions follow `lez_payment_streams_core::Instruction`.
-    // Vault: `initialize_vault`, `deposit`, `withdraw`.
-    // Streams: `create_stream`, `sync_stream`, `pause_stream`, `resume_stream`, `top_up_stream`.
-    // `close_stream`, `claim`.
-
-    /// Create vault config and holding PDAs for `vault_id`.
     #[instruction]
     pub fn initialize_vault(
         #[account(init, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
-        vault_config_with_meta: AccountWithMetadata,
+        vault_config: AccountWithMetadata,
         #[account(init, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
-        vault_holding_with_meta: AccountWithMetadata,
+        vault_holding: AccountWithMetadata,
         #[account(signer)]
-        owner_with_meta: AccountWithMetadata,
+        owner: AccountWithMetadata,
         vault_id: VaultId,
     ) -> SpelResult {
-        let vault_config_state = VaultConfig::new(owner_with_meta.account_id, vault_id);
+        let vault_config_state = VaultConfig::new(owner.account_id, vault_id);
         let vault_holding_state = VaultHolding::new();
 
-        let mut vault_config_account = vault_config_with_meta.account;
-        let mut vault_holding_account = vault_holding_with_meta.account;
+        let mut vault_config = vault_config;
+        let mut vault_holding = vault_holding;
 
-        vault_config_account.data = vault_config_state.to_bytes().try_into().unwrap();
-        vault_holding_account.data = vault_holding_state.to_bytes().try_into().unwrap();
+        vault_config.account.data = vault_config_state.to_bytes().try_into().unwrap();
+        vault_holding.account.data = vault_holding_state.to_bytes().try_into().unwrap();
 
-        Ok(SpelOutput::states_only(vec![
-            AccountPostState::new_claimed(vault_config_account),
-            AccountPostState::new_claimed(vault_holding_account),
-            AccountPostState::new(owner_with_meta.account),
-        ]))
+        Ok(SpelOutput::execute(
+            vec![vault_config, vault_holding, owner],
+            vec![],
+        ))
     }
 
     #[instruction]
     pub fn deposit(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
-        vault_config_with_meta: AccountWithMetadata,
+        vault_config: AccountWithMetadata,
         #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
-        vault_holding_with_meta: AccountWithMetadata,
+        vault_holding: AccountWithMetadata,
         #[account(mut, signer)]
-        owner_with_meta: AccountWithMetadata,
+        owner: AccountWithMetadata,
         vault_id: VaultId,
         amount: Balance,
         authenticated_transfer_program_id: ProgramId,
@@ -369,48 +357,42 @@ mod lez_payment_streams {
         }
 
         let (vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
-            &vault_config_with_meta,
-            &vault_holding_with_meta,
+            &vault_config,
+            &vault_holding,
         )?;
 
         validate_vault_config(
             &vault_config_state,
             &vault_holding_state,
             vault_id,
-            owner_with_meta.account_id,
+            owner.account_id,
         )?;
 
-        // `pre_states` order matches authenticated-transfer: signer (source) → vault holding.
         let instruction_data = serialize_transfer_amount(amount)?;
         let transfer_call = ChainedCall {
             program_id: authenticated_transfer_program_id,
             instruction_data,
             pre_states: vec![
-                owner_with_meta.clone(),
-                vault_holding_with_meta.clone(),
+                owner.clone(),
+                vault_holding.clone(),
             ],
             pda_seeds: vec![],
         };
 
-        Ok(SpelOutput::with_chained_calls(
-            vec![
-                AccountPostState::new(vault_config_with_meta.account),
-                AccountPostState::new(vault_holding_with_meta.account),
-                AccountPostState::new(owner_with_meta.account),
-            ],
+        Ok(SpelOutput::execute(
+            vec![vault_config, vault_holding, owner],
             vec![transfer_call],
         ))
-
     }
 
     #[instruction]
     pub fn withdraw(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
-        vault_config_with_meta: AccountWithMetadata,
+        vault_config: AccountWithMetadata,
         #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
-        vault_holding_with_meta: AccountWithMetadata,
+        vault_holding: AccountWithMetadata,
         #[account(mut, signer)]
-        owner_with_meta: AccountWithMetadata,
+        owner: AccountWithMetadata,
         #[account(mut)]
         withdraw_to: AccountWithMetadata,
         vault_id: VaultId,
@@ -421,18 +403,18 @@ mod lez_payment_streams {
         }
 
         let (vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
-            &vault_config_with_meta,
-            &vault_holding_with_meta,
+            &vault_config,
+            &vault_holding,
         )?;
 
         validate_vault_config(
             &vault_config_state,
             &vault_holding_state,
             vault_id,
-            owner_with_meta.account_id,
+            owner.account_id,
         )?;
 
-        let unallocated = vault_holding_with_meta.account.balance
+        let unallocated = vault_holding.account.balance
             .saturating_sub(vault_config_state.total_allocated);
         if amount > unallocated {
             return Err(spel_custom(
@@ -441,42 +423,34 @@ mod lez_payment_streams {
             ));
         }
 
-        // Debit vault holding and credit `withdraw_to` inside this program.
-        // Chained `authenticated_transfer` cannot debit the vault PDA
-        // (it is owned by this program, not the auth-transfer program).
-        let mut holding_account = vault_holding_with_meta.account;
-        let mut recipient_account = withdraw_to.account;
+        let mut vault_holding = vault_holding;
+        let mut withdraw_to = withdraw_to;
 
-        holding_account.balance = holding_account.balance.checked_sub(amount).ok_or_else(|| {
+        vault_holding.account.balance = vault_holding.account.balance.checked_sub(amount).ok_or_else(|| {
             spel_custom(ERR_INSUFFICIENT_FUNDS, "vault holding balance underflow")
         })?;
 
-        recipient_account.balance = recipient_account.balance.checked_add(amount).ok_or_else(|| {
+        withdraw_to.account.balance = withdraw_to.account.balance.checked_add(amount).ok_or_else(|| {
             spel_custom(ERR_ARITHMETIC_OVERFLOW, "recipient balance overflow")
         })?;
 
-        Ok(SpelOutput::states_only(vec![
-            AccountPostState::new(vault_config_with_meta.account),
-            AccountPostState::new(holding_account),
-            AccountPostState::new(owner_with_meta.account),
-            AccountPostState::new(recipient_account),
-        ]))
+        Ok(SpelOutput::execute(
+            vec![vault_config, vault_holding, owner, withdraw_to],
+            vec![],
+        ))
     }
 
-    // Vault config and holding are both `mut` like deposit/withdraw
-    // so every vault-scoped instruction shares the same account shape.
-    // Holding is unchanged here (echoed in post state).
     #[instruction]
     pub fn create_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
-        vault_config_with_meta: AccountWithMetadata,
+        vault_config: AccountWithMetadata,
         #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
-        vault_holding_with_meta: AccountWithMetadata,
+        vault_holding: AccountWithMetadata,
         #[account(init, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
-        stream_config_with_meta: AccountWithMetadata,
+        stream_config: AccountWithMetadata,
         #[account(signer)]
-        owner_with_meta: AccountWithMetadata,
-        mock_timestamp_with_meta: AccountWithMetadata,
+        owner: AccountWithMetadata,
+        clock_account: AccountWithMetadata,
         vault_id: VaultId,
         stream_id: StreamId,
         provider: AccountId,
@@ -491,15 +465,15 @@ mod lez_payment_streams {
         }
 
         let (mut vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
-            &vault_config_with_meta,
-            &vault_holding_with_meta,
+            &vault_config,
+            &vault_holding,
         )?;
 
         validate_vault_config(
             &vault_config_state,
             &vault_holding_state,
             vault_id,
-            owner_with_meta.account_id,
+            owner.account_id,
         )?;
 
         if stream_id != vault_config_state.next_stream_id {
@@ -509,15 +483,14 @@ mod lez_payment_streams {
             ));
         }
 
-        // New stream allocation and the vault `total_allocated` increase use the same amount.
         let next_vault_total_allocated = checked_total_allocated_after_add(
-            vault_holding_with_meta.account.balance,
+            vault_holding.account.balance,
             vault_config_state.total_allocated,
             allocation,
         )
         .map_err(|code| spel_custom(code, "vault total_allocated increase failed"))?;
 
-        let accrued_as_of = parse_mock_timestamp(&mock_timestamp_with_meta)?.timestamp;
+        let accrued_as_of = parse_clock_account(&clock_account)?;
 
         let stream_config_state =
             StreamConfig::new(stream_id, provider, rate, allocation, accrued_as_of);
@@ -529,85 +502,81 @@ mod lez_payment_streams {
         vault_config_state.next_stream_id = next_stream_id;
         vault_config_state.total_allocated = next_vault_total_allocated;
 
-        let mut vault_config_account = vault_config_with_meta.account;
-        vault_config_account.data = vault_config_state.to_bytes().try_into().unwrap();
+        let mut vault_config = vault_config;
+        let mut stream_config = stream_config;
 
-        let mut stream_account = stream_config_with_meta.account;
-        stream_account.data = stream_config_state.to_bytes().try_into().unwrap();
+        vault_config.account.data = vault_config_state.to_bytes().try_into().unwrap();
+        stream_config.account.data = stream_config_state.to_bytes().try_into().unwrap();
 
-        Ok(SpelOutput::states_only(vec![
-            AccountPostState::new(vault_config_account),
-            AccountPostState::new(vault_holding_with_meta.account),
-            AccountPostState::new_claimed(stream_account),
-            AccountPostState::new(owner_with_meta.account),
-            AccountPostState::new(mock_timestamp_with_meta.account),
-        ]))
+        Ok(SpelOutput::execute(
+            vec![vault_config, vault_holding, stream_config, owner, clock_account],
+            vec![],
+        ))
     }
 
-    /// Run [`StreamConfig::at_time`] with mock clock `now` and write the stream (owner).
     #[instruction]
     pub fn sync_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
-        vault_config_with_meta: AccountWithMetadata,
+        vault_config: AccountWithMetadata,
         #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
-        vault_holding_with_meta: AccountWithMetadata,
+        vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
-        stream_config_with_meta: AccountWithMetadata,
+        stream_config: AccountWithMetadata,
         #[account(signer)]
-        owner_with_meta: AccountWithMetadata,
-        mock_timestamp_with_meta: AccountWithMetadata,
+        owner: AccountWithMetadata,
+        clock_account: AccountWithMetadata,
         vault_id: VaultId,
         stream_id: StreamId,
     ) -> SpelResult {
         let (_, _, mut stream_config_state, now) = load_vault_stream_and_clock(
-            &vault_config_with_meta,
-            &vault_holding_with_meta,
-            &stream_config_with_meta,
-            &mock_timestamp_with_meta,
+            &vault_config,
+            &vault_holding,
+            &stream_config,
+            &clock_account,
             vault_id,
             stream_id,
-            owner_with_meta.account_id,
+            owner.account_id,
         )?;
 
         stream_config_state = stream_config_state
             .at_time(now)
             .map_err(|code| spel_custom(code, "at_time failed"))?;
 
-        let vault_config_account = vault_config_with_meta.account;
-        let mut stream_account = stream_config_with_meta.account;
+        let vault_config_account = vault_config.account;
+        let mut stream_account = stream_config.account;
         stream_account.data = stream_config_state.to_bytes().try_into().unwrap();
 
-        Ok(states_only_five_owner_stream_sync_layout(
+        Ok(execute_five_owner_stream_accounts(
             vault_config_account,
-            vault_holding_with_meta.account,
+            vault_holding.account,
             stream_account,
-            owner_with_meta.account,
-            mock_timestamp_with_meta.account,
+            owner.account,
+            clock_account.account,
         ))
     }
 
     #[instruction]
     pub fn pause_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
-        vault_config_with_meta: AccountWithMetadata,
+        vault_config: AccountWithMetadata,
         #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
-        vault_holding_with_meta: AccountWithMetadata,
+        vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
-        stream_config_with_meta: AccountWithMetadata,
+        stream_config: AccountWithMetadata,
         #[account(signer)]
-        owner_with_meta: AccountWithMetadata,
-        mock_timestamp_with_meta: AccountWithMetadata,
+        owner: AccountWithMetadata,
+        clock_account: AccountWithMetadata,
         vault_id: VaultId,
         stream_id: StreamId,
     ) -> SpelResult {
         let (_, _, mut stream_config_state, now) = load_vault_stream_and_clock(
-            &vault_config_with_meta,
-            &vault_holding_with_meta,
-            &stream_config_with_meta,
-            &mock_timestamp_with_meta,
+            &vault_config,
+            &vault_holding,
+            &stream_config,
+            &clock_account,
             vault_id,
             stream_id,
-            owner_with_meta.account_id,
+            owner.account_id,
         )?;
 
         stream_config_state = stream_config_state
@@ -623,41 +592,41 @@ mod lez_payment_streams {
 
         stream_config_state.state = StreamState::Paused;
 
-        let vault_config_account = vault_config_with_meta.account;
-        let mut stream_account = stream_config_with_meta.account;
+        let vault_config_account = vault_config.account;
+        let mut stream_account = stream_config.account;
         stream_account.data = stream_config_state.to_bytes().try_into().unwrap();
 
-        Ok(states_only_five_owner_stream_sync_layout(
+        Ok(execute_five_owner_stream_accounts(
             vault_config_account,
-            vault_holding_with_meta.account,
+            vault_holding.account,
             stream_account,
-            owner_with_meta.account,
-            mock_timestamp_with_meta.account,
+            owner.account,
+            clock_account.account,
         ))
     }
 
     #[instruction]
     pub fn resume_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
-        vault_config_with_meta: AccountWithMetadata,
+        vault_config: AccountWithMetadata,
         #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
-        vault_holding_with_meta: AccountWithMetadata,
+        vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
-        stream_config_with_meta: AccountWithMetadata,
+        stream_config: AccountWithMetadata,
         #[account(signer)]
-        owner_with_meta: AccountWithMetadata,
-        mock_timestamp_with_meta: AccountWithMetadata,
+        owner: AccountWithMetadata,
+        clock_account: AccountWithMetadata,
         vault_id: VaultId,
         stream_id: StreamId,
     ) -> SpelResult {
         let (_, _, mut stream_config_state, now) = load_vault_stream_and_clock(
-            &vault_config_with_meta,
-            &vault_holding_with_meta,
-            &stream_config_with_meta,
-            &mock_timestamp_with_meta,
+            &vault_config,
+            &vault_holding,
+            &stream_config,
+            &clock_account,
             vault_id,
             stream_id,
-            owner_with_meta.account_id,
+            owner.account_id,
         )?;
 
         stream_config_state = stream_config_state
@@ -668,45 +637,42 @@ mod lez_payment_streams {
             .resume_from_paused_at(now)
             .map_err(|code| spel_resume_from_paused_at_err(code, ResumeFromPausedInstruction::ResumeStream))?;
 
-        let vault_config_account = vault_config_with_meta.account;
-        let mut stream_account = stream_config_with_meta.account;
+        let vault_config_account = vault_config.account;
+        let mut stream_account = stream_config.account;
         stream_account.data = stream_config_state.to_bytes().try_into().unwrap();
 
-        Ok(states_only_five_owner_stream_sync_layout(
+        Ok(execute_five_owner_stream_accounts(
             vault_config_account,
-            vault_holding_with_meta.account,
+            vault_holding.account,
             stream_account,
-            owner_with_meta.account,
-            mock_timestamp_with_meta.account,
+            owner.account,
+            clock_account.account,
         ))
     }
 
-    /// Add vault-funded allocation to the stream.
-    /// For Paused streams, resume with `accrued_as_of = now`
-    /// like [`StreamConfig::resume_from_paused_at`] in `resume_stream`.
     #[instruction]
     pub fn top_up_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
-        vault_config_with_meta: AccountWithMetadata,
+        vault_config: AccountWithMetadata,
         #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
-        vault_holding_with_meta: AccountWithMetadata,
+        vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
-        stream_config_with_meta: AccountWithMetadata,
+        stream_config: AccountWithMetadata,
         #[account(signer)]
-        owner_with_meta: AccountWithMetadata,
-        mock_timestamp_with_meta: AccountWithMetadata,
+        owner: AccountWithMetadata,
+        clock_account: AccountWithMetadata,
         vault_id: VaultId,
         stream_id: StreamId,
         vault_total_allocated_increase: Balance,
     ) -> SpelResult {
         let (mut vault_config_state, _, mut stream_config_state, now) = load_vault_stream_and_clock(
-            &vault_config_with_meta,
-            &vault_holding_with_meta,
-            &stream_config_with_meta,
-            &mock_timestamp_with_meta,
+            &vault_config,
+            &vault_holding,
+            &stream_config,
+            &clock_account,
             vault_id,
             stream_id,
-            owner_with_meta.account_id,
+            owner.account_id,
         )?;
 
         stream_config_state = stream_config_state
@@ -722,7 +688,7 @@ mod lez_payment_streams {
         }
 
         let next_vault_total_allocated = checked_total_allocated_after_add(
-            vault_holding_with_meta.account.balance,
+            vault_holding.account.balance,
             vault_config_state.total_allocated,
             vault_total_allocated_increase,
         )
@@ -736,58 +702,55 @@ mod lez_payment_streams {
         vault_config_state.total_allocated = next_vault_total_allocated;
 
         if stream_config_state.state == StreamState::Paused {
-            // Same `accrued_as_of = now` anchor as `resume_stream`; see `resume_from_paused_at`.
             stream_config_state = stream_config_state
                 .resume_from_paused_at(now)
                 .map_err(|code| spel_resume_from_paused_at_err(code, ResumeFromPausedInstruction::TopUpStream))?;
         }
 
-        let mut vault_config_account = vault_config_with_meta.account;
+        let mut vault_config_account = vault_config.account;
         vault_config_account.data = vault_config_state.to_bytes().try_into().unwrap();
 
-        let mut stream_account = stream_config_with_meta.account;
+        let mut stream_account = stream_config.account;
         stream_account.data = stream_config_state.to_bytes().try_into().unwrap();
 
-        Ok(states_only_five_owner_stream_sync_layout(
+        Ok(execute_five_owner_stream_accounts(
             vault_config_account,
-            vault_holding_with_meta.account,
+            vault_holding.account,
             stream_account,
-            owner_with_meta.account,
-            mock_timestamp_with_meta.account,
+            owner.account,
+            clock_account.account,
         ))
     }
 
-    /// Close at mock clock time after accrual fold.
-    /// Require vault owner or stream provider as signer.
     #[instruction]
     pub fn close_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
-        vault_config_with_meta: AccountWithMetadata,
+        vault_config: AccountWithMetadata,
         #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
-        vault_holding_with_meta: AccountWithMetadata,
+        vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
-        stream_config_with_meta: AccountWithMetadata,
+        stream_config: AccountWithMetadata,
         #[account(mut)]
-        owner_with_meta: AccountWithMetadata,
+        owner: AccountWithMetadata,
         #[account(signer)]
-        authority_with_meta: AccountWithMetadata,
-        mock_timestamp_with_meta: AccountWithMetadata,
+        authority: AccountWithMetadata,
+        clock_account: AccountWithMetadata,
         vault_id: VaultId,
         stream_id: StreamId,
     ) -> SpelResult {
         let (mut vault_config_state, _, stream_config_state, now) =
             load_vault_stream_and_clock_with_explicit_owner(
-                &vault_config_with_meta,
-                &vault_holding_with_meta,
-                &stream_config_with_meta,
-                &mock_timestamp_with_meta,
+                &vault_config,
+                &vault_holding,
+                &stream_config,
+                &clock_account,
                 vault_id,
                 stream_id,
-                owner_with_meta.account_id,
+                owner.account_id,
             )?;
 
-        let authority = authority_with_meta.account_id;
-        if authority != vault_config_state.owner && authority != stream_config_state.provider {
+        let authority_id = authority.account_id;
+        if authority_id != vault_config_state.owner && authority_id != stream_config_state.provider {
             return Err(spel_custom(ERR_CLOSE_UNAUTHORIZED, "not vault owner or stream provider"));
         }
 
@@ -797,52 +760,46 @@ mod lez_payment_streams {
 
         vault_config_state.total_allocated = next_vault_total_allocated;
 
-        let mut vault_config_account = vault_config_with_meta.account;
-        vault_config_account.data = vault_config_state.to_bytes().try_into().unwrap();
+        let mut vault_config = vault_config;
+        let mut stream_config = stream_config;
 
-        let mut stream_account = stream_config_with_meta.account;
-        stream_account.data = stream_after_close.to_bytes().try_into().unwrap();
+        vault_config.account.data = vault_config_state.to_bytes().try_into().unwrap();
+        stream_config.account.data = stream_after_close.to_bytes().try_into().unwrap();
 
-        Ok(SpelOutput::states_only(vec![
-            AccountPostState::new(vault_config_account),
-            AccountPostState::new(vault_holding_with_meta.account),
-            AccountPostState::new(stream_account),
-            AccountPostState::new(owner_with_meta.account),
-            AccountPostState::new(authority_with_meta.account),
-            AccountPostState::new(mock_timestamp_with_meta.account),
-        ]))
+        Ok(SpelOutput::execute(
+            vec![vault_config, vault_holding, stream_config, owner, authority, clock_account],
+            vec![],
+        ))
     }
 
-    /// Pay accrued liquidity to the stream provider.
-    /// Delegate payout math to [`StreamConfig::claim_at_time`] with mock clock `now`.
     #[instruction]
     pub fn claim(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
-        vault_config_with_meta: AccountWithMetadata,
+        vault_config: AccountWithMetadata,
         #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
-        vault_holding_with_meta: AccountWithMetadata,
+        vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
-        stream_config_with_meta: AccountWithMetadata,
+        stream_config: AccountWithMetadata,
         #[account(mut)]
-        owner_with_meta: AccountWithMetadata,
+        owner: AccountWithMetadata,
         #[account(mut, signer)]
-        provider_with_meta: AccountWithMetadata,
-        mock_timestamp_with_meta: AccountWithMetadata,
+        provider: AccountWithMetadata,
+        clock_account: AccountWithMetadata,
         vault_id: VaultId,
         stream_id: StreamId,
     ) -> SpelResult {
         let (mut vault_config_state, _, stream_config_state, now) =
             load_vault_stream_and_clock_with_explicit_owner(
-                &vault_config_with_meta,
-                &vault_holding_with_meta,
-                &stream_config_with_meta,
-                &mock_timestamp_with_meta,
+                &vault_config,
+                &vault_holding,
+                &stream_config,
+                &clock_account,
                 vault_id,
                 stream_id,
-                owner_with_meta.account_id,
+                owner.account_id,
             )?;
 
-        if provider_with_meta.account_id != stream_config_state.provider {
+        if provider.account_id != stream_config_state.provider {
             return Err(spel_custom(ERR_CLAIM_UNAUTHORIZED, "not stream provider"));
         }
 
@@ -852,29 +809,25 @@ mod lez_payment_streams {
 
         vault_config_state.total_allocated = next_vault_total_allocated;
 
-        let mut holding_account = vault_holding_with_meta.account;
-        holding_account.balance = holding_account.balance.checked_sub(payout).ok_or_else(|| {
+        let mut vault_config = vault_config;
+        let mut vault_holding = vault_holding;
+        let mut stream_config = stream_config;
+        let mut provider = provider;
+
+        vault_holding.account.balance = vault_holding.account.balance.checked_sub(payout).ok_or_else(|| {
             spel_custom(ERR_INSUFFICIENT_FUNDS, "vault holding balance underflow")
         })?;
 
-        let mut provider_account = provider_with_meta.account;
-        provider_account.balance = provider_account.balance.checked_add(payout).ok_or_else(|| {
+        provider.account.balance = provider.account.balance.checked_add(payout).ok_or_else(|| {
             spel_custom(ERR_ARITHMETIC_OVERFLOW, "provider balance overflow")
         })?;
 
-        let mut vault_config_account = vault_config_with_meta.account;
-        vault_config_account.data = vault_config_state.to_bytes().try_into().unwrap();
+        vault_config.account.data = vault_config_state.to_bytes().try_into().unwrap();
+        stream_config.account.data = stream_after_claim.to_bytes().try_into().unwrap();
 
-        let mut stream_account = stream_config_with_meta.account;
-        stream_account.data = stream_after_claim.to_bytes().try_into().unwrap();
-
-        Ok(SpelOutput::states_only(vec![
-            AccountPostState::new(vault_config_account),
-            AccountPostState::new(holding_account),
-            AccountPostState::new(stream_account),
-            AccountPostState::new(owner_with_meta.account),
-            AccountPostState::new(provider_account),
-            AccountPostState::new(mock_timestamp_with_meta.account),
-        ]))
+        Ok(SpelOutput::execute(
+            vec![vault_config, vault_holding, stream_config, owner, provider, clock_account],
+            vec![],
+        ))
     }
 }

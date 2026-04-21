@@ -1,7 +1,7 @@
 //! Constants and helpers for [`crate::program_tests`] submodules.
 //!
 //! Default balances, account-layout type aliases, signed [`Instruction`] builders,
-//! deposit fixtures with mock clock, `transition_ok`, and test-only stream tweaks.
+//! deposit fixtures with a system clock account, `transition_ok`, and test-only stream tweaks.
 //! Guest deployment, genesis, PDAs, and raw tx wiring live in [`crate::test_helpers`].
 
 use nssa::{
@@ -9,29 +9,32 @@ use nssa::{
 };
 use nssa_core::{
     account::{AccountId, Balance, Data, Nonce},
-    program::BlockId,
+    BlockId,
 };
 
 use crate::Instruction;
 use crate::{
     test_helpers::{
-        build_signed_public_tx, derive_stream_pda, force_mock_timestamp_account,
+        build_signed_public_tx, derive_stream_pda, force_clock_account,
         state_with_initialized_vault, state_with_initialized_vault_with_preseeded_genesis_accounts,
     },
-    MockTimestamp, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultId,
+    StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultId,
 };
+
+/// Timestamp argument for [`V03State::transition_from_public_transaction`] in tests.
+pub(crate) const TEST_PUBLIC_TX_TIMESTAMP: Timestamp = 0;
 
 /// Well-funded owner balance for typical integration tests.
 pub(crate) const DEFAULT_OWNER_GENESIS_BALANCE: Balance = 1_000;
-/// Mock clock reading after [`state_deposited_with_mock_clock`] unless a test overrides it.
-pub(crate) const DEFAULT_MOCK_CLOCK_INITIAL_TS: Timestamp = 1;
+/// Clock account timestamp after [`state_deposited_with_clock`] unless a test overrides it.
+pub(crate) const DEFAULT_CLOCK_INITIAL_TS: Timestamp = 1;
 /// Single deposit into vault holding after `initialize_vault` for stream-focused tests (unified fixture).
 pub(crate) const DEFAULT_STREAM_TEST_DEPOSIT: Balance = 500;
 
-/// Account order for stream instructions: vault config, holding, stream PDA, owner, mock clock.
+/// Account order for stream instructions: vault config, holding, stream PDA, owner, clock account.
 pub(crate) type StreamIxAccounts = [AccountId; 5];
 
-/// `close_stream`: vault config, holding, stream PDA, owner (vault pubkey), authority (signer), mock clock.
+/// `close_stream`: vault config, holding, stream PDA, owner (vault pubkey), authority (signer), clock.
 pub(crate) type CloseStreamIxAccounts = [AccountId; 6];
 
 /// `claim`: same six slots as [`CloseStreamIxAccounts`].
@@ -54,7 +57,7 @@ pub(crate) fn first_stream_accounts(
     vault_config_account_id: AccountId,
     vault_holding_account_id: AccountId,
     owner_account_id: AccountId,
-    mock_clock_account_id: AccountId,
+    clock_account_id: AccountId,
 ) -> (StreamId, AccountId, StreamIxAccounts) {
     let stream_id = StreamId::MIN;
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, stream_id);
@@ -63,7 +66,7 @@ pub(crate) fn first_stream_accounts(
         vault_holding_account_id,
         stream_pda,
         owner_account_id,
-        mock_clock_account_id,
+        clock_account_id,
     ];
     (stream_id, stream_pda, account_ids)
 }
@@ -248,7 +251,9 @@ pub(crate) fn transition_ok(
     label: &'static str,
 ) {
     assert!(
-        state.transition_from_public_transaction(tx, block).is_ok(),
+        state
+            .transition_from_public_transaction(tx, block, TEST_PUBLIC_TX_TIMESTAMP)
+            .is_ok(),
         "{label}",
     );
 }
@@ -274,14 +279,14 @@ pub(crate) fn assert_execution_failed_with_code(result: Result<(), NssaError>, c
     }
 }
 
-/// Vault after `initialize_vault`, one deposit, mock clock installed.
+/// Vault after `initialize_vault`, one deposit, clock payload written on `clock_account_id`.
 /// Typical next step is `create_stream` at block 3, nonce 2.
 /// Args often match [`DEFAULT_OWNER_GENESIS_BALANCE`], [`DEFAULT_STREAM_TEST_DEPOSIT`],
-/// clock id, [`DEFAULT_MOCK_CLOCK_INITIAL_TS`].
-pub(crate) fn state_deposited_with_mock_clock(
+/// clock id, [`DEFAULT_CLOCK_INITIAL_TS`].
+pub(crate) fn state_deposited_with_clock(
     owner_balance_start: Balance,
     deposit_amount: Balance,
-    mock_clock_account_id: AccountId,
+    clock_account_id: AccountId,
     initial_ts: Timestamp,
 ) -> (
     V03State,
@@ -292,22 +297,22 @@ pub(crate) fn state_deposited_with_mock_clock(
     AccountId,
     AccountId,
 ) {
-    state_deposited_with_mock_clock_impl(
+    state_deposited_with_clock_impl(
         owner_balance_start,
         deposit_amount,
-        mock_clock_account_id,
+        clock_account_id,
         initial_ts,
         &[],
     )
 }
 
-/// Like [`state_deposited_with_mock_clock`],
+/// Like [`state_deposited_with_clock`],
 /// with `stream_provider_account_id` in genesis at balance `0`
 /// so `claim` can credit it (NSSA needs a non-default `program_owner` when balances move).
-pub(crate) fn state_deposited_with_mock_clock_and_provider(
+pub(crate) fn state_deposited_with_clock_and_provider(
     owner_balance_start: Balance,
     deposit_amount: Balance,
-    mock_clock_account_id: AccountId,
+    clock_account_id: AccountId,
     initial_ts: Timestamp,
     stream_provider_account_id: AccountId,
 ) -> (
@@ -319,19 +324,19 @@ pub(crate) fn state_deposited_with_mock_clock_and_provider(
     AccountId,
     AccountId,
 ) {
-    state_deposited_with_mock_clock_impl(
+    state_deposited_with_clock_impl(
         owner_balance_start,
         deposit_amount,
-        mock_clock_account_id,
+        clock_account_id,
         initial_ts,
         &[(stream_provider_account_id, 0 as Balance)],
     )
 }
 
-fn state_deposited_with_mock_clock_impl(
+fn state_deposited_with_clock_impl(
     owner_balance_start: Balance,
     deposit_amount: Balance,
-    mock_clock_account_id: AccountId,
+    clock_account_id: AccountId,
     initial_ts: Timestamp,
     extra_genesis: &[(AccountId, Balance)],
 ) -> (
@@ -378,11 +383,7 @@ fn state_deposited_with_mock_clock_impl(
         "deposit failed",
     );
 
-    force_mock_timestamp_account(
-        &mut state,
-        mock_clock_account_id,
-        MockTimestamp::new(initial_ts),
-    );
+    force_clock_account(&mut state, clock_account_id, 0, initial_ts);
 
     (
         state,

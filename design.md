@@ -4,6 +4,22 @@ Implementation-level choices for the payment streams MVP on LEZ.
 The spec (`rfc-index/docs/ift-ts/raw/payment-streams.md`) defines behavioral semantics.
 This document covers what the spec leaves open.
 
+## Platform pins (NSSA and SPEL)
+
+Host, guest, and examples use the same LEZ checkout: `nssa_core` / `nssa` (tests) from `logos-execution-zone` git tag `v0.2.0-rc1`, so there is a single `nssa_core` in the graph alongside SPEL.
+
+SPEL is pinned to git revision `3457c7431e9b5b88661ed87b53677511ef88d113` on `https://github.com/logos-co/spel.git` (includes `SpelOutput::execute` and the macro rewrite to `execute_with_claims` for `vec![account, …]` patterns).
+
+## Duplicated helpers in the core crate
+
+`lez_payment_streams_core/src/clock_wire.rs` repeats the three system clock `AccountId` constants and the Borsh `ClockAccountData` layout that live in LEZ `clock_core`.
+The crate does not list `clock_core` as a dependency so we avoid extra Cargo edges (guest vs host workspaces, git pins, and patch rules) while keeping a single `nssa_core` revision.
+If `clock_core` changes upstream, this file must be updated by hand until we switch to a direct dependency from the same LEZ `rev`/`tag` as `nssa_core` (see `plan.md` step 6).
+
+`lez_payment_streams_core/src/test_pda.rs` (test-only) repeats the seed combination rules from `spel-framework-core::pda` (`seed_from_str`, single-seed vs hashed multi-seed), then uses `nssa_core` for `PdaSeed` and `AccountId` derivation.
+We avoid a `spel-framework-core` dev-dependency on the core crate because it would introduce a second `nssa_core` (from SPEL’s own LEZ pin) and break type identity with the main dependency.
+When the dependency graph allows exactly one `nssa_core`, tests should call SPEL’s helpers instead so host-derived PDAs cannot drift from the guest (see `plan.md` step 6 and step 3).
+
 ## Account types and relationships
 
 A single LEZ program manages three account types:
@@ -65,15 +81,19 @@ All match LEZ-native types (`Balance`, `Timestamp`).
 `TokensPerSecond` and chain timestamps use `u64`: enough range for realistic rates and second-granularity time without widening on-chain fields that do not need `u128`.
 Accrual multiplies rate by elapsed seconds in `u128` (or `Balance`) where the product can exceed `u64`, so widening stays in accrual math instead of storing an oversized `rate` on the account.
 
-A placeholder timestamp source account is passed as a read-only instruction account.
-To be replaced by a LEZ-native clock once the platform supports it.
+Time for accrual comes from a read-only system clock account supplied by the client (one of the three LEZ clock accounts, for example `CLOCK_01` for second granularity).
+Genesis seeds those clock account ids; the guest rejects any other account id with `ERR_INVALID_CLOCK_ACCOUNT` (6026).
+The wire layout matches LEZ `clock_core::ClockAccountData`, Borsh-encoded: `block_id: u64` and `timestamp: u64` (little-endian on the wire as part of Borsh), 16 bytes total.
+The program uses the `timestamp` field as the `Timestamp` for `StreamConfig::at_time` and related helpers; `block_id` is validated structurally but not interpreted for MVP stream math.
 
-Wire layout for the MVP mock clock (`MockTimestamp` in the core crate): `version` (`u8`, little-endian as a single byte) followed by `timestamp` (`u64`, little-endian), nine bytes total.
-Tests may synthesize this with `MockTimestamp::to_bytes` or mutate host-side account data between transactions.
+Three clock granularities exist on the platform (`CLOCK_01`, `CLOCK_10`, `CLOCK_50`); clients choose which clock account to pass.
+Finer clocks imply more frequent public updates to that account when used as the read source; coarser clocks can reduce metadata churn at the cost of less precise accrual folds (relevant for privacy or private-proof settings where clock resolution interacts with what observers learn).
 
-On-chain parsing should use structural checks and an explicit set of supported wire layouts per version rather than rejecting all but `version == DEFAULT_VERSION`, so newer clock layouts can coexist when the program still only needs the same timestamp fields from the prefix.
+`ERR_INVALID_MOCK_TIMESTAMP` (6011) remains defined in the core crate for compatibility but is not emitted on current paths.
 
-Guest clock loading uses two shared paths: owner-signed stream instructions (`SyncStream`, pause, resume, top-up) load via `load_vault_stream_and_clock` (signer is the vault owner). `CloseStream` and `Claim` use structural vault checks, bind the explicit vault owner account to `VaultConfig.owner`, then load stream state and the mock clock via `load_vault_stream_and_clock_with_explicit_owner` (the transaction signer is authority or provider, not necessarily the owner account).
+On-chain parsing should keep treating unknown or future clock payload extensions as parse failures for this program until a new layout is explicitly supported.
+
+Guest clock loading uses two shared paths: owner-signed stream instructions (`SyncStream`, pause, resume, top-up) load via `load_vault_stream_and_clock` (signer is the vault owner). `CloseStream` and `Claim` use structural vault checks, bind the explicit vault owner account to `VaultConfig.owner`, then load stream state and the clock account via `load_vault_stream_and_clock_with_explicit_owner` (the transaction signer is authority or provider, not necessarily the owner account).
 
 ## Accounting
 
@@ -153,6 +173,7 @@ Optional cash audit (off-chain or future on-chain counters): cumulative `deposit
 
 The RFC should be updated in a later promotion batch so normative text matches this implementation:
 
+- Clocks: replace any mock-clock account wording with system clock accounts (client-selected `CLOCK_01` / `CLOCK_10` / `CLOCK_50`), 16-byte Borsh payload, and `ERR_INVALID_CLOCK_ACCOUNT` for wrong id or payload; note security and privacy tradeoffs of clock granularity versus observability of accrual timing.
 - Allocation: define `allocation` as current commitment (`accrued + unaccrued`), updated when `claim` pays out (`allocation` decreases by the claimed amount).
 - Claim: state that `claim` reduces `allocation` and `total_allocated` by the payout, not only `VaultHolding` balance and `accrued`.
 - Resume / “remaining allocation”: align wording with `unaccrued` (`allocation - accrued`): resume requires positive `unaccrued` after `at_time` (equivalently `accrued < allocation` when both are folded).
@@ -171,7 +192,7 @@ Claim: provider only.
 
 ## Pause and resume
 
-`PauseStream` and `ResumeStream` use the same account layout as `SyncStream` (config, holding, stream, owner signer, read-only mock clock).
+`PauseStream` and `ResumeStream` use the same account layout as `SyncStream` (config, holding, stream, owner signer, read-only system clock account).
 Handlers run `StreamConfig::at_time(now)` first, then apply the transition.
 
 `PauseStream` requires the post-`at_time` state to be `Active`.
@@ -181,7 +202,7 @@ Invalid transitions fail with `ERR_*` (not no-ops).
 
 ## Top-up
 
-`TopUpStream` uses the same account layout as `SyncStream` / `PauseStream` / `ResumeStream` (vault config, holding, stream PDA, owner signer, read-only mock clock).
+`TopUpStream` uses the same account layout as `SyncStream` / `PauseStream` / `ResumeStream` (vault config, holding, stream PDA, owner signer, read-only system clock account).
 
 Handlers run `StreamConfig::at_time(now)` first.
 
@@ -197,7 +218,7 @@ If state is already `Active`, only allocation and `total_allocated` change.
 
 ## CloseStream
 
-Account order (fixed): `VaultConfig` PDA (mut), `VaultHolding` (mut), stream PDA (mut), owner account (mut, not a signer), `authority` (signer), mock clock (read-only).
+Account order (fixed): `VaultConfig` PDA (mut), `VaultHolding` (mut), stream PDA (mut), owner account (mut, not a signer), `authority` (signer), system clock account (read-only).
 
 Vault checks use a small split: `validate_vault_structural` enforces matching versions, instruction `vault_id`, and related structural rules (`ERR_VERSION_MISMATCH`, `ERR_VAULT_ID_MISMATCH`).
 The instruction passes the vault owner as an explicit account; the guest requires that account’s id to equal `VaultConfig.owner` (defense in depth alongside PDA binding).
@@ -205,20 +226,20 @@ The instruction passes the vault owner as an explicit account; the guest require
 
 Close authorization: the signer must be the vault owner or the stream provider; otherwise `ERR_CLOSE_UNAUTHORIZED`.
 
-Handler shape: deserialize vault and stream, structural vault validation, stream alignment with the vault, then `StreamConfig::close_at_time(now, vault_config.total_allocated)` using the mock clock.
+Handler shape: deserialize vault and stream, structural vault validation, stream alignment with the vault, then `StreamConfig::close_at_time(now, vault_config.total_allocated)` using the clock account timestamp as `now`.
 `close_at_time` applies `StreamConfig::at_time(now)` internally, then releases unaccrued liquidity by lowering `total_allocated` via `checked_total_allocated_after_release`.
 If `decrease_total_allocated_by` is zero, `total_allocated` is unchanged.
 A second close attempt fails with `ERR_STREAM_CLOSED` from `close_at_time` (stream already closed after the accrual fold).
 
 ## Claim
 
-Account order (fixed): `VaultConfig` PDA (mut), `VaultHolding` (mut), stream PDA (mut), vault owner account (mut, not a signer), provider account (mut, signer), mock clock (read-only).
+Account order (fixed): `VaultConfig` PDA (mut), `VaultHolding` (mut), stream PDA (mut), vault owner account (mut, not a signer), provider account (mut, signer), system clock account (read-only).
 The owner account matches `VaultConfig.owner` (same binding as `close_stream`); index 4 is the stream’s `provider` from `StreamConfig`, which receives the payout.
 
 Only the provider may sign.
 The guest checks `signer == StreamConfig.provider`; otherwise `ERR_CLAIM_UNAUTHORIZED` (6025).
 
-Handler shape: structural vault validation (`validate_vault_structural`), deserialize stream, `validate_stream_config_for_vault`, then `StreamConfig::claim_at_time(now, vault_config.total_allocated)` using the mock clock.
+Handler shape: structural vault validation (`validate_vault_structural`), deserialize stream, `validate_stream_config_for_vault`, then `StreamConfig::claim_at_time(now, vault_config.total_allocated)` using the clock account timestamp as `now`.
 `claim_at_time` folds accrual with `at_time(now)` internally, then pays the full post-fold `accrued` amount, reduces `allocation` and `total_allocated` by that payout, and sets `accrued` to zero without changing `state` (`Active`, `Paused`, or `Closed` unchanged).
 
 Native transfer: debit `VaultHolding.balance` by the payout and credit the provider account, using the same checked arithmetic pattern as `withdraw`.
@@ -271,7 +292,7 @@ Depletion in one step:
 
 `SyncStream` instruction:
 
-- First-class mutating instruction (not test-only): vault owner signer, same vault account layout as `create_stream` (config, holding, stream PDA, owner, read-only mock clock).
+- First-class mutating instruction (not test-only): vault owner signer, same vault account layout as `create_stream` (config, holding, stream PDA, owner, read-only system clock account).
   After deserializing vault and stream accounts, the guest checks vault invariants (version, `vault_id`, owner) then stream alignment with the vault: `StreamConfig.version` matches both vault accounts, instruction `stream_id` is strictly below `next_stream_id` and matches the stored `stream_id`, and `StreamConfig::validate_invariants` passes (same structural rules as before calling `at_time`).
   Then it applies `stream_config.at_time(now)` from the clock account and writes stream data back.
   Does not move balances or change allocation; use `claim`, `close`, etc. for those flows.
@@ -281,10 +302,10 @@ Testing:
 
 - Exercise `at_time` with unit tests in the core crate, and guest-backed `program_tests` via `SyncStream` that persist updated stream data.
 
-`force_mock_timestamp_account` in test helpers may set any timestamp (including backwards) for negative tests; see its rustdoc.
-Prefer `MockTimestamp::advance_by` when building monotonic scenarios.
+Tests use `force_clock_account` to set Borsh clock payload and `program_owner` to the clock program id on a genesis clock account id; see `test_helpers` rustdoc.
+Harnesses take clock ids from genesis (`harness_clock_01_and_provider_account_ids`), not from a synthetic clock seed keypair.
 
-Test harness hygiene for the mock clock (monotonic-by-default helpers and escape hatches for negative tests) is tracked as a separate tightening pass in `plan.md`, not a blocker for core accrual behavior.
+Test harness hygiene for clock payloads (monotonic-by-default helpers and escape hatches for negative tests) is tracked as a separate tightening pass in `plan.md`, not a blocker for core accrual behavior.
 
 ## Versioning
 

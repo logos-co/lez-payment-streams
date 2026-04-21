@@ -1,4 +1,4 @@
-//! Stable numeric codes for SPEL custom errors (`6001`–`6025`).
+//! Stable numeric codes for SPEL custom errors (`6001`–`6026`).
 //!
 //! Core and guest code return these values from fallible operations.
 //! Human-readable text is supplied at each `spel_custom` site in the guest program,
@@ -29,3 +29,4 @@ pub const ERR_TOTAL_ALLOCATED_UNDERFLOW: u32 = 6022;
 pub const ERR_CLOSE_UNAUTHORIZED: u32 = 6023;
 pub const ERR_ZERO_CLAIM_AMOUNT: u32 = 6024;
 pub const ERR_CLAIM_UNAUTHORIZED: u32 = 6025;
+pub const ERR_INVALID_CLOCK_ACCOUNT: u32 = 6026;

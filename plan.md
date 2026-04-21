@@ -26,6 +26,7 @@ and tests.
 - `lez-payment-streams/design.md` — implementation decision log.
 - logos-execution-zone PR 403 `https://github.com/logos-blockchain/logos-execution-zone/pull/403` — system clock accounts.
 - `spel/` — SPEL framework and macros.
+- SPEL PR 126 `https://github.com/logos-co/spel/pull/126` — unified `SpelOutput::execute()` (auto-claim from account attributes); deprecates `states_only` / `with_chained_calls`.
 - `lez-book/` — LEZ Development Guide (mdBook).
 
 ## Plan Execution Policy
@@ -143,7 +144,7 @@ Steps are listed in execution order.
 
 ```mermaid
 flowchart TD
-    S1[Step 1 non-test cleanup] --> S2[Step 2 LEZ upgrade and clock migration]
+    S1[Step 1 non-test cleanup] --> S2[Step 2 LEZ clock and SPEL execute]
     S2 --> S3[Step 3 test fixtures]
     S3 --> S4[Step 4 spec audit and test hardening]
     S4 --> S5[Step 5 shielded execution]
@@ -181,7 +182,7 @@ core math signatures
 module boundaries;
 `assert_execution_failed_with_code` semantics.
 
-### 2. LEZ upgrade and clock migration
+### 2. LEZ upgrade, clock migration, and SPEL `execute` migration
 
 Retire `lez_payment_streams_core/src/mock_timestamp.rs`
 and all `MockTimestamp` references
@@ -189,18 +190,29 @@ in favor of the system clock accounts from
 logos-execution-zone PR 403
 (`CLOCK_01`, `CLOCK_10`, `CLOCK_50`; 16-byte `(block_id, timestamp)` payload).
 
+In the **same dependency bump**,
+migrate the guest from deprecated `SpelOutput::states_only` / `with_chained_calls`
+to `SpelOutput::execute` (SPEL PR 126):
+one pinned SPEL revision across `methods/guest`, `lez_payment_streams_core`, and `examples`,
+verified together with the LEZ/NSSA upgrade.
+
 Decision log updates in `design.md`:
 
 - system clock accounts supersede `MockTimestamp`
 - clock granularity policy (guest accepts any of the three; client picks)
 - retirement of `ERR_INVALID_MOCK_TIMESTAMP` and `SEED_MOCK_CLOCK`
 - private-proof invalidation rationale for coarser clocks
+- SPEL `execute` migration and pinned SPEL git revision (PR 126 included in the pin)
 
-#### 2.1 Upgrade LEZ dependency and verify system clock
+#### 2.1 Upgrade LEZ, NSSA, and SPEL dependencies
 
-- Bump the LEZ, NSSA, and SPEL dependencies in
-  `lez-payment-streams/Cargo.toml`
+- Bump the LEZ and NSSA dependencies
   to a revision that includes PR 403 merged.
+- Bump SPEL (`spel-framework`, `spel-framework-core`, and any other SPEL crates in the workspace)
+  to a git revision that **includes PR 126** merged (`SpelOutput::execute`).
+  Pin the **same** `rev` on every SPEL git dependency so macros and core stay aligned.
+- Resolve versions so the chosen SPEL revision is compatible with the chosen LEZ/NSSA stack;
+  if a single combination fails CI, adjust pins or split only as a last resort.
 - Verify in the resolved version:
   - `V03State::new_with_genesis_accounts` seeds the three clock accounts.
   - `CLOCK_01_ID`, `CLOCK_10_ID`, `CLOCK_50_ID` (or equivalents)
@@ -215,6 +227,10 @@ Decision log updates in `design.md`:
 
 - Delete `MockTimestamp` or shrink it to a test-only payload constructor
   (`fn clock_payload(block_id: u64, timestamp: u64) -> Vec<u8>`).
+- Migrate guest handlers from `SpelOutput::states_only` / `with_chained_calls`
+  to `SpelOutput::execute` per SPEL PR 126;
+  refactor or remove `states_only_five_owner_stream_sync_layout`
+  so the guest uses the unified API (macro-generated claims) end to end.
 - In `methods/guest/src/bin/lez_payment_streams.rs`,
   replace `parse_mock_timestamp` with `parse_clock_account`
   that reads the 16-byte `(block_id, timestamp)` layout
@@ -234,6 +250,27 @@ Decision log updates in `design.md`:
 - Do not alter `Instruction` variants in this step.
   Client chooses clock granularity
   by which clock account id it includes in `account_ids`.
+
+Note (clock types in core).
+`lez_payment_streams_core/src/clock_wire.rs` duplicates the system clock
+`AccountId` constants and `ClockAccountData` Borsh layout from LEZ `clock_core`
+instead of depending on that crate,
+to avoid Cargo friction (guest vs host workspaces, git pins, and patch rules)
+while the LEZ and SPEL stack was aligned.
+Revisit in step 6 (or earlier if the graph simplifies)
+and prefer a direct `clock_core` dependency from the same LEZ `rev`/`tag` as `nssa_core`
+so definitions stay synchronized with upstream.
+
+Note (test PDA helpers).
+`lez_payment_streams_core/src/test_pda.rs` mirrors the seed combination rules from
+`spel-framework-core::pda` (`seed_from_str`, multi-seed hashing, then `PdaSeed` /
+`AccountId` via `nssa_core`).
+It does not reimplement NSSA’s PDA-to-id mapping.
+The duplication avoids adding `spel-framework-core` as a dev-dependency on
+`lez_payment_streams_core`, which would pull a second `nssa_core` revision
+(SPEL’s LEZ pin) and break type identity with the crate’s main `nssa_core` dep.
+Revisit in step 6 (or with step 3 fixture work) and drop `test_pda.rs` once SPEL and LEZ
+pins guarantee a single `nssa_core` in the test graph.
 
 #### 2.3 Test harness changes
 
@@ -349,6 +386,12 @@ reshape where audit findings and reviewer perspective now justify it.
 
 Candidates not resolved in steps 1 or 3:
 
+- Replace `lez_payment_streams_core/src/clock_wire.rs` with a dependency on LEZ
+  `clock_core` (same git `rev`/`tag` as `nssa_core`) once pins and workspaces allow,
+  removing duplicated clock ids and `ClockAccountData` layout.
+- Remove `lez_payment_streams_core/src/test_pda.rs` in favor of
+  `spel-framework-core::pda` (or equivalent) in tests once dev-dependencies resolve to
+  exactly one `nssa_core`, so host PDA helpers cannot drift from SPEL.
 - Collapse contextual `spel_custom(code, "message")` call sites via a small helper
   (design informed by the full call-site set after step 4).
 - Decide `ERR_*` as `#[repr(u32)]` enum vs keep `u32` constants,

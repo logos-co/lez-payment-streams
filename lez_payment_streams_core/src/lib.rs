@@ -6,19 +6,29 @@
 mod harness_seeds;
 
 #[cfg(test)]
+mod test_pda;
+
+#[cfg(test)]
 mod test_helpers;
 
 #[cfg(test)]
 mod program_tests;
 
+mod clock_wire;
 mod error_codes;
 mod instruction;
+#[cfg(test)]
 mod mock_timestamp;
 mod stream_config;
 mod vault;
 
+pub use clock_wire::{
+    ClockAccountData, CLOCK_01_PROGRAM_ACCOUNT_ID, CLOCK_10_PROGRAM_ACCOUNT_ID,
+    CLOCK_50_PROGRAM_ACCOUNT_ID, CLOCK_PROGRAM_ACCOUNT_IDS,
+};
 pub use error_codes::*;
 pub use instruction::Instruction;
+#[cfg(test)]
 pub use mock_timestamp::MockTimestamp;
 pub use stream_config::{StreamConfig, StreamState};
 pub use vault::{

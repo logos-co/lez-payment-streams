@@ -3,25 +3,24 @@
 use nssa::program::Program;
 use nssa_core::{
     account::{Balance, Nonce},
-    program::BlockId,
+    BlockId,
 };
 
 use crate::Instruction;
 use crate::{
     test_helpers::{
         assert_vault_state_unchanged_with_recipient, build_signed_public_tx, create_keypair,
-        create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
-        force_mock_timestamp_account, harness_mock_clock_and_provider_account_ids,
+        create_state_with_guest_program, derive_stream_pda, derive_vault_pdas, force_clock_account,
+        harness_clock_01_and_provider_account_ids, patch_vault_config,
         state_with_initialized_vault_with_recipient,
     },
-    MockTimestamp, TokensPerSecond, VaultConfig, VaultId, ERR_ARITHMETIC_OVERFLOW,
-    ERR_INSUFFICIENT_FUNDS, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
-    ERR_ZERO_WITHDRAW_AMOUNT,
+    TokensPerSecond, VaultConfig, VaultId, ERR_ARITHMETIC_OVERFLOW, ERR_INSUFFICIENT_FUNDS,
+    ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH, ERR_ZERO_WITHDRAW_AMOUNT,
 };
 
 use super::common::{
-    assert_execution_failed_with_code, DEFAULT_MOCK_CLOCK_INITIAL_TS,
-    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
+    assert_execution_failed_with_code, DEFAULT_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE,
+    DEFAULT_STREAM_TEST_DEPOSIT,
 };
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_RECIPIENT};
 
@@ -62,7 +61,11 @@ fn test_withdraw() {
         &[nonce_deposit],
         &[&owner_private_key],
     );
-    let result_deposit = state.transition_from_public_transaction(&tx_deposit, block_deposit);
+    let result_deposit = state.transition_from_public_transaction(
+        &tx_deposit,
+        block_deposit,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     assert!(
         result_deposit.is_ok(),
         "deposit tx failed: {:?}",
@@ -92,7 +95,11 @@ fn test_withdraw() {
         &[nonce_withdraw],
         &[&owner_private_key],
     );
-    let result_withdraw = state.transition_from_public_transaction(&tx_withdraw, block_withdraw);
+    let result_withdraw = state.transition_from_public_transaction(
+        &tx_withdraw,
+        block_withdraw,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     assert!(
         result_withdraw.is_ok(),
         "withdraw tx failed: {:?}",
@@ -181,7 +188,11 @@ fn test_withdraw_zero_amount_fails() {
         &[&owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(&tx_withdraw, block_withdraw);
+    let result = state.transition_from_public_transaction(
+        &tx_withdraw,
+        block_withdraw,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     assert_execution_failed_with_code(result, ERR_ZERO_WITHDRAW_AMOUNT);
 
     assert_vault_state_unchanged_with_recipient(
@@ -203,18 +214,19 @@ fn test_withdraw_wrong_vault_id_fails() {
     let withdraw_amount = 100 as Balance;
     let block_withdraw = 2 as BlockId;
     let nonce_withdraw = Nonce(1);
-    let wrong_vault_id = VaultId::from(999u64);
-
     let (
         mut state,
         program_id,
         owner_private_key,
         owner_account_id,
         recipient_account_id,
-        _vault_id,
+        vault_id,
         vault_config_account_id,
         vault_holding_account_id,
     ) = state_with_initialized_vault_with_recipient(owner_balance_start);
+    patch_vault_config(&mut state, vault_config_account_id, |vc| {
+        vc.vault_id = VaultId::from(999u64);
+    });
     let account_ids = [
         vault_config_account_id,
         vault_holding_account_id,
@@ -233,7 +245,7 @@ fn test_withdraw_wrong_vault_id_fails() {
     let tx_withdraw = build_signed_public_tx(
         program_id,
         Instruction::Withdraw {
-            vault_id: wrong_vault_id,
+            vault_id,
             amount: withdraw_amount,
         },
         &account_ids,
@@ -241,7 +253,11 @@ fn test_withdraw_wrong_vault_id_fails() {
         &[&owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(&tx_withdraw, block_withdraw);
+    let result = state.transition_from_public_transaction(
+        &tx_withdraw,
+        block_withdraw,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     assert_execution_failed_with_code(result, ERR_VAULT_ID_MISMATCH);
 
     assert_vault_state_unchanged_with_recipient(
@@ -296,7 +312,11 @@ fn test_withdraw_exceeds_unallocated_fails() {
     );
     assert!(
         state
-            .transition_from_public_transaction(&tx_deposit, block_deposit)
+            .transition_from_public_transaction(
+                &tx_deposit,
+                block_deposit,
+                crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
+            )
             .is_ok(),
         "deposit failed"
     );
@@ -326,7 +346,11 @@ fn test_withdraw_exceeds_unallocated_fails() {
         &[&owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(&tx_withdraw, block_withdraw);
+    let result = state.transition_from_public_transaction(
+        &tx_withdraw,
+        block_withdraw,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     assert_execution_failed_with_code(result, ERR_INSUFFICIENT_FUNDS);
 
     assert_vault_state_unchanged_with_recipient(
@@ -356,8 +380,7 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
     let nonce_stream = Nonce(2);
     let nonce_withdraw = Nonce(3);
 
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let (
         mut state,
@@ -370,10 +393,11 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
         vault_holding_account_id,
     ) = state_with_initialized_vault_with_recipient(owner_balance_start);
 
-    force_mock_timestamp_account(
+    force_clock_account(
         &mut state,
         mock_clock_account_id,
-        MockTimestamp::new(DEFAULT_MOCK_CLOCK_INITIAL_TS),
+        0,
+        DEFAULT_CLOCK_INITIAL_TS,
     );
 
     let account_ids_deposit = [
@@ -398,6 +422,7 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
                     &[&owner_private_key],
                 ),
                 block_deposit,
+                crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
             )
             .is_ok(),
         "deposit failed"
@@ -428,6 +453,7 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
                     &[&owner_private_key],
                 ),
                 block_stream,
+                crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
             )
             .is_ok(),
         "create_stream failed"
@@ -460,6 +486,7 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
                     &[&owner_private_key],
                 ),
                 block_withdraw,
+                crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
             )
             .is_ok(),
         "withdraw failed"
@@ -512,11 +539,10 @@ fn test_withdraw_owner_mismatch_fails() {
     let block_init = 1 as BlockId;
     let block_withdraw = 2 as BlockId;
     let nonce_init = Nonce(0);
-    // Signer is `other`; they have not transacted yet (only `owner` ran init).
-    let nonce_withdraw = Nonce(0);
+    let nonce_withdraw = Nonce(1);
 
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
-    let (alt_signer_private_key, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
+    let (_, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
     let (_, recipient_account_id) = create_keypair(SEED_RECIPIENT);
     let initial_accounts_data = vec![
         (owner_account_id, signer_account_balance),
@@ -546,7 +572,11 @@ fn test_withdraw_owner_mismatch_fails() {
     );
     assert!(
         state
-            .transition_from_public_transaction(&tx_init, block_init)
+            .transition_from_public_transaction(
+                &tx_init,
+                block_init,
+                crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
+            )
             .is_ok(),
         "initialize_vault tx failed"
     );
@@ -555,6 +585,10 @@ fn test_withdraw_owner_mismatch_fails() {
     let alt_signer_balance_before = state.get_account_by_id(alt_signer_account_id).balance;
     let vault_holding_balance_before = state.get_account_by_id(vault_holding_account_id).balance;
     let recipient_balance_before = state.get_account_by_id(recipient_account_id).balance;
+
+    patch_vault_config(&mut state, vault_config_account_id, |vc| {
+        vc.owner = alt_signer_account_id;
+    });
     let vault_config_data_before = state
         .get_account_by_id(vault_config_account_id)
         .data
@@ -563,7 +597,7 @@ fn test_withdraw_owner_mismatch_fails() {
     let account_ids_withdraw = [
         vault_config_account_id,
         vault_holding_account_id,
-        alt_signer_account_id,
+        owner_account_id,
         recipient_account_id,
     ];
     let tx_withdraw = build_signed_public_tx(
@@ -574,10 +608,14 @@ fn test_withdraw_owner_mismatch_fails() {
         },
         &account_ids_withdraw,
         &[nonce_withdraw],
-        &[&alt_signer_private_key],
+        &[&owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(&tx_withdraw, block_withdraw);
+    let result = state.transition_from_public_transaction(
+        &tx_withdraw,
+        block_withdraw,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
     assert_execution_failed_with_code(result, ERR_VAULT_OWNER_MISMATCH);
 
     assert_vault_state_unchanged_with_recipient(
@@ -634,6 +672,7 @@ fn test_withdraw_recipient_balance_overflow_fails() {
                     &[&owner_private_key],
                 ),
                 2 as BlockId,
+                crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
             )
             .is_ok(),
         "deposit failed"
@@ -660,6 +699,7 @@ fn test_withdraw_recipient_balance_overflow_fails() {
             &[&owner_private_key],
         ),
         3 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(result, ERR_ARITHMETIC_OVERFLOW);
 }

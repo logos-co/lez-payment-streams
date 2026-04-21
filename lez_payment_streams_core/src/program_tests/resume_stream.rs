@@ -2,19 +2,19 @@
 
 use nssa_core::{
     account::{Balance, Nonce},
-    program::BlockId,
+    BlockId,
 };
 
 use crate::{
-    test_helpers::{force_mock_timestamp_account, harness_mock_clock_and_provider_account_ids},
-    MockTimestamp, StreamConfig, StreamState, Timestamp, TokensPerSecond,
-    ERR_RESUME_ZERO_UNACCRUED, ERR_STREAM_NOT_PAUSED,
+    test_helpers::{force_clock_account, harness_clock_01_and_provider_account_ids},
+    StreamConfig, StreamState, Timestamp, TokensPerSecond, ERR_RESUME_ZERO_UNACCRUED,
+    ERR_STREAM_NOT_PAUSED,
 };
 
 use super::common::{
     assert_execution_failed_with_code, first_stream_accounts, force_stream_state_closed,
     signed_create_stream, signed_pause_stream, signed_resume_stream, signed_sync_stream,
-    state_deposited_with_mock_clock, transition_ok, DEFAULT_OWNER_GENESIS_BALANCE,
+    state_deposited_with_clock, transition_ok, DEFAULT_OWNER_GENESIS_BALANCE,
     DEFAULT_STREAM_TEST_DEPOSIT,
 };
 
@@ -22,8 +22,7 @@ use super::common::{
 fn test_resume() {
     let t0: Timestamp = 100;
     let t1: Timestamp = 200;
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let (
         mut state,
@@ -33,7 +32,7 @@ fn test_resume() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
         mock_clock_account_id,
@@ -79,7 +78,7 @@ fn test_resume() {
         "pause_stream failed",
     );
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
+    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
 
     transition_ok(
         &mut state,
@@ -105,8 +104,7 @@ fn test_resume() {
 #[test]
 fn test_resume_active_fails() {
     let t0: Timestamp = 50;
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let (
         mut state,
@@ -116,7 +114,7 @@ fn test_resume_active_fails() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
         mock_clock_account_id,
@@ -158,6 +156,7 @@ fn test_resume_active_fails() {
             &owner_private_key,
         ),
         4 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ERR_STREAM_NOT_PAUSED);
 }
@@ -166,8 +165,7 @@ fn test_resume_active_fails() {
 fn test_resume_zero_remaining_fails() {
     let t0: Timestamp = 0;
     let t1: Timestamp = 100;
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let (
         mut state,
@@ -177,7 +175,7 @@ fn test_resume_zero_remaining_fails() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
         mock_clock_account_id,
@@ -209,7 +207,7 @@ fn test_resume_zero_remaining_fails() {
         "create_stream failed",
     );
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
+    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
 
     transition_ok(
         &mut state,
@@ -235,6 +233,7 @@ fn test_resume_zero_remaining_fails() {
             &owner_private_key,
         ),
         5 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ERR_RESUME_ZERO_UNACCRUED);
 }
@@ -243,8 +242,7 @@ fn test_resume_zero_remaining_fails() {
 fn test_resume_twice_fails() {
     let t0: Timestamp = 10;
     let t1: Timestamp = 20;
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let (
         mut state,
@@ -254,7 +252,7 @@ fn test_resume_twice_fails() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
         mock_clock_account_id,
@@ -300,7 +298,7 @@ fn test_resume_twice_fails() {
         "pause_stream failed",
     );
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
+    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
 
     transition_ok(
         &mut state,
@@ -326,6 +324,7 @@ fn test_resume_twice_fails() {
             &owner_private_key,
         ),
         6 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ERR_STREAM_NOT_PAUSED);
 }
@@ -333,8 +332,7 @@ fn test_resume_twice_fails() {
 #[test]
 fn test_resume_closed_fails() {
     let t0: Timestamp = 8;
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let (
         mut state,
@@ -344,7 +342,7 @@ fn test_resume_closed_fails() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
         mock_clock_account_id,
@@ -388,6 +386,7 @@ fn test_resume_closed_fails() {
             &owner_private_key,
         ),
         4 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ERR_STREAM_NOT_PAUSED);
 }
@@ -398,8 +397,7 @@ fn test_resume_then_accrual_ignores_paused_gap() {
     let t1: Timestamp = 105;
     let t_gap: Timestamp = 200;
     let t2: Timestamp = 210;
-    let (mock_clock_account_id, provider_account_id) =
-        harness_mock_clock_and_provider_account_ids();
+    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let (
         mut state,
@@ -409,7 +407,7 @@ fn test_resume_then_accrual_ignores_paused_gap() {
         vault_id,
         vault_config_account_id,
         vault_holding_account_id,
-    ) = state_deposited_with_mock_clock(
+    ) = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
         DEFAULT_STREAM_TEST_DEPOSIT,
         mock_clock_account_id,
@@ -443,7 +441,7 @@ fn test_resume_then_accrual_ignores_paused_gap() {
         "create_stream failed",
     );
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t1));
+    force_clock_account(&mut state, mock_clock_account_id, 0, t1);
     transition_ok(
         &mut state,
         &signed_sync_stream(
@@ -472,7 +470,7 @@ fn test_resume_then_accrual_ignores_paused_gap() {
         "pause_stream failed",
     );
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t_gap));
+    force_clock_account(&mut state, mock_clock_account_id, 0, t_gap);
     transition_ok(
         &mut state,
         &signed_resume_stream(
@@ -487,7 +485,7 @@ fn test_resume_then_accrual_ignores_paused_gap() {
         "resume_stream failed",
     );
 
-    force_mock_timestamp_account(&mut state, mock_clock_account_id, MockTimestamp::new(t2));
+    force_clock_account(&mut state, mock_clock_account_id, 0, t2);
     transition_ok(
         &mut state,
         &signed_sync_stream(
