@@ -29,7 +29,7 @@ pub use instruction::Instruction;
 pub use stream_config::{StreamConfig, StreamState};
 pub use vault::{
     checked_total_allocated_after_add, checked_total_allocated_after_release, VaultConfig,
-    VaultHolding,
+    VaultHolding, VaultPrivacyTier,
 };
 
 // ---- Type aliases ---- //

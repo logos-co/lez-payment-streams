@@ -15,8 +15,9 @@ use std::path::PathBuf;
 use crate::harness_seeds::{SEED_OWNER, SEED_PROVIDER, SEED_RECIPIENT};
 use crate::test_pda::{compute_pda, seed_from_str};
 use crate::{ClockAccountData, CLOCK_01_PROGRAM_ACCOUNT_ID};
-use crate::{Instruction, StreamConfig, StreamId, VaultConfig, VaultId};
+use crate::{Instruction, StreamConfig, StreamId, VaultConfig, VaultId, VaultPrivacyTier};
 use nssa::{
+    error::NssaError,
     program::Program,
     program_deployment_transaction::{Message as DeployMessage, ProgramDeploymentTransaction},
     public_transaction::{Message, WitnessSet},
@@ -281,6 +282,44 @@ pub(crate) fn state_with_initialized_vault_with_preseeded_genesis_accounts(
     owner_balance: Balance,
     extra_genesis_accounts: &[(AccountId, Balance)],
 ) -> VaultFixture {
+    state_with_initialized_vault_with_preseeded_genesis_accounts_and_privacy(
+        owner_balance,
+        extra_genesis_accounts,
+        VaultPrivacyTier::Public,
+    )
+}
+
+/// Like [`state_with_initialized_vault_with_preseeded_genesis_accounts`], with explicit
+/// [`VaultPrivacyTier`] on the initialized [`VaultConfig`].
+pub(crate) fn state_with_initialized_vault_with_privacy_tier(
+    owner_balance: Balance,
+    privacy_tier: VaultPrivacyTier,
+) -> VaultFixture {
+    state_with_initialized_vault_with_preseeded_genesis_accounts_and_privacy(
+        owner_balance,
+        &[],
+        privacy_tier,
+    )
+}
+
+/// [`VaultPrivacyTier::PseudonymousFunder`] vault with extra genesis rows (for example a stream
+/// provider at balance zero).
+pub(crate) fn state_with_initialized_vault_pseudonymous_funder_preseeded(
+    owner_balance: Balance,
+    extra_genesis_accounts: &[(AccountId, Balance)],
+) -> VaultFixture {
+    state_with_initialized_vault_with_preseeded_genesis_accounts_and_privacy(
+        owner_balance,
+        extra_genesis_accounts,
+        VaultPrivacyTier::PseudonymousFunder,
+    )
+}
+
+fn state_with_initialized_vault_with_preseeded_genesis_accounts_and_privacy(
+    owner_balance: Balance,
+    extra_genesis_accounts: &[(AccountId, Balance)],
+    privacy_tier: VaultPrivacyTier,
+) -> VaultFixture {
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
     let mut initial_accounts_data = vec![(owner_account_id, owner_balance)];
     initial_accounts_data.extend_from_slice(extra_genesis_accounts);
@@ -303,7 +342,7 @@ pub(crate) fn state_with_initialized_vault_with_preseeded_genesis_accounts(
     let nonce_init = Nonce(0);
     let tx_init = build_signed_public_tx(
         program_id,
-        Instruction::InitializeVault { vault_id },
+        Instruction::initialize_vault(vault_id, privacy_tier),
         &account_ids_init,
         &[nonce_init],
         &[&owner_private_key],
@@ -324,6 +363,54 @@ pub(crate) fn state_with_initialized_vault_with_preseeded_genesis_accounts(
         vault_config_account_id,
         vault_holding_account_id,
     }
+}
+
+/// Host or harness policy helper: refuse public payment-stream transitions that touch a vault
+/// configured as [`VaultPrivacyTier::PseudonymousFunder`].
+///
+/// The guest does not enforce this; wallets or tests call this before
+/// [`V03State::transition_from_public_transaction`].
+pub(crate) fn assert_public_payment_streams_instruction_allowed(
+    state: &V03State,
+    vault_config_account_id: AccountId,
+) -> Result<(), &'static str> {
+    let acc = state.get_account_by_id(vault_config_account_id);
+    let cfg = VaultConfig::from_bytes(acc.data.as_ref()).ok_or("invalid vault config bytes")?;
+    if cfg.privacy_tier == VaultPrivacyTier::PseudonymousFunder {
+        return Err("public instruction disallowed for PseudonymousFunder vault");
+    }
+    Ok(())
+}
+
+/// Like [`V03State::transition_from_public_transaction`], but refuses first when the touched vault
+/// is [`VaultPrivacyTier::PseudonymousFunder`] (harness or product policy, not guest-enforced).
+pub(crate) fn transition_public_payment_streams_tx_respecting_privacy_tier(
+    state: &mut V03State,
+    vault_config_account_id: AccountId,
+    tx: &PublicTransaction,
+    block: BlockId,
+    timestamp: nssa_core::Timestamp,
+) -> Result<(), NssaError> {
+    assert_public_payment_streams_instruction_allowed(state, vault_config_account_id)
+        .map_err(|msg| NssaError::InvalidInput(msg.into()))?;
+    state.transition_from_public_transaction(tx, block, timestamp)
+}
+
+/// Test-only native transfer from `owner_id` to `vault_holding_id` without a `Deposit`
+/// instruction. Used when public `Deposit` is blocked for [`VaultPrivacyTier::PseudonymousFunder`]
+/// but a PP `withdraw` test still needs funded vault holding liquidity.
+pub(crate) fn transfer_native_balance_for_tests(
+    state: &mut V03State,
+    owner_id: AccountId,
+    vault_holding_id: AccountId,
+    amount: Balance,
+) {
+    let mut owner = state.get_account_by_id(owner_id);
+    let mut holding = state.get_account_by_id(vault_holding_id);
+    owner.balance = owner.balance.saturating_sub(amount);
+    holding.balance = holding.balance.saturating_add(amount);
+    state.force_insert_account(owner_id, owner);
+    state.force_insert_account(vault_holding_id, holding);
 }
 
 /// Like [`state_with_initialized_vault`],

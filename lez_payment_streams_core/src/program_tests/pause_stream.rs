@@ -25,7 +25,7 @@ use super::common::{
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER};
 
 #[test]
-fn test_pause() {
+fn test_pause_succeeds() {
     let t0: Timestamp = 12_345;
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
@@ -310,7 +310,7 @@ fn test_pause_stream_owner_mismatch_fails() {
         &mut state,
         &build_signed_public_tx(
             program_id,
-            Instruction::InitializeVault { vault_id },
+            Instruction::initialize_vault_public(vault_id),
             &[
                 vault_config_account_id,
                 vault_holding_account_id,

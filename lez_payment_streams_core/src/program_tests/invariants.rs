@@ -18,7 +18,7 @@ use crate::test_helpers::{
 /// After two streams exist and are synced, holding covers `total_allocated` and
 /// `total_allocated` equals the sum of stream `allocation` fields.
 #[test]
-fn test_solvency_two_streams_after_sync() {
+fn test_solvency_two_streams_after_sync_succeeds() {
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
     let t0: Timestamp = 10;
     let t1: Timestamp = 20;
@@ -125,7 +125,7 @@ fn test_solvency_two_streams_after_sync() {
 /// the stream stays active and commitments shrink by that payout), solvency and allocation
 /// conservation still hold.
 #[test]
-fn test_solvency_after_full_accrued_claim() {
+fn test_solvency_after_full_accrued_claim_succeeds() {
     let (clock_id, _) = harness_clock_01_and_provider_account_ids();
     let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
     let t0: Timestamp = 12_345;
@@ -204,7 +204,7 @@ fn test_solvency_after_full_accrued_claim() {
 /// Pause and resume a stream; `total_allocated` and per-stream `allocation` stay aligned with
 /// holding balance throughout.
 #[test]
-fn test_solvency_after_pause_and_resume() {
+fn test_solvency_after_pause_and_resume_succeeds() {
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
     let t0: Timestamp = 100;
     let t1: Timestamp = 105;

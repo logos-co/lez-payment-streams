@@ -24,7 +24,7 @@ use super::common::{
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_PROVIDER_B};
 
 #[test]
-fn test_accrual_basic() {
+fn test_accrual_basic_succeeds() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
     let allocation = 200 as Balance;
@@ -92,7 +92,7 @@ fn test_accrual_basic() {
 }
 
 #[test]
-fn test_accrual_caps_at_allocation() {
+fn test_accrual_caps_at_allocation_succeeds() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
     let allocation = 100 as Balance;
@@ -161,7 +161,7 @@ fn test_accrual_caps_at_allocation() {
 }
 
 #[test]
-fn test_sync_stream_second_stream_accrues() {
+fn test_sync_stream_second_stream_accrues_succeeds() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
     let t0: Timestamp = 100;
@@ -378,7 +378,7 @@ fn test_sync_stream_owner_mismatch_fails() {
         &mut state,
         &build_signed_public_tx(
             program_id,
-            Instruction::InitializeVault { vault_id },
+            Instruction::initialize_vault_public(vault_id),
             &[
                 vault_config_account_id,
                 vault_holding_account_id,
@@ -614,7 +614,7 @@ fn test_sync_stream_time_regression_fails() {
 /// After one `sync_stream` has folded accrual to clock `t1`, a second `sync_stream` without
 /// advancing the clock leaves stream bytes unchanged (`at_time` no-op when `now == accrued_as_of`).
 #[test]
-fn test_sync_stream_twice_same_clock_is_no_op() {
+fn test_sync_stream_twice_same_clock_is_no_op_succeeds() {
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
     let t0: Timestamp = 50;
     let t1: Timestamp = 60;
@@ -698,7 +698,7 @@ fn test_sync_stream_twice_same_clock_is_no_op() {
 /// Advancing the clock enough in one `sync_stream` depletes allocation; stream ends `Paused` with
 /// `accrued_as_of` at the depletion instant (per design accrual rules).
 #[test]
-fn test_sync_stream_depletion_via_at_time_paused() {
+fn test_sync_stream_depletion_via_at_time_paused_succeeds() {
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
     let t0: Timestamp = 1;
     let t_deplete: Timestamp = 11;
@@ -767,7 +767,7 @@ fn test_sync_stream_depletion_via_at_time_paused() {
 
 /// Guest accepts maximum `Timestamp` on the clock wire (`u64::MAX`) for `sync_stream` after create.
 #[test]
-fn test_sync_stream_with_timestamp_max_clock() {
+fn test_sync_stream_with_timestamp_max_clock_succeeds() {
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
     let t0: Timestamp = 1;
 

@@ -117,33 +117,17 @@ impl StreamConfig {
         })
     }
 
+    /// Use `None` for `version` to pick [`DEFAULT_VERSION`].
     pub fn new(
         stream_id: StreamId,
         provider: AccountId,
         rate: TokensPerSecond,
         allocation: Balance,
         accrued_as_of: Timestamp,
-    ) -> Self {
-        Self::new_with_version(
-            stream_id,
-            provider,
-            rate,
-            allocation,
-            accrued_as_of,
-            DEFAULT_VERSION,
-        )
-    }
-
-    pub fn new_with_version(
-        stream_id: StreamId,
-        provider: AccountId,
-        rate: TokensPerSecond,
-        allocation: Balance,
-        accrued_as_of: Timestamp,
-        version: VersionId,
+        version: Option<VersionId>,
     ) -> Self {
         Self {
-            version,
+            version: version.unwrap_or(DEFAULT_VERSION),
             stream_id,
             provider,
             rate,
@@ -374,25 +358,25 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn at_time_rejects_time_regression() {
+    fn at_time_time_regression_fails() {
         let s_active = stream_active(0, 1000, 10, 100);
         assert_eq!(s_active.at_time(99), Err(ERR_TIME_REGRESSION));
     }
 
     #[test]
-    fn at_time_rejects_accrued_above_allocation() {
+    fn at_time_accrued_above_allocation_fails() {
         let s_invalid = stream_active(500, 100, 10, 100);
         assert_eq!(s_invalid.at_time(100), Err(ERR_STREAM_EXCEEDS_ALLOCATION));
     }
 
     #[test]
-    fn at_time_rejects_zero_rate() {
+    fn at_time_zero_rate_fails() {
         let s_zero_rate = stream_active(0, 100, 0, 0);
         assert_eq!(s_zero_rate.at_time(0), Err(ERR_ZERO_STREAM_RATE));
     }
 
     #[test]
-    fn at_time_rejects_zero_allocation_when_active() {
+    fn at_time_zero_allocation_when_active_fails() {
         let s_zero_allocation = stream_active(0, 0, 10, 0);
         assert_eq!(
             s_zero_allocation.at_time(0),
@@ -401,7 +385,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn at_time_idle_paused_zero_allocation_unchanged() {
+    fn at_time_idle_paused_zero_allocation_unchanged_succeeds() {
         let mut s = stream_active(0, 0, 10, 100);
         s.state = StreamState::Paused;
         assert!(s.validate_invariants().is_ok());
@@ -413,14 +397,14 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn validate_closed_tombstone_zero_zero() {
+    fn validate_closed_stream_zero_allocation_zero_accrued_succeeds() {
         let mut s = stream_active(0, 0, 0, 0);
         s.state = StreamState::Closed;
         assert!(s.validate_invariants().is_ok());
     }
 
     #[test]
-    fn at_time_when_t_equals_accrued_as_of_unchanged_accrued() {
+    fn at_time_when_t_equals_accrued_as_of_unchanged_accrued_succeeds() {
         let s_active = stream_active(50, 1000, 10, 100);
         let s_at_same_clock = s_active.at_time(100).unwrap();
         assert_eq!(s_at_same_clock.accrued, 50);
@@ -429,7 +413,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn at_time_linear_accrual() {
+    fn at_time_linear_accrual_succeeds() {
         let s_active = stream_active(0, 1000, 10, 100);
         let s_after_at_time = s_active.at_time(105).unwrap();
         assert_eq!(s_after_at_time.accrued, 50);
@@ -438,7 +422,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn at_time_paused_no_accrual() {
+    fn at_time_paused_no_accrual_succeeds() {
         let mut s_paused = stream_active(100, 1000, 10, 100);
         s_paused.state = StreamState::Paused;
         let s_unchanged = s_paused.at_time(200).unwrap();
@@ -447,7 +431,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn at_time_caps_and_paused_accrued_as_of_depletion_instant() {
+    fn at_time_caps_and_paused_accrued_as_of_depletion_instant_succeeds() {
         // allocation 100, rate 10/s, t0=0, accrued 0 -> deplete at t=10
         let s_active = stream_active(0, 100, 10, 0);
         let s_depleted_paused = s_active.at_time(50).unwrap();
@@ -457,7 +441,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn at_time_depletion_not_clock_t_when_t_past_instant() {
+    fn at_time_depletion_not_clock_t_when_t_past_instant_succeeds() {
         let s_active = stream_active(0, 100, 10, 0);
         let s_depleted_paused = s_active.at_time(100).unwrap();
         assert_eq!(s_depleted_paused.accrued_as_of, 10);
@@ -466,7 +450,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn resume_from_paused_at_success() {
+    fn resume_from_paused_at_succeeds() {
         let mut s_paused = stream_active(10, 100, 5, 50);
         s_paused.state = StreamState::Paused;
         let now: Timestamp = 200;
@@ -478,7 +462,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn resume_from_paused_at_rejects_active() {
+    fn resume_from_paused_at_when_active_fails() {
         let s_active = stream_active(0, 100, 5, 0);
         assert_eq!(
             s_active.resume_from_paused_at(1),
@@ -487,7 +471,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn resume_from_paused_at_rejects_closed() {
+    fn resume_from_paused_at_when_closed_fails() {
         let mut s_closed = stream_active(0, 100, 5, 0);
         s_closed.state = StreamState::Closed;
         assert_eq!(
@@ -497,7 +481,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn resume_from_paused_at_rejects_zero_unaccrued() {
+    fn resume_from_paused_at_zero_unaccrued_fails() {
         let mut s_paused_fully_accrued = stream_active(100, 100, 5, 10);
         s_paused_fully_accrued.state = StreamState::Paused;
         assert_eq!(
@@ -507,7 +491,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn close_at_time_folds_accrual_before_releasing() {
+    fn close_at_time_folds_accrual_before_releasing_succeeds() {
         let s = stream_active(0, 100, 10, 0);
         let vault_total: Balance = 100;
         let now: Timestamp = 5;
@@ -519,7 +503,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn close_at_time_releases_unaccrued() {
+    fn close_at_time_releases_unaccrued_succeeds() {
         let s = stream_active(30, 100, 1, 0);
         let vault_total: Balance = 100;
         let now: Timestamp = 0;
@@ -531,7 +515,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn close_at_time_zero_unaccrued_no_vault_change() {
+    fn close_at_time_zero_unaccrued_no_vault_change_succeeds() {
         let mut s = stream_active(100, 100, 1, 0);
         s.state = StreamState::Paused;
         let vault_total: Balance = 100;
@@ -543,7 +527,7 @@ mod stream_config_at_time_tests {
     }
 
     #[test]
-    fn close_at_time_rejects_already_closed() {
+    fn close_at_time_when_already_closed_fails() {
         let mut s = stream_active(0, 100, 1, 0);
         s.state = StreamState::Closed;
         assert_eq!(s.close_at_time(100, 100 as Balance), Err(ERR_STREAM_CLOSED));
@@ -559,7 +543,7 @@ mod claim_at_time_tests {
     use nssa_core::account::Balance;
 
     #[test]
-    fn claim_at_time_rejects_zero_accrued() {
+    fn claim_at_time_zero_accrued_fails() {
         let s = stream_active(0, 100, 10, 0);
         assert_eq!(
             s.claim_at_time(0, 100 as Balance),
@@ -568,7 +552,7 @@ mod claim_at_time_tests {
     }
 
     #[test]
-    fn claim_at_time_active_partial_payout() {
+    fn claim_at_time_active_partial_payout_succeeds() {
         let s = stream_active(0, 100, 10, 0);
         let vault_total: Balance = 100;
         let now: Timestamp = 5;
@@ -581,7 +565,7 @@ mod claim_at_time_tests {
     }
 
     #[test]
-    fn claim_at_time_paused_drains_to_zero() {
+    fn claim_at_time_paused_drains_to_zero_succeeds() {
         let mut s = stream_active(80, 80, 1, 0);
         s.state = StreamState::Paused;
         let (next_total, payout, stream_after_claim) = s.claim_at_time(0, 80 as Balance).unwrap();
@@ -593,7 +577,7 @@ mod claim_at_time_tests {
     }
 
     #[test]
-    fn claim_at_time_closed_residual() {
+    fn claim_at_time_closed_residual_succeeds() {
         let mut s = stream_active(30, 30, 1, 0);
         s.state = StreamState::Closed;
         let (next_total, payout, stream_after_claim) = s.claim_at_time(0, 30 as Balance).unwrap();
@@ -605,7 +589,7 @@ mod claim_at_time_tests {
     }
 
     #[test]
-    fn claim_at_time_propagates_at_time_error() {
+    fn claim_at_time_time_regression_fails() {
         let s = stream_active(0, 1000, 10, 100);
         assert_eq!(
             s.claim_at_time(99, 100 as Balance),

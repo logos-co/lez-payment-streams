@@ -20,7 +20,7 @@ use super::common::{
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_PROVIDER};
 
 #[test]
-fn test_close_returns_unaccrued() {
+fn test_close_unaccrued_succeeds() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
     let allocation = 200 as Balance;

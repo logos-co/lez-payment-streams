@@ -11,9 +11,11 @@ use lez_payment_streams_core::{
     StreamState,
     Timestamp,
     TokensPerSecond,
+    VersionId,
     VaultConfig,
     VaultHolding,
     VaultId,
+    VaultPrivacyTier,
     ERR_ARITHMETIC_OVERFLOW,
     ERR_CLOSE_UNAUTHORIZED,
     ERR_CLAIM_UNAUTHORIZED,
@@ -324,9 +326,15 @@ mod lez_payment_streams {
         #[account(signer)]
         owner: AccountWithMetadata,
         vault_id: VaultId,
+        privacy_tier: VaultPrivacyTier,
     ) -> SpelResult {
-        let vault_config_state = VaultConfig::new(owner.account_id, vault_id);
-        let vault_holding_state = VaultHolding::new();
+        let vault_config_state = VaultConfig::new(
+            owner.account_id,
+            vault_id,
+            None::<VersionId>,
+            Some(privacy_tier),
+        );
+        let vault_holding_state = VaultHolding::new(None::<VersionId>);
 
         let mut vault_config = vault_config;
         let mut vault_holding = vault_holding;
@@ -516,8 +524,14 @@ mod lez_payment_streams {
 
         let accrued_as_of = parse_clock_account(&clock_account)?;
 
-        let stream_config_state =
-            StreamConfig::new(stream_id, provider, rate, allocation, accrued_as_of);
+        let stream_config_state = StreamConfig::new(
+            stream_id,
+            provider,
+            rate,
+            allocation,
+            accrued_as_of,
+            None::<VersionId>,
+        );
 
         let next_stream_id = stream_id
             .checked_add(1)

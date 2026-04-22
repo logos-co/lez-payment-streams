@@ -84,6 +84,15 @@ For `withdraw`, when the payout recipient’s pre-state is `Account::default()`,
 There is no extra account slot to attach a visibility-`2` row for NSSA’s non-empty commitment or nullifier rule without changing the instruction surface or protocol, so step 5 does not add a full PP `deposit` transition test.
 A future design could add an explicit shielding leg or extend the account list if product requirements demand deposit through the PP circuit.
 
+For [`VaultPrivacyTier::PseudonymousFunder`] vaults, tests also treat public `Deposit` as disallowed at the harness (see `test_helpers::transition_public_payment_streams_tx_respecting_privacy_tier`).
+PP `withdraw` coverage for that tier uses `transfer_native_balance_for_tests` to move native balance into `VaultHolding` without a public `Deposit` transaction, so the ladder can still reach a funded PP `withdraw` while exercising the same guest rules as the public-path `withdraw` test.
+
+### PP `create_stream` and `sync_stream` with PDA stream accounts
+
+The privacy-preserving circuit ties private visibility rows to nullifier-derived identities.
+`CreateStream` initializes the stream PDA with a fixed seed-derived [`AccountId`], which does not match an `npk`-only private row in the current NSSA layout, so this repository does not ship an `execute_and_prove` `create_stream` or `sync_stream` case yet.
+Step 6 instead adds harness policy tests that refuse public `create_stream` and public `sync_stream` when the vault is marked [`VaultPrivacyTier::PseudonymousFunder`] (or after patching the stored tier), plus a PP `withdraw` path on such vaults.
+
 ## Account types and relationships
 
 A single LEZ program manages three account types:
@@ -100,6 +109,7 @@ Each vault may have multiple streams.
 Each stream belongs to exactly one vault.
 
 `InitializeVault` creates both VaultConfig and VaultHolding atomically in a single instruction.
+It also sets the vault’s [`VaultPrivacyTier`] (see below).
 
 ## PDA derivation
 
@@ -128,6 +138,19 @@ Stream account data does not repeat `vault_id`.
 The vault is fixed by `vault_config_pda` in the seed.
 
 ## Data types
+
+### Vault privacy tier
+
+[`VaultPrivacyTier`] is stored on [`VaultConfig`] and is chosen at `InitializeVault` time only.
+
+Wire values on `InitializeVault` are raw bytes: `0` means [`VaultPrivacyTier::Public`], `1` means [`VaultPrivacyTier::PseudonymousFunder`].
+Any other byte fails when the instruction payload is deserialized (before execution), using the same rules as [`VaultPrivacyTier`]'s serde decode.
+The numeric code `ERR_INVALID_PRIVACY_TIER` (6027) remains reserved for compatibility but is not returned by the current guest for this path.
+
+On [`VaultConfig`] account data, the tier is the trailing byte after `version`, `owner`, `vault_id`, `next_stream_id`, and `total_allocated` (all little-endian where applicable, same as before this field was added).
+No instruction after `InitializeVault` mutates `privacy_tier`; the guest treats it as informational when deciding execution mode (it does not switch between public and PP execution based on this field).
+
+Wallets or hosts that want strict privacy for pseudonymous-funder vaults should refuse ordinary public transitions that touch those vaults; the core test harness exposes helpers such as `assert_public_payment_streams_instruction_allowed` and `transition_public_payment_streams_tx_respecting_privacy_tier` for that policy.
 
 Provider identity uses `AccountId` (`[u8; 32]`), which works for both public and private-owned accounts on LEZ.
 
@@ -407,15 +430,15 @@ Already covered before step 4 (guest or core tests): `next_stream_id` overflow (
 
 Added or highlighted in step 4:
 
-- `accrual::test_sync_stream_with_timestamp_max_clock` exercises `Timestamp::MAX` on the clock wire with `sync_stream`.
+- `accrual::test_sync_stream_with_timestamp_max_clock_succeeds` exercises `Timestamp::MAX` on the clock wire with `sync_stream`.
 - Core `stream_config` and `vault` unit tests continue to cover saturating accrual and checked `total_allocated` helpers.
 
 ### Missing or weak tests (addressed in step 4)
 
 - Solvency and conservation over multi-step flows: `program_tests::invariants` (`assert_vault_conservation_invariants` in `program_tests/common.rs`).
-- `sync_stream` same-clock idempotence and depletion-via-sync: `accrual` tests `test_sync_stream_twice_same_clock_is_no_op`, `test_sync_stream_depletion_via_at_time_paused`.
+- `sync_stream` same-clock idempotence and depletion-via-sync: `accrual` tests `test_sync_stream_twice_same_clock_is_no_op_succeeds`, `test_sync_stream_depletion_via_at_time_paused_succeeds`.
 - Withdraw recipient missing from state: `withdraw::test_withdraw_recipient_not_present_in_state_fails`.
-- PDA parity documentation: `create_stream::test_derive_stream_pda_stable` comments aligned with guest `pda = [...]` order.
+- PDA parity documentation: `create_stream::test_derive_stream_pda_stable_succeeds` comments aligned with guest `pda = [...]` order.
 - Resume and top-up owner mismatch: dedicated tests above.
 
 ### Behavior gaps
@@ -441,4 +464,4 @@ Addresses stay stable across schema versions.
 No on-chain index for MVP.
 Both parties know their stream ids from the off-chain protocol exchange.
 
-After MVP behavior is stable, consider state cleanup instruction(s) to reclaim or compact tombstone stream accounts (for example all-zero idle or fully settled rows), subject to LEZ/NSSA account rules.
+After MVP behavior is stable, consider state cleanup instruction(s) to reclaim or compact stream accounts that only retain a settled closed footprint (for example zero allocation and accrued, or otherwise idle rows), subject to LEZ/NSSA account rules.

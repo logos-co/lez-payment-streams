@@ -10,6 +10,7 @@ mod deposit;
 mod initialize;
 mod invariants;
 mod pause_stream;
+mod privacy_tier_policy;
 mod resume_stream;
 mod serialization;
 mod shielded_execution;

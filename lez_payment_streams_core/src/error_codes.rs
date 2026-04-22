@@ -1,4 +1,4 @@
-//! Stable numeric codes for SPEL custom errors (`6001`–`6026`).
+//! Stable numeric codes for SPEL custom errors (`6001`–`6027`).
 //!
 //! Core and guest code return these values from fallible operations.
 //! Human-readable text is supplied at each `spel_custom` site in the guest program,
@@ -30,3 +30,6 @@ pub const ERR_CLOSE_UNAUTHORIZED: u32 = 6023;
 pub const ERR_ZERO_CLAIM_AMOUNT: u32 = 6024;
 pub const ERR_CLAIM_UNAUTHORIZED: u32 = 6025;
 pub const ERR_INVALID_CLOCK_ACCOUNT: u32 = 6026;
+/// Reserved. Unknown `InitializeVault` privacy tier bytes are rejected when the instruction is
+/// deserialized (before the guest runs), so this code is not emitted by current program logic.
+pub const ERR_INVALID_PRIVACY_TIER: u32 = 6027;

@@ -148,7 +148,7 @@ flowchart TD
     S2 --> S3[Step 3 test fixtures]
     S3 --> S4[Step 4 spec audit and test hardening]
     S4 --> S5[Step 5 shielded execution complete]
-    S5 --> S6[Step 6 private vault classes and enforcement]
+    S5 --> S6[Step 6 privacy_tier and host policy]
     S6 --> S7[Step 7 adapter refactor and selective privacy rollout]
     S7 --> S8[Step 8 remaining refactor]
     S8 --> S9[Step 9 reviewer writeup]
@@ -193,7 +193,7 @@ in favor of the system clock accounts from
 logos-execution-zone PR 403
 (`CLOCK_01`, `CLOCK_10`, `CLOCK_50`; 16-byte `(block_id, timestamp)` payload).
 
-In the **same dependency bump**,
+In the same dependency bump,
 migrate the guest from deprecated `SpelOutput::states_only` / `with_chained_calls`
 to `SpelOutput::execute` (SPEL PR 126):
 one pinned SPEL revision across `methods/guest`, `lez_payment_streams_core`, and `examples`,
@@ -212,8 +212,8 @@ Decision log updates in `design.md`:
 - Bump the LEZ and NSSA dependencies
   to a revision that includes PR 403 merged.
 - Bump SPEL (`spel-framework`, `spel-framework-core`, and any other SPEL crates in the workspace)
-  to a git revision that **includes PR 126** merged (`SpelOutput::execute`).
-  Pin the **same** `rev` on every SPEL git dependency so macros and core stay aligned.
+  to a git revision that includes PR 126 merged (`SpelOutput::execute`).
+  Pin the same `rev` on every SPEL git dependency so macros and core stay aligned.
 - Resolve versions so the chosen SPEL revision is compatible with the chosen LEZ/NSSA stack;
   if a single combination fails CI, adjust pins or split only as a last resort.
 - Verify in the resolved version:
@@ -396,44 +396,119 @@ are spelled out in the section
 Transition to private execution
 after the numbered Plan steps.
 
-### 6. Private vault classes and enforcement
+### 6. privacy_tier and host policy
 
 Goal:
 keep the current protocol semantics and math,
-while turning privacy into an explicit vault-class choice
-with enforceable execution-mode rules.
+while persisting an explicit `privacy_tier` on `VaultConfig`
+and documenting a realistic pseudonymous unlinkability story.
 
-Introduce two vault classes set at creation time.
+Introduce `privacy_tier` at vault creation time (immutable for life).
+The stored tier is a small discriminant with labels for product and docs,
+not a consensus-enforced PP gate.
 
 - `Public`:
   may execute via public or PP transactions.
   No owner-funding unlinkability guarantee.
-- `Private`:
-  must execute only through PP transition paths
-  for vault and stream lifecycle instructions.
-  Owner-funding unlinkability guarantee is scoped to this class.
+- `PseudonymousFunder`:
+  intended for PP-only lifecycle
+  (vault and stream instructions) under our host or wallet.
+  The unlinkability target is primary public funder key
+  versus vault and stream activity,
+  not hiding that a vault has a controller `AccountId` on-chain.
+
+#### Chosen MVP approach (implementation target)
+
+- `VaultConfig.owner` remains the authorization anchor.
+  Operationally it should be a dedicated private-account `AccountId`
+  (npk-derived in the LEZ sense), not the user’s main public wallet id,
+  when unlinkability from that main key matters.
+- Authorization in guest code stays the same shape:
+  `owner.account_id` must match `VaultConfig.owner`
+  and owner-gated instructions keep `#[account(signer)]`.
+  Under PP, control of a `PrivateOwned` owner row
+  is established by the wallet and NSSA witness material,
+  not by “the same mechanical public tx signature,”
+  but the guest still checks the same equality as today.
+- Funding discipline:
+  users should pre-shield spendable balance
+  before funding a `PseudonymousFunder` vault,
+  then use PP-shaped flows so liquidity enters `VaultHolding`
+  without a public leg that debits a doxxed public account
+  in the same correlation surface as the vault.
+  A public shielding hop from Alice’s public account
+  still creates Alice → private persona;
+  delay and hygiene reduce naive timing correlation only.
+- `vault_config` row visibility:
+  if the config account stays a public row in mixed PP,
+  `VaultConfig.owner` bytes remain observer-visible
+  as a persistent pseudonym,
+  not “secret owner metadata.”
+  Unlinkability is therefore pseudonymity relative to the main funder key,
+  given no on-chain bridge between them.
+
+#### Where enforcement lives (pinned NSSA and LEZ fact)
+
+On the pinned stack,
+the inner program guest receives only
+`program_id`, `caller_program_id`, `pre_states`, and `instruction_data`
+via `Program::write_inputs`.
+It does not receive the visibility mask;
+that mask is an input to the outer privacy-preserving circuit only.
+
+Therefore:
+
+- PP-only for `PseudonymousFunder` vaults is enforced by our host or wallet
+  (refuse to build or submit public transitions that touch those vaults),
+  and by tests that assert that behavior for our harness.
+- The application guest must not be described as enforcing
+  “public vs PP execution mode,”
+  because it has no trustworthy execution-mode signal in its input env.
+- The guest still stores and checks `privacy_tier` in `VaultConfig`
+  for on-chain semantic rules
+  (for example immutability, or invariants that depend on tier),
+  not for detecting PP.
+
+#### What we do not claim without further platform work
+
+- We do not guarantee that arbitrary third-party submitters
+  cannot attempt a public path:
+  that would require consensus-level rules
+  (for example a generic account or program policy hook in NSSA),
+  not payment-streams guest logic alone.
 
 Implementation work:
 
-- Extend `VaultConfig` with an explicit vault class field.
-- Thread class through initialization and validation helpers.
-- Add class-aware preflight checks in guest handlers.
-- Reject forbidden execution mode for private vaults.
-- Add error codes for mode violations without renumbering existing errors.
-- Add negative tests that prove forbidden paths cannot commit state.
-- Add positive PP tests for private-vault happy paths.
+- Extend `VaultConfig` with a `privacy_tier` field (`Public` or `PseudonymousFunder`).
+- Thread `privacy_tier` through initialization and validation helpers.
+- Guest: tier-aware checks only where derivable from state bytes
+  (not from execution mode).
+- Host or test harness:
+  refuse public transitions for `PseudonymousFunder` vault fixtures;
+  document the same policy for product wallets.
+- Add positive PP tests for PseudonymousFunder-tier flows
+  (and extend fixtures for private-owner personas where needed).
+- Add negative harness tests that a public transition attempt
+  for a `PseudonymousFunder` vault is rejected before or without
+  committing the unwanted linkage policy
+  (exact hook depends on where the harness can intercept).
 
 Decision log updates in `design.md`:
 
-- exact vault-class semantics
-- privacy guarantee scope and exclusions
-- enforcement boundaries between guest and host transition APIs
+- exact `privacy_tier` semantics and immutability
+- privacy guarantee scope:
+  pseudonymous controller,
+  pre-shield and PP-only operational requirements,
+  first-hop shielding caveat
+- guest vs host vs (optional future) consensus enforcement boundaries,
+  citing inner-program inputs vs outer-circuit `visibility_mask`
 
 ### 7. Adapter refactor and selective privacy rollout
 
 Goal:
 maximize reuse of business logic
-while keeping mode-specific account handling explicit.
+while separating host transaction construction
+from guest state transition code.
 
 Refactor shape:
 
@@ -442,21 +517,28 @@ Refactor shape:
   and invariants in shared core.
 - Keep guest handlers thin:
   parse pre-state,
-  enforce class policy,
+  apply state-derived `privacy_tier` rules only,
   invoke shared helpers,
   serialize post-state.
-- Introduce small adapter helpers for account parsing and output assembly,
-  split by execution context where required.
+- Centralize fixture and harness helpers that build PP account lists,
+  visibility masks,
+  and witness inputs for `PseudonymousFunder` vault scenarios
+  (including private-owner rows where tests require them).
+- Introduce small adapter helpers for account parsing and output assembly
+  where it reduces duplication without hiding execution-mode facts
+  inside the guest.
 - Avoid duplicated accrual or conservation logic across modes.
 
 Selective privacy rollout under current account model:
 
-- Private vaults:
-  PP-only execution is enforced.
-- Public vaults:
+- `PseudonymousFunder` tier:
+  our host or wallet enforces PP-only interaction;
+  guest remains agnostic to public versus PP envelope.
+- `Public` tier:
   public and PP execution remain allowed.
   PP can provide selective confidentiality
-  but does not imply owner-funding unlinkability.
+  but does not imply owner-funding unlinkability
+  if the vault was created or funded on a public path.
 - Stream-vault linkage remains visible in the current PDA model.
   This step does not attempt commitment-native custody.
 
@@ -464,7 +546,7 @@ Selective privacy rollout under current account model:
 
 With public,
 shielded,
-and vault-class policy suites green,
+and `privacy_tier` policy suites green,
 reshape where audit findings and reviewer perspective now justify it.
 
 Candidates not resolved in earlier steps:
@@ -535,11 +617,19 @@ Known seeds:
 
 Additional seeds from steps 6 and 7:
 
-- explicit vault classes (`Public`, `Private`) and lifecycle guarantees
-- user-facing privacy contract
-  (owner-funding unlinkability guaranteed only for private vaults)
-- execution-mode requirements by vault class
-- selective confidentiality language for PP on public vaults
+- explicit `privacy_tier` (`Public`, `PseudonymousFunder`) and immutability for life
+- user-facing privacy contract:
+  pseudonymous `VaultConfig.owner` (typically private-account id),
+  pre-shield funding hygiene,
+  PP-only operation for `PseudonymousFunder` vaults on our host or wallet
+- guest vs host vs consensus enforcement:
+  inner program does not receive `visibility_mask`;
+  PP-only policy is host or wallet enforced unless a future generic NSSA hook exists
+- honest caveats:
+  public `vault_config` row still exposes `owner` bytes;
+  public shielding hop links funder to private persona;
+  LEZ proofs do not assert “never funded from public key Alice”
+- selective confidentiality language for PP on `Public`-tier vaults
 
 Do not edit the RFC in this step.
 
@@ -577,63 +667,118 @@ It supersedes the earlier step 5 privacy-evolution bullets.
 The phrase
 write guest logic once and execute publicly or privately
 means business logic reuse,
-not identical visibility guarantees.
+not identical privacy or visibility outcomes.
 
 Shared across public and private execution:
 
 - accrual and balance math
 - lifecycle state transitions
-- authorization and invariants
+- authorization predicates over plaintext state inside the zkVM
+  (`AccountWithMetadata`, `VaultConfig.owner`, and so on)
 
 Potentially different between execution contexts:
 
-- account visibility and witness material
-- what linkage an external observer can infer
-- how post-state is represented and disclosed
+- account visibility and witness material outside the inner program
+- what linkage an external observer can infer from on-chain artifacts
+- how post-state is represented in public versus encrypted rows
 
-### Why PDA-based public accounts leak funder linkage
+### NSSA split: inner program vs outer privacy circuit
+
+On the pinned stack,
+application program execution (including SPEL guests)
+is proven with inputs written by `Program::write_inputs`:
+program id, optional caller id, `pre_states`, instruction words.
+
+The visibility mask is supplied only to the outer
+privacy-preserving circuit input (`PrivacyPreservingCircuitInput`),
+together with program outputs and private-account key material.
+
+So the payment-streams guest cannot branch on the mask
+or reliably infer “this run was submitted as PP versus public”
+from its executor input envelope alone.
+
+### Why PDAs and public rows still matter for linkage
 
 In the current account model,
 vault and stream identities are PDA-derived
-from stable public inputs and instruction context.
-Observers can correlate:
+from seeds and program id.
+Observers can always rebuild vault ↔ stream structure
+from public account ids and updates.
 
-- owner signer activity
-- vault PDA lineage
-- stream PDA lineage
+What we target for the MVP is narrower:
 
-As a result,
-owner-funding linkage is exposed for those flows.
-PP under the current mixed-visibility model
-can provide selective confidentiality,
-yet does not by itself remove PDA lineage correlation.
+- break or avoid primary public funder key ↔ vault activity
+  when the user follows the PseudonymousFunder-tier playbook below.
 
-### Chosen design direction
+PP mixed visibility can hide some legs (for example payouts),
+but does not erase a public `vault_config` row
+that still carries plaintext `VaultConfig` bytes including `owner`.
 
-Near-term implementation path:
-explicit vault classes with enforcement.
+### Chosen MVP direction (what we implement)
 
-- `Public` vault:
-  usable via public and PP transactions.
-  No owner-funding unlinkability guarantee.
-- `Private` vault:
-  PP-only lifecycle is enforced for vault and stream operations.
-  Owner-funding unlinkability guarantee is scoped to this class.
+#### privacy_tier values
 
-User-facing rule:
-users who need funder unlinkability
-must create and operate a private vault,
-and all lifecycle interactions for that vault stay on PP paths.
+- `Public`:
+  same as today for public-first workflows.
+  PP remains allowed for selective confidentiality;
+  it does not retroactively hide a public funder link.
+- `PseudonymousFunder`:
+  operational PP-only policy under our host or wallet,
+  plus funding hygiene described below.
+  Arbitrary third-party clients are out of scope
+  unless consensus adds a generic enforcement hook later.
 
-This preserves maximal reuse of existing business logic
-and keeps selective privacy for public-vault PP usage
-without over-claiming anonymity.
+#### Pseudonymous controller
+
+- Keep `VaultConfig.owner` as the on-chain authorization anchor.
+- For unlinkability from a main public wallet,
+  use a dedicated private-account `AccountId`
+  (npk-derived in the LEZ sense) as `owner`,
+  created and operated through wallet PP APIs,
+  not through `spel` public signing for that identity.
+- Authorization in the guest stays the same checks;
+  under PP, private row authorization is handled by
+  NSSA and wallet witness rules,
+  while the guest still verifies `owner.account_id == VaultConfig.owner`.
+
+#### Funding and bridging
+
+- Pre-shield spendable balance before vault funding when the goal is
+  “no public leg from a doxxed public account into this vault story.”
+- A public transfer from Alice’s public account into a private persona
+  still creates Alice → persona on-chain;
+  subsequent PseudonymousFunder-tier vault ops may not add a new vault-specific edge
+  from Alice, but they do not erase that first hop.
+- Delay between shielding and vault use is operational hygiene only,
+  not a cryptographic unlinker.
+
+#### What LEZ proving does and does not assert
+
+- PP proofs enforce authorization, conservation,
+  and privacy-circuit rules for the chosen account rows.
+- They do not by themselves assert
+  “this `owner` id has never been funded from public key Alice.”
+  That property is behavioral and architectural:
+  pre-shield, PP-only policy on our stack,
+  and avoiding public bridges afterward.
+
+#### User-facing contract
+
+- We offer pseudonymous vault control
+  and conditional separation from a primary public funder
+  when users follow pre-shielding and PP-only operation
+  on our host or wallet.
+- We do not claim full anonymity of all metadata,
+  hidden `owner` on-chain while `vault_config` is public plaintext,
+  or protection against other submitters without consensus rules.
 
 ### Longer-term privacy direction
 
 If stronger unlinkability is required later,
 the protocol may evolve toward commitment-native custody,
-where identity and balance history are not anchored to transparent PDA lineages.
+private or committed `vault_config` fields,
+or platform-level account policy for PP-only rows.
+
 That is out of scope for the current plan
 and remains a separate design track.
 

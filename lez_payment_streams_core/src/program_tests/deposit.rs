@@ -14,7 +14,7 @@ use crate::{
         harness_clock_01_and_provider_account_ids, patch_vault_config,
         state_with_initialized_vault,
     },
-    TokensPerSecond, VaultConfig, VaultHolding, VaultId, ERR_VAULT_ID_MISMATCH,
+    TokensPerSecond, VaultConfig, VaultHolding, VaultId, VersionId, ERR_VAULT_ID_MISMATCH,
     ERR_VAULT_OWNER_MISMATCH, ERR_VERSION_MISMATCH, ERR_ZERO_DEPOSIT_AMOUNT,
 };
 
@@ -25,7 +25,7 @@ use super::common::{
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER};
 
 #[test]
-fn test_deposit() {
+fn test_deposit_succeeds() {
     let owner_balance_before = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = 300 as Balance;
     let block_deposit = 2 as BlockId;
@@ -481,7 +481,7 @@ fn test_deposit_owner_mismatch_fails() {
     ];
     let tx_init = build_signed_public_tx(
         program_id,
-        Instruction::InitializeVault { vault_id },
+        Instruction::initialize_vault_public(vault_id),
         &account_ids_init,
         &[nonce_init],
         &[&owner_private_key],
@@ -558,7 +558,7 @@ fn test_deposit_vault_holding_version_mismatch_fails() {
         .state
         .get_account_by_id(fx.vault_holding_account_id)
         .clone();
-    holding.data = Data::try_from(VaultHolding::new_with_version(2).to_bytes())
+    holding.data = Data::try_from(VaultHolding::new(Some(2 as VersionId)).to_bytes())
         .expect("vault holding payload fits Data limits");
     fx.state
         .force_insert_account(fx.vault_holding_account_id, holding);

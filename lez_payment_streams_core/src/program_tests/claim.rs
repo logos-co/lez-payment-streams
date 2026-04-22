@@ -23,7 +23,7 @@ const CLAIM_ALLOCATION: Balance = 200;
 const CLAIM_RATE: TokensPerSecond = 10;
 
 #[test]
-fn test_claim_transfers_balance() {
+fn test_claim_balance_succeeds() {
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
     let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
     let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
@@ -158,7 +158,7 @@ fn test_claim_unauthorized_fails() {
 }
 
 #[test]
-fn test_claim_after_close() {
+fn test_claim_after_close_succeeds() {
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
     let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
     let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);

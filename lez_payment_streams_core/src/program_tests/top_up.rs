@@ -22,7 +22,7 @@ use super::common::{
 };
 
 #[test]
-fn test_topup_resumes() {
+fn test_topup_paused_depleted_stream_succeeds() {
     let t0: Timestamp = 0;
     let t1: Timestamp = 100;
     let t2: Timestamp = 250;
@@ -142,7 +142,7 @@ fn test_topup_resumes() {
 }
 
 #[test]
-fn test_topup_active_increases_allocation() {
+fn test_topup_active_stream_increases_allocation_succeeds() {
     let t0: Timestamp = 10;
     let t1: Timestamp = 20;
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
@@ -198,7 +198,7 @@ fn test_topup_active_increases_allocation() {
 }
 
 #[test]
-fn test_topup_manual_pause_then_active() {
+fn test_topup_manual_pause_then_active_succeeds() {
     let t0: Timestamp = 5;
     let t1: Timestamp = 15;
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();

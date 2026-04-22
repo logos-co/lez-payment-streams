@@ -25,7 +25,7 @@ use super::common::{
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_RECIPIENT};
 
 #[test]
-fn test_withdraw() {
+fn test_withdraw_succeeds() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = 400 as Balance;
     let withdraw_amount = 100 as Balance;
@@ -619,7 +619,7 @@ fn test_withdraw_owner_mismatch_fails() {
     ];
     let tx_init = build_signed_public_tx(
         program_id,
-        Instruction::InitializeVault { vault_id },
+        Instruction::initialize_vault_public(vault_id),
         &account_ids_init,
         &[nonce_init],
         &[&owner_private_key],

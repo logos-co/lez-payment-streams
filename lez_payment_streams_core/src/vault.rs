@@ -2,7 +2,8 @@
 
 use core::mem::size_of;
 
-use serde::{Deserialize, Serialize};
+use serde::de::Error as DeError;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use nssa_core::account::{AccountId, Balance};
 
@@ -10,6 +11,55 @@ use crate::error_codes::{
     ERR_ALLOCATION_EXCEEDS_UNALLOCATED, ERR_TOTAL_ALLOCATED_OVERFLOW, ERR_TOTAL_ALLOCATED_UNDERFLOW,
 };
 use crate::{StreamId, VaultId, VersionId};
+
+/// Product or harness policy hint stored on [`VaultConfig`].
+/// The guest treats this as informational when choosing public versus PP execution.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum VaultPrivacyTier {
+    Public = 0,
+    PseudonymousFunder = 1,
+}
+
+impl VaultPrivacyTier {
+    pub const fn as_wire_byte(self) -> u8 {
+        self as u8
+    }
+
+    pub const fn from_wire_byte(byte: u8) -> Option<Self> {
+        match byte {
+            0 => Some(Self::Public),
+            1 => Some(Self::PseudonymousFunder),
+            _ => None,
+        }
+    }
+}
+
+impl Serialize for VaultPrivacyTier {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_u8(self.as_wire_byte())
+    }
+}
+
+impl<'de> Deserialize<'de> for VaultPrivacyTier {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let b = u8::deserialize(deserializer)?;
+        Self::from_wire_byte(b).ok_or_else(|| DeError::custom("unknown vault privacy tier"))
+    }
+}
+
+#[cfg(test)]
+mod vault_privacy_tier_wire_tests {
+    use super::VaultPrivacyTier;
+
+    /// Wire byte with no [`VaultPrivacyTier`] variant (reserved on the `InitializeVault` wire).
+    const UNDEFINED_PRIVACY_TIER_WIRE_BYTE: u8 = 99;
+
+    #[test]
+    fn from_wire_byte_rejects_undefined_privacy_tier_wire_byte() {
+        assert!(VaultPrivacyTier::from_wire_byte(UNDEFINED_PRIVACY_TIER_WIRE_BYTE).is_none());
+    }
+}
 
 /// Compute the next [`VaultConfig::total_allocated`] after adding `increase_total_allocated_by`,
 /// capped by unallocated liquidity. Pure helper (guest persists the value).
@@ -59,6 +109,7 @@ pub struct VaultConfig {
     pub vault_id: VaultId,
     pub next_stream_id: StreamId,
     pub total_allocated: Balance,
+    pub privacy_tier: VaultPrivacyTier,
 }
 
 impl VaultConfig {
@@ -66,7 +117,8 @@ impl VaultConfig {
         + size_of::<AccountId>()
         + size_of::<VaultId>()
         + size_of::<StreamId>()
-        + size_of::<Balance>();
+        + size_of::<Balance>()
+        + size_of::<VaultPrivacyTier>();
 
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(Self::SIZE);
@@ -75,6 +127,7 @@ impl VaultConfig {
         buf.extend_from_slice(&self.vault_id.to_le_bytes());
         buf.extend_from_slice(&self.next_stream_id.to_le_bytes());
         buf.extend_from_slice(&self.total_allocated.to_le_bytes());
+        buf.push(self.privacy_tier.as_wire_byte());
         buf
     }
 
@@ -107,6 +160,9 @@ impl VaultConfig {
         // total_allocated
         let size = size_of::<Balance>();
         let total_allocated = Balance::from_le_bytes(data[offset..offset + size].try_into().ok()?);
+        offset += size;
+
+        let privacy_tier = VaultPrivacyTier::from_wire_byte(*data.get(offset)?)?;
 
         Some(Self {
             version,
@@ -114,20 +170,27 @@ impl VaultConfig {
             vault_id,
             next_stream_id,
             total_allocated,
+            privacy_tier,
         })
     }
 
-    pub fn new(owner: AccountId, vault_id: VaultId) -> Self {
-        Self::new_with_version(owner, vault_id, crate::DEFAULT_VERSION)
-    }
-
-    pub fn new_with_version(owner: AccountId, vault_id: VaultId, version: VersionId) -> Self {
+    /// Fresh vault config: `next_stream_id` at [`StreamId::MIN`], `total_allocated` at zero.
+    ///
+    /// Use `None` for `version` to pick [`crate::DEFAULT_VERSION`], and `None` for `privacy_tier`
+    /// to pick [`VaultPrivacyTier::Public`].
+    pub fn new(
+        owner: AccountId,
+        vault_id: VaultId,
+        version: Option<VersionId>,
+        privacy_tier: Option<VaultPrivacyTier>,
+    ) -> Self {
         Self {
-            version,
+            version: version.unwrap_or(crate::DEFAULT_VERSION),
             owner,
             vault_id,
             next_stream_id: StreamId::MIN,
             total_allocated: Balance::MIN,
+            privacy_tier: privacy_tier.unwrap_or(VaultPrivacyTier::Public),
         }
     }
 }
@@ -156,12 +219,11 @@ impl VaultHolding {
         Some(Self { version })
     }
 
-    pub fn new() -> Self {
-        Self::new_with_version(crate::DEFAULT_VERSION)
-    }
-
-    pub fn new_with_version(version: VersionId) -> Self {
-        Self { version }
+    /// Use `None` for `version` to pick [`crate::DEFAULT_VERSION`].
+    pub fn new(version: Option<VersionId>) -> Self {
+        Self {
+            version: version.unwrap_or(crate::DEFAULT_VERSION),
+        }
     }
 }
 
@@ -173,13 +235,13 @@ mod checked_total_allocated_after_add_tests {
     use crate::error_codes::ERR_ALLOCATION_EXCEEDS_UNALLOCATED;
 
     #[test]
-    fn add_succeeds_within_unallocated() {
+    fn add_within_unallocated_succeeds() {
         let next_vault_total_allocated = checked_total_allocated_after_add(500, 200, 100).unwrap();
         assert_eq!(next_vault_total_allocated, 300 as Balance);
     }
 
     #[test]
-    fn add_rejects_exceeds_unallocated() {
+    fn add_exceeds_unallocated_fails() {
         assert_eq!(
             checked_total_allocated_after_add(500, 400, 200),
             Err(ERR_ALLOCATION_EXCEEDS_UNALLOCATED)
@@ -195,19 +257,19 @@ mod checked_total_allocated_after_release_tests {
     use crate::error_codes::ERR_TOTAL_ALLOCATED_UNDERFLOW;
 
     #[test]
-    fn release_succeeds() {
+    fn release_decrease_succeeds() {
         let next_vault_total_allocated = checked_total_allocated_after_release(300, 100).unwrap();
         assert_eq!(next_vault_total_allocated, 200 as Balance);
     }
 
     #[test]
-    fn release_noop_when_decrease_total_allocated_by_zero() {
+    fn release_zero_decrease_noop_succeeds() {
         let next_vault_total_allocated = checked_total_allocated_after_release(300, 0).unwrap();
         assert_eq!(next_vault_total_allocated, 300 as Balance);
     }
 
     #[test]
-    fn release_rejects_underflow() {
+    fn release_underflow_fails() {
         assert_eq!(
             checked_total_allocated_after_release(100, 200),
             Err(ERR_TOTAL_ALLOCATED_UNDERFLOW)

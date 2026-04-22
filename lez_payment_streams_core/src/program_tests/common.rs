@@ -353,7 +353,7 @@ pub(crate) fn state_deposited_with_clock(
         deposit_amount,
         clock_id,
         initial_ts,
-        None,
+        None::<(AccountId, Balance)>,
     )
 }
 

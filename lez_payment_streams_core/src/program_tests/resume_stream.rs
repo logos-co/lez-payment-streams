@@ -27,7 +27,7 @@ use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER};
 use crate::test_helpers::build_signed_public_tx;
 
 #[test]
-fn test_resume() {
+fn test_resume_succeeds() {
     let t0: Timestamp = 100;
     let t1: Timestamp = 200;
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
@@ -330,7 +330,7 @@ fn test_resume_closed_fails() {
 }
 
 #[test]
-fn test_resume_then_accrual_ignores_paused_gap() {
+fn test_resume_then_accrual_ignores_paused_gap_succeeds() {
     let t0: Timestamp = 100;
     let t1: Timestamp = 105;
     let t_gap: Timestamp = 200;
@@ -467,7 +467,7 @@ fn test_resume_stream_owner_mismatch_fails() {
         &mut state,
         &build_signed_public_tx(
             program_id,
-            Instruction::InitializeVault { vault_id },
+            Instruction::initialize_vault_public(vault_id),
             &[
                 vault_config_account_id,
                 vault_holding_account_id,

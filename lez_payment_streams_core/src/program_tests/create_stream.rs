@@ -57,7 +57,7 @@ fn test_derive_stream_pda_stable() {
 }
 
 #[test]
-fn test_create_stream() {
+fn test_create_stream_succeeds() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let amount = DEFAULT_STREAM_TEST_DEPOSIT;
     let allocation = 200 as Balance;
@@ -357,7 +357,7 @@ fn test_create_stream_stream_id_mismatch_fails() {
 
 /// `stream_config` account must match the PDA for `stream_id` (SPEL account validation).
 #[test]
-fn test_create_stream_rejects_mismatched_stream_pda() {
+fn test_create_stream_mismatched_stream_pda_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
     let clock_initial_ts = DEFAULT_CLOCK_INITIAL_TS;
@@ -483,7 +483,7 @@ fn test_create_stream_owner_mismatch_fails() {
         &mut state,
         &build_signed_public_tx(
             program_id,
-            Instruction::InitializeVault { vault_id },
+            Instruction::initialize_vault_public(vault_id),
             &[
                 vault_config_account_id,
                 vault_holding_account_id,
