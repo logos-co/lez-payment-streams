@@ -147,14 +147,17 @@ flowchart TD
     S1[Step 1 non-test cleanup] --> S2[Step 2 LEZ clock and SPEL execute]
     S2 --> S3[Step 3 test fixtures]
     S3 --> S4[Step 4 spec audit and test hardening]
-    S4 --> S5[Step 5 shielded execution]
-    S5 --> S6[Step 6 remaining refactor]
-    S6 --> S7[Step 7 reviewer writeup]
-    S7 --> S8[Step 8 RFC proposal consolidation]
-    S8 --> S9[Step 9 RFC promotion batch]
-    S9 --> S10[Step 10 RFC polish]
+    S4 --> S5[Step 5 shielded execution complete]
+    S5 --> S6[Step 6 private vault classes and enforcement]
+    S6 --> S7[Step 7 adapter refactor and selective privacy rollout]
+    S7 --> S8[Step 8 remaining refactor]
+    S8 --> S9[Step 9 reviewer writeup]
+    S9 --> S10[Step 10 RFC proposal consolidation]
+    S10 --> S11[Step 11 RFC promotion batch]
+    S11 --> S12[Step 12 RFC polish]
     S4 -. accumulates .-> S8
-    S5 -. accumulates .-> S8
+    S6 -. accumulates .-> S10
+    S7 -. accumulates .-> S10
 ```
 
 ### 1. Non-test cleanup
@@ -257,7 +260,7 @@ Note (clock types in core).
 instead of depending on that crate,
 to avoid Cargo friction (guest vs host workspaces, git pins, and patch rules)
 while the LEZ and SPEL stack was aligned.
-Revisit in step 6 (or earlier if the graph simplifies)
+Revisit in step 8 (or earlier if the graph simplifies)
 and prefer a direct `clock_core` dependency from the same LEZ `rev`/`tag` as `nssa_core`
 so definitions stay synchronized with upstream.
 
@@ -269,7 +272,7 @@ It does not reimplement NSSA’s PDA-to-id mapping.
 The duplication avoids adding `spel-framework-core` as a dev-dependency on
 `lez_payment_streams_core`, which would pull a second `nssa_core` revision
 (SPEL’s LEZ pin) and break type identity with the crate’s main `nssa_core` dep.
-Revisit in step 6 (or with step 3 fixture work) and drop `test_pda.rs` once SPEL and LEZ
+Revisit in step 8 (or with step 3 fixture work) and drop `test_pda.rs` once SPEL and LEZ
 pins guarantee a single `nssa_core` in the test graph.
 
 #### 2.3 Test harness changes
@@ -299,7 +302,7 @@ pins guarantee a single `nssa_core` in the test graph.
   the 16-byte layout,
   granularity trade-offs,
   and the guest-side identity check.
-- Add entries to the RFC-proposal list (seed for step 8):
+- Add entries to the RFC-proposal list (seed for step 10):
   replace "mock timestamp source" wording with system clocks;
   document the granularity trade-off
   in Security and Privacy Considerations.
@@ -334,7 +337,7 @@ Produce a running three-bucket list during the audit:
 
 1. missing or weak tests (add in place),
 2. behavior gaps (fix in place, minimal change),
-3. RFC-proposal candidates (append to the step 8 list).
+3. RFC-proposal candidates (append to the step 10 list).
 
 Specific items to check that are not fully covered today:
 
@@ -363,12 +366,12 @@ Specific items to check that are not fully covered today:
 
 ### 5. Shielded execution tests
 
-Add shielded-mode tests that run representative flows through
+Shielded-mode tests now cover representative flows through
 `execute_and_prove`
-and `transition_from_privacy_preserving_transaction`.
-No new program logic.
-If anything fails, fix under the existing structure;
-do not restructure during this step.
+and
+`transition_from_privacy_preserving_transaction`
+under the current account model.
+No protocol redesign happened in this step.
 
 Benefits from step 2 because the system clock
 matches the private-proof invalidation model that PR 403 was designed around.
@@ -379,16 +382,91 @@ Decision log updates in `design.md`:
 - timestamp constraints in private flow
   (clock granularity choice per instruction)
 
-Normative detail for NSSA visibility, PP transition rules, the `withdraw` claim metadata change, and deposit PP limitations is recorded under **Privacy-preserving execution (NSSA) and step 5 tests** in `design.md`.
+Normative detail for NSSA visibility, PP transition rules,
+the `withdraw` claim metadata change,
+and deposit PP limitations is recorded under
+Privacy-preserving execution (NSSA) and step 5 tests
+in `design.md`.
 
-RFC-level privacy goals, how the current guest contradicts them, and protocol directions beyond step 5 are spelled out in the section Transition to private execution (after the numbered Plan steps).
+RFC-level privacy goals,
+how the current guest contradicts them,
+and protocol directions beyond step 5
+are spelled out in the section
+Transition to private execution
+after the numbered Plan steps.
 
-### 6. Remaining refactor
+### 6. Private vault classes and enforcement
 
-With public and shielded suites green,
+Goal:
+keep the current protocol semantics and math,
+while turning privacy into an explicit vault-class choice
+with enforceable execution-mode rules.
+
+Introduce two vault classes set at creation time.
+
+- `Public`:
+  may execute via public or PP transactions.
+  No owner-funding unlinkability guarantee.
+- `Private`:
+  must execute only through PP transition paths
+  for vault and stream lifecycle instructions.
+  Owner-funding unlinkability guarantee is scoped to this class.
+
+Implementation work:
+
+- Extend `VaultConfig` with an explicit vault class field.
+- Thread class through initialization and validation helpers.
+- Add class-aware preflight checks in guest handlers.
+- Reject forbidden execution mode for private vaults.
+- Add error codes for mode violations without renumbering existing errors.
+- Add negative tests that prove forbidden paths cannot commit state.
+- Add positive PP tests for private-vault happy paths.
+
+Decision log updates in `design.md`:
+
+- exact vault-class semantics
+- privacy guarantee scope and exclusions
+- enforcement boundaries between guest and host transition APIs
+
+### 7. Adapter refactor and selective privacy rollout
+
+Goal:
+maximize reuse of business logic
+while keeping mode-specific account handling explicit.
+
+Refactor shape:
+
+- Keep stream math,
+  lifecycle transitions,
+  and invariants in shared core.
+- Keep guest handlers thin:
+  parse pre-state,
+  enforce class policy,
+  invoke shared helpers,
+  serialize post-state.
+- Introduce small adapter helpers for account parsing and output assembly,
+  split by execution context where required.
+- Avoid duplicated accrual or conservation logic across modes.
+
+Selective privacy rollout under current account model:
+
+- Private vaults:
+  PP-only execution is enforced.
+- Public vaults:
+  public and PP execution remain allowed.
+  PP can provide selective confidentiality
+  but does not imply owner-funding unlinkability.
+- Stream-vault linkage remains visible in the current PDA model.
+  This step does not attempt commitment-native custody.
+
+### 8. Remaining refactor
+
+With public,
+shielded,
+and vault-class policy suites green,
 reshape where audit findings and reviewer perspective now justify it.
 
-Candidates not resolved in steps 1 or 3:
+Candidates not resolved in earlier steps:
 
 - Replace `lez_payment_streams_core/src/clock_wire.rs` with a dependency on LEZ
   `clock_core` (same git `rev`/`tag` as `nssa_core`) once pins and workspaces allow,
@@ -399,14 +477,14 @@ Candidates not resolved in steps 1 or 3:
 - Collapse contextual `spel_custom(code, "message")` call sites via a small helper
   (design informed by the full call-site set after step 4).
 - Decide `ERR_*` as `#[repr(u32)]` enum vs keep `u32` constants,
-  gated on whether step 4 tests actually match on many codes.
+  gated on whether tests actually match on many codes.
 - Any public-name renames on types or fields,
-  applied in a single sweep together with the reviewer doc in step 7.
+  applied in a single sweep together with the reviewer doc in step 9.
 - Final `cargo fmt` and
   `cargo clippy --workspace --all-targets`
   sweep before handoff.
 
-### 7. Reviewer-facing writeup
+### 9. Reviewer-facing writeup
 
 Replace or reshape `design.md`
 into a reviewer-oriented document.
@@ -420,11 +498,12 @@ Suggested structure:
 6. Accrual semantics and depletion instant.
 7. Error code table with call sites.
 8. Testing guide (how to run, fixtures, seeds).
-9. Divergences from the RFC, pointing to the step 8 proposal list.
+9. Divergences from the RFC,
+   pointing to the step 10 proposal list.
 
-### 8. RFC proposal consolidation
+### 10. RFC proposal consolidation
 
-Clean the RFC-proposal list accumulated in steps 2 through 7.
+Clean the RFC-proposal list accumulated in steps 2 through 9.
 Deliverable: a patch-ready diff against
 `rfc-index/docs/ift-ts/raw/payment-streams.md`
 plus a rationale paragraph per change.
@@ -444,11 +523,19 @@ Known seeds:
 - System clock replaces the mock timestamp source;
   granularity guidance added to Security and Privacy Considerations.
 
+Additional seeds from steps 6 and 7:
+
+- explicit vault classes (`Public`, `Private`) and lifecycle guarantees
+- user-facing privacy contract
+  (owner-funding unlinkability guaranteed only for private vaults)
+- execution-mode requirements by vault class
+- selective confidentiality language for PP on public vaults
+
 Do not edit the RFC in this step.
 
-### 9. RFC promotion batch
+### 11. RFC promotion batch
 
-Apply the consolidated patch from step 8 in one batch to
+Apply the consolidated patch from step 10 in one batch to
 `rfc-index/docs/ift-ts/raw/payment-streams.md`.
 This is the first step that edits the RFC.
 
@@ -460,7 +547,7 @@ Include:
 - time source (system clocks) and accrual behavior
 - execution mode notes
 
-### 10. RFC polish and review
+### 12. RFC polish and review
 
 Finalize Security and Privacy Considerations
 and References in the RFC.
@@ -471,54 +558,78 @@ and RFC text.
 
 ## Transition to private execution
 
-This section ties the payment-streams RFC privacy posture to the present SPEL guest and NSSA PP model.
-It replaces the earlier step 5 “privacy posture and evolution” bullets, which are merged here.
+This section ties the payment-streams RFC privacy posture
+to the present SPEL guest and NSSA PP model.
+It supersedes the earlier step 5 privacy-evolution bullets.
 
-### RFC goals (cited)
+### What one code path means in practice
 
-The specification states that an initial privacy goal is unlinkability between off-chain requests and on-chain funding.
-It also states that vault deposits must not reveal the depositor’s identity, and that stream creation should not reveal which vault funded the stream.
+The phrase
+write guest logic once and execute publicly or privately
+means business logic reuse,
+not identical visibility guarantees.
 
-### Contradictions in the current design
+Shared across public and private execution:
 
-The MVP guest and account layout do not satisfy those goals on-chain.
+- accrual and balance math
+- lifecycle state transitions
+- authorization and invariants
 
-- Unlinkability between off-chain requests and on-chain funding is not achieved when the same public `AccountId` signs funding transactions, appears in vault PDA seeds, and is stored as `VaultConfig.owner`.
-- Vault deposits today require a mutable signer that the guest checks against `VaultConfig.owner` (`deposit` account list and `validate_vault_config`).
-  Observers see that identity as the source of funds moving into the vault holding.
-- Stream creation lists vault config and holding PDAs and initializes `stream_config` with a PDA that includes the vault config account in its seed path.
-  That binds each stream account to a specific vault in a recoverable way, so “which vault funded this stream” is visible from derivation and transaction effects.
-- Privacy-preserving execution with mixed visibility (step 5) improves payout-side confidentiality for instructions that support it (for example `withdraw` to a private recipient slot).
-  It does not remove public PDAs, clock accounts, or the structural vault–stream link above without further protocol work.
+Potentially different between execution contexts:
 
-### Protocol design changes (broad strokes)
+- account visibility and witness material
+- what linkage an external observer can infer
+- how post-state is represented and disclosed
 
-Addressing the RFC goals requires guest and account-model changes, not only PP harnessing or relayers.
+### Why PDA-based public accounts leak funder linkage
 
-- Deposits must allow funding without publishing the depositor as the vault owner in the same transaction shape as today.
-  That implies at least one of: a separate funder role with an authorization credential the guest verifies; a shielded or pooled funding leg; or an extended instruction surface so NSSA mixed visibility can cover the funding source row while semantics stay sound.
-- Vault identity may need to stop being derived solely from a public owner key plus `vault_id` if observers must not infer who created or funds the vault from PDA derivation alone.
-- Stream–vault unlinkability needs structural decoupling, for example indirection through a commitment or pool root, stream PDAs that do not name `vault_config` in seeds, or custody that moves allocation bookkeeping off transparent per-vault PDAs.
-- Unlinkability from off-chain requests may require anonymous ingress (relayer with economic cost, blinded deposits, or note-style spends) coordinated with the above, not only RPC privacy.
+In the current account model,
+vault and stream identities are PDA-derived
+from stable public inputs and instruction context.
+Observers can correlate:
 
-Clock accounts remain platform-defined time anchors; even strong privacy modes assume public time validity, not a hidden global clock.
+- owner signer activity
+- vault PDA lineage
+- stream PDA lineage
 
-### Near-term evolution (within the current account model)
+As a result,
+owner-funding linkage is exposed for those flows.
+PP under the current mixed-visibility model
+can provide selective confidentiality,
+yet does not by itself remove PDA lineage correlation.
 
-These items are incremental and align with step 5’s scope (PP where the instruction layout already allows NSSA’s non-empty commitment or nullifier rule).
+### Chosen design direction
 
-- Withdraw (done in step 5): mixed visibility with a private payout recipient (visibility `2` on the recipient slot), `execute_and_prove`, and `transition_from_privacy_preserving_transaction`; vault PDAs, owner signer, and clock stay on public legs where the guest requires them.
-- Claim: same private-recipient pattern for the provider payout is plausible if signer rules and `SpelOutput` claim metadata match NSSA expectations.
-- Deposit: the current three-account instruction does not provide an extra slot for a private visibility row, so end-to-end PP deposit is blocked until the instruction layout or custody model changes (see `design.md`).
-- Stream lifecycle instructions (`create_stream`, `sync_stream`, pause, resume, top-up, close): PDAs and clock remain public identifiers; privacy gains stay on payout legs until stream and vault identities are redesigned.
+Near-term implementation path:
+explicit vault classes with enforcement.
 
-### Longer-term directions
+- `Public` vault:
+  usable via public and PP transactions.
+  No owner-funding unlinkability guarantee.
+- `Private` vault:
+  PP-only lifecycle is enforced for vault and stream operations.
+  Owner-funding unlinkability guarantee is scoped to this class.
 
-Track these in RFC proposal work (plan step 8) and product design rather than in the MVP guest alone.
+User-facing rule:
+users who need funder unlinkability
+must create and operate a private vault,
+and all lifecycle interactions for that vault stay on PP paths.
 
-- Move sensitive balances or stream metadata off transparent PDAs (shielded pool style custody or commitment-only state) while still reading time from platform system clocks.
-- Introduce npk-oriented identities for roles that are today fixed `AccountId` fields in `VaultConfig` or stream config, coordinated with NSSA, SPEL signer rules, and PDA derivation.
-- Private execution for PDA-shaped identities likely needs execution-zone or guest features beyond visibility masks on the current account list.
+This preserves maximal reuse of existing business logic
+and keeps selective privacy for public-vault PP usage
+without over-claiming anonymity.
+
+### Longer-term privacy direction
+
+If stronger unlinkability is required later,
+the protocol may evolve toward commitment-native custody,
+where identity and balance history are not anchored to transparent PDA lineages.
+That is out of scope for the current plan
+and remains a separate design track.
+
+Clock accounts remain platform-defined time anchors.
+Even strong privacy modes assume public time validity,
+not a hidden global clock.
 
 ## Cross-cutting Deliverables
 
