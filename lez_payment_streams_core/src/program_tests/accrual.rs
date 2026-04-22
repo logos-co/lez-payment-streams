@@ -10,8 +10,7 @@ use crate::{
     test_helpers::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
         derive_vault_pdas, force_clock_account_monotonic, force_clock_account_unchecked,
-        harness_clock_01_and_provider_account_ids,
-        patch_stream_config, patch_vault_config,
+        harness_clock_01_and_provider_account_ids, patch_stream_config, patch_vault_config,
     },
     StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultId,
     ERR_STREAM_ID_MISMATCH, ERR_TIME_REGRESSION, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
@@ -35,15 +34,14 @@ fn test_accrual_basic() {
 
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
-    let mut dep = state_deposited_with_clock(
-        owner_balance_start,
-        deposit_amount,
-        clock_id,
-        t0,
-    );
+    let mut dep = state_deposited_with_clock(owner_balance_start, deposit_amount, clock_id, t0);
 
     let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, stream_id);
+    let stream_pda = derive_stream_pda(
+        dep.vault.program_id,
+        dep.vault.vault_config_account_id,
+        stream_id,
+    );
 
     let account_ids_stream = [
         dep.vault.vault_config_account_id,
@@ -86,7 +84,8 @@ fn test_accrual_basic() {
     );
 
     let s_after_sync =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream config");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+            .expect("stream config");
     assert_eq!(s_after_sync.accrued, 50 as Balance);
     assert_eq!(s_after_sync.accrued_as_of, t1);
     assert_eq!(s_after_sync.state, StreamState::Active);
@@ -103,15 +102,14 @@ fn test_accrual_caps_at_allocation() {
 
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
-    let mut dep = state_deposited_with_clock(
-        owner_balance_start,
-        deposit_amount,
-        clock_id,
-        t0,
-    );
+    let mut dep = state_deposited_with_clock(owner_balance_start, deposit_amount, clock_id, t0);
 
     let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, stream_id);
+    let stream_pda = derive_stream_pda(
+        dep.vault.program_id,
+        dep.vault.vault_config_account_id,
+        stream_id,
+    );
     let account_ids = [
         dep.vault.vault_config_account_id,
         dep.vault.vault_holding_account_id,
@@ -154,7 +152,8 @@ fn test_accrual_caps_at_allocation() {
     );
 
     let s_depleted_paused =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("parse");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+            .expect("parse");
     let expected_depletion_instant: Timestamp = (allocation / u128::from(rate)) as Timestamp;
     assert_eq!(s_depleted_paused.accrued, allocation);
     assert_eq!(s_depleted_paused.state, StreamState::Paused);
@@ -177,12 +176,7 @@ fn test_sync_stream_second_stream_accrues() {
     let (clock_id, provider_a) = harness_clock_01_and_provider_account_ids();
     let (_, provider_b) = create_keypair(SEED_PROVIDER_B);
 
-    let mut dep = state_deposited_with_clock(
-        owner_balance_start,
-        deposit_amount,
-        clock_id,
-        t0,
-    );
+    let mut dep = state_deposited_with_clock(owner_balance_start, deposit_amount, clock_id, t0);
 
     let stream0 = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, 0);
     let stream1 = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, 1);
@@ -252,7 +246,8 @@ fn test_sync_stream_second_stream_accrues() {
     );
 
     let s0_after_sync_t1 =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream0).data).expect("stream 0");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream0).data)
+            .expect("stream 0");
     assert_eq!(s0_after_sync_t1.accrued, 50 as Balance);
     assert_eq!(s0_after_sync_t1.accrued_as_of, t1);
 
@@ -272,13 +267,14 @@ fn test_sync_stream_second_stream_accrues() {
         "sync_stream stream 1 failed",
     );
 
-    let s0_unchanged =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream0).data).expect("stream 0");
+    let s0_unchanged = StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream0).data)
+        .expect("stream 0");
     assert_eq!(s0_unchanged.accrued, s0_after_sync_t1.accrued);
     assert_eq!(s0_unchanged.accrued_as_of, s0_after_sync_t1.accrued_as_of);
 
     let s1_after_sync_t2 =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream1).data).expect("stream 1");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream1).data)
+            .expect("stream 1");
     assert_eq!(s1_after_sync_t2.accrued, 50 as Balance);
     assert_eq!(s1_after_sync_t2.accrued_as_of, t2);
 }
@@ -295,7 +291,11 @@ fn test_sync_stream_wrong_vault_id_fails() {
         t0,
     );
     let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, stream_id);
+    let stream_pda = derive_stream_pda(
+        dep.vault.program_id,
+        dep.vault.vault_config_account_id,
+        stream_id,
+    );
     let account_ids = [
         dep.vault.vault_config_account_id,
         dep.vault.vault_holding_account_id,
@@ -321,9 +321,13 @@ fn test_sync_stream_wrong_vault_id_fails() {
         "create_stream failed",
     );
 
-    patch_vault_config(&mut dep.vault.state, dep.vault.vault_config_account_id, |vc| {
-        vc.vault_id = VaultId::from(999u64);
-    });
+    patch_vault_config(
+        &mut dep.vault.state,
+        dep.vault.vault_config_account_id,
+        |vc| {
+            vc.vault_id = VaultId::from(999u64);
+        },
+    );
 
     let r = dep.vault.state.transition_from_public_transaction(
         &signed_sync_stream(
@@ -403,12 +407,7 @@ fn test_sync_stream_owner_mismatch_fails() {
         "deposit failed",
     );
 
-    force_clock_account_monotonic(
-        &mut state,
-        clock_id,
-        0,
-        DEFAULT_CLOCK_INITIAL_TS,
-    );
+    force_clock_account_monotonic(&mut state, clock_id, 0, DEFAULT_CLOCK_INITIAL_TS);
 
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
     let allocation = 100 as Balance;
@@ -565,7 +564,11 @@ fn test_sync_stream_time_regression_fails() {
         t0,
     );
     let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, stream_id);
+    let stream_pda = derive_stream_pda(
+        dep.vault.program_id,
+        dep.vault.vault_config_account_id,
+        stream_id,
+    );
     let account_ids = [
         dep.vault.vault_config_account_id,
         dep.vault.vault_holding_account_id,
@@ -623,7 +626,11 @@ fn test_sync_stream_twice_same_clock_is_no_op() {
         t0,
     );
     let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, stream_id);
+    let stream_pda = derive_stream_pda(
+        dep.vault.program_id,
+        dep.vault.vault_config_account_id,
+        stream_id,
+    );
     let account_ids = [
         dep.vault.vault_config_account_id,
         dep.vault.vault_holding_account_id,
@@ -703,7 +710,11 @@ fn test_sync_stream_depletion_via_at_time_paused() {
         t0,
     );
     let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, stream_id);
+    let stream_pda = derive_stream_pda(
+        dep.vault.program_id,
+        dep.vault.vault_config_account_id,
+        stream_id,
+    );
     let account_ids = [
         dep.vault.vault_config_account_id,
         dep.vault.vault_holding_account_id,
@@ -747,7 +758,8 @@ fn test_sync_stream_depletion_via_at_time_paused() {
         "sync_stream deplete",
     );
 
-    let sc = StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
+    let sc = StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+        .expect("stream");
     assert_eq!(sc.state, StreamState::Paused);
     assert_eq!(sc.accrued, allocation);
     assert_eq!(sc.accrued_as_of, t_deplete);
@@ -766,7 +778,11 @@ fn test_sync_stream_with_timestamp_max_clock() {
         t0,
     );
     let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, stream_id);
+    let stream_pda = derive_stream_pda(
+        dep.vault.program_id,
+        dep.vault.vault_config_account_id,
+        stream_id,
+    );
     let account_ids = [
         dep.vault.vault_config_account_id,
         dep.vault.vault_holding_account_id,
@@ -808,7 +824,8 @@ fn test_sync_stream_with_timestamp_max_clock() {
         "sync_stream at Timestamp::MAX",
     );
 
-    let sc = StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
+    let sc = StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+        .expect("stream");
     assert_eq!(sc.state, StreamState::Paused);
     assert_eq!(sc.accrued, 400 as Balance);
 }

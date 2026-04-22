@@ -1,14 +1,8 @@
 //! Scenario checks for vault solvency and allocation conservation (plan step 4).
 
-use nssa_core::{
-    account::Nonce,
-    BlockId,
-};
+use nssa_core::{account::Nonce, BlockId};
 
-use crate::{
-    test_helpers::derive_stream_pda,
-    StreamId, Timestamp,
-};
+use crate::{test_helpers::derive_stream_pda, StreamId, Timestamp};
 
 use super::common::{
     assert_vault_conservation_invariants, first_stream_ix_accounts, signed_claim_stream,
@@ -17,7 +11,9 @@ use super::common::{
     ClaimStreamIxAccounts, DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
 use crate::harness_seeds::SEED_PROVIDER;
-use crate::test_helpers::{create_keypair, force_clock_account_monotonic, harness_clock_01_and_provider_account_ids};
+use crate::test_helpers::{
+    create_keypair, force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
+};
 
 /// After two streams exist and are synced, holding covers `total_allocated` and
 /// `total_allocated` equals the sum of stream `allocation` fields.
@@ -53,11 +49,7 @@ fn test_solvency_two_streams_after_sync() {
         "create_stream 0",
     );
 
-    let pda1 = derive_stream_pda(
-        dep.vault.program_id,
-        dep.vault.vault_config_account_id,
-        1,
-    );
+    let pda1 = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, 1);
     let accounts1 = [
         dep.vault.vault_config_account_id,
         dep.vault.vault_holding_account_id,

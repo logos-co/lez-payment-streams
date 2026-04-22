@@ -16,8 +16,8 @@ use crate::Instruction;
 use crate::{
     test_helpers::{
         build_signed_public_tx, derive_stream_pda, force_clock_account_monotonic,
-        state_with_initialized_vault,
-        state_with_initialized_vault_with_preseeded_genesis_accounts, VaultFixture,
+        state_with_initialized_vault, state_with_initialized_vault_with_preseeded_genesis_accounts,
+        VaultFixture,
     },
     StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig, VaultId,
 };
@@ -291,7 +291,9 @@ pub(crate) fn assert_vault_conservation_invariants(
 ) {
     let vc = VaultConfig::from_bytes(&state.get_account_by_id(vault.vault_config_account_id).data)
         .expect("vault config");
-    let holding_bal: Balance = state.get_account_by_id(vault.vault_holding_account_id).balance;
+    let holding_bal: Balance = state
+        .get_account_by_id(vault.vault_holding_account_id)
+        .balance;
     assert!(
         holding_bal >= vc.total_allocated,
         "solvency: holding {holding_bal} < total_allocated {}",
@@ -419,12 +421,7 @@ pub(crate) fn claim_stream_prelude_synced_at_t1(
         3 as BlockId,
         "create_stream failed",
     );
-    force_clock_account_monotonic(
-        &mut with_provider.deposited.vault.state,
-        clock_id,
-        0,
-        t1,
-    );
+    force_clock_account_monotonic(&mut with_provider.deposited.vault.state, clock_id, 0, t1);
     transition_ok(
         &mut with_provider.deposited.vault.state,
         &signed_sync_stream(

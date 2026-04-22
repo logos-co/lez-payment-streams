@@ -31,15 +31,14 @@ fn test_close_returns_unaccrued() {
     let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
     let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
 
-    let mut dep = state_deposited_with_clock(
-        owner_balance_start,
-        deposit_amount,
-        clock_id,
-        t0,
-    );
+    let mut dep = state_deposited_with_clock(owner_balance_start, deposit_amount, clock_id, t0);
 
     let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, stream_id);
+    let stream_pda = derive_stream_pda(
+        dep.vault.program_id,
+        dep.vault.vault_config_account_id,
+        stream_id,
+    );
 
     let stream_accounts = [
         dep.vault.vault_config_account_id,
@@ -65,9 +64,13 @@ fn test_close_returns_unaccrued() {
         "create_stream failed",
     );
 
-    let vault_before =
-        VaultConfig::from_bytes(&dep.vault.state.get_account_by_id(dep.vault.vault_config_account_id).data)
-            .expect("vault config");
+    let vault_before = VaultConfig::from_bytes(
+        &dep.vault
+            .state
+            .get_account_by_id(dep.vault.vault_config_account_id)
+            .data,
+    )
+    .expect("vault config");
     assert_eq!(vault_before.total_allocated, allocation);
 
     force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
@@ -109,13 +112,18 @@ fn test_close_returns_unaccrued() {
         "close_stream failed",
     );
 
-    let vault_after =
-        VaultConfig::from_bytes(&dep.vault.state.get_account_by_id(dep.vault.vault_config_account_id).data)
-            .expect("vault config");
+    let vault_after = VaultConfig::from_bytes(
+        &dep.vault
+            .state
+            .get_account_by_id(dep.vault.vault_config_account_id)
+            .data,
+    )
+    .expect("vault config");
     assert_eq!(vault_after.total_allocated, 50 as Balance);
 
     let stream_after =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     assert_eq!(stream_after.state, StreamState::Closed);
     assert_eq!(stream_after.allocation, 50 as Balance);
     assert_eq!(stream_after.accrued, 50 as Balance);
@@ -142,15 +150,14 @@ fn test_close_stream_unauthorized_fails() {
     let (_, provider_account_id) = create_keypair(SEED_PROVIDER);
     let (alt_signer_private_key, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
 
-    let mut dep = state_deposited_with_clock(
-        owner_balance_start,
-        deposit_amount,
-        clock_id,
-        t0,
-    );
+    let mut dep = state_deposited_with_clock(owner_balance_start, deposit_amount, clock_id, t0);
 
     let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, stream_id);
+    let stream_pda = derive_stream_pda(
+        dep.vault.program_id,
+        dep.vault.vault_config_account_id,
+        stream_id,
+    );
 
     let stream_accounts = [
         dep.vault.vault_config_account_id,
@@ -229,7 +236,11 @@ fn test_close_already_closed_fails() {
     );
 
     let stream_id = StreamId::MIN;
-    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, stream_id);
+    let stream_pda = derive_stream_pda(
+        dep.vault.program_id,
+        dep.vault.vault_config_account_id,
+        stream_id,
+    );
 
     let stream_accounts = [
         dep.vault.vault_config_account_id,

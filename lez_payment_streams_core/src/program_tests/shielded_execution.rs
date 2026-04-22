@@ -6,9 +6,7 @@
 use nssa::{
     execute_and_prove,
     privacy_preserving_transaction::{
-        circuit::ProgramWithDependencies,
-        message::Message,
-        witness_set::WitnessSet,
+        circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
         PrivacyPreservingTransaction,
     },
     program::Program,
@@ -23,9 +21,7 @@ use nssa_core::{
 
 use crate::Instruction;
 use crate::{
-    test_helpers::{
-        build_signed_public_tx, load_guest_program, state_with_initialized_vault,
-    },
+    test_helpers::{build_signed_public_tx, load_guest_program, state_with_initialized_vault},
     VaultConfig,
 };
 
@@ -93,11 +89,7 @@ fn state_after_public_deposit() -> (
         &[&fx.owner_private_key],
     );
     fx.state
-        .transition_from_public_transaction(
-            &tx_deposit,
-            block_deposit,
-            TEST_PUBLIC_TX_TIMESTAMP,
-        )
+        .transition_from_public_transaction(&tx_deposit, block_deposit, TEST_PUBLIC_TX_TIMESTAMP)
         .expect("deposit");
 
     (

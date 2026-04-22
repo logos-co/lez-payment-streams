@@ -122,11 +122,7 @@ fn test_deposit_after_create_stream_succeeds() {
         DEFAULT_CLOCK_INITIAL_TS,
     );
 
-    let stream_pda = derive_stream_pda(
-        dep.vault.program_id,
-        dep.vault.vault_config_account_id,
-        0,
-    );
+    let stream_pda = derive_stream_pda(dep.vault.program_id, dep.vault.vault_config_account_id, 0);
     let account_ids_create = [
         dep.vault.vault_config_account_id,
         dep.vault.vault_holding_account_id,
@@ -165,12 +161,7 @@ fn test_deposit_after_create_stream_succeeds() {
             .data,
     )
     .expect("vault config");
-    let stream_data_after_create = dep
-        .vault
-        .state
-        .get_account_by_id(stream_pda)
-        .data
-        .clone();
+    let stream_data_after_create = dep.vault.state.get_account_by_id(stream_pda).data.clone();
     let owner_before_second = dep
         .vault
         .state

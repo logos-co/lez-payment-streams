@@ -11,9 +11,8 @@ use crate::{
     test_helpers::{
         assert_vault_state_unchanged_with_recipient, build_signed_public_tx, create_keypair,
         create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
-        force_clock_account_monotonic,
-        harness_clock_01_and_provider_account_ids, patch_vault_config,
-        state_with_initialized_vault_with_recipient,
+        force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
+        patch_vault_config, state_with_initialized_vault_with_recipient,
     },
     TokensPerSecond, VaultConfig, VaultId, ERR_ARITHMETIC_OVERFLOW, ERR_INSUFFICIENT_FUNDS,
     ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH, ERR_ZERO_WITHDRAW_AMOUNT,
@@ -64,12 +63,27 @@ fn test_withdraw() {
         result_deposit
     );
 
-    let vault_config_before = wr.vault.state.get_account_by_id(wr.vault.vault_config_account_id);
+    let vault_config_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.vault_config_account_id);
     let vault_config_state_before =
         VaultConfig::from_bytes(&vault_config_before.data).expect("valid vault config bytes");
-    let owner_after_deposit = wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance;
-    let vault_holding_before_withdraw = wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance;
-    let recipient_before_withdraw = wr.vault.state.get_account_by_id(wr.recipient_account_id).balance;
+    let owner_after_deposit = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.owner_account_id)
+        .balance;
+    let vault_holding_before_withdraw = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.vault_holding_account_id)
+        .balance;
+    let recipient_before_withdraw = wr
+        .vault
+        .state
+        .get_account_by_id(wr.recipient_account_id)
+        .balance;
 
     let account_ids_withdraw = [
         wr.vault.vault_config_account_id,
@@ -98,20 +112,32 @@ fn test_withdraw() {
         result_withdraw
     );
 
-    let vault_config_after = wr.vault.state.get_account_by_id(wr.vault.vault_config_account_id);
+    let vault_config_after = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.vault_config_account_id);
     let vault_config_state_after =
         VaultConfig::from_bytes(&vault_config_after.data).expect("valid vault config bytes");
 
     assert_eq!(
-        wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance,
+        wr.vault
+            .state
+            .get_account_by_id(wr.vault.owner_account_id)
+            .balance,
         owner_after_deposit
     );
     assert_eq!(
-        wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance,
+        wr.vault
+            .state
+            .get_account_by_id(wr.vault.vault_holding_account_id)
+            .balance,
         vault_holding_before_withdraw - withdraw_amount
     );
     assert_eq!(
-        wr.vault.state.get_account_by_id(wr.recipient_account_id).balance,
+        wr.vault
+            .state
+            .get_account_by_id(wr.recipient_account_id)
+            .balance,
         recipient_before_withdraw + withdraw_amount
     );
     assert_eq!(
@@ -152,9 +178,21 @@ fn test_withdraw_zero_amount_fails() {
         wr.recipient_account_id,
     ];
 
-    let owner_balance_before = wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance;
-    let vault_holding_balance_before = wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance;
-    let recipient_balance_before = wr.vault.state.get_account_by_id(wr.recipient_account_id).balance;
+    let owner_balance_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.owner_account_id)
+        .balance;
+    let vault_holding_balance_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.vault_holding_account_id)
+        .balance;
+    let recipient_balance_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.recipient_account_id)
+        .balance;
     let vault_config_data_before = wr
         .vault
         .state
@@ -200,9 +238,13 @@ fn test_withdraw_wrong_vault_id_fails() {
     let block_withdraw = 2 as BlockId;
     let nonce_withdraw = Nonce(1);
     let mut wr = state_with_initialized_vault_with_recipient(owner_balance_start);
-    patch_vault_config(&mut wr.vault.state, wr.vault.vault_config_account_id, |vc| {
-        vc.vault_id = VaultId::from(999u64);
-    });
+    patch_vault_config(
+        &mut wr.vault.state,
+        wr.vault.vault_config_account_id,
+        |vc| {
+            vc.vault_id = VaultId::from(999u64);
+        },
+    );
     let account_ids = [
         wr.vault.vault_config_account_id,
         wr.vault.vault_holding_account_id,
@@ -210,9 +252,21 @@ fn test_withdraw_wrong_vault_id_fails() {
         wr.recipient_account_id,
     ];
 
-    let owner_balance_before = wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance;
-    let vault_holding_balance_before = wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance;
-    let recipient_balance_before = wr.vault.state.get_account_by_id(wr.recipient_account_id).balance;
+    let owner_balance_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.owner_account_id)
+        .balance;
+    let vault_holding_balance_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.vault_holding_account_id)
+        .balance;
+    let recipient_balance_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.recipient_account_id)
+        .balance;
     let vault_config_data_before = wr
         .vault
         .state
@@ -291,9 +345,21 @@ fn test_withdraw_exceeds_unallocated_fails() {
         "deposit failed"
     );
 
-    let owner_balance_before = wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance;
-    let vault_holding_balance_before = wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance;
-    let recipient_balance_before = wr.vault.state.get_account_by_id(wr.recipient_account_id).balance;
+    let owner_balance_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.owner_account_id)
+        .balance;
+    let vault_holding_balance_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.vault_holding_account_id)
+        .balance;
+    let recipient_balance_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.recipient_account_id)
+        .balance;
     let vault_config_data_before = wr
         .vault
         .state
@@ -356,12 +422,7 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
 
     let mut wr = state_with_initialized_vault_with_recipient(owner_balance_start);
 
-    force_clock_account_monotonic(
-        &mut wr.vault.state,
-        clock_id,
-        0,
-        DEFAULT_CLOCK_INITIAL_TS,
-    );
+    force_clock_account_monotonic(&mut wr.vault.state, clock_id, 0, DEFAULT_CLOCK_INITIAL_TS);
 
     let account_ids_deposit = [
         wr.vault.vault_config_account_id,
@@ -424,12 +485,27 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
         "create_stream failed"
     );
 
-    let vault_config_before = wr.vault.state.get_account_by_id(wr.vault.vault_config_account_id);
+    let vault_config_before = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.vault_config_account_id);
     let vault_config_state_before =
         VaultConfig::from_bytes(&vault_config_before.data).expect("vault config");
-    let owner_after_funding = wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance;
-    let vault_holding_before_withdraw = wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance;
-    let recipient_before_withdraw = wr.vault.state.get_account_by_id(wr.recipient_account_id).balance;
+    let owner_after_funding = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.owner_account_id)
+        .balance;
+    let vault_holding_before_withdraw = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.vault_holding_account_id)
+        .balance;
+    let recipient_before_withdraw = wr
+        .vault
+        .state
+        .get_account_by_id(wr.recipient_account_id)
+        .balance;
 
     let account_ids_withdraw = [
         wr.vault.vault_config_account_id,
@@ -458,20 +534,32 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
         "withdraw failed"
     );
 
-    let vault_config_after = wr.vault.state.get_account_by_id(wr.vault.vault_config_account_id);
+    let vault_config_after = wr
+        .vault
+        .state
+        .get_account_by_id(wr.vault.vault_config_account_id);
     let vault_config_state_after =
         VaultConfig::from_bytes(&vault_config_after.data).expect("vault config");
 
     assert_eq!(
-        wr.vault.state.get_account_by_id(wr.vault.owner_account_id).balance,
+        wr.vault
+            .state
+            .get_account_by_id(wr.vault.owner_account_id)
+            .balance,
         owner_after_funding
     );
     assert_eq!(
-        wr.vault.state.get_account_by_id(wr.vault.vault_holding_account_id).balance,
+        wr.vault
+            .state
+            .get_account_by_id(wr.vault.vault_holding_account_id)
+            .balance,
         vault_holding_before_withdraw - withdraw_amount
     );
     assert_eq!(
-        wr.vault.state.get_account_by_id(wr.recipient_account_id).balance,
+        wr.vault
+            .state
+            .get_account_by_id(wr.recipient_account_id)
+            .balance,
         recipient_before_withdraw + withdraw_amount
     );
     assert_eq!(
@@ -636,9 +724,15 @@ fn test_withdraw_recipient_balance_overflow_fails() {
         "deposit failed"
     );
 
-    let mut recipient = wr.vault.state.get_account_by_id(wr.recipient_account_id).clone();
+    let mut recipient = wr
+        .vault
+        .state
+        .get_account_by_id(wr.recipient_account_id)
+        .clone();
     recipient.balance = Balance::MAX - 5;
-    wr.vault.state.force_insert_account(wr.recipient_account_id, recipient);
+    wr.vault
+        .state
+        .force_insert_account(wr.recipient_account_id, recipient);
 
     let result = wr.vault.state.transition_from_public_transaction(
         &build_signed_public_tx(

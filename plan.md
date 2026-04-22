@@ -288,11 +288,12 @@ pins guarantee a single `nssa_core` in the test graph.
   and add constants or helpers that surface
   the three system clock account ids.
 - Update `lez_payment_streams_core/src/program_tests/common.rs`
-  fixtures (`state_deposited_with_mock_clock*`)
+  fixtures (`state_deposited_with_clock*`)
   to take a clock account id from the system clocks,
   not a keypair-derived id.
-- Update every test that references `mock_clock_account_id`
-  to use the chosen system clock id.
+- Tests should bind the harness clock as `clock_account_id`
+  (and clock timestamps as `clock_initial_ts`, etc.),
+  not legacy “mock clock” local names.
 
 #### 2.4 Design doc and proposal list updates
 
@@ -478,8 +479,17 @@ Candidates not resolved in earlier steps:
   (design informed by the full call-site set after step 4).
 - Decide `ERR_*` as `#[repr(u32)]` enum vs keep `u32` constants,
   gated on whether tests actually match on many codes.
+- Error code gaps (e.g. legacy reserved numbers no longer emitted):
+  either keep them documented as permanently reserved in `design.md`,
+  or plan a single breaking renumbering pass that produces a dense `6001..` table
+  and updates every consumer that matches on numeric codes
+  (not mixed with feature work; treat as an explicit compatibility event).
 - Any public-name renames on types or fields,
   applied in a single sweep together with the reviewer doc in step 9.
+- Unused imports: run the clippy/unused-import pass workspace-wide,
+  tighten explicit `use` lists,
+  and remove blanket allows that only exist to hide them
+  (for example `#[allow(unused_imports)]` on the guest program module).
 - Final `cargo fmt` and
   `cargo clippy --workspace --all-targets`
   sweep before handoff.

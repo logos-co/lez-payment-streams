@@ -6,9 +6,8 @@ use nssa_core::{
 };
 
 use crate::{
-    test_helpers::create_keypair,
-    StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultConfig, CLOCK_01_PROGRAM_ACCOUNT_ID,
-    ERR_CLAIM_UNAUTHORIZED, ERR_ZERO_CLAIM_AMOUNT,
+    test_helpers::create_keypair, StreamConfig, StreamState, Timestamp, TokensPerSecond,
+    VaultConfig, CLOCK_01_PROGRAM_ACCOUNT_ID, ERR_CLAIM_UNAUTHORIZED, ERR_ZERO_CLAIM_AMOUNT,
 };
 
 use super::common::{
@@ -85,14 +84,9 @@ fn test_claim_transfers_balance() {
     .expect("vault config");
     assert_eq!(vault_after.total_allocated, CLAIM_ALLOCATION - payout);
 
-    let stream_after = StreamConfig::from_bytes(
-        &wp.deposited
-            .vault
-            .state
-            .get_account_by_id(stream_pda)
-            .data,
-    )
-    .expect("stream");
+    let stream_after =
+        StreamConfig::from_bytes(&wp.deposited.vault.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     assert_eq!(stream_after.state, StreamState::Active);
     assert_eq!(stream_after.accrued, 0 as Balance);
     assert_eq!(stream_after.allocation, CLAIM_ALLOCATION - payout);
@@ -240,14 +234,9 @@ fn test_claim_after_close() {
     .expect("vault config");
     assert_eq!(vault_after.total_allocated, 0 as Balance);
 
-    let stream_after = StreamConfig::from_bytes(
-        &wp.deposited
-            .vault
-            .state
-            .get_account_by_id(stream_pda)
-            .data,
-    )
-    .expect("stream");
+    let stream_after =
+        StreamConfig::from_bytes(&wp.deposited.vault.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     assert_eq!(stream_after.state, StreamState::Closed);
     assert_eq!(stream_after.allocation, 0 as Balance);
     assert_eq!(stream_after.accrued, 0 as Balance);

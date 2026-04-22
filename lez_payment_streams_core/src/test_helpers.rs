@@ -37,9 +37,8 @@ fn workspace_root() -> PathBuf {
 
 /// Load the payment-streams guest [`Program`] for PP `execute_and_prove` (same blob as deployment).
 pub(crate) fn load_guest_program() -> Program {
-    let guest_bytecode = fs::read(guest_binary_path()).expect(
-        "guest binary missing; run `cargo build -p lez_payment_streams-methods`",
-    );
+    let guest_bytecode = fs::read(guest_binary_path())
+        .expect("guest binary missing; run `cargo build -p lez_payment_streams-methods`");
     Program::new(guest_bytecode).expect("guest bytecode should be a valid Program")
 }
 

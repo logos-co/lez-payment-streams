@@ -11,8 +11,7 @@ use crate::{
     test_helpers::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
         derive_vault_pdas, force_clock_account_monotonic, force_clock_account_unchecked,
-        harness_clock_01_and_provider_account_ids,
-        patch_vault_config,
+        harness_clock_01_and_provider_account_ids, patch_vault_config,
     },
     StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId, ERR_STREAM_NOT_ACTIVE,
     ERR_TIME_REGRESSION, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
@@ -70,10 +69,8 @@ fn test_pause() {
         "pause_stream failed",
     );
 
-    let s_paused = StreamConfig::from_bytes(
-        &dep.vault.state.get_account_by_id(stream_pda).data,
-    )
-    .expect("stream");
+    let s_paused = StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+        .expect("stream");
     assert_eq!(s_paused.state, StreamState::Paused);
     assert_eq!(s_paused.accrued, 0 as Balance);
     assert_eq!(s_paused.accrued_as_of, t0);
@@ -296,7 +293,7 @@ fn test_pause_stream_owner_mismatch_fails() {
 
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
     let (_, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
-    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let (clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let initial_accounts_data = vec![
         (owner_account_id, signer_account_balance),
@@ -349,7 +346,7 @@ fn test_pause_stream_owner_mismatch_fails() {
 
     force_clock_account_monotonic(
         &mut state,
-        mock_clock_account_id,
+        clock_account_id,
         0,
         DEFAULT_CLOCK_INITIAL_TS,
     );
@@ -369,7 +366,7 @@ fn test_pause_stream_owner_mismatch_fails() {
                 vault_holding_account_id,
                 stream_pda,
                 owner_account_id,
-                mock_clock_account_id,
+                clock_account_id,
             ],
             nonce_stream,
             &owner_private_key,
@@ -387,7 +384,7 @@ fn test_pause_stream_owner_mismatch_fails() {
         vault_holding_account_id,
         stream_pda,
         owner_account_id,
-        mock_clock_account_id,
+        clock_account_id,
     ];
     let r = state.transition_from_public_transaction(
         &signed_pause_stream(
@@ -433,9 +430,13 @@ fn test_pause_stream_wrong_vault_id_fails() {
         "create_stream failed",
     );
 
-    patch_vault_config(&mut dep.vault.state, dep.vault.vault_config_account_id, |vc| {
-        vc.vault_id = VaultId::from(999u64);
-    });
+    patch_vault_config(
+        &mut dep.vault.state,
+        dep.vault.vault_config_account_id,
+        |vc| {
+            vc.vault_id = VaultId::from(999u64);
+        },
+    );
 
     let r = dep.vault.state.transition_from_public_transaction(
         &signed_pause_stream(

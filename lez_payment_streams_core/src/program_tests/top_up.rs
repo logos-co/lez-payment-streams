@@ -7,7 +7,8 @@ use nssa_core::{
 
 use crate::{
     test_helpers::{
-        force_clock_account_monotonic, harness_clock_01_and_provider_account_ids, patch_vault_config,
+        force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
+        patch_vault_config,
     },
     StreamConfig, StreamState, Timestamp, TokensPerSecond, ERR_ALLOCATION_EXCEEDS_UNALLOCATED,
     ERR_ARITHMETIC_OVERFLOW, ERR_STREAM_CLOSED, ERR_VAULT_OWNER_MISMATCH, ERR_ZERO_TOP_UP_AMOUNT,
@@ -70,7 +71,8 @@ fn test_topup_resumes() {
     );
 
     let s_depleted_paused =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     assert_eq!(s_depleted_paused.state, StreamState::Paused);
     assert_eq!(s_depleted_paused.accrued, 100 as Balance);
 
@@ -108,7 +110,8 @@ fn test_topup_resumes() {
     );
 
     let s_after_top_up =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     assert_eq!(s_after_top_up.state, StreamState::Active);
     assert_eq!(s_after_top_up.accrued_as_of, t2);
     assert_eq!(s_after_top_up.allocation, 300 as Balance);
@@ -132,7 +135,8 @@ fn test_topup_resumes() {
     );
 
     let s_after_follow_up_sync =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     assert_eq!(s_after_follow_up_sync.accrued, 200 as Balance);
     assert_eq!(s_after_follow_up_sync.state, StreamState::Active);
 }
@@ -187,7 +191,8 @@ fn test_topup_active_increases_allocation() {
     );
 
     let s_after_top_up =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     assert_eq!(s_after_top_up.state, StreamState::Active);
     assert_eq!(s_after_top_up.allocation, 400 as Balance);
 }
@@ -256,7 +261,8 @@ fn test_topup_manual_pause_then_active() {
     );
 
     let s_resumed_after_top_up =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     assert_eq!(s_resumed_after_top_up.state, StreamState::Active);
     assert_eq!(s_resumed_after_top_up.accrued_as_of, t1);
     assert_eq!(s_resumed_after_top_up.allocation, 450 as Balance);
@@ -437,13 +443,16 @@ fn test_topup_allocation_overflow_fails() {
     );
 
     let mut s_near_max_allocation =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     s_near_max_allocation.allocation = Balance::MAX - 5;
     s_near_max_allocation.accrued = 0 as Balance;
     let mut stream_account = dep.vault.state.get_account_by_id(stream_pda).clone();
     stream_account.data = nssa_core::account::Data::try_from(s_near_max_allocation.to_bytes())
         .expect("stream payload fits");
-    dep.vault.state.force_insert_account(stream_pda, stream_account);
+    dep.vault
+        .state
+        .force_insert_account(stream_pda, stream_account);
 
     let r = dep.vault.state.transition_from_public_transaction(
         &signed_top_up_stream(
@@ -492,9 +501,13 @@ fn test_top_up_stream_owner_mismatch_fails() {
         "create_stream failed",
     );
 
-    patch_vault_config(&mut dep.vault.state, dep.vault.vault_config_account_id, |vc| {
-        vc.owner = provider_account_id;
-    });
+    patch_vault_config(
+        &mut dep.vault.state,
+        dep.vault.vault_config_account_id,
+        |vc| {
+            vc.owner = provider_account_id;
+        },
+    );
 
     let r = dep.vault.state.transition_from_public_transaction(
         &signed_top_up_stream(

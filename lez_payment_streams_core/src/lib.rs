@@ -17,8 +17,6 @@ mod program_tests;
 mod clock_wire;
 mod error_codes;
 mod instruction;
-#[cfg(test)]
-mod mock_timestamp;
 mod stream_config;
 mod vault;
 
@@ -28,8 +26,6 @@ pub use clock_wire::{
 };
 pub use error_codes::*;
 pub use instruction::Instruction;
-#[cfg(test)]
-pub use mock_timestamp::MockTimestamp;
 pub use stream_config::{StreamConfig, StreamState};
 pub use vault::{
     checked_total_allocated_after_add, checked_total_allocated_after_release, VaultConfig,

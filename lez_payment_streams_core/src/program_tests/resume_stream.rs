@@ -10,7 +10,8 @@ use crate::Instruction;
 use crate::{
     test_helpers::{
         create_keypair, create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
-        force_clock_account_monotonic, harness_clock_01_and_provider_account_ids, patch_vault_config,
+        force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
+        patch_vault_config,
     },
     StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId, ERR_RESUME_ZERO_UNACCRUED,
     ERR_STREAM_NOT_PAUSED, ERR_VAULT_OWNER_MISMATCH,
@@ -87,8 +88,8 @@ fn test_resume() {
         "resume_stream failed",
     );
 
-    let s_resumed =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
+    let s_resumed = StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+        .expect("stream");
     assert_eq!(s_resumed.state, StreamState::Active);
     assert_eq!(s_resumed.accrued, 0 as Balance);
     assert_eq!(s_resumed.accrued_as_of, t1);
@@ -424,7 +425,8 @@ fn test_resume_then_accrual_ignores_paused_gap() {
     );
 
     let s_after_resume_and_accrual =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data).expect("stream");
+        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     let expected_accrued = 50 + (u128::from(rate) * u128::from(t2 - t_gap));
     assert_eq!(s_after_resume_and_accrual.accrued, expected_accrued);
     assert_eq!(s_after_resume_and_accrual.accrued_as_of, t2);
@@ -448,7 +450,7 @@ fn test_resume_stream_owner_mismatch_fails() {
 
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
     let (_, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
-    let (mock_clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let (clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let initial_accounts_data = vec![
         (owner_account_id, signer_account_balance),
@@ -499,7 +501,12 @@ fn test_resume_stream_owner_mismatch_fails() {
         "deposit failed",
     );
 
-    force_clock_account_monotonic(&mut state, mock_clock_account_id, 0, DEFAULT_CLOCK_INITIAL_TS);
+    force_clock_account_monotonic(
+        &mut state,
+        clock_account_id,
+        0,
+        DEFAULT_CLOCK_INITIAL_TS,
+    );
 
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
     transition_ok(
@@ -516,7 +523,7 @@ fn test_resume_stream_owner_mismatch_fails() {
                 vault_holding_account_id,
                 stream_pda,
                 owner_account_id,
-                mock_clock_account_id,
+                clock_account_id,
             ],
             nonce_stream,
             &owner_private_key,
@@ -530,7 +537,7 @@ fn test_resume_stream_owner_mismatch_fails() {
         vault_holding_account_id,
         stream_pda,
         owner_account_id,
-        mock_clock_account_id,
+        clock_account_id,
     ];
     transition_ok(
         &mut state,
