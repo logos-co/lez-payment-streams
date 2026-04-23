@@ -93,6 +93,25 @@ The privacy-preserving circuit ties private visibility rows to nullifier-derived
 `CreateStream` initializes the stream PDA with a fixed seed-derived [`AccountId`], which does not match an `npk`-only private row in the current NSSA layout, so this repository does not ship an `execute_and_prove` `create_stream` or `sync_stream` case yet.
 Step 6 instead adds harness policy tests that refuse public `create_stream` and public `sync_stream` when the vault is marked [`VaultPrivacyTier::PseudonymousFunder`] (or after patching the stored tier), plus a PP `withdraw` path on such vaults.
 
+### PP test harness
+
+The PP plumbing is centralised behind a short set of module-private helpers in `program_tests/shielded_execution.rs` so that tier-specific PP cases share the same proof and transition path.
+
+- `vault_fixture_public_tier_funded_via_deposit()` — builds a [`VaultFixture`] on a [`VaultPrivacyTier::Public`] vault funded via a public `Deposit`.
+- `vault_fixture_pseudonymous_funder_funded_via_native_transfer()` — builds a [`VaultFixture`] on a [`VaultPrivacyTier::PseudonymousFunder`] vault funded via `transfer_native_balance_for_tests`, because public `Deposit` is refused for that tier at the harness.
+- `run_pp_withdraw_to_private_recipient(fx, amount, block)` — takes a funded [`VaultFixture`], builds a PP `withdraw` call with a single visibility-`2` private recipient (shared `npk`/`vsk` material at module scope), runs `execute_and_prove`, assembles the [`PrivacyPreservingTransaction`], and applies `transition_from_privacy_preserving_transaction`. Returns the transaction and the caller's `SharedSecretKey` for post-hoc ciphertext asserts.
+
+PP coverage (instruction × tier):
+
+| Instruction | `Public` | `PseudonymousFunder` | Notes |
+| --- | --- | --- | --- |
+| `withdraw` | covered | covered | `test_withdraw_private_recipient_pp_transition_succeeds`, `test_pp_withdraw_private_recipient_pseudonymous_funded_vault_succeeds` |
+| `deposit` | not covered end-to-end | refused at harness | three-account layout has no private slot for NSSA's non-empty commitment / nullifier rule (see *Deposit and PP*); PseudonymousFunder also refuses it via `transition_public_payment_streams_tx_respecting_privacy_tier` |
+| `create_stream`, `sync_stream` | not shipped | not shipped | stream PDA vs `npk`-only private row mismatch (see *PP `create_stream` and `sync_stream`*) |
+| `claim`, `close_stream`, `pause_stream`, `resume_stream`, `top_up_stream` | not shipped | not shipped | can be layered on the same harness helper once a private-payout or private-owner story is fixed |
+
+Adding another PP case is a new test in the same file plus (if the call shape differs from `withdraw`) a parallel run helper — the fixture helpers and private recipient material are shared.
+
 ## Account types and relationships
 
 A single LEZ program manages three account types:
