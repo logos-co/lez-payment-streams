@@ -782,6 +782,77 @@ or platform-level account policy for PP-only rows.
 That is out of scope for the current plan
 and remains a separate design track.
 
+#### Why commitment-native owner is deferred, not adopted now
+
+A natural question is whether to replace plaintext `VaultConfig.owner`
+with a commitment up front,
+so that pseudonymity is cryptographic rather than behavioral.
+The primitive itself is not what makes this hard:
+LEZ npk derivation already gives per-vault unlinkable owner ids
+from a master seed,
+and the `PseudonymousFunder` tier above is built on that fact.
+The blockers are in the account model surrounding the owner field,
+not in how the owner bytes are produced.
+
+Concretely:
+
+- Authorization currently reduces to byte equality
+  (`signer.account_id == VaultConfig.owner`),
+  verifiable by the guest with no extra machinery.
+  A commitment-based owner turns this into
+  proof-of-preimage for `Commit(owner_id, r)`,
+  which the inner program cannot check on its own.
+  It must flow through NSSA's private-row witness mechanism,
+  and the pinned NSSA does not expose
+  a generic application-level proof-of-preimage hook—
+  private-row auth only covers control of npk-derived account ids.
+  Adding such a hook is a platform change
+  that has to be coordinated with NSSA and SPEL,
+  not a local guest edit.
+- `VaultConfig` is a public PDA row
+  whose non-owner fields
+  (`total_allocated`, `next_stream_id`, version, privacy_tier)
+  and every mutation timestamp are observable.
+  Stream PDAs are seeded from `vault_config_pda`,
+  so the vault ↔ stream graph is reconstructable regardless of owner.
+  Hiding just the owner bytes while leaving the rest public
+  delivers partial benefit for disproportionate cost:
+  the useful stronger posture requires
+  vault and stream state to live as commitments or notes end to end,
+  not as public PDAs with one obfuscated field.
+- A concrete platform gap already showed up in step 5:
+  `design.md` records that PP `create_stream` / `sync_stream`
+  do not ship today because
+  stream PDAs use a fixed seed-derived `AccountId`
+  that does not match an npk-only private row in the current NSSA layout.
+  The same mismatch is the prerequisite for commitment-native vaults,
+  so shifting the account model now
+  would run ahead of the platform rather than against a ready surface.
+- Surface area is large.
+  A commitment-native redesign touches the account model,
+  PDA derivation, authorization check,
+  client-side state (the user has to persist `(owner_id, randomness)`
+  to re-derive their own vault PDA),
+  every test fixture and harness helper,
+  the reviewer writeup planned in step 9,
+  and the RFC's Account Model and Privacy Considerations.
+  The current layered plan
+  (steps 6–7 add the tier and policy,
+  steps 10–12 promote to the RFC)
+  depends on those pieces being stable.
+
+The tradeoff therefore favors shipping the pseudonymous tier now
+with an honestly documented boundary
+(`PseudonymousFunder` + pre-shield funding, owner is a plaintext pseudonym,
+vault ↔ stream graph stays public),
+collecting reviewer feedback on that posture,
+and opening a separate design track for commitment-native custody
+once the NSSA/SPEL platform gaps are closed.
+The alternative—folding commitment-native custody into the MVP—
+either blocks progress on upstream coordination
+or produces a half-private design
+that has to be reworked when the platform catches up.
+
 Clock accounts remain platform-defined time anchors.
 Even strong privacy modes assume public time validity,
 not a hidden global clock.
