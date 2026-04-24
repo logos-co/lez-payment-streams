@@ -612,8 +612,28 @@ Known seeds:
   not when "original create amount" matches.
 - Claim reduces `allocation` and `total_allocated` by the payout,
   not only `VaultHolding` balance and `accrued`.
-- System clock replaces the mock timestamp source;
-  granularity guidance added to Security and Privacy Considerations.
+- System clock replaces the mock timestamp source.
+  The RFC currently states "This MVP uses a mock timestamp source
+  until a LEZ-native timestamp mechanism is finalized."
+  Replace with the real mechanism:
+  client selects one of `CLOCK_01`, `CLOCK_10`, `CLOCK_50`;
+  guest validates the account id and reads the 16-byte Borsh payload
+  (`block_id: u64`, `timestamp: u64`);
+  clock granularity tradeoffs (accrual precision vs observability)
+  added to Security and Privacy Considerations.
+- `CloseStream` idempotency and authorization.
+  The RFC currently has a placeholder:
+  "The final text should define who can close and idempotency behavior."
+  Replace with: either vault owner or stream provider may close;
+  attempting to close an already-CLOSED stream fails
+  (double-close is not idempotent — it errors).
+- `SyncStream` instruction.
+  Add to the instruction surface.
+  Materializes lazy accrual on-chain without a lifecycle event or balance change.
+  Authorization: permissionless
+  (owner-only restriction in current implementation should be lifted;
+  provider and third parties have equal standing to materialize deterministic state).
+  Needed for provider monitoring when a stream depletes between lifecycle instructions.
 
 Additional seeds from steps 6 and 7:
 
