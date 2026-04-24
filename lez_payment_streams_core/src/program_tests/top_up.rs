@@ -15,7 +15,7 @@ use crate::{
 
 use super::common::{
     assert_execution_failed_with_code, first_stream_ix_accounts, force_stream_state_closed,
-    signed_create_stream, signed_deposit, signed_pause_stream, signed_sync_stream,
+    signed_create_stream, signed_deposit, signed_pause_stream,
     signed_top_up_stream, state_deposited_with_clock, transition_ok, DEFAULT_CLOCK_INITIAL_TS,
     DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
@@ -23,7 +23,6 @@ use super::common::{
 #[test]
 fn test_topup_paused_depleted_stream_succeeds() {
     let t0: Timestamp = 0;
-    let t1: Timestamp = 100;
     let t2: Timestamp = 250;
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
@@ -53,28 +52,6 @@ fn test_topup_paused_depleted_stream_succeeds() {
         "create_stream failed",
     );
 
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
-
-    transition_ok(
-        &mut dep.vault.state,
-        &signed_sync_stream(
-            dep.vault.program_id,
-            dep.vault.vault_id,
-            stream_id,
-            &account_ids,
-            Nonce(3),
-            &dep.vault.owner_private_key,
-        ),
-        4 as BlockId,
-        "sync_stream failed",
-    );
-
-    let s_depleted_paused =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
-            .expect("stream");
-    assert_eq!(s_depleted_paused.state, StreamState::Paused);
-    assert_eq!(s_depleted_paused.accrued, 100 as Balance);
-
     transition_ok(
         &mut dep.vault.state,
         &signed_deposit(
@@ -84,15 +61,17 @@ fn test_topup_paused_depleted_stream_succeeds() {
             dep.vault.vault_config_account_id,
             dep.vault.vault_holding_account_id,
             dep.vault.owner_account_id,
-            Nonce(4),
+            Nonce(3),
             &dep.vault.owner_private_key,
         ),
-        5 as BlockId,
+        4 as BlockId,
         "deposit failed",
     );
 
     force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t2);
 
+    // top_up folds at_time(t2) internally: stream was depleted at t=10 (rate=10, alloc=100),
+    // so fold gives Paused/accrued=100. top_up then adds 200 and activates at t2.
     transition_ok(
         &mut dep.vault.state,
         &signed_top_up_stream(
@@ -101,10 +80,10 @@ fn test_topup_paused_depleted_stream_succeeds() {
             stream_id,
             200 as Balance,
             &account_ids,
-            Nonce(5),
+            Nonce(4),
             &dep.vault.owner_private_key,
         ),
-        6 as BlockId,
+        5 as BlockId,
         "top_up_stream failed",
     );
 
@@ -115,29 +94,6 @@ fn test_topup_paused_depleted_stream_succeeds() {
     assert_eq!(s_after_top_up.accrued_as_of, t2);
     assert_eq!(s_after_top_up.allocation, 300 as Balance);
     assert_eq!(s_after_top_up.accrued, 100 as Balance);
-
-    let t3: Timestamp = 260;
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t3);
-
-    transition_ok(
-        &mut dep.vault.state,
-        &signed_sync_stream(
-            dep.vault.program_id,
-            dep.vault.vault_id,
-            stream_id,
-            &account_ids,
-            Nonce(6),
-            &dep.vault.owner_private_key,
-        ),
-        7 as BlockId,
-        "sync_stream after top-up failed",
-    );
-
-    let s_after_follow_up_sync =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
-            .expect("stream");
-    assert_eq!(s_after_follow_up_sync.accrued, 200 as Balance);
-    assert_eq!(s_after_follow_up_sync.state, StreamState::Active);
 }
 
 #[test]

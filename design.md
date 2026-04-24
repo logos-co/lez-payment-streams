@@ -12,6 +12,16 @@ Host, guest, and examples use the same LEZ checkout: `nssa_core` / `nssa` (tests
 
 SPEL is pinned to git revision `3457c7431e9b5b88661ed87b53677511ef88d113` on `https://github.com/logos-co/spel.git` (includes `SpelOutput::execute` and the macro rewrite to `execute_with_claims` for `vec![account, …]` patterns).
 
+## Removed instruction: SyncStream (step 9)
+
+`SyncStream` was the only instruction whose sole effect was calling `StreamConfig::at_time(now)` and persisting the result.
+Every other lifecycle instruction (`PauseStream`, `ResumeStream`, `TopUpStream`, `CloseStream`, `Claim`) already calls `at_time` internally as its first step, so an explicit on-chain sync was redundant.
+
+The instruction was removed from `Instruction` enum and guest handler in step 9.
+The `accrual.rs` integration test file (10 tests against `sync_stream`) was deleted and replaced by the existing unit tests on `StreamConfig::at_time` in `stream_config.rs`.
+
+**Off-chain fold**: host code can compute the current stream state without a transaction using `StreamConfig::at_time(clock.timestamp)` — a pure function that takes the on-chain stream bytes and the current clock timestamp and returns the folded state.
+
 ## Removed helpers (replaced by upstream deps)
 
 `lez_payment_streams_core/src/clock_wire.rs` was removed in step 8.
@@ -34,8 +44,9 @@ In-process tests build layered fixtures instead of long tuple returns.
 
 Use the field name `clock_id` for the system clock account passed on the instruction account list (not “mock clock”).
 
-`claim_stream_prelude_synced_at_t1` runs `create_stream` then advances the clock to `t1` and `sync_stream`.
-It assumes the same ladder as manual claim tests: `initialize_vault` at block 1 / `Nonce(0)`, `deposit` at block 2 / `Nonce(1)`, `create_stream` at block 3 / `Nonce(2)`, `sync_stream` at block 4 / `Nonce(3)`.
+`claim_stream_prelude_at_t1` runs `create_stream` then advances the clock to `t1`.
+It assumes the same ladder as manual claim tests: `initialize_vault` at block 1 / `Nonce(0)`, `deposit` at block 2 / `Nonce(1)`, `create_stream` at block 3 / `Nonce(2)`.
+Lifecycle instructions (`claim`, `close_stream`, …) fold accrual internally via `at_time` at the clock timestamp they read, so no separate on-chain sync step is needed.
 
 ## Privacy-preserving execution (NSSA) and step 5 tests
 
@@ -89,11 +100,11 @@ A future design could add an explicit shielding leg or extend the account list i
 For [`VaultPrivacyTier::PseudonymousFunder`] vaults, tests also treat public `Deposit` as disallowed at the harness (see `test_helpers::transition_public_payment_streams_tx_respecting_privacy_tier`).
 PP `withdraw` coverage for that tier uses `transfer_native_balance_for_tests` to move native balance into `VaultHolding` without a public `Deposit` transaction, so the ladder can still reach a funded PP `withdraw` while exercising the same guest rules as the public-path `withdraw` test.
 
-### PP `create_stream` and `sync_stream` with PDA stream accounts
+### PP `create_stream` with PDA stream accounts
 
 The privacy-preserving circuit ties private visibility rows to nullifier-derived identities.
-`CreateStream` initializes the stream PDA with a fixed seed-derived [`AccountId`], which does not match an `npk`-only private row in the current NSSA layout, so this repository does not ship an `execute_and_prove` `create_stream` or `sync_stream` case yet.
-Step 6 instead adds harness policy tests that refuse public `create_stream` and public `sync_stream` when the vault is marked [`VaultPrivacyTier::PseudonymousFunder`] (or after patching the stored tier), plus a PP `withdraw` path on such vaults.
+`CreateStream` initializes the stream PDA with a fixed seed-derived [`AccountId`], which does not match an `npk`-only private row in the current NSSA layout, so this repository does not ship an `execute_and_prove` `create_stream` case yet.
+Step 6 adds harness policy tests that refuse public `create_stream` when the vault is marked [`VaultPrivacyTier::PseudonymousFunder`] (or after patching the stored tier), plus a PP `withdraw` path on such vaults.
 
 ### PP test harness
 
@@ -109,7 +120,7 @@ PP coverage (instruction × tier):
 | --- | --- | --- | --- |
 | `withdraw` | covered | covered | `test_withdraw_private_recipient_pp_transition_succeeds`, `test_pp_withdraw_private_recipient_pseudonymous_funded_vault_succeeds` |
 | `deposit` | not covered end-to-end | refused at harness | three-account layout has no private slot for NSSA's non-empty commitment / nullifier rule (see *Deposit and PP*); PseudonymousFunder also refuses it via `transition_public_payment_streams_tx_respecting_privacy_tier` |
-| `create_stream`, `sync_stream` | not shipped | not shipped | stream PDA vs `npk`-only private row mismatch (see *PP `create_stream` and `sync_stream`*) |
+| `create_stream` | not shipped | not shipped | stream PDA vs `npk`-only private row mismatch (see *PP `create_stream`*) |
 | `claim`, `close_stream`, `pause_stream`, `resume_stream`, `top_up_stream` | not shipped | not shipped | can be layered on the same harness helper once a private-payout or private-owner story is fixed |
 
 Adding another PP case is a new test in the same file plus (if the call shape differs from `withdraw`) a parallel run helper — the fixture helpers and private recipient material are shared.
@@ -201,7 +212,7 @@ Finer clocks imply more frequent public updates to that account when used as the
 
 On-chain parsing should keep treating unknown or future clock payload extensions as parse failures for this program until a new layout is explicitly supported.
 
-Guest clock loading uses two shared paths: owner-signed stream instructions (`SyncStream`, pause, resume, top-up) load via `load_vault_stream_and_clock` (signer is the vault owner). `CloseStream` and `Claim` use structural vault checks, bind the explicit vault owner account to `VaultConfig.owner`, then load stream state and the clock account via `load_vault_stream_and_clock_with_explicit_owner` (the transaction signer is authority or provider, not necessarily the owner account).
+Guest clock loading uses two shared paths: owner-signed stream instructions (pause, resume, top-up) load via `load_vault_stream_and_clock` (signer is the vault owner). `CloseStream` and `Claim` use structural vault checks, bind the explicit vault owner account to `VaultConfig.owner`, then load stream state and the clock account via `load_vault_stream_and_clock_with_explicit_owner` (the transaction signer is authority or provider, not necessarily the owner account).
 
 ## Accounting
 
@@ -291,7 +302,7 @@ Naming in code: `StreamConfig::unaccrued()` is `allocation - accrued`; resume fa
 
 ## Authorization
 
-Owner authorizes: InitializeVault, Deposit, Withdraw, CreateStream, SyncStream, PauseStream, ResumeStream, TopUpStream.
+Owner authorizes: InitializeVault, Deposit, Withdraw, CreateStream, PauseStream, ResumeStream, TopUpStream.
 
 CloseStream: either owner or provider.
 The handler checks the signer against `VaultConfig.owner` and `StreamConfig.provider`.
@@ -300,7 +311,7 @@ Claim: provider only.
 
 ## Pause and resume
 
-`PauseStream` and `ResumeStream` use the same account layout as `SyncStream` (config, holding, stream, owner signer, read-only system clock account).
+`PauseStream` and `ResumeStream` use the account layout (config, holding, stream, owner signer, read-only system clock account).
 Handlers run `StreamConfig::at_time(now)` first, then apply the transition.
 
 `PauseStream` requires the post-`at_time` state to be `Active`.
@@ -310,7 +321,7 @@ Invalid transitions fail with `ERR_*` (not no-ops).
 
 ## Top-up
 
-`TopUpStream` uses the same account layout as `SyncStream` / `PauseStream` / `ResumeStream` (vault config, holding, stream PDA, owner signer, read-only system clock account).
+`TopUpStream` uses the same account layout as `PauseStream` / `ResumeStream` (vault config, holding, stream PDA, owner signer, read-only system clock account).
 
 Handlers run `StreamConfig::at_time(now)` first.
 
@@ -398,17 +409,16 @@ Depletion in one step:
   If `remained_to_accrue` is zero, the depletion instant is `base_as_of`.
   If the cap is not reached, advance `accrued_as_of` to `now`.
 
-`SyncStream` instruction:
+Lazy accrual fold (`at_time`):
 
-- First-class mutating instruction (not test-only): vault owner signer, same vault account layout as `create_stream` (config, holding, stream PDA, owner, read-only system clock account).
-  After deserializing vault and stream accounts, the guest checks vault invariants (version, `vault_id`, owner) then stream alignment with the vault: `StreamConfig.version` matches both vault accounts, instruction `stream_id` is strictly below `next_stream_id` and matches the stored `stream_id`, and `StreamConfig::validate_invariants` passes (same structural rules as before calling `at_time`).
-  Then it applies `stream_config.at_time(now)` from the clock account and writes stream data back.
-  Does not move balances or change allocation; use `claim`, `close`, etc. for those flows.
-  Later lifecycle instructions also call `at_time` internally.
+- Every lifecycle instruction (`PauseStream`, `ResumeStream`, `TopUpStream`, `CloseStream`, `Claim`) calls `StreamConfig::at_time(now)` as its first step and works on the folded state.
+  No separate on-chain fold instruction exists.
+  Off-chain: `StreamConfig::at_time(clock.timestamp)` is a pure function; callers can compute the current stream state locally from on-chain bytes without a transaction.
 
 Testing:
 
-- Exercise `at_time` with unit tests in the core crate, and guest-backed `program_tests` via `SyncStream` that persist updated stream data.
+- Exercise `at_time` with unit tests in `stream_config.rs` (`stream_config_at_time_tests`, `claim_at_time_tests`).
+  Integration tests for the fold path use lifecycle instructions (`pause_stream`, `claim`, etc.) that fold internally.
 
 Harnesses take clock ids from genesis (`harness_clock_01_and_provider_account_ids`), not from a synthetic clock seed keypair.
 
@@ -438,7 +448,6 @@ Each row is the account that must sign; tests assert `ERR_VAULT_OWNER_MISMATCH` 
 | `deposit` | owner | `deposit::test_deposit_owner_mismatch_fails` |
 | `withdraw` | owner | `withdraw::test_withdraw_owner_mismatch_fails` |
 | `create_stream` | owner | `create_stream::test_create_stream_owner_mismatch_fails` |
-| `sync_stream` | owner | `accrual::test_sync_stream_owner_mismatch_fails` |
 | `pause_stream` | owner | `pause_stream::test_pause_stream_owner_mismatch_fails` |
 | `resume_stream` | owner | `resume_stream::test_resume_stream_owner_mismatch_fails` |
 | `top_up_stream` | owner | `top_up::test_top_up_stream_owner_mismatch_fails` |
@@ -451,13 +460,12 @@ Already covered before step 4 (guest or core tests): `next_stream_id` overflow (
 
 Added or highlighted in step 4:
 
-- `accrual::test_sync_stream_with_timestamp_max_clock_succeeds` exercises `Timestamp::MAX` on the clock wire with `sync_stream`.
-- Core `stream_config` and `vault` unit tests continue to cover saturating accrual and checked `total_allocated` helpers.
+- Core `stream_config` and `vault` unit tests cover saturating accrual, depletion, and checked `total_allocated` helpers (see `stream_config_at_time_tests`).
 
 ### Missing or weak tests (addressed in step 4)
 
 - Solvency and conservation over multi-step flows: `program_tests::invariants` (`assert_vault_conservation_invariants` in `program_tests/common.rs`).
-- `sync_stream` same-clock idempotence and depletion-via-sync: `accrual` tests `test_sync_stream_twice_same_clock_is_no_op_succeeds`, `test_sync_stream_depletion_via_at_time_paused_succeeds`.
+- `at_time` idempotence (same clock) and depletion: `stream_config_at_time_tests::at_time_when_t_equals_accrued_as_of_unchanged_accrued_succeeds`, `at_time_caps_and_paused_accrued_as_of_depletion_instant_succeeds`.
 - Withdraw recipient missing from state: `withdraw::test_withdraw_recipient_not_present_in_state_fails`.
 - PDA parity documentation: `create_stream::test_derive_stream_pda_stable_succeeds` comments aligned with guest `pda = [...]` order.
 - Resume and top-up owner mismatch: dedicated tests above.

@@ -35,8 +35,8 @@ pub(crate) struct DepositedVaultWithProviderFixture {
     pub provider_account_id: AccountId,
 }
 
-/// First stream created and synced at `t1` after [`state_deposited_with_clock_and_provider`].
-pub(crate) struct ClaimStreamSyncedScenario {
+/// First stream created and clock advanced to `t1` after [`state_deposited_with_clock_and_provider`].
+pub(crate) struct ClaimStreamScenario {
     pub with_provider: DepositedVaultWithProviderFixture,
     pub stream_id: StreamId,
     pub stream_pda: AccountId,
@@ -113,26 +113,6 @@ pub(crate) fn signed_create_stream(
             provider,
             rate,
             allocation,
-        },
-        accounts,
-        nonce,
-        owner,
-    )
-}
-
-pub(crate) fn signed_sync_stream(
-    program_id: ProgramId,
-    vault_id: VaultId,
-    stream_id: StreamId,
-    accounts: &StreamIxAccounts,
-    nonce: Nonce,
-    owner: &PrivateKey,
-) -> PublicTransaction {
-    signed_stream_public_tx(
-        program_id,
-        Instruction::SyncStream {
-            vault_id,
-            stream_id,
         },
         accounts,
         nonce,
@@ -384,8 +364,8 @@ pub(crate) fn state_deposited_with_clock_and_provider(
 }
 
 /// `initialize_vault` (block 1), `deposit` (block 2, `Nonce(1)`), `create_stream` (block 3, `Nonce(2)`),
-/// clock advanced to `t1`, then `sync_stream` (block 4, `Nonce(3)`).
-pub(crate) fn claim_stream_prelude_synced_at_t1(
+/// clock advanced to `t1`. Lifecycle instructions fold accrual internally via `at_time`.
+pub(crate) fn claim_stream_prelude_at_t1(
     owner_genesis_balance: Balance,
     deposit_amount: Balance,
     clock_id: AccountId,
@@ -395,7 +375,7 @@ pub(crate) fn claim_stream_prelude_synced_at_t1(
     provider_account_id: AccountId,
     rate: TokensPerSecond,
     allocation: Balance,
-) -> ClaimStreamSyncedScenario {
+) -> ClaimStreamScenario {
     let mut with_provider = state_deposited_with_clock_and_provider(
         owner_genesis_balance,
         deposit_amount,
@@ -423,20 +403,7 @@ pub(crate) fn claim_stream_prelude_synced_at_t1(
         "create_stream failed",
     );
     force_clock_account_monotonic(&mut with_provider.deposited.vault.state, clock_id, 0, t1);
-    transition_ok(
-        &mut with_provider.deposited.vault.state,
-        &signed_sync_stream(
-            with_provider.deposited.vault.program_id,
-            with_provider.deposited.vault.vault_id,
-            stream_id,
-            &stream_ix_accounts,
-            Nonce(3),
-            &with_provider.deposited.vault.owner_private_key,
-        ),
-        4 as BlockId,
-        "sync_stream failed",
-    );
-    ClaimStreamSyncedScenario {
+    ClaimStreamScenario {
         with_provider,
         stream_id,
         stream_pda,

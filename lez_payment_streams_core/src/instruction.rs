@@ -30,10 +30,6 @@ pub enum Instruction {
         rate: TokensPerSecond,
         allocation: Balance,
     },
-    SyncStream {
-        vault_id: VaultId,
-        stream_id: StreamId,
-    },
     PauseStream {
         vault_id: VaultId,
         stream_id: StreamId,

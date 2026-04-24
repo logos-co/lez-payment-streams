@@ -13,7 +13,7 @@ use crate::{
 
 use super::common::{
     assert_execution_failed_with_code, force_stream_state_closed, signed_close_stream,
-    signed_create_stream, signed_sync_stream, state_deposited_with_clock, transition_ok,
+    signed_create_stream, state_deposited_with_clock, transition_ok,
     CloseStreamIxAccounts, DEFAULT_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE,
     DEFAULT_STREAM_TEST_DEPOSIT,
 };
@@ -74,20 +74,6 @@ fn test_close_unaccrued_succeeds() {
     assert_eq!(vault_before.total_allocated, allocation);
 
     force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
-
-    transition_ok(
-        &mut dep.vault.state,
-        &signed_sync_stream(
-            dep.vault.program_id,
-            dep.vault.vault_id,
-            stream_id,
-            &stream_accounts,
-            Nonce(3),
-            &dep.vault.owner_private_key,
-        ),
-        4 as BlockId,
-        "sync_stream failed",
-    );
 
     let close_accounts: CloseStreamIxAccounts = [
         dep.vault.vault_config_account_id,
@@ -184,20 +170,6 @@ fn test_close_stream_unauthorized_fails() {
     );
 
     force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
-
-    transition_ok(
-        &mut dep.vault.state,
-        &signed_sync_stream(
-            dep.vault.program_id,
-            dep.vault.vault_id,
-            stream_id,
-            &stream_accounts,
-            Nonce(3),
-            &dep.vault.owner_private_key,
-        ),
-        4 as BlockId,
-        "sync_stream failed",
-    );
 
     let close_accounts: CloseStreamIxAccounts = [
         dep.vault.vault_config_account_id,

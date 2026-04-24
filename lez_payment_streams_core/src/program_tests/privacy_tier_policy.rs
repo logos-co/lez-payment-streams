@@ -9,7 +9,7 @@ use crate::Instruction;
 use crate::{
     test_helpers::{
         assert_public_payment_streams_instruction_allowed, create_keypair, derive_stream_pda,
-        force_clock_account_monotonic, patch_vault_config,
+        force_clock_account_monotonic,
         state_with_initialized_vault_pseudonymous_funder_preseeded,
         state_with_initialized_vault_with_privacy_tier, transfer_native_balance_for_tests,
         transition_public_payment_streams_tx_respecting_privacy_tier,
@@ -17,11 +17,7 @@ use crate::{
     StreamId, VaultPrivacyTier, CLOCK_01_PROGRAM_ACCOUNT_ID,
 };
 
-use super::common::{
-    first_stream_ix_accounts, signed_create_stream, signed_sync_stream,
-    state_deposited_with_clock_and_provider, transition_ok, DEFAULT_CLOCK_INITIAL_TS,
-    TEST_PUBLIC_TX_TIMESTAMP,
-};
+use super::common::{signed_create_stream, DEFAULT_CLOCK_INITIAL_TS, TEST_PUBLIC_TX_TIMESTAMP};
 
 #[test]
 fn harness_public_touch_pseudonymous_funder_vault_fails() {
@@ -143,92 +139,3 @@ fn public_create_stream_pseudonymous_funder_vault_fails() {
     ));
 }
 
-#[test]
-fn public_sync_stream_pseudonymous_funder_vault_fails() {
-    let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
-    let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
-    let mut with_provider = state_deposited_with_clock_and_provider(
-        2_000 as nssa_core::account::Balance,
-        500 as nssa_core::account::Balance,
-        clock_id,
-        DEFAULT_CLOCK_INITIAL_TS,
-        provider_private_key,
-        provider_account_id,
-    );
-
-    let (stream_id, _stream_pda, stream_ix_accounts) =
-        first_stream_ix_accounts(&with_provider.deposited);
-
-    transition_ok(
-        &mut with_provider.deposited.vault.state,
-        &signed_create_stream(
-            with_provider.deposited.vault.program_id,
-            with_provider.deposited.vault.vault_id,
-            stream_id,
-            provider_account_id,
-            10,
-            200,
-            &stream_ix_accounts,
-            Nonce(2),
-            &with_provider.deposited.vault.owner_private_key,
-        ),
-        3 as BlockId,
-        "create_stream",
-    );
-
-    crate::test_helpers::force_clock_account_monotonic(
-        &mut with_provider.deposited.vault.state,
-        clock_id,
-        0,
-        DEFAULT_CLOCK_INITIAL_TS + 10,
-    );
-
-    transition_ok(
-        &mut with_provider.deposited.vault.state,
-        &signed_sync_stream(
-            with_provider.deposited.vault.program_id,
-            with_provider.deposited.vault.vault_id,
-            stream_id,
-            &stream_ix_accounts,
-            Nonce(3),
-            &with_provider.deposited.vault.owner_private_key,
-        ),
-        4 as BlockId,
-        "sync_stream",
-    );
-
-    patch_vault_config(
-        &mut with_provider.deposited.vault.state,
-        with_provider.deposited.vault.vault_config_account_id,
-        |vc| {
-            vc.privacy_tier = VaultPrivacyTier::PseudonymousFunder;
-        },
-    );
-
-    crate::test_helpers::force_clock_account_monotonic(
-        &mut with_provider.deposited.vault.state,
-        clock_id,
-        0,
-        DEFAULT_CLOCK_INITIAL_TS + 20,
-    );
-
-    let tx_sync2 = signed_sync_stream(
-        with_provider.deposited.vault.program_id,
-        with_provider.deposited.vault.vault_id,
-        stream_id,
-        &stream_ix_accounts,
-        Nonce(4),
-        &with_provider.deposited.vault.owner_private_key,
-    );
-
-    assert!(matches!(
-        transition_public_payment_streams_tx_respecting_privacy_tier(
-            &mut with_provider.deposited.vault.state,
-            with_provider.deposited.vault.vault_config_account_id,
-            &tx_sync2,
-            5 as BlockId,
-            TEST_PUBLIC_TX_TIMESTAMP,
-        ),
-        Err(NssaError::InvalidInput(_))
-    ));
-}

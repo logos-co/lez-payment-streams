@@ -11,7 +11,7 @@ use crate::{
 };
 
 use super::common::{
-    assert_execution_failed_with_code, claim_stream_prelude_synced_at_t1, signed_claim_stream,
+    assert_execution_failed_with_code, claim_stream_prelude_at_t1, signed_claim_stream,
     signed_close_stream, transition_ok, ClaimStreamIxAccounts, CloseStreamIxAccounts,
     DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
@@ -28,7 +28,7 @@ fn test_claim_balance_succeeds() {
     let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
     let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
 
-    let mut scenario = claim_stream_prelude_synced_at_t1(
+    let mut scenario = claim_stream_prelude_at_t1(
         DEFAULT_OWNER_GENESIS_BALANCE,
         deposit_amount,
         clock_id,
@@ -69,7 +69,7 @@ fn test_claim_balance_succeeds() {
             Nonce(0),
             &wp.provider_private_key,
         ),
-        5 as BlockId,
+        4 as BlockId,
         "claim failed",
     );
 
@@ -118,7 +118,7 @@ fn test_claim_unauthorized_fails() {
     let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
     let (alt_signer_private_key, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
 
-    let mut scenario = claim_stream_prelude_synced_at_t1(
+    let mut scenario = claim_stream_prelude_at_t1(
         DEFAULT_OWNER_GENESIS_BALANCE,
         deposit_amount,
         clock_id,
@@ -151,7 +151,7 @@ fn test_claim_unauthorized_fails() {
             Nonce(0),
             &alt_signer_private_key,
         ),
-        5 as BlockId,
+        4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ErrorCode::ClaimUnauthorized);
@@ -163,7 +163,7 @@ fn test_claim_after_close_succeeds() {
     let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
     let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
 
-    let mut scenario = claim_stream_prelude_synced_at_t1(
+    let mut scenario = claim_stream_prelude_at_t1(
         DEFAULT_OWNER_GENESIS_BALANCE,
         deposit_amount,
         clock_id,
@@ -197,7 +197,7 @@ fn test_claim_after_close_succeeds() {
             Nonce(0),
             &wp.provider_private_key,
         ),
-        5 as BlockId,
+        4 as BlockId,
         "close_stream failed",
     );
 
@@ -220,7 +220,7 @@ fn test_claim_after_close_succeeds() {
             Nonce(1),
             &wp.provider_private_key,
         ),
-        6 as BlockId,
+        5 as BlockId,
         "claim failed",
     );
 
@@ -250,7 +250,7 @@ fn test_claim_after_close_succeeds() {
             Nonce(2),
             &wp.provider_private_key,
         ),
-        7 as BlockId,
+        6 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ErrorCode::ZeroClaimAmount);

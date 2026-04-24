@@ -6,7 +6,7 @@ use crate::{test_helpers::derive_stream_pda, StreamId, Timestamp};
 
 use super::common::{
     assert_vault_conservation_invariants, first_stream_ix_accounts, signed_claim_stream,
-    signed_create_stream, signed_pause_stream, signed_resume_stream, signed_sync_stream,
+    signed_create_stream, signed_pause_stream, signed_resume_stream,
     state_deposited_with_clock, state_deposited_with_clock_and_provider, transition_ok,
     ClaimStreamIxAccounts, DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
@@ -15,10 +15,10 @@ use crate::test_helpers::{
     create_keypair, force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
 };
 
-/// After two streams exist and are synced, holding covers `total_allocated` and
-/// `total_allocated` equals the sum of stream `allocation` fields.
+/// After two streams exist and are paused (which folds accrual), holding covers `total_allocated`
+/// and `total_allocated` equals the sum of stream `allocation` fields.
 #[test]
-fn test_solvency_two_streams_after_sync_succeeds() {
+fn test_solvency_two_streams_after_pause_fold_succeeds() {
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
     let t0: Timestamp = 10;
     let t1: Timestamp = 20;
@@ -85,7 +85,7 @@ fn test_solvency_two_streams_after_sync_succeeds() {
     ];
     transition_ok(
         &mut dep.vault.state,
-        &signed_sync_stream(
+        &signed_pause_stream(
             dep.vault.program_id,
             dep.vault.vault_id,
             0,
@@ -94,7 +94,7 @@ fn test_solvency_two_streams_after_sync_succeeds() {
             &dep.vault.owner_private_key,
         ),
         5 as BlockId,
-        "sync 0",
+        "pause 0",
     );
 
     let accounts_s1 = [
@@ -106,7 +106,7 @@ fn test_solvency_two_streams_after_sync_succeeds() {
     ];
     transition_ok(
         &mut dep.vault.state,
-        &signed_sync_stream(
+        &signed_pause_stream(
             dep.vault.program_id,
             dep.vault.vault_id,
             1,
@@ -115,7 +115,7 @@ fn test_solvency_two_streams_after_sync_succeeds() {
             &dep.vault.owner_private_key,
         ),
         6 as BlockId,
-        "sync 1",
+        "pause 1",
     );
 
     assert_vault_conservation_invariants(&dep.vault.state, dep.vault.program_id, &dep.vault);
@@ -160,21 +160,6 @@ fn test_solvency_after_full_accrued_claim_succeeds() {
     );
 
     force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
-    transition_ok(
-        &mut dep.vault.state,
-        &signed_sync_stream(
-            dep.vault.program_id,
-            dep.vault.vault_id,
-            stream_id,
-            &stream_ix,
-            Nonce(3),
-            &dep.vault.owner_private_key,
-        ),
-        4 as BlockId,
-        "sync_stream",
-    );
-
-    assert_vault_conservation_invariants(&dep.vault.state, dep.vault.program_id, &dep.vault);
 
     let claim_accounts: ClaimStreamIxAccounts = [
         dep.vault.vault_config_account_id,
@@ -194,7 +179,7 @@ fn test_solvency_after_full_accrued_claim_succeeds() {
             Nonce(0),
             &wp.provider_private_key,
         ),
-        5 as BlockId,
+        4 as BlockId,
         "claim",
     );
 
@@ -208,7 +193,6 @@ fn test_solvency_after_pause_and_resume_succeeds() {
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
     let t0: Timestamp = 100;
     let t1: Timestamp = 105;
-    let t2: Timestamp = 110;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -266,23 +250,6 @@ fn test_solvency_after_pause_and_resume_succeeds() {
         ),
         5 as BlockId,
         "resume_stream",
-    );
-
-    assert_vault_conservation_invariants(&dep.vault.state, dep.vault.program_id, &dep.vault);
-
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t2);
-    transition_ok(
-        &mut dep.vault.state,
-        &signed_sync_stream(
-            dep.vault.program_id,
-            dep.vault.vault_id,
-            stream_id,
-            &account_ids,
-            Nonce(5),
-            &dep.vault.owner_private_key,
-        ),
-        6 as BlockId,
-        "sync_stream",
     );
 
     assert_vault_conservation_invariants(&dep.vault.state, dep.vault.program_id, &dep.vault);

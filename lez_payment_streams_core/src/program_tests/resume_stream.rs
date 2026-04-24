@@ -18,7 +18,7 @@ use crate::{
 
 use super::common::{
     assert_execution_failed_with_code, first_stream_ix_accounts, force_stream_state_closed,
-    signed_create_stream, signed_pause_stream, signed_resume_stream, signed_sync_stream,
+    signed_create_stream, signed_pause_stream, signed_resume_stream,
     state_deposited_with_clock, transition_ok, DEFAULT_CLOCK_INITIAL_TS,
     DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
@@ -174,9 +174,8 @@ fn test_resume_zero_remaining_fails() {
 
     force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
 
-    transition_ok(
-        &mut dep.vault.state,
-        &signed_sync_stream(
+    let r = dep.vault.state.transition_from_public_transaction(
+        &signed_resume_stream(
             dep.vault.program_id,
             dep.vault.vault_id,
             stream_id,
@@ -185,19 +184,6 @@ fn test_resume_zero_remaining_fails() {
             &dep.vault.owner_private_key,
         ),
         4 as BlockId,
-        "sync_stream failed",
-    );
-
-    let r = dep.vault.state.transition_from_public_transaction(
-        &signed_resume_stream(
-            dep.vault.program_id,
-            dep.vault.vault_id,
-            stream_id,
-            &account_ids,
-            Nonce(4),
-            &dep.vault.owner_private_key,
-        ),
-        5 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ErrorCode::ResumeZeroUnaccrued);
@@ -333,7 +319,6 @@ fn test_resume_then_accrual_ignores_paused_gap_succeeds() {
     let t0: Timestamp = 100;
     let t1: Timestamp = 105;
     let t_gap: Timestamp = 200;
-    let t2: Timestamp = 210;
     let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
 
     let mut dep = state_deposited_with_clock(
@@ -365,19 +350,6 @@ fn test_resume_then_accrual_ignores_paused_gap_succeeds() {
     );
 
     force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
-    transition_ok(
-        &mut dep.vault.state,
-        &signed_sync_stream(
-            dep.vault.program_id,
-            dep.vault.vault_id,
-            stream_id,
-            &account_ids,
-            Nonce(3),
-            &dep.vault.owner_private_key,
-        ),
-        4 as BlockId,
-        "sync_stream failed",
-    );
 
     transition_ok(
         &mut dep.vault.state,
@@ -386,10 +358,10 @@ fn test_resume_then_accrual_ignores_paused_gap_succeeds() {
             dep.vault.vault_id,
             stream_id,
             &account_ids,
-            Nonce(4),
+            Nonce(3),
             &dep.vault.owner_private_key,
         ),
-        5 as BlockId,
+        4 as BlockId,
         "pause_stream failed",
     );
 
@@ -401,35 +373,22 @@ fn test_resume_then_accrual_ignores_paused_gap_succeeds() {
             dep.vault.vault_id,
             stream_id,
             &account_ids,
-            Nonce(5),
+            Nonce(4),
             &dep.vault.owner_private_key,
         ),
-        6 as BlockId,
+        5 as BlockId,
         "resume_stream failed",
     );
 
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t2);
-    transition_ok(
-        &mut dep.vault.state,
-        &signed_sync_stream(
-            dep.vault.program_id,
-            dep.vault.vault_id,
-            stream_id,
-            &account_ids,
-            Nonce(6),
-            &dep.vault.owner_private_key,
-        ),
-        7 as BlockId,
-        "sync_stream after resume failed",
-    );
-
-    let s_after_resume_and_accrual =
+    // Verify resume sets accrued_as_of = t_gap (gap is not counted).
+    // pause_stream folds at_time(t1) internally: accrued = rate*(t1-t0) = 10*5 = 50.
+    // resume_from_paused_at(t_gap) sets accrued_as_of = t_gap, leaving accrued unchanged.
+    let s_after_resume =
         StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
             .expect("stream");
-    let expected_accrued = 50 + (u128::from(rate) * u128::from(t2 - t_gap));
-    assert_eq!(s_after_resume_and_accrual.accrued, expected_accrued);
-    assert_eq!(s_after_resume_and_accrual.accrued_as_of, t2);
-    assert_eq!(s_after_resume_and_accrual.state, StreamState::Active);
+    assert_eq!(s_after_resume.accrued, 50 as Balance);
+    assert_eq!(s_after_resume.accrued_as_of, t_gap);
+    assert_eq!(s_after_resume.state, StreamState::Active);
 }
 
 #[test]

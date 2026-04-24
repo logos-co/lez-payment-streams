@@ -534,47 +534,6 @@ mod lez_payment_streams {
     }
 
     #[instruction]
-    pub fn sync_stream(
-        #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
-        vault_config: AccountWithMetadata,
-        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
-        vault_holding: AccountWithMetadata,
-        #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
-        stream_config: AccountWithMetadata,
-        #[account(signer)]
-        owner: AccountWithMetadata,
-        clock_account: AccountWithMetadata,
-        vault_id: VaultId,
-        stream_id: StreamId,
-    ) -> SpelResult {
-        let (_, _, mut stream_config_state, now) = load_vault_stream_and_clock(
-            &vault_config,
-            &vault_holding,
-            &stream_config,
-            &clock_account,
-            vault_id,
-            stream_id,
-            owner.account_id,
-        )?;
-
-        stream_config_state = stream_config_state
-            .at_time(now)
-            .map_err(|e| spel_err(e, "at_time failed"))?;
-
-        let vault_config_account = vault_config.account;
-        let mut stream_account = stream_config.account;
-        stream_account.data = stream_config_state.to_bytes().try_into().unwrap();
-
-        Ok(execute_five_owner_stream_accounts(
-            vault_config_account,
-            vault_holding.account,
-            stream_account,
-            owner.account,
-            clock_account.account,
-        ))
-    }
-
-    #[instruction]
     pub fn pause_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
         vault_config: AccountWithMetadata,

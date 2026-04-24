@@ -1,7 +1,6 @@
 //! Integration tests against the guest in an in-process [`nssa::V03State`].
 //! Test vault setup, deposits, streams, and serialization helpers.
 
-mod accrual;
 mod claim;
 mod close_stream;
 mod common;

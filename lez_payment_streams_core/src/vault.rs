@@ -133,29 +133,23 @@ impl VaultConfig {
         if data.len() != Self::SIZE {
             return None;
         }
-        // extract fields
-        // version
         let mut offset = 0;
         let size = size_of::<VersionId>();
         let version = VersionId::from_le_bytes(data[offset..offset + size].try_into().ok()?);
         offset += size;
 
-        // owner
         let size = size_of::<AccountId>();
         let owner = AccountId::new(data[offset..offset + size].try_into().ok()?);
         offset += size;
 
-        // vault_id
         let size = size_of::<VaultId>();
         let vault_id = VaultId::from_le_bytes(data[offset..offset + size].try_into().ok()?);
         offset += size;
 
-        // next_stream_id
         let size = size_of::<StreamId>();
         let next_stream_id = StreamId::from_le_bytes(data[offset..offset + size].try_into().ok()?);
         offset += size;
 
-        // total_allocated
         let size = size_of::<Balance>();
         let total_allocated = Balance::from_le_bytes(data[offset..offset + size].try_into().ok()?);
         offset += size;
@@ -211,7 +205,6 @@ impl VaultHolding {
         if data.len() != Self::SIZE {
             return None;
         }
-        // extract fields (one field - version - only)
         let version = VersionId::from_le_bytes(data[..Self::SIZE].try_into().ok()?);
 
         Some(Self { version })

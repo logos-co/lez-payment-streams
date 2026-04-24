@@ -14,7 +14,7 @@ use std::path::PathBuf;
 
 use crate::harness_seeds::{SEED_OWNER, SEED_PROVIDER, SEED_RECIPIENT};
 use crate::{ClockAccountData, CLOCK_01_PROGRAM_ACCOUNT_ID};
-use crate::{Instruction, StreamConfig, StreamId, VaultConfig, VaultId, VaultPrivacyTier};
+use crate::{Instruction, StreamId, VaultConfig, VaultId, VaultPrivacyTier};
 use nssa::{
     error::NssaError,
     program::Program,
@@ -256,19 +256,6 @@ pub(crate) struct VaultFixtureWithRecipient {
 }
 
 /// Rewrite `StreamConfig` account data in the test harness (bypasses normal transitions).
-pub(crate) fn patch_stream_config(
-    state: &mut V03State,
-    stream_account_id: AccountId,
-    f: impl FnOnce(&mut StreamConfig),
-) {
-    let existing = state.get_account_by_id(stream_account_id).clone();
-    let mut sc = StreamConfig::from_bytes(&existing.data).expect("stream config");
-    f(&mut sc);
-    let mut acc = existing;
-    acc.data = Data::try_from(sc.to_bytes()).expect("stream config payload fits Data");
-    state.force_insert_account(stream_account_id, acc);
-}
-
 /// Single-owner genesis with guest deployed and `initialize_vault` done.
 /// Next public tx is usually block 2, signer nonce `Nonce(1)`.
 pub(crate) fn state_with_initialized_vault(owner_balance: Balance) -> VaultFixture {
