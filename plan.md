@@ -151,13 +151,12 @@ flowchart TD
     S5 --> S6[Step 6 privacy_tier and host policy]
     S6 --> S7[Step 7 adapter refactor and selective privacy rollout]
     S7 --> S8[Step 8 remaining refactor]
-    S8 --> S9[Step 9 reviewer writeup]
-    S9 --> S10[Step 10 RFC proposal consolidation]
-    S10 --> S11[Step 11 RFC promotion batch]
-    S11 --> S12[Step 12 RFC polish]
+    S8 --> S9[Step 9 remove SyncStream]
+    S9 --> S10[Step 10 reviewer writeup]
+    S10 --> S11[Step 11 RFC proposal and promotion]
     S4 -. accumulates .-> S8
-    S6 -. accumulates .-> S10
-    S7 -. accumulates .-> S10
+    S6 -. accumulates .-> S11
+    S7 -. accumulates .-> S11
 ```
 
 ### 1. Non-test cleanup
@@ -576,7 +575,43 @@ Candidates not resolved in earlier steps:
   `cargo clippy --workspace --all-targets`
   sweep before handoff.
 
-### 9. Reviewer-facing writeup
+### 9. Remove SyncStream public instruction
+
+The lazy accrual fold (`StreamConfig::at_time`) is already called as the
+first step in every lifecycle instruction.
+A public `sync_stream` instruction adds no computation that a client cannot
+perform locally by reading `StreamConfig` and a clock account and calling
+`at_time(now)` directly.
+Removing the public entry point shrinks the instruction surface without
+removing any expressible behavior.
+
+Work:
+
+- Remove the `SyncStream` variant from `Instruction` in
+  `lez_payment_streams_core/src/instruction.rs`.
+- Remove the `sync_stream` handler from
+  `methods/guest/src/bin/lez_payment_streams.rs`.
+- Remove `signed_sync_stream` and any `SyncStream`-specific helpers from
+  `lez_payment_streams_core/src/test_helpers.rs`.
+- Migrate `lez_payment_streams_core/src/program_tests/accrual.rs`:
+  replace the harness-backed integration tests with unit tests directly on
+  `StreamConfig::at_time`.
+  The fold logic is unchanged; only the test vehicle changes.
+  Cover: normal accrual, depletion auto-pause, time regression,
+  idempotent double-fold at the same timestamp, multi-stream isolation.
+- Remove the `accrual` entry from
+  `lez_payment_streams_core/src/program_tests/mod.rs`.
+- Add a note in `design.md` documenting the removal decision and the
+  off-chain fold pattern
+  (read `StreamConfig` + `ClockAccountData`, call `at_time(now)`)
+  as the intended client-side substitute.
+
+Do not change:
+
+- `StreamConfig::at_time` or any other core fold logic.
+- Any other instruction handler or its test file.
+
+### 10. Reviewer-facing writeup
 
 Replace or reshape `design.md`
 into a reviewer-oriented document.
@@ -593,28 +628,31 @@ Suggested structure:
 9. Divergences from the RFC,
    pointing to the step 10 proposal list.
 
-### 10. RFC proposal consolidation
+### 11. RFC proposal, promotion, and polish
 
-Clean the RFC-proposal list accumulated in steps 2 through 9.
-Deliverable: a patch-ready diff against
-`rfc-index/docs/ift-ts/raw/payment-streams.md`
-plus a rationale paragraph per change.
+Consolidate the RFC-proposal list accumulated in steps 2 through 10,
+apply it in one batch to
+`rfc-index/docs/ift-ts/raw/payment-streams.md`,
+and finalize the document.
+
+Deliverable: a reviewed, self-consistent RFC with a rationale paragraph
+per normative change.
 
 Known seeds:
 
 - `unallocated` terminology
-  (replace any lingering "available balance" wording).
+  (replace any lingering “available balance” wording).
 - `allocation` as current commitment (`accrued + unaccrued`).
 - `resume` wording around `unaccrued`
   (resume requires `accrued < allocation`).
 - Equivalence criterion: streams match when
   `allocation`, `accrued`, `rate`, and `state` match,
-  not when "original create amount" matches.
+  not when “original create amount” matches.
 - Claim reduces `allocation` and `total_allocated` by the payout,
   not only `VaultHolding` balance and `accrued`.
 - System clock replaces the mock timestamp source.
-  The RFC currently states "This MVP uses a mock timestamp source
-  until a LEZ-native timestamp mechanism is finalized."
+  The RFC currently states “This MVP uses a mock timestamp source
+  until a LEZ-native timestamp mechanism is finalized.”
   Replace with the real mechanism:
   client selects one of `CLOCK_01`, `CLOCK_10`, `CLOCK_50`;
   guest validates the account id and reads the 16-byte Borsh payload
@@ -623,17 +661,16 @@ Known seeds:
   added to Security and Privacy Considerations.
 - `CloseStream` idempotency and authorization.
   The RFC currently has a placeholder:
-  "The final text should define who can close and idempotency behavior."
+  “The final text should define who can close and idempotency behavior.”
   Replace with: either vault owner or stream provider may close;
   attempting to close an already-CLOSED stream fails
   (double-close is not idempotent — it errors).
-- `SyncStream` instruction.
-  Add to the instruction surface.
-  Materializes lazy accrual on-chain without a lifecycle event or balance change.
-  Authorization: permissionless
-  (owner-only restriction in current implementation should be lifted;
-  provider and third parties have equal standing to materialize deterministic state).
-  Needed for provider monitoring when a stream depletes between lifecycle instructions.
+- `SyncStream` instruction removed.
+  Not present on the public instruction surface.
+  Providers and other interested parties compute effective stream state
+  off-chain by reading `StreamConfig` and a clock account and calling
+  `at_time(now)` locally — no write transaction required.
+  Remove any draft RFC text that described or proposed `SyncStream`.
 
 Additional seeds from steps 6 and 7:
 
@@ -651,30 +688,17 @@ Additional seeds from steps 6 and 7:
   LEZ proofs do not assert “never funded from public key Alice”
 - selective confidentiality language for PP on `Public`-tier vaults
 
-Do not edit the RFC in this step.
+Promotion and polish:
 
-### 11. RFC promotion batch
-
-Apply the consolidated patch from step 10 in one batch to
-`rfc-index/docs/ift-ts/raw/payment-streams.md`.
-This is the first step that edits the RFC.
-
-Include:
-
-- account model and PDA derivation
-- instruction definitions
-- validation and invariant rules
-- time source (system clocks) and accrual behavior
-- execution mode notes
-
-### 12. RFC polish and review
-
-Finalize Security and Privacy Considerations
-and References in the RFC.
-Review consistency across:
-implemented behavior,
-`design.md` (or its successor reviewer doc),
-and RFC text.
+- Apply all seeds as a single batch diff against
+  `rfc-index/docs/ift-ts/raw/payment-streams.md`.
+  Cover: account model and PDA derivation, instruction definitions,
+  validation and invariant rules, time source and accrual behavior,
+  execution mode notes.
+- Finalize Security and Privacy Considerations and References.
+- Review consistency across implemented behavior,
+  `design.md` (or its successor reviewer doc from step 10),
+  and RFC text.
 
 ## Transition to private execution
 
