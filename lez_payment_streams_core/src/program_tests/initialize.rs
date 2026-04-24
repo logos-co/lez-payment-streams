@@ -49,11 +49,8 @@ fn test_initialize_vault_then_reinitialize_fails() {
         &[&owner_private_key],
     );
 
-    let result = state.transition_from_public_transaction(
-        &tx_init,
-        block_init,
-        TEST_PUBLIC_TX_TIMESTAMP,
-    );
+    let result =
+        state.transition_from_public_transaction(&tx_init, block_init, TEST_PUBLIC_TX_TIMESTAMP);
     assert!(result.is_ok(), "initialize_vault tx failed: {:?}", result);
     let vault_config_account = state.get_account_by_id(vault_config_account_id);
     assert_eq!(vault_config_account.data.len(), VaultConfig::SIZE);
@@ -64,10 +61,7 @@ fn test_initialize_vault_then_reinitialize_fails() {
     assert_eq!(vault_config.vault_id, vault_id);
     assert_eq!(vault_config.next_stream_id, StreamId::MIN);
     assert_eq!(vault_config.total_allocated, 0 as Balance);
-    assert_eq!(
-        vault_config.privacy_tier,
-        crate::VaultPrivacyTier::Public
-    );
+    assert_eq!(vault_config.privacy_tier, crate::VaultPrivacyTier::Public);
     let vault_holding_account = state.get_account_by_id(vault_holding_account_id);
     assert_eq!(vault_holding_account.data.len(), VaultHolding::SIZE);
     let vault_holding =
@@ -163,11 +157,8 @@ fn test_initialize_vault_pseudonymous_funder_succeeds() {
         &[Nonce(0)],
         &[&owner_private_key],
     );
-    let result = state.transition_from_public_transaction(
-        &tx,
-        1 as BlockId,
-        TEST_PUBLIC_TX_TIMESTAMP,
-    );
+    let result =
+        state.transition_from_public_transaction(&tx, 1 as BlockId, TEST_PUBLIC_TX_TIMESTAMP);
     assert!(result.is_ok(), "{result:?}");
     let vc = VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
         .expect("vault config");

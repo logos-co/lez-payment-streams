@@ -14,8 +14,7 @@ use crate::{
         force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
         patch_vault_config, state_with_initialized_vault_with_recipient,
     },
-    TokensPerSecond, VaultConfig, VaultId, ERR_ARITHMETIC_OVERFLOW, ERR_INSUFFICIENT_FUNDS,
-    ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH, ERR_ZERO_WITHDRAW_AMOUNT,
+    error_codes::ErrorCode, TokensPerSecond, VaultConfig, VaultId,
 };
 
 use super::common::{
@@ -216,7 +215,7 @@ fn test_withdraw_zero_amount_fails() {
         block_withdraw,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_ZERO_WITHDRAW_AMOUNT);
+    assert_execution_failed_with_code(result, ErrorCode::ZeroWithdrawAmount);
 
     assert_vault_state_unchanged_with_recipient(
         &wr.vault.state,
@@ -290,7 +289,7 @@ fn test_withdraw_wrong_vault_id_fails() {
         block_withdraw,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_VAULT_ID_MISMATCH);
+    assert_execution_failed_with_code(result, ErrorCode::VaultIdMismatch);
 
     assert_vault_state_unchanged_with_recipient(
         &wr.vault.state,
@@ -389,7 +388,7 @@ fn test_withdraw_exceeds_unallocated_fails() {
         block_withdraw,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_INSUFFICIENT_FUNDS);
+    assert_execution_failed_with_code(result, ErrorCode::InsufficientFunds);
 
     assert_vault_state_unchanged_with_recipient(
         &wr.vault.state,
@@ -670,7 +669,7 @@ fn test_withdraw_owner_mismatch_fails() {
         block_withdraw,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_VAULT_OWNER_MISMATCH);
+    assert_execution_failed_with_code(result, ErrorCode::VaultOwnerMismatch);
 
     assert_vault_state_unchanged_with_recipient(
         &state,
@@ -753,7 +752,7 @@ fn test_withdraw_recipient_balance_overflow_fails() {
         3 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_ARITHMETIC_OVERFLOW);
+    assert_execution_failed_with_code(result, ErrorCode::ArithmeticOverflow);
 }
 
 #[test]

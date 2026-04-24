@@ -12,7 +12,7 @@ use nssa_core::{
     BlockId,
 };
 
-use crate::Instruction;
+use crate::{error_codes::ErrorCode, Instruction};
 use crate::{
     test_helpers::{
         build_signed_public_tx, derive_stream_pda, force_clock_account_monotonic,
@@ -327,14 +327,15 @@ pub(crate) fn force_stream_state_closed(state: &mut V03State, stream_pda: Accoun
     state.force_insert_account(stream_pda, stream_account);
 }
 
-pub(crate) fn assert_execution_failed_with_code(result: Result<(), NssaError>, code: u32) {
+pub(crate) fn assert_execution_failed_with_code(result: Result<(), NssaError>, code: ErrorCode) {
+    let numeric = code as u32;
     match result {
         Err(NssaError::ProgramExecutionFailed(msg)) => assert!(
-            msg.contains(&format!("{code}")),
-            "expected error code {code} in message, got: {msg}"
+            msg.contains(&format!("{numeric}")),
+            "expected error code {numeric} in message, got: {msg}"
         ),
-        Err(other) => panic!("expected ProgramExecutionFailed with code {code}, got: {other:?}"),
-        Ok(()) => panic!("expected failure with code {code}, got Ok"),
+        Err(other) => panic!("expected ProgramExecutionFailed with code {numeric}, got: {other:?}"),
+        Ok(()) => panic!("expected failure with code {numeric}, got Ok"),
     }
 }
 

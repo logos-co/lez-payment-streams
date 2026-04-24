@@ -13,8 +13,7 @@ use crate::{
         force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
         patch_vault_config,
     },
-    StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId, ERR_RESUME_ZERO_UNACCRUED,
-    ERR_STREAM_NOT_PAUSED, ERR_VAULT_OWNER_MISMATCH,
+    error_codes::ErrorCode, StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId,
 };
 
 use super::common::{
@@ -138,7 +137,7 @@ fn test_resume_active_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_STREAM_NOT_PAUSED);
+    assert_execution_failed_with_code(r, ErrorCode::StreamNotPaused);
 }
 
 #[test]
@@ -201,7 +200,7 @@ fn test_resume_zero_remaining_fails() {
         5 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_RESUME_ZERO_UNACCRUED);
+    assert_execution_failed_with_code(r, ErrorCode::ResumeZeroUnaccrued);
 }
 
 #[test]
@@ -278,7 +277,7 @@ fn test_resume_twice_fails() {
         6 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_STREAM_NOT_PAUSED);
+    assert_execution_failed_with_code(r, ErrorCode::StreamNotPaused);
 }
 
 #[test]
@@ -326,7 +325,7 @@ fn test_resume_closed_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_STREAM_NOT_PAUSED);
+    assert_execution_failed_with_code(r, ErrorCode::StreamNotPaused);
 }
 
 #[test]
@@ -501,12 +500,7 @@ fn test_resume_stream_owner_mismatch_fails() {
         "deposit failed",
     );
 
-    force_clock_account_monotonic(
-        &mut state,
-        clock_account_id,
-        0,
-        DEFAULT_CLOCK_INITIAL_TS,
-    );
+    force_clock_account_monotonic(&mut state, clock_account_id, 0, DEFAULT_CLOCK_INITIAL_TS);
 
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
     transition_ok(
@@ -569,5 +563,5 @@ fn test_resume_stream_owner_mismatch_fails() {
         block_resume,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_VAULT_OWNER_MISMATCH);
+    assert_execution_failed_with_code(r, ErrorCode::VaultOwnerMismatch);
 }

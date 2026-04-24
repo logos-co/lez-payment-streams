@@ -186,13 +186,18 @@ fn test_withdraw_private_recipient_pp_transition_succeeds() {
     let block_withdraw = 3 as BlockId;
 
     let mut fx = vault_fixture_public_tier_funded_via_deposit();
-    let holding_before = fx.state.get_account_by_id(fx.vault_holding_account_id).balance;
+    let holding_before = fx
+        .state
+        .get_account_by_id(fx.vault_holding_account_id)
+        .balance;
     let owner_before = fx.state.get_account_by_id(fx.owner_account_id);
 
     let receipt = run_pp_withdraw_to_private_recipient(&mut fx, withdraw_amount, block_withdraw);
 
     assert_eq!(
-        fx.state.get_account_by_id(fx.vault_holding_account_id).balance,
+        fx.state
+            .get_account_by_id(fx.vault_holding_account_id)
+            .balance,
         holding_before - withdraw_amount
     );
     let owner_after = fx.state.get_account_by_id(fx.owner_account_id);
@@ -201,10 +206,8 @@ fn test_withdraw_private_recipient_pp_transition_succeeds() {
     expected_nonce.public_account_nonce_increment();
     assert_eq!(owner_after.nonce, expected_nonce);
 
-    let cfg = VaultConfig::from_bytes(
-        &fx.state.get_account_by_id(fx.vault_config_account_id).data,
-    )
-    .expect("vault");
+    let cfg = VaultConfig::from_bytes(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
+        .expect("vault");
     assert_eq!(cfg.total_allocated, 0u128);
 
     assert_eq!(receipt.tx.message().new_commitments.len(), 1);
@@ -221,13 +224,18 @@ fn test_pp_withdraw_private_recipient_pseudonymous_funded_vault_succeeds() {
     let block_withdraw = 3 as BlockId;
 
     let mut fx = vault_fixture_pseudonymous_funder_funded_via_native_transfer();
-    let holding_before = fx.state.get_account_by_id(fx.vault_holding_account_id).balance;
+    let holding_before = fx
+        .state
+        .get_account_by_id(fx.vault_holding_account_id)
+        .balance;
     let owner_before = fx.state.get_account_by_id(fx.owner_account_id);
 
     let _receipt = run_pp_withdraw_to_private_recipient(&mut fx, withdraw_amount, block_withdraw);
 
     assert_eq!(
-        fx.state.get_account_by_id(fx.vault_holding_account_id).balance,
+        fx.state
+            .get_account_by_id(fx.vault_holding_account_id)
+            .balance,
         holding_before - withdraw_amount
     );
     let owner_after = fx.state.get_account_by_id(fx.owner_account_id);
@@ -236,10 +244,8 @@ fn test_pp_withdraw_private_recipient_pseudonymous_funded_vault_succeeds() {
     expected_nonce.public_account_nonce_increment();
     assert_eq!(owner_after.nonce, expected_nonce);
 
-    let cfg = VaultConfig::from_bytes(
-        &fx.state.get_account_by_id(fx.vault_config_account_id).data,
-    )
-    .expect("vault");
+    let cfg = VaultConfig::from_bytes(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
+        .expect("vault");
     assert_eq!(cfg.privacy_tier, VaultPrivacyTier::PseudonymousFunder);
     assert_eq!(cfg.total_allocated, 0u128);
 }

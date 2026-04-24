@@ -7,8 +7,8 @@ use nssa_core::{
 
 use crate::{
     test_helpers::{create_keypair, derive_stream_pda, force_clock_account_monotonic},
-    StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig,
-    CLOCK_01_PROGRAM_ACCOUNT_ID, ERR_CLOSE_UNAUTHORIZED, ERR_STREAM_CLOSED,
+    error_codes::ErrorCode, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond,
+    VaultConfig, CLOCK_01_PROGRAM_ACCOUNT_ID,
 };
 
 use super::common::{
@@ -220,7 +220,7 @@ fn test_close_stream_unauthorized_fails() {
         5 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_CLOSE_UNAUTHORIZED);
+    assert_execution_failed_with_code(r, ErrorCode::CloseUnauthorized);
 }
 
 #[test]
@@ -289,5 +289,5 @@ fn test_close_already_closed_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_STREAM_CLOSED);
+    assert_execution_failed_with_code(r, ErrorCode::StreamClosed);
 }

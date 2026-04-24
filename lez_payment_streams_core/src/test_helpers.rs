@@ -13,7 +13,6 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::harness_seeds::{SEED_OWNER, SEED_PROVIDER, SEED_RECIPIENT};
-use crate::test_pda::{compute_pda, seed_from_str};
 use crate::{ClockAccountData, CLOCK_01_PROGRAM_ACCOUNT_ID};
 use crate::{Instruction, StreamConfig, StreamId, VaultConfig, VaultId, VaultPrivacyTier};
 use nssa::{
@@ -28,6 +27,7 @@ use nssa_core::{
     BlockId,
 };
 use serde::Serialize;
+use spel_framework_core::pda::{compute_pda, seed_from_str};
 
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -213,7 +213,7 @@ pub(crate) fn force_clock_account_monotonic(
     timestamp: nssa_core::Timestamp,
 ) {
     let prev_acc = state.get_account_by_id(clock_account_id);
-    if let Some(prev) = ClockAccountData::from_bytes_slice(&prev_acc.data) {
+    if let Ok(prev) = borsh::from_slice::<ClockAccountData>(&prev_acc.data) {
         let before = (prev.timestamp, prev.block_id);
         let after = (timestamp, block_id);
         debug_assert!(

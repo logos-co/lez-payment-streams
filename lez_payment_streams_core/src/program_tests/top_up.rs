@@ -10,8 +10,7 @@ use crate::{
         force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
         patch_vault_config,
     },
-    StreamConfig, StreamState, Timestamp, TokensPerSecond, ERR_ALLOCATION_EXCEEDS_UNALLOCATED,
-    ERR_ARITHMETIC_OVERFLOW, ERR_STREAM_CLOSED, ERR_VAULT_OWNER_MISMATCH, ERR_ZERO_TOP_UP_AMOUNT,
+    error_codes::ErrorCode, StreamConfig, StreamState, Timestamp, TokensPerSecond,
 };
 
 use super::common::{
@@ -312,7 +311,7 @@ fn test_topup_zero_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_ZERO_TOP_UP_AMOUNT);
+    assert_execution_failed_with_code(r, ErrorCode::ZeroTopUpAmount);
 }
 
 #[test]
@@ -361,7 +360,7 @@ fn test_topup_closed_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_STREAM_CLOSED);
+    assert_execution_failed_with_code(r, ErrorCode::StreamClosed);
 }
 
 #[test]
@@ -408,7 +407,7 @@ fn test_topup_exceeds_unallocated_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_ALLOCATION_EXCEEDS_UNALLOCATED);
+    assert_execution_failed_with_code(r, ErrorCode::AllocationExceedsUnallocated);
 }
 
 #[test]
@@ -467,7 +466,7 @@ fn test_topup_allocation_overflow_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_ARITHMETIC_OVERFLOW);
+    assert_execution_failed_with_code(r, ErrorCode::ArithmeticOverflow);
 }
 
 #[test]
@@ -522,5 +521,5 @@ fn test_top_up_stream_owner_mismatch_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_VAULT_OWNER_MISMATCH);
+    assert_execution_failed_with_code(r, ErrorCode::VaultOwnerMismatch);
 }

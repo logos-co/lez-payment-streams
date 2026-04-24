@@ -13,8 +13,7 @@ use crate::{
         derive_vault_pdas, force_clock_account_monotonic, force_clock_account_unchecked,
         harness_clock_01_and_provider_account_ids, patch_vault_config,
     },
-    StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId, ERR_STREAM_NOT_ACTIVE,
-    ERR_TIME_REGRESSION, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
+    error_codes::ErrorCode, StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId,
 };
 
 use super::common::{
@@ -133,7 +132,7 @@ fn test_pause_twice_fails() {
         5 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_STREAM_NOT_ACTIVE);
+    assert_execution_failed_with_code(r, ErrorCode::StreamNotActive);
 }
 #[test]
 fn test_pause_when_at_time_depletes_fails() {
@@ -181,7 +180,7 @@ fn test_pause_when_at_time_depletes_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_STREAM_NOT_ACTIVE);
+    assert_execution_failed_with_code(r, ErrorCode::StreamNotActive);
 }
 #[test]
 fn test_pause_closed_fails() {
@@ -228,7 +227,7 @@ fn test_pause_closed_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_STREAM_NOT_ACTIVE);
+    assert_execution_failed_with_code(r, ErrorCode::StreamNotActive);
 }
 #[test]
 fn test_pause_stream_time_regression_fails() {
@@ -276,7 +275,7 @@ fn test_pause_stream_time_regression_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_TIME_REGRESSION);
+    assert_execution_failed_with_code(r, ErrorCode::TimeRegression);
 }
 #[test]
 fn test_pause_stream_owner_mismatch_fails() {
@@ -344,12 +343,7 @@ fn test_pause_stream_owner_mismatch_fails() {
         "deposit failed",
     );
 
-    force_clock_account_monotonic(
-        &mut state,
-        clock_account_id,
-        0,
-        DEFAULT_CLOCK_INITIAL_TS,
-    );
+    force_clock_account_monotonic(&mut state, clock_account_id, 0, DEFAULT_CLOCK_INITIAL_TS);
 
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
     transition_ok(
@@ -398,7 +392,7 @@ fn test_pause_stream_owner_mismatch_fails() {
         block_pause,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_VAULT_OWNER_MISMATCH);
+    assert_execution_failed_with_code(r, ErrorCode::VaultOwnerMismatch);
 }
 #[test]
 fn test_pause_stream_wrong_vault_id_fails() {
@@ -450,5 +444,5 @@ fn test_pause_stream_wrong_vault_id_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_VAULT_ID_MISMATCH);
+    assert_execution_failed_with_code(r, ErrorCode::VaultIdMismatch);
 }

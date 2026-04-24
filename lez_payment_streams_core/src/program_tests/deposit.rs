@@ -14,8 +14,7 @@ use crate::{
         harness_clock_01_and_provider_account_ids, patch_vault_config,
         state_with_initialized_vault,
     },
-    TokensPerSecond, VaultConfig, VaultHolding, VaultId, VersionId, ERR_VAULT_ID_MISMATCH,
-    ERR_VAULT_OWNER_MISMATCH, ERR_VERSION_MISMATCH, ERR_ZERO_DEPOSIT_AMOUNT,
+    error_codes::ErrorCode, TokensPerSecond, VaultConfig, VaultHolding, VaultId, VersionId,
 };
 
 use super::common::{
@@ -266,7 +265,7 @@ fn test_deposit_zero_amount_fails() {
         block_deposit,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_ZERO_DEPOSIT_AMOUNT);
+    assert_execution_failed_with_code(result, ErrorCode::ZeroDepositAmount);
 
     assert_vault_state_unchanged(
         &fx.state,
@@ -324,7 +323,7 @@ fn test_deposit_wrong_vault_id_fails() {
         block_deposit,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_VAULT_ID_MISMATCH);
+    assert_execution_failed_with_code(result, ErrorCode::VaultIdMismatch);
 
     assert_vault_state_unchanged(
         &fx.state,
@@ -531,7 +530,7 @@ fn test_deposit_owner_mismatch_fails() {
         block_deposit,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_VAULT_OWNER_MISMATCH);
+    assert_execution_failed_with_code(result, ErrorCode::VaultOwnerMismatch);
 
     assert_vault_state_unchanged(
         &state,
@@ -582,5 +581,5 @@ fn test_deposit_vault_holding_version_mismatch_fails() {
         2 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_VERSION_MISMATCH);
+    assert_execution_failed_with_code(result, ErrorCode::VersionMismatch);
 }

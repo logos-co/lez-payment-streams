@@ -4,23 +4,23 @@ use nssa::error::NssaError;
 use nssa_core::account::Nonce;
 use nssa_core::BlockId;
 
+use crate::harness_seeds::SEED_PROVIDER;
 use crate::Instruction;
 use crate::{
     test_helpers::{
         assert_public_payment_streams_instruction_allowed, create_keypair, derive_stream_pda,
         force_clock_account_monotonic, patch_vault_config,
         state_with_initialized_vault_pseudonymous_funder_preseeded,
-        state_with_initialized_vault_with_privacy_tier,
+        state_with_initialized_vault_with_privacy_tier, transfer_native_balance_for_tests,
         transition_public_payment_streams_tx_respecting_privacy_tier,
-        transfer_native_balance_for_tests,
     },
     StreamId, VaultPrivacyTier, CLOCK_01_PROGRAM_ACCOUNT_ID,
 };
-use crate::harness_seeds::SEED_PROVIDER;
 
 use super::common::{
-    first_stream_ix_accounts, signed_create_stream, signed_sync_stream, state_deposited_with_clock_and_provider,
-    transition_ok, DEFAULT_CLOCK_INITIAL_TS, TEST_PUBLIC_TX_TIMESTAMP,
+    first_stream_ix_accounts, signed_create_stream, signed_sync_stream,
+    state_deposited_with_clock_and_provider, transition_ok, DEFAULT_CLOCK_INITIAL_TS,
+    TEST_PUBLIC_TX_TIMESTAMP,
 };
 
 #[test]
@@ -30,10 +30,7 @@ fn harness_public_touch_pseudonymous_funder_vault_fails() {
         VaultPrivacyTier::PseudonymousFunder,
     );
     assert_eq!(
-        assert_public_payment_streams_instruction_allowed(
-            &fx.state,
-            fx.vault_config_account_id,
-        ),
+        assert_public_payment_streams_instruction_allowed(&fx.state, fx.vault_config_account_id,),
         Err("public instruction disallowed for PseudonymousFunder vault")
     );
 }
@@ -44,13 +41,11 @@ fn harness_public_touch_public_tier_vault_succeeds() {
         1_000 as nssa_core::account::Balance,
         VaultPrivacyTier::Public,
     );
-    assert!(
-        assert_public_payment_streams_instruction_allowed(
-            &fx.state,
-            fx.vault_config_account_id,
-        )
-        .is_ok()
-    );
+    assert!(assert_public_payment_streams_instruction_allowed(
+        &fx.state,
+        fx.vault_config_account_id,
+    )
+    .is_ok());
 }
 
 #[test]

@@ -7,9 +7,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use nssa_core::account::{AccountId, Balance};
 
-use crate::error_codes::{
-    ERR_ALLOCATION_EXCEEDS_UNALLOCATED, ERR_TOTAL_ALLOCATED_OVERFLOW, ERR_TOTAL_ALLOCATED_UNDERFLOW,
-};
+use crate::error_codes::ErrorCode;
 use crate::{StreamId, VaultId, VersionId};
 
 /// Product or harness policy hint stored on [`VaultConfig`].
@@ -68,38 +66,38 @@ mod vault_privacy_tier_wire_tests {
 /// [`crate::Instruction::CreateStream`] applies the new stream allocation.
 /// [`crate::Instruction::TopUpStream`] applies the top-up increment.
 ///
-/// Zero `increase_total_allocated_by` is invalid where [`crate::ERR_ZERO_STREAM_ALLOCATION`] or [`crate::ERR_ZERO_TOP_UP_AMOUNT`] apply.
+/// Zero `increase_total_allocated_by` is invalid where [`crate::error_codes::ErrorCode::ZeroStreamAllocation`] or [`crate::error_codes::ErrorCode::ZeroTopUpAmount`] apply.
 ///
-/// [`ERR_TOTAL_ALLOCATED_OVERFLOW`] guards `checked_add` (defensive given the unallocated bound).
+/// [`crate::error_codes::ErrorCode::TotalAllocatedOverflow`] guards `checked_add` (defensive given the unallocated bound).
 pub fn checked_total_allocated_after_add(
     vault_holding_balance: Balance,
     vault_total_allocated: Balance,
     increase_total_allocated_by: Balance,
-) -> Result<Balance, u32> {
+) -> Result<Balance, ErrorCode> {
     let unallocated = vault_holding_balance.saturating_sub(vault_total_allocated);
     if increase_total_allocated_by > unallocated {
-        return Err(ERR_ALLOCATION_EXCEEDS_UNALLOCATED);
+        return Err(ErrorCode::AllocationExceedsUnallocated);
     }
     vault_total_allocated
         .checked_add(increase_total_allocated_by)
-        .ok_or(ERR_TOTAL_ALLOCATED_OVERFLOW)
+        .ok_or(ErrorCode::TotalAllocatedOverflow)
 }
 
 /// Compute the next [`VaultConfig::total_allocated`] after subtracting `decrease_total_allocated_by` (`claim`, `close`, …).
 /// Pure helper (guest persists the value).
 ///
 /// Zero decrease: return the input unchanged (e.g. close with nothing left to release).
-/// [`ERR_TOTAL_ALLOCATED_UNDERFLOW`] when the decrease exceeds current `total_allocated`.
+/// [`crate::error_codes::ErrorCode::TotalAllocatedUnderflow`] when the decrease exceeds current `total_allocated`.
 pub fn checked_total_allocated_after_release(
     vault_total_allocated: Balance,
     decrease_total_allocated_by: Balance,
-) -> Result<Balance, u32> {
+) -> Result<Balance, ErrorCode> {
     if decrease_total_allocated_by == 0 {
         return Ok(vault_total_allocated);
     }
     vault_total_allocated
         .checked_sub(decrease_total_allocated_by)
-        .ok_or(ERR_TOTAL_ALLOCATED_UNDERFLOW)
+        .ok_or(ErrorCode::TotalAllocatedUnderflow)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -232,7 +230,7 @@ mod checked_total_allocated_after_add_tests {
     use nssa_core::account::Balance;
 
     use super::checked_total_allocated_after_add;
-    use crate::error_codes::ERR_ALLOCATION_EXCEEDS_UNALLOCATED;
+    use crate::error_codes::ErrorCode;
 
     #[test]
     fn add_within_unallocated_succeeds() {
@@ -244,7 +242,7 @@ mod checked_total_allocated_after_add_tests {
     fn add_exceeds_unallocated_fails() {
         assert_eq!(
             checked_total_allocated_after_add(500, 400, 200),
-            Err(ERR_ALLOCATION_EXCEEDS_UNALLOCATED)
+            Err(ErrorCode::AllocationExceedsUnallocated)
         );
     }
 }
@@ -254,7 +252,7 @@ mod checked_total_allocated_after_release_tests {
     use nssa_core::account::Balance;
 
     use super::checked_total_allocated_after_release;
-    use crate::error_codes::ERR_TOTAL_ALLOCATED_UNDERFLOW;
+    use crate::error_codes::ErrorCode;
 
     #[test]
     fn release_decrease_succeeds() {
@@ -272,7 +270,7 @@ mod checked_total_allocated_after_release_tests {
     fn release_underflow_fails() {
         assert_eq!(
             checked_total_allocated_after_release(100, 200),
-            Err(ERR_TOTAL_ALLOCATED_UNDERFLOW)
+            Err(ErrorCode::TotalAllocatedUnderflow)
         );
     }
 }

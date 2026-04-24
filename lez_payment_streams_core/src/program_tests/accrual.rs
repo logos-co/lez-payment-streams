@@ -12,8 +12,8 @@ use crate::{
         derive_vault_pdas, force_clock_account_monotonic, force_clock_account_unchecked,
         harness_clock_01_and_provider_account_ids, patch_stream_config, patch_vault_config,
     },
-    StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultId,
-    ERR_STREAM_ID_MISMATCH, ERR_TIME_REGRESSION, ERR_VAULT_ID_MISMATCH, ERR_VAULT_OWNER_MISMATCH,
+    error_codes::ErrorCode, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond,
+    VaultId,
 };
 
 use super::common::{
@@ -341,7 +341,7 @@ fn test_sync_stream_wrong_vault_id_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_VAULT_ID_MISMATCH);
+    assert_execution_failed_with_code(r, ErrorCode::VaultIdMismatch);
 }
 
 #[test]
@@ -460,7 +460,7 @@ fn test_sync_stream_owner_mismatch_fails() {
         block_sync,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_VAULT_OWNER_MISMATCH);
+    assert_execution_failed_with_code(r, ErrorCode::VaultOwnerMismatch);
 }
 
 #[test]
@@ -548,7 +548,7 @@ fn test_sync_stream_stream_id_does_not_match_account_fails() {
         5 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_STREAM_ID_MISMATCH);
+    assert_execution_failed_with_code(r, ErrorCode::StreamIdMismatch);
 }
 
 #[test]
@@ -608,7 +608,7 @@ fn test_sync_stream_time_regression_fails() {
         4 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_TIME_REGRESSION);
+    assert_execution_failed_with_code(r, ErrorCode::TimeRegression);
 }
 
 /// After one `sync_stream` has folded accrual to clock `t1`, a second `sync_stream` without

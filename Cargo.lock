@@ -2925,10 +2925,12 @@ name = "lez_payment_streams_core"
 version = "0.1.0"
 dependencies = [
  "borsh",
+ "clock_core",
  "nssa",
  "nssa_core",
  "serde",
  "sha2",
+ "spel-framework-core",
 ]
 
 [[package]]

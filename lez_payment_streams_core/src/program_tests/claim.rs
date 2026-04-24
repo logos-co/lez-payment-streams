@@ -6,8 +6,8 @@ use nssa_core::{
 };
 
 use crate::{
-    test_helpers::create_keypair, StreamConfig, StreamState, Timestamp, TokensPerSecond,
-    VaultConfig, CLOCK_01_PROGRAM_ACCOUNT_ID, ERR_CLAIM_UNAUTHORIZED, ERR_ZERO_CLAIM_AMOUNT,
+    error_codes::ErrorCode, test_helpers::create_keypair, StreamConfig, StreamState, Timestamp,
+    TokensPerSecond, VaultConfig, CLOCK_01_PROGRAM_ACCOUNT_ID,
 };
 
 use super::common::{
@@ -154,7 +154,7 @@ fn test_claim_unauthorized_fails() {
         5 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_CLAIM_UNAUTHORIZED);
+    assert_execution_failed_with_code(r, ErrorCode::ClaimUnauthorized);
 }
 
 #[test]
@@ -253,5 +253,5 @@ fn test_claim_after_close_succeeds() {
         7 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(r, ERR_ZERO_CLAIM_AMOUNT);
+    assert_execution_failed_with_code(r, ErrorCode::ZeroClaimAmount);
 }

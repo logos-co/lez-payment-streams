@@ -12,15 +12,17 @@ Host, guest, and examples use the same LEZ checkout: `nssa_core` / `nssa` (tests
 
 SPEL is pinned to git revision `3457c7431e9b5b88661ed87b53677511ef88d113` on `https://github.com/logos-co/spel.git` (includes `SpelOutput::execute` and the macro rewrite to `execute_with_claims` for `vec![account, …]` patterns).
 
-## Duplicated helpers in the core crate
+## Removed helpers (replaced by upstream deps)
 
-`lez_payment_streams_core/src/clock_wire.rs` repeats the three system clock `AccountId` constants and the Borsh `ClockAccountData` layout that live in LEZ `clock_core`.
-The crate does not list `clock_core` as a dependency so we avoid extra Cargo edges (guest vs host workspaces, git pins, and patch rules) while keeping a single `nssa_core` revision.
-If `clock_core` changes upstream, this file must be updated by hand until we switch to a direct dependency from the same LEZ `rev`/`tag` as `nssa_core` (see `plan.md` step 6).
+`lez_payment_streams_core/src/clock_wire.rs` was removed in step 8.
+It repeated the three system clock `AccountId` constants and the Borsh `ClockAccountData` layout from LEZ `clock_core`.
+`clock_core` is now a direct `[dependencies]` entry in `lez_payment_streams_core/Cargo.toml` at the same git tag (`v0.2.0-rc1`) as `nssa_core`, which resolves to the same unique hash (`35d8df0d`) across the workspace.
+`lib.rs` re-exports `ClockAccountData`, `CLOCK_01/10/50_PROGRAM_ACCOUNT_ID`, and `CLOCK_PROGRAM_ACCOUNT_IDS` from `clock_core`.
 
-`lez_payment_streams_core/src/test_pda.rs` (test-only) repeats the seed combination rules from `spel-framework-core::pda` (`seed_from_str`, single-seed vs hashed multi-seed), then uses `nssa_core` for `PdaSeed` and `AccountId` derivation.
-We avoid a `spel-framework-core` dev-dependency on the core crate because it would introduce a second `nssa_core` (from SPEL’s own LEZ pin) and break type identity with the main dependency.
-When the dependency graph allows exactly one `nssa_core`, tests should call SPEL’s helpers instead so host-derived PDAs cannot drift from the guest (see `plan.md` step 6 and step 3).
+`lez_payment_streams_core/src/test_pda.rs` (test-only) was removed in step 8.
+It repeated `seed_from_str` and `compute_pda` from `spel-framework-core::pda`.
+`spel-framework-core` is now a `[dev-dependencies]` entry at the same SPEL rev as the workspace (`3457c7431e9b5b88661ed87b53677511ef88d113`).
+`cargo tree` confirms a single `nssa_core` revision workspace-wide, so adding the dev-dep does not split type identity.
 
 ## Test fixtures (host `program_tests`)
 
@@ -164,7 +166,7 @@ The vault is fixed by `vault_config_pda` in the seed.
 
 Wire values on `InitializeVault` are raw bytes: `0` means [`VaultPrivacyTier::Public`], `1` means [`VaultPrivacyTier::PseudonymousFunder`].
 Any other byte fails when the instruction payload is deserialized (before execution), using the same rules as [`VaultPrivacyTier`]'s serde decode.
-The numeric code `ERR_INVALID_PRIVACY_TIER` (6027) remains reserved for compatibility but is not returned by the current guest for this path.
+The numeric code `ERR_INVALID_PRIVACY_TIER` (6026) remains reserved for compatibility but is not returned by the current guest for this path.
 
 On [`VaultConfig`] account data, the tier is the trailing byte after `version`, `owner`, `vault_id`, `next_stream_id`, and `total_allocated` (all little-endian where applicable, same as before this field was added).
 No instruction after `InitializeVault` mutates `privacy_tier`; the guest treats it as informational when deciding execution mode (it does not switch between public and PP execution based on this field).
@@ -188,14 +190,14 @@ All match LEZ-native types (`Balance`, `Timestamp`).
 Accrual multiplies rate by elapsed seconds in `u128` (or `Balance`) where the product can exceed `u64`, so widening stays in accrual math instead of storing an oversized `rate` on the account.
 
 Time for accrual comes from a read-only system clock account supplied by the client (one of the three LEZ clock accounts, for example `CLOCK_01` for second granularity).
-Genesis seeds those clock account ids; the guest rejects any other account id with `ERR_INVALID_CLOCK_ACCOUNT` (6026).
+Genesis seeds those clock account ids; the guest rejects any other account id with `ERR_INVALID_CLOCK_ACCOUNT` (6025).
 The wire layout matches LEZ `clock_core::ClockAccountData`, Borsh-encoded: `block_id: u64` and `timestamp: u64` (little-endian on the wire as part of Borsh), 16 bytes total.
 The program uses the `timestamp` field as the `Timestamp` for `StreamConfig::at_time` and related helpers; `block_id` is validated structurally but not interpreted for MVP stream math.
 
 Three clock granularities exist on the platform (`CLOCK_01`, `CLOCK_10`, `CLOCK_50`); clients choose which clock account to pass.
 Finer clocks imply more frequent public updates to that account when used as the read source; coarser clocks can reduce metadata churn at the cost of less precise accrual folds (relevant for privacy or private-proof settings where clock resolution interacts with what observers learn).
 
-`ERR_INVALID_MOCK_TIMESTAMP` (6011) remains defined in the core crate for compatibility but is not emitted on current paths.
+`ERR_INVALID_MOCK_TIMESTAMP` was removed in step 8 (code 6011 is now `ERR_ALLOCATION_EXCEEDS_UNALLOCATED`; all codes previously numbered 6012–6027 shifted down by one; see the error code table in `error_codes.rs`).
 
 On-chain parsing should keep treating unknown or future clock payload extensions as parse failures for this program until a new layout is explicitly supported.
 
@@ -343,14 +345,14 @@ Account order (fixed): `VaultConfig` PDA (mut), `VaultHolding` (mut), stream PDA
 The owner account matches `VaultConfig.owner` (same binding as `close_stream`); index 4 is the stream’s `provider` from `StreamConfig`, which receives the payout.
 
 Only the provider may sign.
-The guest checks `signer == StreamConfig.provider`; otherwise `ERR_CLAIM_UNAUTHORIZED` (6025).
+The guest checks `signer == StreamConfig.provider`; otherwise `ERR_CLAIM_UNAUTHORIZED` (6024).
 
 Handler shape: structural vault validation (`validate_vault_structural`), deserialize stream, `validate_stream_config_for_vault`, then `StreamConfig::claim_at_time(now, vault_config.total_allocated)` using the clock account timestamp as `now`.
 `claim_at_time` folds accrual with `at_time(now)` internally, then pays the full post-fold `accrued` amount, reduces `allocation` and `total_allocated` by that payout, and sets `accrued` to zero without changing `state` (`Active`, `Paused`, or `Closed` unchanged).
 
 Native transfer: debit `VaultHolding.balance` by the payout and credit the provider account, using the same checked arithmetic pattern as `withdraw`.
 Host validation requires the provider account to already exist in public state with a non-default `program_owner` before the balance credit (same pattern as funding a withdraw recipient in tests).
-If post-fold `accrued == 0`, `claim_at_time` fails with `ERR_ZERO_CLAIM_AMOUNT` (6024).
+If post-fold `accrued == 0`, `claim_at_time` fails with `ERR_ZERO_CLAIM_AMOUNT` (6023).
 
 ## Accrual behavior
 
@@ -428,7 +430,7 @@ The RFC file is not edited in this step; normative deltas are listed under RFC p
 
 ### Authorization matrix (wrong signer)
 
-Each row is the account that must sign; tests assert `ERR_VAULT_OWNER_MISMATCH` (6016), `ERR_CLAIM_UNAUTHORIZED` (6025), `ERR_CLOSE_UNAUTHORIZED` (6023), or host witness validation as noted.
+Each row is the account that must sign; tests assert `ERR_VAULT_OWNER_MISMATCH` (6015), `ERR_CLAIM_UNAUTHORIZED` (6024), `ERR_CLOSE_UNAUTHORIZED` (6022), or host witness validation as noted.
 
 | Instruction | Signer | Negative coverage |
 | --- | --- | --- |
@@ -469,6 +471,18 @@ None found that required guest or production core changes during this audit; exi
 - Clarify in the RFC that withdraw, like claim, assumes the payout recipient account is already present in the execution environment where the host validates accounts (or document the observable failure mode when it is absent).
 - Optional: add a normative solvency invariant (`holding.balance >= total_allocated`, `total_allocated` vs sum of stream allocations) if the RFC should mirror implementation tests.
 - Clock granularity and test harness conventions (system clock ids, monotonic time in tests) may warrant a short testing appendix in the RFC if not already covered under Security and Privacy Considerations.
+
+## Error codes
+
+`lez_payment_streams_core/src/error_codes.rs` defines a `#[repr(u32)] pub enum ErrorCode` with one variant per program error.
+Each variant is assigned its numeric code directly (for example `AllocationExceedsUnallocated = 6011`).
+`pub const ERR_*: u32 = ErrorCode::* as u32;` aliases are kept for backward compatibility in test assertions; they will be removed in step 9 when public names are reviewed.
+
+The guest boundary converts `ErrorCode` to `u32` via the `spel_err(code, message)` helper (`code as u32`), keeping a single conversion site.
+
+Code `6011` (`ERR_INVALID_MOCK_TIMESTAMP`) was removed in step 8 (it was only used with the deleted mock-clock path).
+All codes that were numbered 6012–6027 shifted down by one (now 6011–6026).
+`InvalidPrivacyTier = 6026` is reserved: it is not emitted by current guest logic (pre-deserialization rejection is handled by serde on the `InitializeVault` payload, before any `ErrorCode` path is reached).
 
 ## Versioning
 

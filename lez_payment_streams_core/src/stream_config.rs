@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use nssa_core::account::{AccountId, Balance};
 
-use crate::error_codes::*;
+use crate::error_codes::ErrorCode;
 use crate::vault::checked_total_allocated_after_release;
 use crate::{StreamId, Timestamp, TokensPerSecond, VersionId, DEFAULT_VERSION};
 
@@ -153,9 +153,9 @@ impl StreamConfig {
     /// When [`StreamConfig::unaccrued`] reaches zero after that step,
     /// set state to [`StreamState::Paused`].
     ///
-    /// Map [`StreamConfig::validate_invariants`] failures to [`ERR_ZERO_STREAM_RATE`], [`ERR_ZERO_STREAM_ALLOCATION`], or [`ERR_STREAM_EXCEEDS_ALLOCATION`].
-    /// Emit [`ERR_TIME_REGRESSION`] when `t` is before [`StreamConfig::accrued_as_of`].
-    pub fn at_time(&self, t: Timestamp) -> Result<Self, u32> {
+    /// Map [`StreamConfig::validate_invariants`] failures to [`ErrorCode::ZeroStreamRate`], [`ErrorCode::ZeroStreamAllocation`], or [`ErrorCode::StreamExceedsAllocation`].
+    /// Emit [`ErrorCode::TimeRegression`] when `t` is before [`StreamConfig::accrued_as_of`].
+    pub fn at_time(&self, t: Timestamp) -> Result<Self, ErrorCode> {
         self.validate_invariants()?;
 
         match self.state {
@@ -164,7 +164,7 @@ impl StreamConfig {
         }
 
         if t < self.accrued_as_of {
-            return Err(ERR_TIME_REGRESSION);
+            return Err(ErrorCode::TimeRegression);
         }
 
         if t == self.accrued_as_of {
@@ -194,11 +194,11 @@ impl StreamConfig {
             stream_after_accrual.state = StreamState::Paused;
             // Unaccrued at interval start (`accrued_as_of`), before folding elapsed time into accrued.
             let unaccrued_before_interval = self.unaccrued();
-            let time_to_depletion =
-                div_ceil_u128(unaccrued_before_interval, rate).ok_or(ERR_ARITHMETIC_OVERFLOW)?;
+            let time_to_depletion = div_ceil_u128(unaccrued_before_interval, rate)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
             let depleted_at = base_as_of
                 .checked_add(time_to_depletion)
-                .ok_or(ERR_ARITHMETIC_OVERFLOW)?;
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
             stream_after_accrual.accrued_as_of = depleted_at;
             Ok(stream_after_accrual)
         } else {
@@ -208,21 +208,21 @@ impl StreamConfig {
     }
 
     /// Check `accrued <= allocation`, rate rules, and zero-allocation cases (`Paused` or `Closed` with zero accrued).
-    pub fn validate_invariants(&self) -> Result<(), u32> {
+    pub fn validate_invariants(&self) -> Result<(), ErrorCode> {
         if self.accrued > self.allocation {
-            return Err(ERR_STREAM_EXCEEDS_ALLOCATION);
+            return Err(ErrorCode::StreamExceedsAllocation);
         }
         if self.allocation == 0 {
             if self.accrued != 0 {
-                return Err(ERR_STREAM_EXCEEDS_ALLOCATION);
+                return Err(ErrorCode::StreamExceedsAllocation);
             }
             return match self.state {
-                StreamState::Active => Err(ERR_ZERO_STREAM_ALLOCATION),
+                StreamState::Active => Err(ErrorCode::ZeroStreamAllocation),
                 StreamState::Paused | StreamState::Closed => Ok(()),
             };
         }
         if self.rate == 0 {
-            return Err(ERR_ZERO_STREAM_RATE);
+            return Err(ErrorCode::ZeroStreamRate);
         }
         Ok(())
     }
@@ -233,14 +233,14 @@ impl StreamConfig {
     /// so the next [`StreamConfig::at_time`] counts from the resume point.
     /// Leave [`StreamConfig::accrued`] unchanged.
     ///
-    /// Emit [`ERR_STREAM_NOT_PAUSED`] unless state is [`StreamState::Paused`].
-    /// Emit [`ERR_RESUME_ZERO_UNACCRUED`] when [`StreamConfig::unaccrued`] is zero.
-    pub fn resume_from_paused_at(self, now: Timestamp) -> Result<Self, u32> {
+    /// Emit [`ErrorCode::StreamNotPaused`] unless state is [`StreamState::Paused`].
+    /// Emit [`ErrorCode::ResumeZeroUnaccrued`] when [`StreamConfig::unaccrued`] is zero.
+    pub fn resume_from_paused_at(self, now: Timestamp) -> Result<Self, ErrorCode> {
         if self.state != StreamState::Paused {
-            return Err(ERR_STREAM_NOT_PAUSED);
+            return Err(ErrorCode::StreamNotPaused);
         }
         if self.unaccrued() == (0 as Balance) {
-            return Err(ERR_RESUME_ZERO_UNACCRUED);
+            return Err(ErrorCode::ResumeZeroUnaccrued);
         }
         let mut stream_after_resume = self;
         stream_after_resume.state = StreamState::Active;
@@ -254,15 +254,15 @@ impl StreamConfig {
     ///
     /// Return the new vault [`crate::VaultConfig::total_allocated`] aggregate and the closed [`StreamConfig`].
     ///
-    /// Emit [`ERR_STREAM_CLOSED`] if the fold already produced [`StreamState::Closed`]. Otherwise match [`StreamConfig::at_time`] (for example [`ERR_TIME_REGRESSION`]).
+    /// Emit [`ErrorCode::StreamClosed`] if the fold already produced [`StreamState::Closed`]. Otherwise match [`StreamConfig::at_time`] (for example [`ErrorCode::TimeRegression`]).
     pub fn close_at_time(
         self,
         now: Timestamp,
         vault_total_allocated: Balance,
-    ) -> Result<(Balance, Self), u32> {
+    ) -> Result<(Balance, Self), ErrorCode> {
         let stream_config_now = self.at_time(now)?;
         if stream_config_now.state == StreamState::Closed {
-            return Err(ERR_STREAM_CLOSED);
+            return Err(ErrorCode::StreamClosed);
         }
         let unaccrued_amount = stream_config_now.unaccrued();
         let next_vault_total_allocated =
@@ -277,17 +277,17 @@ impl StreamConfig {
     /// Pay out post-`at_time` [`StreamConfig::accrued`] at `now`:
     /// run [`StreamConfig::at_time`], shrink `allocation`, clear `accrued`, keep [`StreamState`].
     ///
-    /// Emit [`ERR_ZERO_CLAIM_AMOUNT`] when accrued is zero after the fold.
+    /// Emit [`ErrorCode::ZeroClaimAmount`] when accrued is zero after the fold.
     /// Otherwise follow [`StreamConfig::at_time`] or vault math.
     pub fn claim_at_time(
         self,
         now: Timestamp,
         vault_total_allocated: Balance,
-    ) -> Result<(Balance, Balance, Self), u32> {
+    ) -> Result<(Balance, Balance, Self), ErrorCode> {
         let stream_config_now = self.at_time(now)?;
         let payout = stream_config_now.accrued;
         if payout == (0 as Balance) {
-            return Err(ERR_ZERO_CLAIM_AMOUNT);
+            return Err(ErrorCode::ZeroClaimAmount);
         }
         let next_vault_total_allocated =
             checked_total_allocated_after_release(vault_total_allocated, payout)?;
@@ -295,7 +295,7 @@ impl StreamConfig {
         stream_after_claim.allocation = stream_after_claim
             .allocation
             .checked_sub(payout)
-            .ok_or(ERR_ARITHMETIC_OVERFLOW)?;
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
         stream_after_claim.accrued = 0 as Balance;
         stream_after_claim.validate_invariants()?;
         Ok((next_vault_total_allocated, payout, stream_after_claim))
@@ -345,7 +345,7 @@ mod stream_test_fixtures {
 mod stream_config_at_time_tests {
     use super::stream_test_fixtures::stream_active;
     use super::StreamState;
-    use crate::error_codes::*;
+    use crate::error_codes::ErrorCode;
     use crate::Timestamp;
     use nssa_core::account::Balance;
 
@@ -360,19 +360,22 @@ mod stream_config_at_time_tests {
     #[test]
     fn at_time_time_regression_fails() {
         let s_active = stream_active(0, 1000, 10, 100);
-        assert_eq!(s_active.at_time(99), Err(ERR_TIME_REGRESSION));
+        assert_eq!(s_active.at_time(99), Err(ErrorCode::TimeRegression));
     }
 
     #[test]
     fn at_time_accrued_above_allocation_fails() {
         let s_invalid = stream_active(500, 100, 10, 100);
-        assert_eq!(s_invalid.at_time(100), Err(ERR_STREAM_EXCEEDS_ALLOCATION));
+        assert_eq!(
+            s_invalid.at_time(100),
+            Err(ErrorCode::StreamExceedsAllocation)
+        );
     }
 
     #[test]
     fn at_time_zero_rate_fails() {
         let s_zero_rate = stream_active(0, 100, 0, 0);
-        assert_eq!(s_zero_rate.at_time(0), Err(ERR_ZERO_STREAM_RATE));
+        assert_eq!(s_zero_rate.at_time(0), Err(ErrorCode::ZeroStreamRate));
     }
 
     #[test]
@@ -380,7 +383,7 @@ mod stream_config_at_time_tests {
         let s_zero_allocation = stream_active(0, 0, 10, 0);
         assert_eq!(
             s_zero_allocation.at_time(0),
-            Err(ERR_ZERO_STREAM_ALLOCATION)
+            Err(ErrorCode::ZeroStreamAllocation)
         );
     }
 
@@ -466,7 +469,7 @@ mod stream_config_at_time_tests {
         let s_active = stream_active(0, 100, 5, 0);
         assert_eq!(
             s_active.resume_from_paused_at(1),
-            Err(ERR_STREAM_NOT_PAUSED)
+            Err(ErrorCode::StreamNotPaused)
         );
     }
 
@@ -476,7 +479,7 @@ mod stream_config_at_time_tests {
         s_closed.state = StreamState::Closed;
         assert_eq!(
             s_closed.resume_from_paused_at(1),
-            Err(ERR_STREAM_NOT_PAUSED)
+            Err(ErrorCode::StreamNotPaused)
         );
     }
 
@@ -486,7 +489,7 @@ mod stream_config_at_time_tests {
         s_paused_fully_accrued.state = StreamState::Paused;
         assert_eq!(
             s_paused_fully_accrued.resume_from_paused_at(20),
-            Err(ERR_RESUME_ZERO_UNACCRUED)
+            Err(ErrorCode::ResumeZeroUnaccrued)
         );
     }
 
@@ -530,7 +533,10 @@ mod stream_config_at_time_tests {
     fn close_at_time_when_already_closed_fails() {
         let mut s = stream_active(0, 100, 1, 0);
         s.state = StreamState::Closed;
-        assert_eq!(s.close_at_time(100, 100 as Balance), Err(ERR_STREAM_CLOSED));
+        assert_eq!(
+            s.close_at_time(100, 100 as Balance),
+            Err(ErrorCode::StreamClosed)
+        );
     }
 }
 
@@ -538,7 +544,7 @@ mod stream_config_at_time_tests {
 mod claim_at_time_tests {
     use super::stream_test_fixtures::stream_active;
     use super::StreamState;
-    use crate::error_codes::*;
+    use crate::error_codes::ErrorCode;
     use crate::Timestamp;
     use nssa_core::account::Balance;
 
@@ -547,7 +553,7 @@ mod claim_at_time_tests {
         let s = stream_active(0, 100, 10, 0);
         assert_eq!(
             s.claim_at_time(0, 100 as Balance),
-            Err(ERR_ZERO_CLAIM_AMOUNT)
+            Err(ErrorCode::ZeroClaimAmount)
         );
     }
 
@@ -593,7 +599,7 @@ mod claim_at_time_tests {
         let s = stream_active(0, 1000, 10, 100);
         assert_eq!(
             s.claim_at_time(99, 100 as Balance),
-            Err(ERR_TIME_REGRESSION)
+            Err(ErrorCode::TimeRegression)
         );
     }
 }

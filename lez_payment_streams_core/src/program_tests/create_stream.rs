@@ -13,10 +13,8 @@ use crate::{
         harness_clock_01_and_provider_account_ids, patch_vault_config,
         state_with_initialized_vault,
     },
-    StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig, VaultId,
-    DEFAULT_VERSION, ERR_ALLOCATION_EXCEEDS_UNALLOCATED, ERR_INVALID_CLOCK_ACCOUNT,
-    ERR_NEXT_STREAM_ID_OVERFLOW, ERR_STREAM_ID_MISMATCH, ERR_VAULT_ID_MISMATCH,
-    ERR_VAULT_OWNER_MISMATCH, ERR_ZERO_STREAM_ALLOCATION, ERR_ZERO_STREAM_RATE,
+    error_codes::ErrorCode, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond,
+    VaultConfig, VaultId, DEFAULT_VERSION,
 };
 
 use super::common::{
@@ -213,7 +211,7 @@ fn test_create_stream_exceeds_unallocated_fails() {
         block_stream,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_ALLOCATION_EXCEEDS_UNALLOCATED);
+    assert_execution_failed_with_code(result, ErrorCode::AllocationExceedsUnallocated);
 
     assert_eq!(
         v.state.get_account_by_id(v.vault_config_account_id).data,
@@ -269,7 +267,7 @@ fn test_create_stream_zero_rate_fails() {
         3 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_ZERO_STREAM_RATE);
+    assert_execution_failed_with_code(result, ErrorCode::ZeroStreamRate);
 }
 
 #[test]
@@ -310,7 +308,7 @@ fn test_create_stream_zero_allocation_fails() {
         3 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_ZERO_STREAM_ALLOCATION);
+    assert_execution_failed_with_code(result, ErrorCode::ZeroStreamAllocation);
 }
 
 #[test]
@@ -352,7 +350,7 @@ fn test_create_stream_stream_id_mismatch_fails() {
         3 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_STREAM_ID_MISMATCH);
+    assert_execution_failed_with_code(result, ErrorCode::StreamIdMismatch);
 }
 
 /// `stream_config` account must match the PDA for `stream_id` (SPEL account validation).
@@ -448,7 +446,7 @@ fn test_create_stream_wrong_vault_id_fails() {
         3 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_VAULT_ID_MISMATCH);
+    assert_execution_failed_with_code(result, ErrorCode::VaultIdMismatch);
 }
 
 #[test]
@@ -549,7 +547,7 @@ fn test_create_stream_owner_mismatch_fails() {
         block_stream,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_VAULT_OWNER_MISMATCH);
+    assert_execution_failed_with_code(result, ErrorCode::VaultOwnerMismatch);
     assert_eq!(
         state.get_account_by_id(vault_config_account_id).data,
         vault_config_before
@@ -605,7 +603,7 @@ fn test_create_stream_invalid_clock_account_fails() {
         3 as BlockId,
         super::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_INVALID_CLOCK_ACCOUNT);
+    assert_execution_failed_with_code(result, ErrorCode::InvalidClockAccount);
 }
 
 #[test]
@@ -814,5 +812,5 @@ fn test_create_stream_next_stream_id_overflow_fails() {
         3 as BlockId,
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
-    assert_execution_failed_with_code(result, ERR_NEXT_STREAM_ID_OVERFLOW);
+    assert_execution_failed_with_code(result, ErrorCode::NextStreamIdOverflow);
 }

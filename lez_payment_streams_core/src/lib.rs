@@ -6,21 +6,17 @@
 mod harness_seeds;
 
 #[cfg(test)]
-mod test_pda;
-
-#[cfg(test)]
 mod test_helpers;
 
 #[cfg(test)]
 mod program_tests;
 
-mod clock_wire;
 mod error_codes;
 mod instruction;
 mod stream_config;
 mod vault;
 
-pub use clock_wire::{
+pub use clock_core::{
     ClockAccountData, CLOCK_01_PROGRAM_ACCOUNT_ID, CLOCK_10_PROGRAM_ACCOUNT_ID,
     CLOCK_50_PROGRAM_ACCOUNT_ID, CLOCK_PROGRAM_ACCOUNT_IDS,
 };

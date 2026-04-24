@@ -6,6 +6,7 @@ use lez_payment_streams_core::{
     checked_total_allocated_after_add,
     ClockAccountData,
     CLOCK_PROGRAM_ACCOUNT_IDS,
+    ErrorCode,
     StreamConfig,
     StreamId,
     StreamState,
@@ -16,26 +17,6 @@ use lez_payment_streams_core::{
     VaultHolding,
     VaultId,
     VaultPrivacyTier,
-    ERR_ARITHMETIC_OVERFLOW,
-    ERR_CLOSE_UNAUTHORIZED,
-    ERR_CLAIM_UNAUTHORIZED,
-    ERR_INSUFFICIENT_FUNDS,
-    ERR_INVALID_CLOCK_ACCOUNT,
-    ERR_NEXT_STREAM_ID_OVERFLOW,
-    ERR_RESUME_ZERO_UNACCRUED,
-    ERR_STREAM_CLOSED,
-    ERR_STREAM_EXCEEDS_ALLOCATION,
-    ERR_STREAM_ID_MISMATCH,
-    ERR_STREAM_NOT_ACTIVE,
-    ERR_STREAM_NOT_PAUSED,
-    ERR_ZERO_DEPOSIT_AMOUNT,
-    ERR_ZERO_STREAM_ALLOCATION,
-    ERR_ZERO_STREAM_RATE,
-    ERR_ZERO_TOP_UP_AMOUNT,
-    ERR_ZERO_WITHDRAW_AMOUNT,
-    ERR_VERSION_MISMATCH,
-    ERR_VAULT_ID_MISMATCH,
-    ERR_VAULT_OWNER_MISMATCH,
 };
 use nssa_core::account::{Account, AccountId, Balance};
 use nssa_core::program::ProgramId;
@@ -57,31 +38,33 @@ mod lez_payment_streams {
         }
     }
 
+    fn spel_err(code: ErrorCode, message: &'static str) -> SpelError {
+        spel_custom(code as u32, message)
+    }
+
     #[derive(Clone, Copy)]
     enum ResumeFromPausedInstruction {
         ResumeStream,
         TopUpStream,
     }
 
-    fn spel_resume_from_paused_at_err(code: u32, ix: ResumeFromPausedInstruction) -> SpelError {
+    fn spel_resume_from_paused_at_err(code: ErrorCode, ix: ResumeFromPausedInstruction) -> SpelError {
         let message = match (code, ix) {
-            (ERR_STREAM_NOT_PAUSED, ResumeFromPausedInstruction::ResumeStream) => {
+            (ErrorCode::StreamNotPaused, ResumeFromPausedInstruction::ResumeStream) => {
                 "stream is not paused after accrual fold"
             }
-            (ERR_STREAM_NOT_PAUSED, ResumeFromPausedInstruction::TopUpStream) => {
+            (ErrorCode::StreamNotPaused, ResumeFromPausedInstruction::TopUpStream) => {
                 "stream is not paused after top-up"
             }
-            (
-                ERR_RESUME_ZERO_UNACCRUED,
-                ResumeFromPausedInstruction::ResumeStream,
-            ) => "unaccrued is zero",
-            (
-                ERR_RESUME_ZERO_UNACCRUED,
-                ResumeFromPausedInstruction::TopUpStream,
-            ) => "unaccrued is zero after top-up",
+            (ErrorCode::ResumeZeroUnaccrued, ResumeFromPausedInstruction::ResumeStream) => {
+                "unaccrued is zero"
+            }
+            (ErrorCode::ResumeZeroUnaccrued, ResumeFromPausedInstruction::TopUpStream) => {
+                "unaccrued is zero after top-up"
+            }
             _ => "resume_from_paused_at failed",
         };
-        spel_custom(code, message)
+        spel_err(code, message)
     }
 
     fn parse_clock_account(meta: &AccountWithMetadata) -> Result<Timestamp, SpelError> {
@@ -89,28 +72,26 @@ mod lez_payment_streams {
             .iter()
             .any(|id| *id == meta.account_id)
         {
-            return Err(spel_custom(
-                ERR_INVALID_CLOCK_ACCOUNT,
+            return Err(spel_err(
+                ErrorCode::InvalidClockAccount,
                 "not a system clock account",
             ));
         }
-        let parsed = ClockAccountData::from_bytes_slice(meta.account.data.as_ref()).ok_or_else(
-            || spel_custom(ERR_INVALID_CLOCK_ACCOUNT, "invalid clock account data"),
-        )?;
+        let parsed: ClockAccountData =
+            borsh::from_slice(meta.account.data.as_ref()).map_err(|_| {
+                spel_err(ErrorCode::InvalidClockAccount, "invalid clock account data")
+            })?;
         Ok(parsed.timestamp)
     }
 
-    fn stream_invariant_err(code: u32) -> SpelError {
+    fn stream_invariant_err(code: ErrorCode) -> SpelError {
         let message = match code {
-            ERR_ZERO_STREAM_RATE => "zero stream rate",
-            ERR_ZERO_STREAM_ALLOCATION => "zero stream allocation",
-            ERR_STREAM_EXCEEDS_ALLOCATION => "accrued exceeds allocation",
+            ErrorCode::ZeroStreamRate => "zero stream rate",
+            ErrorCode::ZeroStreamAllocation => "zero stream allocation",
+            ErrorCode::StreamExceedsAllocation => "accrued exceeds allocation",
             _ => "invalid stream config",
         };
-        SpelError::Custom {
-            code,
-            message: message.into(),
-        }
+        spel_err(code, message)
     }
 
     fn parse_vault_config_and_holding(
@@ -142,11 +123,11 @@ mod lez_payment_streams {
         vault_id: VaultId,
     ) -> Result<(), SpelError> {
         if vault_config_state.version != vault_holding_state.version {
-            return Err(spel_custom(ERR_VERSION_MISMATCH, "version mismatch"));
+            return Err(spel_err(ErrorCode::VersionMismatch, "version mismatch"));
         }
 
         if vault_config_state.vault_id != vault_id {
-            return Err(spel_custom(ERR_VAULT_ID_MISMATCH, "incorrect vault id"));
+            return Err(spel_err(ErrorCode::VaultIdMismatch, "incorrect vault id"));
         }
 
         Ok(())
@@ -157,7 +138,7 @@ mod lez_payment_streams {
         owner_account_id: AccountId,
     ) -> Result<(), SpelError> {
         if vault_config_state.owner != owner_account_id {
-            return Err(spel_custom(ERR_VAULT_OWNER_MISMATCH, "owner mismatch"));
+            return Err(spel_err(ErrorCode::VaultOwnerMismatch, "owner mismatch"));
         }
 
         Ok(())
@@ -181,26 +162,26 @@ mod lez_payment_streams {
         stream_id: StreamId,
     ) -> Result<(), SpelError> {
         if stream_config.version != vault_config_state.version {
-            return Err(spel_custom(
-                ERR_VERSION_MISMATCH,
+            return Err(spel_err(
+                ErrorCode::VersionMismatch,
                 "stream version does not match vault config",
             ));
         }
         if stream_config.version != vault_holding_state.version {
-            return Err(spel_custom(
-                ERR_VERSION_MISMATCH,
+            return Err(spel_err(
+                ErrorCode::VersionMismatch,
                 "stream version does not match vault holding",
             ));
         }
         if stream_id >= vault_config_state.next_stream_id {
-            return Err(spel_custom(
-                ERR_STREAM_ID_MISMATCH,
+            return Err(spel_err(
+                ErrorCode::StreamIdMismatch,
                 "stream does not exist for this vault",
             ));
         }
         if stream_config.stream_id != stream_id {
-            return Err(spel_custom(
-                ERR_STREAM_ID_MISMATCH,
+            return Err(spel_err(
+                ErrorCode::StreamIdMismatch,
                 "stream id does not match account",
             ));
         }
@@ -361,7 +342,7 @@ mod lez_payment_streams {
         authenticated_transfer_program_id: ProgramId,
     ) -> SpelResult {
         if amount == 0 {
-            return Err(spel_custom(ERR_ZERO_DEPOSIT_AMOUNT, "zero deposit amount"));
+            return Err(spel_err(ErrorCode::ZeroDepositAmount, "zero deposit amount"));
         }
 
         let (vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
@@ -407,7 +388,7 @@ mod lez_payment_streams {
         amount: Balance,
     ) -> SpelResult {
         if amount == 0 {
-            return Err(spel_custom(ERR_ZERO_WITHDRAW_AMOUNT, "zero withdraw amount"));
+            return Err(spel_err(ErrorCode::ZeroWithdrawAmount, "zero withdraw amount"));
         }
 
         let (vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
@@ -425,8 +406,8 @@ mod lez_payment_streams {
         let unallocated = vault_holding.account.balance
             .saturating_sub(vault_config_state.total_allocated);
         if amount > unallocated {
-            return Err(spel_custom(
-                ERR_INSUFFICIENT_FUNDS,
+            return Err(spel_err(
+                ErrorCode::InsufficientFunds,
                 "withdraw exceeds unallocated vault balance",
             ));
         }
@@ -437,11 +418,11 @@ mod lez_payment_streams {
         let recipient_was_default = withdraw_to.account == Account::default();
 
         vault_holding.account.balance = vault_holding.account.balance.checked_sub(amount).ok_or_else(|| {
-            spel_custom(ERR_INSUFFICIENT_FUNDS, "vault holding balance underflow")
+            spel_err(ErrorCode::InsufficientFunds, "vault holding balance underflow")
         })?;
 
         withdraw_to.account.balance = withdraw_to.account.balance.checked_add(amount).ok_or_else(|| {
-            spel_custom(ERR_ARITHMETIC_OVERFLOW, "recipient balance overflow")
+            spel_err(ErrorCode::ArithmeticOverflow, "recipient balance overflow")
         })?;
 
         let withdraw_to_claim = if recipient_was_default {
@@ -490,10 +471,10 @@ mod lez_payment_streams {
         allocation: Balance,
     ) -> SpelResult {
         if rate == 0 {
-            return Err(spel_custom(ERR_ZERO_STREAM_RATE, "zero stream rate"));
+            return Err(spel_err(ErrorCode::ZeroStreamRate, "zero stream rate"));
         }
         if allocation == 0 {
-            return Err(spel_custom(ERR_ZERO_STREAM_ALLOCATION, "zero stream allocation"));
+            return Err(spel_err(ErrorCode::ZeroStreamAllocation, "zero stream allocation"));
         }
 
         let (mut vault_config_state, vault_holding_state) = parse_vault_config_and_holding(
@@ -509,8 +490,8 @@ mod lez_payment_streams {
         )?;
 
         if stream_id != vault_config_state.next_stream_id {
-            return Err(spel_custom(
-                ERR_STREAM_ID_MISMATCH,
+            return Err(spel_err(
+                ErrorCode::StreamIdMismatch,
                 "stream id does not match vault next_stream_id",
             ));
         }
@@ -520,7 +501,7 @@ mod lez_payment_streams {
             vault_config_state.total_allocated,
             allocation,
         )
-        .map_err(|code| spel_custom(code, "vault total_allocated increase failed"))?;
+        .map_err(|e| spel_err(e, "vault total_allocated increase failed"))?;
 
         let accrued_as_of = parse_clock_account(&clock_account)?;
 
@@ -535,7 +516,7 @@ mod lez_payment_streams {
 
         let next_stream_id = stream_id
             .checked_add(1)
-            .ok_or_else(|| spel_custom(ERR_NEXT_STREAM_ID_OVERFLOW, "next_stream_id overflow"))?;
+            .ok_or_else(|| spel_err(ErrorCode::NextStreamIdOverflow, "next_stream_id overflow"))?;
 
         vault_config_state.next_stream_id = next_stream_id;
         vault_config_state.total_allocated = next_vault_total_allocated;
@@ -578,7 +559,7 @@ mod lez_payment_streams {
 
         stream_config_state = stream_config_state
             .at_time(now)
-            .map_err(|code| spel_custom(code, "at_time failed"))?;
+            .map_err(|e| spel_err(e, "at_time failed"))?;
 
         let vault_config_account = vault_config.account;
         let mut stream_account = stream_config.account;
@@ -619,11 +600,11 @@ mod lez_payment_streams {
 
         stream_config_state = stream_config_state
             .at_time(now)
-            .map_err(|code| spel_custom(code, "at_time failed"))?;
+            .map_err(|e| spel_err(e, "at_time failed"))?;
 
         if stream_config_state.state != StreamState::Active {
-            return Err(spel_custom(
-                ERR_STREAM_NOT_ACTIVE,
+            return Err(spel_err(
+                ErrorCode::StreamNotActive,
                 "stream is not active after accrual fold",
             ));
         }
@@ -669,11 +650,11 @@ mod lez_payment_streams {
 
         stream_config_state = stream_config_state
             .at_time(now)
-            .map_err(|code| spel_custom(code, "at_time failed"))?;
+            .map_err(|e| spel_err(e, "at_time failed"))?;
 
         stream_config_state = stream_config_state
             .resume_from_paused_at(now)
-            .map_err(|code| spel_resume_from_paused_at_err(code, ResumeFromPausedInstruction::ResumeStream))?;
+            .map_err(|e| spel_resume_from_paused_at_err(e, ResumeFromPausedInstruction::ResumeStream))?;
 
         let vault_config_account = vault_config.account;
         let mut stream_account = stream_config.account;
@@ -715,14 +696,14 @@ mod lez_payment_streams {
 
         stream_config_state = stream_config_state
             .at_time(now)
-            .map_err(|code| spel_custom(code, "at_time failed"))?;
+            .map_err(|e| spel_err(e, "at_time failed"))?;
 
         if stream_config_state.state == StreamState::Closed {
-            return Err(spel_custom(ERR_STREAM_CLOSED, "stream is closed"));
+            return Err(spel_err(ErrorCode::StreamClosed, "stream is closed"));
         }
 
         if vault_total_allocated_increase == 0 {
-            return Err(spel_custom(ERR_ZERO_TOP_UP_AMOUNT, "zero top-up amount"));
+            return Err(spel_err(ErrorCode::ZeroTopUpAmount, "zero top-up amount"));
         }
 
         let next_vault_total_allocated = checked_total_allocated_after_add(
@@ -730,19 +711,19 @@ mod lez_payment_streams {
             vault_config_state.total_allocated,
             vault_total_allocated_increase,
         )
-        .map_err(|code| spel_custom(code, "vault total_allocated increase failed"))?;
+        .map_err(|e| spel_err(e, "vault total_allocated increase failed"))?;
 
         stream_config_state.allocation = stream_config_state
             .allocation
             .checked_add(vault_total_allocated_increase)
-            .ok_or_else(|| spel_custom(ERR_ARITHMETIC_OVERFLOW, "stream allocation overflow"))?;
+            .ok_or_else(|| spel_err(ErrorCode::ArithmeticOverflow, "stream allocation overflow"))?;
 
         vault_config_state.total_allocated = next_vault_total_allocated;
 
         if stream_config_state.state == StreamState::Paused {
             stream_config_state = stream_config_state
                 .resume_from_paused_at(now)
-                .map_err(|code| spel_resume_from_paused_at_err(code, ResumeFromPausedInstruction::TopUpStream))?;
+                .map_err(|e| spel_resume_from_paused_at_err(e, ResumeFromPausedInstruction::TopUpStream))?;
         }
 
         let mut vault_config_account = vault_config.account;
@@ -789,12 +770,12 @@ mod lez_payment_streams {
 
         let authority_id = authority.account_id;
         if authority_id != vault_config_state.owner && authority_id != stream_config_state.provider {
-            return Err(spel_custom(ERR_CLOSE_UNAUTHORIZED, "not vault owner or stream provider"));
+            return Err(spel_err(ErrorCode::CloseUnauthorized, "not vault owner or stream provider"));
         }
 
         let (next_vault_total_allocated, stream_after_close) = stream_config_state
             .close_at_time(now, vault_config_state.total_allocated)
-            .map_err(|code| spel_custom(code, "close_at_time failed"))?;
+            .map_err(|e| spel_err(e, "close_at_time failed"))?;
 
         vault_config_state.total_allocated = next_vault_total_allocated;
 
@@ -838,12 +819,12 @@ mod lez_payment_streams {
             )?;
 
         if provider.account_id != stream_config_state.provider {
-            return Err(spel_custom(ERR_CLAIM_UNAUTHORIZED, "not stream provider"));
+            return Err(spel_err(ErrorCode::ClaimUnauthorized, "not stream provider"));
         }
 
         let (next_vault_total_allocated, payout, stream_after_claim) = stream_config_state
             .claim_at_time(now, vault_config_state.total_allocated)
-            .map_err(|code| spel_custom(code, "claim_at_time failed"))?;
+            .map_err(|e| spel_err(e, "claim_at_time failed"))?;
 
         vault_config_state.total_allocated = next_vault_total_allocated;
 
@@ -853,11 +834,11 @@ mod lez_payment_streams {
         let mut provider = provider;
 
         vault_holding.account.balance = vault_holding.account.balance.checked_sub(payout).ok_or_else(|| {
-            spel_custom(ERR_INSUFFICIENT_FUNDS, "vault holding balance underflow")
+            spel_err(ErrorCode::InsufficientFunds, "vault holding balance underflow")
         })?;
 
         provider.account.balance = provider.account.balance.checked_add(payout).ok_or_else(|| {
-            spel_custom(ERR_ARITHMETIC_OVERFLOW, "provider balance overflow")
+            spel_err(ErrorCode::ArithmeticOverflow, "provider balance overflow")
         })?;
 
         vault_config.account.data = vault_config_state.to_bytes().try_into().unwrap();
