@@ -611,22 +611,113 @@ Do not change:
 - `StreamConfig::at_time` or any other core fold logic.
 - Any other instruction handler or its test file.
 
-### 10. Reviewer-facing writeup
+### 10. Documentation pass
 
-Replace or reshape `design.md`
-into a reviewer-oriented document.
-Suggested structure:
+No separate reviewer guide document.
+Distribute documentation across three artifacts:
+the spec's on-chain Implementation Considerations section (step 11),
+`README.md`,
+and code comments.
+Retire `design.md` once its content is redistributed;
+drop pure implementation history ("in step X we did Y")
+and preserve only what describes the system as it stands.
 
-1. Component map (core, guest, methods glue).
-2. Account model and PDA derivation, inline table.
-3. Wire layouts per account (byte offsets), including the system clock.
-4. Authorization matrix, instruction by signer.
-5. Invariants and balance conservation.
-6. Accrual semantics and depletion instant.
-7. Error code table with call sites.
-8. Testing guide (how to run, fixtures, seeds).
-9. Divergences from the RFC,
-   pointing to the step 10 proposal list.
+#### README
+
+- Code map: which crate and file owns which concern
+  (guest binary, core lib, test harness, examples).
+- How to run tests:
+  command, `RISC0_DEV_MODE` flag,
+  when to rebuild the guest ELF and the command to do so.
+- Platform pins: LEZ tag, SPEL revision.
+- Test fixture hierarchy:
+  `VaultFixture` → `DepositedVaultFixture` → `DepositedVaultWithProviderFixture`.
+- PP coverage table: instruction × tier,
+  which combinations are tested and which are not and why.
+- Clock helpers: `force_clock_account_monotonic` for happy-path tests,
+  `_unchecked` for time-regression tests.
+
+#### Code comments
+
+Apply at the locations listed below.
+Do not add comments that restate what well-named identifiers already express.
+
+- `asset_tag = b"native"` reserves a path for future per-token vaults
+  → VaultHolding PDA derivation in the guest.
+- Why `rate × elapsed` is computed as `u128` rather than stored wide
+  → multiplication site in `at_time`.
+- Depletion instant formula (ceiling division)
+  → formula site in `at_time`.
+- What `accrued_as_of` means when depleted versus not
+  → `StreamConfig.accrued_as_of` field doc.
+- Why `accrued` is left unchanged on resume
+  but `accrued_as_of` is reset to `now`
+  (wall time while paused must not accrue later)
+  → `resume_from_paused_at`.
+- Two clock-loading paths and when each applies
+  (`load_vault_stream_and_clock` vs `_with_explicit_owner`)
+  → those function definitions.
+- `block_id` validated structurally but not used for stream math
+  → `parse_clock_account`.
+- Unknown clock payload extensions treated as parse failures
+  → `parse_clock_account`.
+- Owner as explicit non-signer account in `CloseStream` and `Claim`
+  (structural binding; defense in depth alongside PDA)
+  → those handler entry points.
+- `AutoClaim` for default-owned withdraw recipient
+  (PP circuit requirement for modified-but-not-claimed accounts)
+  → `withdraw` handler.
+- Deposit PP layout constraint:
+  three-account layout has no slot for a visibility-2 change output,
+  so a PP deposit from a private balance is not covered end-to-end
+  → `deposit` handler or top of `shielded_execution.rs`.
+- PP stream operations with private (npk-derived) owner require
+  `#[account(mut, signer)]` so the circuit can re-commit
+  the owner's private note after authorization;
+  read-only `#[account(signer)]` causes the owner note to be consumed
+  without replacement
+  → note in `shielded_execution.rs`
+  alongside the PP coverage table comment.
+
+#### Spec on-chain section
+
+The spec's Implementation Considerations section
+is the primary home for implementation-level design decisions.
+This work is owned by step 11;
+step 10 only catalogues what needs to move there from `design.md`.
+
+Material to promote (fills current spec placeholders):
+
+- PDA seeds for all three account types,
+  with rationale for non-obvious choices
+  (provider in data not seeds;
+  `stream_id` from counter not client;
+  `asset_tag` reserves future token path).
+- Field types with rationale
+  (`Balance = u128`, `Timestamp / rate = u64`,
+  widening in accrual math).
+- Full authorization matrix (all nine instructions × required signer).
+- Why `CloseStream` and `Claim` pass owner as an explicit non-signing account.
+- Balance accounting definitions and invariants
+  (`unallocated`, `unaccrued`, `allocation` as current commitment,
+  two solvency invariants, how `total_allocated` stays in sync).
+- Time source: system clock accounts, 16-byte layout, allowlist validation,
+  granularity tradeoffs, off-chain fold pattern.
+- Accrual semantics: lazy fold, `at_time`-then-operate pattern,
+  time regression as error, depletion auto-pause.
+- Privacy tier: `VaultPrivacyTier` values and immutability,
+  what `PseudonymousFunder` does and does not guarantee,
+  where enforcement lives (host/wallet, not guest),
+  PP limitations (deposit layout constraint,
+  PP stream operations require owner `mut` for re-commitment).
+- Validation rules: zero-amount guards, version matching, `vault_id` defense in depth.
+- Double-close behavior (errors, not idempotent)
+  and `CloseStream` / `Claim` authorization specifics
+  (fills current spec placeholders).
+
+Do not duplicate the state machine diagram or lifecycle narrative
+already in the abstract protocol section of the spec;
+reference it and note only implementation divergences.
 
 ### 11. RFC proposal, promotion, and polish
 
