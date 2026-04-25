@@ -91,39 +91,92 @@ The LEZ privacy-preserving circuit requires that default-owned accounts which ch
 
 For `withdraw`, when the payout recipient’s pre-state is `Account::default()`, the guest now returns that row with `AutoClaim::Claimed(Claim::Authorized)` via `SpelOutput::execute_with_claims` so PP execution matches NSSA’s stricter path while public withdrawals to existing default genesis accounts remain unchanged in observable balances.
 
-### Deposit and PP (not covered end-to-end)
+### Deposit and PP (step 10 Phase 2)
 
-`deposit` lists only three top-level accounts (vault config, vault holding, owner) and chains `authenticated_transfer_program` internally.
-There is no extra account slot to attach a visibility-`2` row for NSSA’s non-empty commitment or nullifier rule without changing the instruction surface or protocol, so step 5 does not add a full PP `deposit` transition test.
-A future design could add an explicit shielding leg or extend the account list if product requirements demand deposit through the PP circuit.
+`deposit` chains to `authenticated_transfer_program` internally.
+Step 10 Phase 2 covers the full PP deposit path via `ProgramWithDependencies`: both the payment-streams guest and `authenticated_transfer_program` are loaded; `execute_and_prove` proves the entire chain in a single PP proof.
 
-For [`VaultPrivacyTier::PseudonymousFunder`] vaults, tests also treat public `Deposit` as disallowed at the harness (see `test_helpers::transition_public_payment_streams_tx_respecting_privacy_tier`).
-PP `withdraw` coverage for that tier uses `transfer_native_balance_for_tests` to move native balance into `VaultHolding` without a public `Deposit` transaction, so the ladder can still reach a funded PP `withdraw` while exercising the same guest rules as the public-path `withdraw` test.
+The owner’s private account must have `program_owner = authenticated_transfer_program.id()`.
+`validate_execution` blocks balance decreases on accounts not owned by the executing program; for the deposit flow, auth_transfer decreases the owner’s balance, so the owner account must be auth_transfer-owned.
+Fund the private owner via a PP auth_transfer call (not a PP payment_streams `withdraw`, which sets `program_owner = payment_streams.id()` and causes the PP deposit to fail).
 
-### PP `create_stream` with PDA stream accounts
+The deposit amount remains publicly visible: `vault_holding` is a public PDA and its balance change appears in `public_post_states`.
 
-The privacy-preserving circuit ties private visibility rows to nullifier-derived identities.
-`CreateStream` initializes the stream PDA with a fixed seed-derived [`AccountId`], which does not match an `npk`-only private row in the current NSSA layout, so this repository does not ship an `execute_and_prove` `create_stream` case yet.
-Step 6 adds harness policy tests that refuse public `create_stream` when the vault is marked [`VaultPrivacyTier::PseudonymousFunder`] (or after patching the stored tier), plus a PP `withdraw` path on such vaults.
+For [`VaultPrivacyTier::PseudonymousFunder`] vaults, public `Deposit` is refused at the harness (see `test_helpers::transition_public_payment_streams_tx_respecting_privacy_tier`).
+Phase 3 ladders fund the vault under test via `transfer_native_balance_for_tests`; the owner’s private commitment is funded via PP payment_streams `withdraw` from a separate vault, which correctly produces a payment_streams-owned commitment, sufficient for Phase 3 where the owner’s balance never decreases.
+
+### PP `create_stream` with PDA stream accounts (step 10 Phase 3)
+
+`CreateStream` initializes the stream with a seed-derived PDA.
+That PDA appears as a vis-0 (public) row in the PP circuit alongside the vault PDAs and clock.
+The private row at vis-1 is the vault owner.
+Step 10 Phase 3 ships `test_pp_create_stream_private_owner_succeeds`; the earlier concern (that a fixed-seed PDA cannot match an npk-only private row) only applied to the private-row case, not to mixed-visibility where the PDA is vis-0 public.
 
 ### PP test harness
 
 The PP plumbing is centralised behind a short set of module-private helpers in `program_tests/shielded_execution.rs` so that tier-specific PP cases share the same proof and transition path.
 
+Fixture builders:
 - `vault_fixture_public_tier_funded_via_deposit()` — builds a [`VaultFixture`] on a [`VaultPrivacyTier::Public`] vault funded via a public `Deposit`.
-- `vault_fixture_pseudonymous_funder_funded_via_native_transfer()` — builds a [`VaultFixture`] on a [`VaultPrivacyTier::PseudonymousFunder`] vault funded via `transfer_native_balance_for_tests`, because public `Deposit` is refused for that tier at the harness.
-- `run_pp_withdraw_to_private_recipient(fx, amount, block)` — takes a funded [`VaultFixture`], builds a PP `withdraw` call with a single visibility-`2` private recipient (shared `npk`/`vsk` material at module scope), runs `execute_and_prove`, assembles the [`PrivacyPreservingTransaction`], and applies `transition_from_privacy_preserving_transaction`. Returns the transaction and the caller's `SharedSecretKey` for post-hoc ciphertext asserts.
+- `vault_fixture_pseudonymous_funder_funded_via_native_transfer()` — builds a [`VaultFixture`] on a [`VaultPrivacyTier::PseudonymousFunder`] vault funded via `transfer_native_balance_for_tests`.
+- `fund_private_account_via_pp_withdraw(fx, npk, vpk, epk_scalar, amount, block) -> PpWithdrawReceipt` — runs a PP `withdraw` on an existing funded vault to create or refresh a private commitment for `npk`. Generalised from the original `run_pp_withdraw_to_private_recipient`.
+- `run_pp_withdraw_to_private_recipient(fx, amount, block)` — thin wrapper around `fund_private_account_via_pp_withdraw` using the shared RECIPIENT key material.
+- `pp_owner_setup() -> PpOwnerSetup` — Phase 3 shared fixture: creates vault_A (Public tier, funded via deposit), PP-withdraws to the owner's private account from vault_A (block 3), force-inserts vault_B (PseudonymousFunder, balance 400) with the owner's npk-derived AccountId, sets clock to Phase 3 start timestamp at block 4.
 
-PP coverage (instruction × tier):
+Force-insert pattern for pause, resume, and top_up tests: use `patch_vault_config` to update `next_stream_id` and `total_allocated` to reflect the pre-inserted stream, then write the `StreamConfig` account directly. This avoids running PP `create_stream` as a prerequisite for every test and keeps tests independent.
 
-| Instruction | `Public` | `PseudonymousFunder` | Notes |
+### Step 10 decision log
+
+#### Phase 1: vis-1 signer mechanics
+
+Hypothesis confirmed: no guest code changes are required.
+`try_from_circuit_output(public_ids, [], [], output)` succeeds with an empty public-nonce slice and an empty private-recipient slice when the only private signer is vis-1.
+`#[account(signer)]` versus `#[account(mut, signer)]` does not affect output inclusion or circuit re-commitment.
+
+Tests added: `test_pp_claim_private_provider_succeeds` (provider at vis-1) and `test_pp_close_stream_private_provider_authority_succeeds` (same private provider closes as authority).
+
+#### Phase 2: PP deposit via ProgramWithDependencies
+
+PP deposit is covered end-to-end in `test_pp_deposit_private_owner_succeeds`.
+The caller loads `authenticated_transfer_program` as a dependency; `execute_and_prove` proves the entire chain (auth_transfer balance decrease + payment_streams deposit) in one PP proof.
+The owner's private commitment must be auth_transfer-owned: `validate_execution` blocks balance decreases on accounts not owned by the executing program, and for the deposit flow that program is `authenticated_transfer_program`, not `payment_streams`.
+The deposit amount is publicly visible from the vault_holding balance change.
+
+#### Phase 3: owner-signer instructions
+
+Private owner (vis-1) is the signing authority for `create_stream`, `pause_stream`, `resume_stream`, `top_up_stream`, and the private-owner variant of `withdraw`.
+Stream PDAs and vault PDAs are vis-0 (public) in all Phase 3 tests.
+
+`output_index` semantics: the PP circuit assigns `output_index` starting at 0 and incrementing for each private account slot (vis-1 or vis-2) in account order.
+Decryption must use the matching `output_index`; a mismatch causes `DataTooBigError`.
+In `test_pp_withdraw_private_owner_succeeds` (mask `[0, 0, 1, 2]`), the owner (first private slot) uses `output_index = 0` and the recipient (second private slot) uses `output_index = 1`.
+
+For Phase 3, the owner's commitment can be payment_streams-owned (funded via PP payment_streams `withdraw`); the auth_transfer-ownership requirement only applies to Phase 2 PP deposit where auth_transfer must decrease the owner's balance.
+
+Tests added: `test_pp_create_stream_private_owner_succeeds`, `test_pp_pause_stream_private_owner_succeeds`, `test_pp_resume_stream_private_owner_succeeds`, `test_pp_top_up_stream_private_owner_succeeds`, `test_pp_withdraw_private_owner_succeeds`.
+
+#### Phase 4: PP initialize_vault
+
+Same two-vault ladder as Phase 3: fund the owner's private commitment from vault_A via PP withdraw, then call PP `initialize_vault` for vault_B with that owner at vis-1.
+vault_config and vault_holding start as `Account::default()` (vis-0, not yet in state); the PP circuit creates them as public init accounts.
+The owner's balance is not debited (only signs); the commitment is refreshed with balance unchanged.
+
+Test: `test_pp_initialize_vault_private_owner_succeeds` — mask `[0, 0, 1]`; fund EPK `PP4_FUND_EPK_SCALAR`, init EPK `PP4_INIT_EPK_SCALAR`.
+
+PP coverage (instruction × private role):
+
+| Instruction | Coverage | Test(s) | Notes |
 | --- | --- | --- | --- |
-| `withdraw` | covered | covered | `test_withdraw_private_recipient_pp_transition_succeeds`, `test_pp_withdraw_private_recipient_pseudonymous_funded_vault_succeeds` |
-| `deposit` | not covered end-to-end | refused at harness | three-account layout has no private slot for NSSA's non-empty commitment / nullifier rule (see *Deposit and PP*); PseudonymousFunder also refuses it via `transition_public_payment_streams_tx_respecting_privacy_tier` |
-| `create_stream` | not shipped | not shipped | stream PDA vs `npk`-only private row mismatch (see *PP `create_stream`*) |
-| `claim`, `close_stream`, `pause_stream`, `resume_stream`, `top_up_stream` | not shipped | not shipped | can be layered on the same harness helper once a private-payout or private-owner story is fixed |
-
-Adding another PP case is a new test in the same file plus (if the call shape differs from `withdraw`) a parallel run helper — the fixture helpers and private recipient material are shared.
+| `withdraw` (private recipient) | covered | `test_withdraw_private_recipient_pp_transition_succeeds`, `test_pp_withdraw_private_recipient_pseudonymous_funded_vault_succeeds` | step 5; both `Public` and `PseudonymousFunder` tiers |
+| `withdraw` (private owner) | covered | `test_pp_withdraw_private_owner_succeeds` | Phase 3; owner vis-1, recipient vis-2, mask `[0, 0, 1, 2]` |
+| `deposit` | covered | `test_pp_deposit_private_owner_succeeds` | Phase 2; `PseudonymousFunder` refused at harness; requires auth_transfer-owned commitment |
+| `claim` | covered | `test_pp_claim_private_provider_succeeds` | Phase 1; private provider vis-1 on a `Public`-tier vault |
+| `close_stream` | covered | `test_pp_close_stream_private_provider_authority_succeeds` | Phase 1; private provider/authority vis-1 |
+| `create_stream` | covered | `test_pp_create_stream_private_owner_succeeds` | Phase 3; stream PDA vis-0, owner vis-1 |
+| `pause_stream` | covered | `test_pp_pause_stream_private_owner_succeeds` | Phase 3 |
+| `resume_stream` | covered | `test_pp_resume_stream_private_owner_succeeds` | Phase 3 |
+| `top_up_stream` | covered | `test_pp_top_up_stream_private_owner_succeeds` | Phase 3 |
+| `initialize_vault` | covered | `test_pp_initialize_vault_private_owner_succeeds` | Phase 4; vault PDAs as vis-0 init, owner vis-1 |
 
 ## Account types and relationships
 

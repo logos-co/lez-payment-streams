@@ -785,7 +785,7 @@ Tests (all on vault_B; visibility_mask `[0, 0, 0, 1, 0]` unless noted):
 All Phase 3 tests:
 `private_nsks = vec![OWNER_NSK]`, `membership_proofs = vec![None]`.
 
-#### Phase 4: PP initialize_vault (lower priority)
+#### Phase 4: PP initialize_vault
 
 Owner must have a commitment before their vault exists.
 Uses the same two-step ladder
@@ -794,8 +794,7 @@ Uses the same two-step ladder
 Test: `test_pp_initialize_vault_private_owner_succeeds`
 - visibility_mask: `[0, 0, 1]`
   (vault_config and vault_holding init as visibility-0; owner visibility-1)
-- Delivers no additional instruction surface beyond Phase 3
-  but completes full PP coverage of initialization.
+- Completes full PP coverage across all instructions.
 
 #### Decision log updates in `design.md`
 
@@ -1143,14 +1142,14 @@ Concretely:
   the useful stronger posture requires
   vault and stream state to live as commitments or notes end to end,
   not as public PDAs with one obfuscated field.
-- A concrete platform gap already showed up in step 5:
-  `design.md` records that PP `create_stream` / `sync_stream`
-  do not ship today because
-  stream PDAs use a fixed seed-derived `AccountId`
-  that does not match an npk-only private row in the current NSSA layout.
-  The same mismatch is the prerequisite for commitment-native vaults,
-  so shifting the account model now
-  would run ahead of the platform rather than against a ready surface.
+- Step 10 Phase 3 ships PP `create_stream` with the stream PDA as a vis-0 public row,
+  confirming that fixed-seed PDAs work in mixed-visibility PP calls.
+  That path is not blocked by PDA identity;
+  the remaining gap is that `VaultConfig.owner` is stored as plaintext
+  in the public `vault_config` row, so hiding the owner still requires
+  commitment-native vault state, not just PP execution.
+  That is the prerequisite for commitment-native vaults,
+  and it runs ahead of the current platform surface.
 - Surface area is large.
   A commitment-native redesign touches the account model,
   PDA derivation, authorization check,
