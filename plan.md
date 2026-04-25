@@ -152,11 +152,12 @@ flowchart TD
     S6 --> S7[Step 7 adapter refactor and selective privacy rollout]
     S7 --> S8[Step 8 remaining refactor]
     S8 --> S9[Step 9 remove SyncStream]
-    S9 --> S10[Step 10 reviewer writeup]
-    S10 --> S11[Step 11 RFC proposal and promotion]
+    S9 --> S10[Step 10 PP vault operations]
+    S10 --> S11[Step 11 documentation pass]
+    S11 --> S12[Step 12 RFC proposal and promotion]
     S4 -. accumulates .-> S8
-    S6 -. accumulates .-> S11
-    S7 -. accumulates .-> S11
+    S6 -. accumulates .-> S12
+    S7 -. accumulates .-> S12
 ```
 
 ### 1. Non-test cleanup
@@ -611,7 +612,201 @@ Do not change:
 - `StreamConfig::at_time` or any other core fold logic.
 - Any other instruction handler or its test file.
 
-### 10. Documentation pass
+### 10. Privacy-preserving vault operations
+
+**Prerequisite: Step 5 must be complete.**
+`shielded_execution.rs`, the constants `RECIPIENT_NSK` / `RECIPIENT_VSK` / `EPK_SCALAR`,
+`run_pp_withdraw_to_private_recipient`, and the
+`execute_and_prove` / `try_from_circuit_output` / `WitnessSet::for_message` call patterns
+all come from Step 5.
+Phase 1 cannot start until that infrastructure exists.
+
+Extends PP test coverage from the current `withdraw`-only baseline to the
+full instruction set.
+No new NSSA or SPEL platform work is required.
+Changes are primarily new tests and test infrastructure,
+with one conditional guest change depending on Phase 1 findings.
+
+**Hypothesis**: no guest code changes are required.
+All signing accounts are already included in handler output vectors.
+The PP circuit applies `private_account_nonce_increment(nsk)`
+to the guest's post-state outside the guest;
+the `#[account(signer)]` vs `#[account(mut, signer)]` distinction
+does not affect output inclusion or circuit re-commitment.
+Phase 1 validates or falsifies this.
+If Phase 1 falsifies it,
+add `#[account(mut, signer)]` to the owner parameter of
+`initialize_vault`, `create_stream`, `pause_stream`, `resume_stream`,
+and `top_up_stream`,
+and to `authority` in `close_stream`,
+then continue.
+
+#### Phase 1: validate visibility-1 signer mechanics
+
+Uses the existing RECIPIENT identity (RECIPIENT_NSK / RECIPIENT_VSK),
+which already has a commitment after a PP withdraw,
+as the private provider / authority.
+No new constants or fixture helpers needed.
+
+Each test sets up its own state independently — there is no shared fixture object.
+Both tests run the same three-step ladder inline (or via an extracted helper):
+extract a `pp_claim_close_fixture(block_deposit, block_stream) -> (VaultFixture, StreamId)`
+that both tests call if the setup proves long enough to be worth factoring out.
+
+Ladder (per test):
+1. `vault_fixture_public_tier_funded_via_deposit()`
+2. PP-withdraw 50 to `recipient_npk()` — creates RECIPIENT commitment
+   (reuse `run_pp_withdraw_to_private_recipient`; this step is
+   identical to the existing `test_withdraw_private_recipient_pp_transition_succeeds` setup)
+3. Create stream (public tx): `provider = AccountId::from(&recipient_npk())`
+
+Tests:
+
+`test_pp_claim_private_provider_succeeds`
+- visibility_mask: `[0, 0, 0, 0, 1, 0]` (provider at index 4)
+- `private_nsks = vec![RECIPIENT_NSK]`, `membership_proofs = vec![None]`
+- `try_from_circuit_output(public_ids, [], [], output)`:
+  public_ids = vault_config, vault_holding, stream_config, owner, clock;
+  empty public nonces (nullifier handles replay for visibility-1);
+  empty private recipients (no visibility-2 accounts)
+- `WitnessSet::for_message(&message, proof, &[])` — no public signers
+- Asserts: vault_holding balance reduced by payout,
+  provider's new commitment decryptable to updated balance,
+  stream_config updated
+
+`test_pp_close_stream_private_provider_authority_succeeds`
+- Same ladder; RECIPIENT closes the stream as `authority`
+  (provider satisfies the authority check)
+- visibility_mask: `[0, 0, 0, 0, 1, 0]` (authority at index 4)
+- Same private_nsks / membership_proofs pattern
+- Asserts: stream state is Closed,
+  unaccrued balance returned to public owner
+
+Open question resolved in Phase 1:
+does `try_from_circuit_output(ids, [], [], output)` work
+when the only signer is visibility-1 (empty public-nonce slice)?
+
+Concrete fallback if it does not:
+set the signer account (provider / authority) as visibility-0 instead of visibility-1.
+This makes the signer's `account_id` publicly visible but keeps all other PP machinery
+(commitment generation, ciphertext, new nullifier) intact.
+Document the finding in `design.md` as a known limitation:
+"owner-signer identity is revealed in the current platform version."
+Defer full identity hiding to a platform-level fix (out of scope for this step).
+
+#### Phase 2: PP deposit
+
+The `deposit` handler already chains to `authenticated_transfer_program`,
+which owns the user's native account and is the only program
+authorized by `validate_execution` to decrease its balance.
+The PP circuit supports single chained calls:
+`execute_and_prove` proves each program in the chain sequentially
+and adds each receipt as a RISC0 assumption via `env_builder.add_assumption`.
+
+Client-side change only.
+Add a new helper to `shielded_execution.rs` alongside the existing `load_guest_program()`:
+
+```rust
+pub fn load_payment_streams_with_auth_transfer() -> ProgramWithDependencies {
+    let payment_streams = load_guest_program();
+    let auth_transfer = Program::authenticated_transfer_program();
+    ProgramWithDependencies::new(payment_streams, [(auth_transfer.id(), auth_transfer)].into())
+}
+```
+
+The PP deposit test calls this helper instead of `load_guest_program()`.
+No guest code changes.
+
+The deduplicated account set seen by the circuit is
+`[vault_config, vault_holding, owner]`
+in the order accounts first appear across both program outputs —
+the same three-account layout as the public deposit.
+
+Test: `test_pp_deposit_private_owner_succeeds`
+- Ladder: private owner funded from a separate funding vault via PP withdraw;
+  vault under test initialized with `owner_account_id = AccountId::from(&owner_npk())`
+  and funded via `transfer_native_balance_for_tests`
+- visibility_mask: `[0, 0, 1]`
+  (vault_config, vault_holding public; owner visibility-1)
+- `private_nsks = vec![OWNER_NSK]`
+- Asserts: vault_holding.balance increased by the deposit amount;
+  owner's new commitment decryptable to reduced balance
+- Note in test: the deposit amount is publicly visible
+  from vault_holding's balance change;
+  vault_holding is a public PDA and its balance appears in public_post_states
+
+#### Phase 3: owner-signer instructions
+
+Covers `create_stream`, `pause_stream`, `resume_stream`, `top_up_stream`,
+and a PP-owner variant of `withdraw`.
+The vault owner must be a private identity whose AccountId
+is derived from a nullifier public key,
+matching the PDA seed `account("owner")`.
+
+New constants (in `shielded_execution.rs`):
+```rust
+const OWNER_NSK: NullifierSecretKey = [0x7c; 32];
+const OWNER_VSK: Scalar             = [0x8d; 32];
+const OWNER_FUND_EPK_SCALAR: Scalar = [4u8; 32];
+```
+
+New helpers:
+- Rename `run_pp_withdraw_to_private_recipient`
+  → `fund_private_account_via_pp_withdraw(fx, npk, nsk, esk, amount, block)`.
+  The two existing callers —
+  `test_withdraw_private_recipient_pp_transition_succeeds` and
+  `test_pp_withdraw_private_recipient_pseudonymous_funded_vault_succeeds` —
+  become thin wrappers that pass the RECIPIENT constants into the new form.
+  No behaviour change; just a signature generalization.
+- `vault_fixture_with_npk_derived_owner(funding_amount) → VaultFixture`:
+  creates a vault where `owner_account_id = AccountId::from(&owner_npk())`;
+  calls `initialize_vault` in a public tx
+  (the private owner is a valid public signer for this one step);
+  funds via `transfer_native_balance_for_tests`,
+  `PseudonymousFunder` tier.
+
+Shared ladder:
+1. `vault_fixture_public_tier_funded_via_deposit()` as vault_A (funding vault)
+2. `fund_private_account_via_pp_withdraw(&mut fx_A, owner_npk(), ..., 50, block)`
+   → creates OWNER commitment in state
+3. `vault_fixture_with_npk_derived_owner(400)` as vault_B
+
+Tests (all on vault_B; visibility_mask `[0, 0, 0, 1, 0]` unless noted):
+- `test_pp_create_stream_private_owner_succeeds`
+  (owner at index 3, clock at index 4 public)
+- `test_pp_pause_stream_private_owner_succeeds`
+- `test_pp_resume_stream_private_owner_succeeds`
+- `test_pp_top_up_stream_private_owner_succeeds`
+- `test_pp_withdraw_private_owner_succeeds`:
+  owner visibility-1 (spending from private balance),
+  recipient visibility-2;
+  visibility_mask `[0, 0, 1, 2]`
+
+All Phase 3 tests:
+`private_nsks = vec![OWNER_NSK]`, `membership_proofs = vec![None]`.
+
+#### Phase 4: PP initialize_vault (lower priority)
+
+Owner must have a commitment before their vault exists.
+Uses the same two-step ladder
+(fund private owner from vault_A, then PP-initialize vault_B).
+
+Test: `test_pp_initialize_vault_private_owner_succeeds`
+- visibility_mask: `[0, 0, 1]`
+  (vault_config and vault_holding init as visibility-0; owner visibility-1)
+- Delivers no additional instruction surface beyond Phase 3
+  but completes full PP coverage of initialization.
+
+#### Decision log updates in `design.md`
+
+- Update PP coverage table after each phase.
+- Record that Option B (PP deposit via ChainedCall) is implemented,
+  deposit amount remains visible,
+  and `ProgramWithDependencies` is the mechanism.
+- Record Phase 1 finding on visibility-1 signer mechanics
+  and whether the guest annotation hypothesis held.
+
+### 11. Documentation pass
 
 No separate reviewer guide document.
 Distribute documentation across three artifacts:
@@ -667,17 +862,10 @@ Do not add comments that restate what well-named identifiers already express.
 - `AutoClaim` for default-owned withdraw recipient
   (PP circuit requirement for modified-but-not-claimed accounts)
   → `withdraw` handler.
-- Deposit PP layout constraint:
-  three-account layout has no slot for a visibility-2 change output,
-  so a PP deposit from a private balance is not covered end-to-end
-  → `deposit` handler or top of `shielded_execution.rs`.
-- PP stream operations with private (npk-derived) owner require
-  `#[account(mut, signer)]` so the circuit can re-commit
-  the owner's private note after authorization;
-  read-only `#[account(signer)]` causes the owner note to be consumed
-  without replacement
-  → note in `shielded_execution.rs`
-  alongside the PP coverage table comment.
+- PP deposit uses `ProgramWithDependencies` with `authenticated_transfer_program`
+  as the chained dependency;
+  the deposit amount is publicly visible because vault_holding is a public PDA
+  → `deposit` handler and `shielded_execution.rs`.
 
 #### Spec on-chain section
 
@@ -708,8 +896,8 @@ Material to promote (fills current spec placeholders):
 - Privacy tier: `VaultPrivacyTier` values and immutability,
   what `PseudonymousFunder` does and does not guarantee,
   where enforcement lives (host/wallet, not guest),
-  PP limitations (deposit layout constraint,
-  PP stream operations require owner `mut` for re-commitment).
+  PP limitations (deposit amount visible;
+  vault_holding is a public PDA so balance changes are on-chain).
 - Validation rules: zero-amount guards, version matching, `vault_id` defense in depth.
 - Double-close behavior (errors, not idempotent)
   and `CloseStream` / `Claim` authorization specifics
@@ -719,9 +907,9 @@ Do not duplicate the state machine diagram or lifecycle narrative
 already in the abstract protocol section of the spec;
 reference it and note only implementation divergences.
 
-### 11. RFC proposal, promotion, and polish
+### 12. RFC proposal, promotion, and polish
 
-Consolidate the RFC-proposal list accumulated in steps 2 through 10,
+Consolidate the RFC-proposal list accumulated in steps 2 through 11,
 apply it in one batch to
 `rfc-index/docs/ift-ts/raw/payment-streams.md`,
 and finalize the document.
@@ -763,7 +951,7 @@ Known seeds:
   `at_time(now)` locally — no write transaction required.
   Remove any draft RFC text that described or proposed `SyncStream`.
 
-Additional seeds from steps 6 and 7:
+Additional seeds from steps 6, 7, and 10:
 
 - explicit `privacy_tier` (`Public`, `PseudonymousFunder`) and immutability for life
 - user-facing privacy contract:
@@ -973,7 +1161,7 @@ Concretely:
   and the RFC's Account Model and Privacy Considerations.
   The current layered plan
   (steps 6–7 add the tier and policy,
-  steps 10–12 promote to the RFC)
+  steps 11–12 promote to the RFC)
   depends on those pieces being stable.
 
 The tradeoff therefore favors shipping the pseudonymous tier now
