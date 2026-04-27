@@ -68,6 +68,8 @@ mod lez_payment_streams {
     }
 
     fn parse_clock_account(meta: &AccountWithMetadata) -> Result<Timestamp, SpelError> {
+        // Allowlist check against the three system clock account ids.
+        // Any other account id (including a client-supplied fake) is rejected.
         if !CLOCK_PROGRAM_ACCOUNT_IDS
             .iter()
             .any(|id| *id == meta.account_id)
@@ -77,6 +79,8 @@ mod lez_payment_streams {
                 "not a system clock account",
             ));
         }
+        // `block_id` is validated structurally as part of the Borsh parse but is not used for
+        // stream math. Unknown or future clock payload extensions fail here intentionally.
         let parsed: ClockAccountData =
             borsh::from_slice(meta.account.data.as_ref()).map_err(|_| {
                 spel_err(ErrorCode::InvalidClockAccount, "invalid clock account data")
@@ -190,6 +194,9 @@ mod lez_payment_streams {
             .map_err(stream_invariant_err)
     }
 
+    /// Load and validate vault, stream, and clock for instructions where the **vault owner is
+    /// the transaction signer** (pause, resume, top-up).
+    /// The `owner_account_id` parameter is the account id of the signing owner account.
     fn load_vault_stream_and_clock(
         vault_config: &AccountWithMetadata,
         vault_holding: &AccountWithMetadata,
@@ -231,6 +238,11 @@ mod lez_payment_streams {
         Ok((vault_config_state, vault_holding_state, stream_config_state, now))
     }
 
+    /// Load and validate vault, stream, and clock for instructions where the **owner is an
+    /// explicit non-signing account** and the actual signer is a different authority (close)
+    /// or the stream provider (claim).
+    /// `owner_account_id` is still checked against `VaultConfig.owner` as defense in depth
+    /// alongside the PDA binding; the owner account does not need to sign.
     fn load_vault_stream_and_clock_with_explicit_owner(
         vault_config: &AccountWithMetadata,
         vault_holding: &AccountWithMetadata,
@@ -302,6 +314,8 @@ mod lez_payment_streams {
     pub fn initialize_vault(
         #[account(init, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
         vault_config: AccountWithMetadata,
+        // The "native" seed reserves a path for future per-token vaults: changing this literal
+        // to a token mint id will produce a distinct address without altering other seeds.
         #[account(init, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
         vault_holding: AccountWithMetadata,
         #[account(signer)]
@@ -357,6 +371,13 @@ mod lez_payment_streams {
             owner.account_id,
         )?;
 
+        // The native balance decrease on the owner's account is executed by
+        // `authenticated_transfer_program`, not by this guest, because `validate_execution`
+        // only allows a program to decrease balances on accounts it owns.
+        // For PP deposit the caller must load this program as a `ProgramWithDependencies`
+        // dependency so the PP circuit can prove the full chained call in one proof.
+        // Consequently the deposit amount is always publicly visible: `vault_holding` is a
+        // public PDA and its balance change appears in the public post-states.
         let instruction_data = serialize_transfer_amount(amount)?;
         let transfer_call = ChainedCall {
             program_id: authenticated_transfer_program_id,
@@ -425,6 +446,11 @@ mod lez_payment_streams {
             spel_err(ErrorCode::ArithmeticOverflow, "recipient balance overflow")
         })?;
 
+        // The PP circuit requires that any account modified during execution carries an ownership
+        // claim if it was default-owned (Account::default()) in pre-state.  A default-owned
+        // recipient is a new private commitment; claiming it here lets the circuit set
+        // `program_owner` correctly before its "modified but not claimed" invariant check.
+        // Public withdrawals to existing accounts are unaffected: `AutoClaim::None` is a no-op.
         let withdraw_to_claim = if recipient_was_default {
             AutoClaim::Claimed(Claim::Authorized)
         } else {
@@ -708,6 +734,10 @@ mod lez_payment_streams {
         vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
         stream_config: AccountWithMetadata,
+        // `owner` is an explicit non-signing account: either the vault owner or the stream
+        // provider may be `authority`, so we cannot require the owner to sign.
+        // The owner id is still verified against `VaultConfig.owner` in `load_vault_stream_and_clock_with_explicit_owner`
+        // as defense in depth alongside the PDA seed binding.
         #[account(mut)]
         owner: AccountWithMetadata,
         #[account(signer)]
@@ -758,6 +788,9 @@ mod lez_payment_streams {
         vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
         stream_config: AccountWithMetadata,
+        // `owner` is an explicit non-signing account: the provider signs, not the vault owner.
+        // The owner id is verified against `VaultConfig.owner` for defense in depth alongside
+        // the PDA seed binding (same pattern as `close_stream`).
         #[account(mut)]
         owner: AccountWithMetadata,
         #[account(mut, signer)]

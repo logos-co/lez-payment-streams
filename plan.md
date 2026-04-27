@@ -5,10 +5,13 @@ for payment streams,
 as defined in
 `rfc-index/docs/ift-ts/raw/payment-streams.md`.
 
-Implementation decisions are tracked in
-`lez-payment-streams/design.md`.
-RFC promotion is deferred
-until decisions are stable.
+Implementation decisions were tracked in
+`lez-payment-streams/design.md`, which was retired in step 11.
+Its content was redistributed to:
+`lez-payment-streams/README.md` (code map, test commands, fixture hierarchy, PP coverage),
+`rfc-index/docs/ift-ts/raw/payment-streams.md` Implementation Considerations (PDA derivation,
+account types, balance accounting, time source, authorization, privacy tier, PP execution model),
+and targeted code comments in guest and core source files.
 
 ## Scope
 
@@ -23,7 +26,7 @@ and tests.
 ## References
 
 - `rfc-index/docs/ift-ts/raw/payment-streams.md` — protocol semantics.
-- `lez-payment-streams/design.md` — implementation decision log.
+- `lez-payment-streams/README.md` — code map, test commands, fixture hierarchy, PP coverage (design.md retired in step 11; content redistributed here and to the RFC).
 - logos-execution-zone PR 403 `https://github.com/logos-blockchain/logos-execution-zone/pull/403` — system clock accounts.
 - `spel/` — SPEL framework and macros.
 - SPEL PR 126 `https://github.com/logos-co/spel/pull/126` — unified `SpelOutput::execute()` (auto-claim from account attributes); deprecates `states_only` / `with_chained_calls`.
@@ -31,13 +34,9 @@ and tests.
 
 ## Plan Execution Policy
 
-Before editing the active implementation step,
-record or update relevant implementation decisions in
-`lez-payment-streams/design.md`.
-Only the active step should receive concrete amendments.
-Promote decisions to
-`rfc-index/docs/ift-ts/raw/payment-streams.md`
-in explicit batches.
+Steps 1–11 are complete.
+For step 12 and beyond, promote decisions directly to
+`rfc-index/docs/ift-ts/raw/payment-streams.md`.
 Multi-token support is a future extension.
 
 ## Testing Approach
@@ -816,6 +815,11 @@ Retire `design.md` once its content is redistributed;
 drop pure implementation history ("in step X we did Y")
 and preserve only what describes the system as it stands.
 
+Note: `design.md`'s PP section grew substantially in step 10 (Phase 1–4 decision log,
+`output_index` semantics, auth_transfer ownership constraint, force-insert test pattern,
+full coverage table).
+The redistribution below accounts for this; do not underestimate the scope.
+
 #### README
 
 - Code map: which crate and file owns which concern
@@ -826,8 +830,12 @@ and preserve only what describes the system as it stands.
 - Platform pins: LEZ tag, SPEL revision.
 - Test fixture hierarchy:
   `VaultFixture` → `DepositedVaultFixture` → `DepositedVaultWithProviderFixture`.
-- PP coverage table: instruction × tier,
-  which combinations are tested and which are not and why.
+- PP coverage table: instruction × private role (owner vis-1, provider vis-1, recipient vis-2);
+  all instructions covered end-to-end after step 10.
+- PP test harness: `fund_private_account_via_pp_withdraw` and `pp_owner_setup` for private-owner
+  ladders; force-insert pattern (`patch_vault_config` + direct account write) for stream setup in
+  pause / resume / top-up tests; `load_payment_streams_with_auth_transfer` for chained-program
+  (deposit) tests.
 - Clock helpers: `force_clock_account_monotonic` for happy-path tests,
   `_unchecked` for time-regression tests.
 
@@ -865,6 +873,9 @@ Do not add comments that restate what well-named identifiers already express.
   as the chained dependency;
   the deposit amount is publicly visible because vault_holding is a public PDA
   → `deposit` handler and `shielded_execution.rs`.
+- `output_index` starts at 0 and increments for each private account slot (vis-1 or vis-2)
+  in account order; decryption must pass the matching index or it fails with `DataTooBigError`
+  → PP decryption call sites in `shielded_execution.rs`.
 
 #### Spec on-chain section
 
@@ -897,6 +908,13 @@ Material to promote (fills current spec placeholders):
   where enforcement lives (host/wallet, not guest),
   PP limitations (deposit amount visible;
   vault_holding is a public PDA so balance changes are on-chain).
+- PP execution model specifics (from step 10 decision log):
+  mixed-visibility pattern (public PDAs + at least one private slot);
+  `ProgramWithDependencies` for chained-program PP calls (deposit uses auth_transfer);
+  owner commitment must be auth_transfer-owned for PP deposit
+  (`validate_execution` blocks balance decreases on accounts not owned by the executing program);
+  seed-derived PDAs work as vis-0 public rows in mixed-visibility PP calls
+  (`create_stream`, `initialize_vault` confirmed in Phases 3–4).
 - Validation rules: zero-amount guards, version matching, `vault_id` defense in depth.
 - Double-close behavior (errors, not idempotent)
   and `CloseStream` / `Claim` authorization specifics

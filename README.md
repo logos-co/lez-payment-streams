@@ -1,64 +1,60 @@
 # lez-payment-streams
 
 LEZ implementation of payment streams.
-A SPEL program built with
-[spel-framework](https://github.com/logos-co/spel).
+A SPEL program built with [spel-framework](https://github.com/logos-co/spel).
+Protocol semantics are defined in
+`rfc-index/docs/ift-ts/raw/payment-streams.md`.
 
-## Prerequisites
+## Platform Pins
 
-- Rust + [risc0 toolchain](https://dev.risczero.com/api/zkvm/install)
-- [LSSA wallet CLI](https://github.com/logos-blockchain/lssa)
-  (`wallet` binary, integration only)
-- A running sequencer (integration only)
+| Component | Pin |
+|---|---|
+| LEZ / NSSA | `logos-execution-zone` git tag `v0.2.0-rc1` |
+| SPEL | git rev `3457c7431e9b5b88661ed87b53677511ef88d113` |
 
-## Local testing without wallet or sequencer
+## Code Map
 
-Use these commands for local development only.
-They do not require `wallet` or a sequencer.
+| Path | Concern |
+|---|---|
+| `methods/guest/src/bin/lez_payment_streams.rs` | Guest program: `#[lez_program]` module, `#[instruction]` handlers, account attributes |
+| `lez_payment_streams_core/src/` | Shared types and pure logic: `VaultConfig`, `VaultHolding`, `StreamConfig`, `Instruction`, error codes, accrual math |
+| `lez_payment_streams_core/src/program_tests/` | In-process `V03State` tests, one module per instruction plus `common` helpers and `shielded_execution` |
+| `lez_payment_streams_core/src/test_helpers.rs` | Test harness helpers: keypairs, state setup, guest deployment, transaction builders |
+| `examples/src/bin/` | IDL generator and CLI wrapper |
+
+For the rationale behind these choices and a suggested reading order, see [architecture.md](architecture.md).
+
+## Running Tests
 
 ```bash
-# Rebuild guest ELF after guest or shared-type changes
-cargo risczero build --manifest-path methods/guest/Cargo.toml
+# Fast local loop (no ZK proof generation)
+RISC0_DEV_MODE=1 cargo test -p lez_payment_streams_core --lib
 
-# Run local library tests in core crate
+# Narrower filter when not touching other unit tests
 RISC0_DEV_MODE=1 cargo test -p lez_payment_streams_core --lib program_tests
 ```
 
-`cargo risczero build` rebuilds the guest binary.
-`cargo test ... program_tests` runs only matching local library tests.
-Deploy and transaction submission still require `wallet`
-and a sequencer.
-
-## Quick Start
-
-This section assumes integration setup
-with both `wallet` and a running sequencer.
-For local-only checks, use the commands above.
+After any change to the guest binary or to types shared with the guest,
+rebuild the guest ELF before relying on test results:
 
 ```bash
-# Build guest and IDL
-make build
-make idl
-
-# Deploy (integration)
-make deploy
-
-# Show CLI help
-make cli ARGS="--help"
-
-# Run an instruction
-make cli ARGS="-p methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin \\
-  <command> --arg1 value1 --arg2 value2"
-
-# Dry run (no submission)
-make cli ARGS="--dry-run -p methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin \\
-  <command> --arg1 value1"
+cargo build -p lez_payment_streams-methods
+# or equivalently
+cargo risczero build --manifest-path methods/guest/Cargo.toml
 ```
+
+## Prerequisites (Integration Only)
+
+- Rust + [risc0 toolchain](https://dev.risczero.com/api/zkvm/install)
+- [LSSA wallet CLI](https://github.com/logos-blockchain/lssa) (`wallet` binary)
+- A running sequencer
+
+Local `cargo test` does not require a wallet or sequencer.
 
 ## Make Targets
 
 | Target | Description |
-|--------|-------------|
+|---|---|
 | `make build` | Build the guest binary (risc0) |
 | `make idl` | Generate IDL JSON from program source |
 | `make cli ARGS="..."` | Run the IDL-driven CLI |
@@ -68,39 +64,25 @@ make cli ARGS="--dry-run -p methods/guest/target/riscv32im-risc0-zkvm-elf/docker
 | `make status` | Show saved state and binary info |
 | `make clean` | Remove saved state |
 
-## Project Structure
+## Quick Start (Integration)
 
+```bash
+# Build guest and IDL
+make build
+make idl
+
+# Deploy
+make deploy
+
+# Show CLI help
+make cli ARGS="--help"
 ```
-lez-payment-streams/
-├── lez_payment_streams_core/    # Shared types (used by guest + host)
-│   └── src/lib.rs
-├── methods/
-│   └── guest/            # RISC Zero guest program (runs on-chain)
-│       └── src/bin/lez_payment_streams.rs
-├── examples/             # CLI tools
-│   └── src/bin/
-│       ├── generate_idl.rs    # One-liner IDL generator
-│       └── lez_payment_streams_cli.rs # Three-line CLI wrapper
-├── Makefile
-└── lez-payment-streams-idl.json       # Auto-generated IDL
-```
-
-## How It Works
-
-The `#[lez_program]` macro in your guest binary defines your on-chain program.
-The framework automatically:
-
-1. **Generates an `Instruction` enum** from your function signatures
-2. **Generates an IDL** (Interface Description Language) describing your program
-3. **Provides a full CLI** for building, inspecting, and submitting transactions
-
-You write the program logic. The framework handles the rest.
 
 # License
 
 Licensed under either of:
 
-- MIT License – see [LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT
-- Apache License 2.0 – see [LICENSE-APACHE-v2](LICENSE-APACHE-v2) or http://www.apache.org/licenses/LICENSE-2.0
+- MIT License – see [LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT
+- Apache License 2.0 – see [LICENSE-APACHE-v2](LICENSE-APACHE-v2) or http://www.apache.org/licenses/LICENSE-2.0
 
 at your option.

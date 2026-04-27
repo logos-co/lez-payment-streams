@@ -42,7 +42,10 @@ pub struct StreamConfig {
     pub allocation: Balance,
     pub accrued: Balance,
     pub state: StreamState,
-    /// Latest chain time folded into `accrued` (can lag the observation time `t`).
+    /// Latest chain time folded into `accrued`.
+    /// When not depleted: equals `t` after the most recent `at_time` call.
+    /// When depleted: equals the depletion instant `⌈unaccrued/rate⌉` seconds after the prior
+    /// snapshot, which may be before `t` when the stream exhausted mid-interval.
     pub accrued_as_of: Timestamp,
 }
 
@@ -176,9 +179,9 @@ impl StreamConfig {
         let base_accrued = self.accrued;
         let rate = self.rate;
 
-        // Tokens accrued by chain time `t`: `base_accrued + rate * (t - base_as_of)` with
-        // saturating add, then capped at `allocation` ("saturated" = capped at the ceiling).
-        // Here `t > base_as_of`, so the elapsed interval is positive.
+        // `rate * elapsed` is computed as u128 because for high rates and long intervals
+        // the product can exceed u64::MAX even though neither operand does.
+        // Widening stays local here; stored fields remain u64/u128 as defined.
         let elapsed_seconds = t - base_as_of;
         let accrued_over_elapsed_seconds =
             u128::from(rate).saturating_mul(u128::from(elapsed_seconds));
@@ -190,10 +193,11 @@ impl StreamConfig {
         stream_after_accrual.accrued = new_accrued;
 
         if stream_after_accrual.unaccrued() == (0 as Balance) {
-            // Stream is depleted, transition to Paused.
             stream_after_accrual.state = StreamState::Paused;
-            // Unaccrued at interval start (`accrued_as_of`), before folding elapsed time into accrued.
             let unaccrued_before_interval = self.unaccrued();
+            // Ceiling division: the stream depleted partway through the last second.
+            // Rounding up places `accrued_as_of` at the first second when `accrued == allocation`,
+            // which is the earliest time a fold from `base_as_of` could reach depletion.
             let time_to_depletion = div_ceil_u128(unaccrued_before_interval, rate)
                 .ok_or(ErrorCode::ArithmeticOverflow)?;
             let depleted_at = base_as_of
@@ -231,7 +235,8 @@ impl StreamConfig {
     ///
     /// Set [`StreamConfig::accrued_as_of`] to `now`
     /// so the next [`StreamConfig::at_time`] counts from the resume point.
-    /// Leave [`StreamConfig::accrued`] unchanged.
+    /// Leave [`StreamConfig::accrued`] unchanged: wall time spent in the paused state
+    /// must not retroactively accrue on the next fold.
     ///
     /// Emit [`ErrorCode::StreamNotPaused`] unless state is [`StreamState::Paused`].
     /// Emit [`ErrorCode::ResumeZeroUnaccrued`] when [`StreamConfig::unaccrued`] is zero.

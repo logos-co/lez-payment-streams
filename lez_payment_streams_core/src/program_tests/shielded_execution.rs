@@ -599,6 +599,8 @@ fn owner_vpk() -> ViewingPublicKey {
     ViewingPublicKey::from_scalar(OWNER_VSK)
 }
 
+// `deposit` chains to `authenticated_transfer_program`; the PP proof must cover both programs,
+// so the owner's private commitment must be auth_transfer-owned (not payment-streams-owned).
 fn load_payment_streams_with_auth_transfer() -> ProgramWithDependencies {
     let payment_streams = load_guest_program();
     let auth_transfer = Program::authenticated_transfer_program();
@@ -1425,7 +1427,11 @@ fn test_pp_withdraw_private_owner_succeeds() {
     .expect("decrypt owner post-state after withdraw");
     assert_eq!(owner_decrypted.balance, PP3_OWNER_FUND_AMOUNT);
 
-    // Recipient receives PP3_WITHDRAW_AMOUNT (output_index=1: second private account)
+    // `output_index` is assigned by the PP circuit starting at 0 and incrementing for each
+    // private account slot (vis-1 or vis-2) in account order.
+    // Owner is the first private slot (vis-1, mask index 2) → output_index=0.
+    // Recipient is the second private slot (vis-2, mask index 3) → output_index=1.
+    // Passing the wrong index causes `DataTooBigError` at decryption time.
     let recipient_decrypted = EncryptionScheme::decrypt(
         &tx.message().encrypted_private_post_states[1].ciphertext,
         &recipient_shared_secret,
