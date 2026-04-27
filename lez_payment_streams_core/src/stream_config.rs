@@ -2,6 +2,7 @@
 
 use core::mem::size_of;
 
+use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 
 use nssa_core::account::{AccountId, Balance};
@@ -10,9 +11,10 @@ use crate::error_codes::ErrorCode;
 use crate::vault::checked_total_allocated_after_release;
 use crate::{StreamId, Timestamp, TokensPerSecond, VersionId, DEFAULT_VERSION};
 
-/// Stream lifecycle. One byte on the wire (ordinal), Borsh-style.
+/// Stream lifecycle. One byte on the wire (ordinal).
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
+#[borsh(use_discriminant = true)]
 pub enum StreamState {
     Active = 0,
     Paused = 1,
@@ -31,7 +33,8 @@ impl StreamState {
 }
 
 /// Stream PDA account body. Vault comes from PDA seeds (`vault_config_pda`), not from this struct.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[spel_framework_macros::account_type]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 pub struct StreamConfig {
     pub version: VersionId,
     /// Match the `stream_id` seed in the stream PDA derivation.

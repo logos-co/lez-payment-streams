@@ -10,7 +10,7 @@ Protocol semantics are defined in
 | Component | Pin |
 |---|---|
 | LEZ / NSSA | `logos-execution-zone` git tag `v0.2.0-rc1` |
-| SPEL | git rev `3457c7431e9b5b88661ed87b53677511ef88d113` |
+| SPEL | git rev `82204ab5c4e4f3a94003211dbf6dcca7f4cfa38d` |
 
 ## Code Map
 

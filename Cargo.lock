@@ -2905,7 +2905,6 @@ version = "0.1.0"
 dependencies = [
  "lez_payment_streams_core",
  "nssa_core",
- "serde_json",
  "spel",
  "spel-framework",
  "tokio",
@@ -2930,7 +2929,8 @@ dependencies = [
  "nssa_core",
  "serde",
  "sha2",
- "spel-framework-core",
+ "spel-framework-core 0.2.0 (git+https://github.com/logos-co/spel.git?rev=82204ab5c4e4f3a94003211dbf6dcca7f4cfa38d)",
+ "spel-framework-macros 0.2.0 (git+https://github.com/logos-co/spel.git?rev=82204ab5c4e4f3a94003211dbf6dcca7f4cfa38d)",
 ]
 
 [[package]]
@@ -5379,7 +5379,7 @@ dependencies = [
  "sequencer_service_rpc",
  "serde",
  "serde_json",
- "spel-framework-core",
+ "spel-framework-core 0.2.0 (git+https://github.com/logos-co/spel.git?rev=3457c7431e9b5b88661ed87b53677511ef88d113)",
  "tokio",
  "toml",
  "wallet",
@@ -5392,14 +5392,28 @@ source = "git+https://github.com/logos-co/spel.git?rev=3457c7431e9b5b88661ed87b5
 dependencies = [
  "borsh",
  "nssa_core",
- "spel-framework-core",
- "spel-framework-macros",
+ "spel-framework-core 0.2.0 (git+https://github.com/logos-co/spel.git?rev=3457c7431e9b5b88661ed87b53677511ef88d113)",
+ "spel-framework-macros 0.2.0 (git+https://github.com/logos-co/spel.git?rev=3457c7431e9b5b88661ed87b53677511ef88d113)",
 ]
 
 [[package]]
 name = "spel-framework-core"
 version = "0.2.0"
 source = "git+https://github.com/logos-co/spel.git?rev=3457c7431e9b5b88661ed87b53677511ef88d113#3457c7431e9b5b88661ed87b53677511ef88d113"
+dependencies = [
+ "borsh",
+ "nssa_core",
+ "serde",
+ "serde_json",
+ "sha2",
+ "syn 2.0.117",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "spel-framework-core"
+version = "0.2.0"
+source = "git+https://github.com/logos-co/spel.git?rev=82204ab5c4e4f3a94003211dbf6dcca7f4cfa38d#82204ab5c4e4f3a94003211dbf6dcca7f4cfa38d"
 dependencies = [
  "borsh",
  "nssa_core",
@@ -5418,6 +5432,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "sha2",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "spel-framework-macros"
+version = "0.2.0"
+source = "git+https://github.com/logos-co/spel.git?rev=82204ab5c4e4f3a94003211dbf6dcca7f4cfa38d#82204ab5c4e4f3a94003211dbf6dcca7f4cfa38d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "serde_json",
+ "sha2",
+ "spel-framework-core 0.2.0 (git+https://github.com/logos-co/spel.git?rev=82204ab5c4e4f3a94003211dbf6dcca7f4cfa38d)",
  "syn 2.0.117",
 ]
 

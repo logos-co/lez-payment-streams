@@ -2,6 +2,7 @@
 
 use core::mem::size_of;
 
+use borsh::{BorshDeserialize, BorshSerialize};
 use serde::de::Error as DeError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -12,7 +13,8 @@ use crate::{StreamId, VaultId, VersionId};
 
 /// Product or harness policy hint stored on [`VaultConfig`].
 /// The guest treats this as informational when choosing public versus PP execution.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
+#[borsh(use_discriminant = true)]
 #[repr(u8)]
 pub enum VaultPrivacyTier {
     Public = 0,
@@ -41,7 +43,7 @@ impl Serialize for VaultPrivacyTier {
 
 impl<'de> Deserialize<'de> for VaultPrivacyTier {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let b = u8::deserialize(deserializer)?;
+        let b = <u8 as Deserialize>::deserialize(deserializer)?;
         Self::from_wire_byte(b).ok_or_else(|| DeError::custom("unknown vault privacy tier"))
     }
 }
@@ -100,7 +102,8 @@ pub fn checked_total_allocated_after_release(
         .ok_or(ErrorCode::TotalAllocatedUnderflow)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[spel_framework_macros::account_type]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 pub struct VaultConfig {
     pub version: VersionId,
     pub owner: AccountId,
@@ -187,7 +190,8 @@ impl VaultConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[spel_framework_macros::account_type]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 pub struct VaultHolding {
     pub version: VersionId,
 }
