@@ -1217,3 +1217,114 @@ Apply alongside the steps above, not as a dedicated phase.
 - Future token extension path is out of scope.
 - Protocol extensions
   auto-pause, delivery receipts, activation fee, auto-claim.
+
+## Potential Future Refactoring: Merge PP Tests into Per-Instruction Files
+
+Currently all PP tests live in `shielded_execution.rs`.
+That file is large and grows with each new PP test.
+This section describes a potential refactoring to co-locate each PP test
+with its corresponding transparent tests.
+
+### Goal
+
+Move each PP test into the same file as the transparent tests for the same instruction.
+`shielded_execution.rs` would be deleted.
+A new `pp_common.rs` module would hold shared PP infrastructure.
+
+### Motivation
+
+A reviewer reading `withdraw.rs` would see both public-mode and PP-mode tests for `withdraw`
+in one place, making the full behavior of an instruction easier to survey.
+The reason two test modes exist per instruction is not duplication:
+public tests verify the instruction logic,
+PP tests verify that the same instruction functions correctly when accounts are private.
+
+### Proposed Structure
+
+#### `pp_common.rs` (new module)
+
+Holds everything shared across multiple instruction PP tests:
+
+- `pub use` re-exports of nssa/nssa_core PP types
+  (`execute_and_prove`, `ProgramWithDependencies`, `Message`, `WitnessSet`,
+  `PrivacyPreservingTransaction`, `Program`, `V03State`,
+  `Account`, `AccountId`, `AccountWithMetadata`,
+  `Commitment`, `EncryptionScheme`, `EphemeralPublicKey`, `Scalar`, `ViewingPublicKey`,
+  `MembershipProof`, `NullifierPublicKey`, `NullifierSecretKey`, `SharedSecretKey`, `BlockId`).
+- Shared identity constants and key-derivation functions:
+  `RECIPIENT_NSK`, `RECIPIENT_VSK`, `EPK_SCALAR`, `recipient_npk()`, `recipient_vpk()`,
+  `OWNER_NSK`, `OWNER_VSK`, `owner_npk()`, `owner_vpk()`.
+- Shared helpers:
+  `account_meta()`,
+  `vault_fixture_public_tier_funded_via_deposit()`,
+  `vault_fixture_pseudonymous_funder_funded_via_native_transfer()`,
+  `fund_private_account_via_pp_withdraw()`,
+  `run_pp_withdraw_to_private_recipient()`,
+  `load_payment_streams_with_auth_transfer()`.
+- Shared type `PpWithdrawReceipt`.
+
+Note: items from `test_helpers` are `pub(crate)` and cannot be `pub use`-d from `pp_common`.
+Each instruction file must import those directly from `crate::test_helpers`.
+
+#### Per-instruction files
+
+Each file adds `use super::pp_common::*;` at the top
+and appends its PP test(s) and any instruction-local PP constants at the bottom.
+
+Local constant groups by destination:
+
+- `withdraw.rs`:
+  `test_withdraw_private_recipient_pp_transition_succeeds`,
+  `test_pp_withdraw_private_recipient_pseudonymous_funded_vault_succeeds`,
+  `test_pp_withdraw_private_owner_succeeds`
+  (Phase 3 constants: `PP3_SIGNER_EPK_SCALAR`, `PP3_RECIPIENT_NSK/VSK/EPK_SCALAR`,
+  `PP3_WITHDRAW_AMOUNT`, `PP3_OWNER_FUND_EPK_SCALAR`, `PP3_OWNER_FUND_AMOUNT`
+  and the `pp_owner_setup` helper — shared with pause/resume/top_up/create_stream).
+- `claim.rs`:
+  `test_pp_claim_private_provider_succeeds`
+  (Phase 1 constants and `PpClaimCloseSetup` / `pp_claim_close_setup` — shared with `close_stream.rs`).
+- `close_stream.rs`:
+  `test_pp_close_stream_private_provider_authority_succeeds`.
+- `deposit.rs`:
+  `test_pp_deposit_private_owner_succeeds`
+  (Phase 2 constants: `OWNER_FUND_EPK_SCALAR`, `PP_DEPOSIT_EPK_SCALAR`,
+  `PP_OWNER_FUND_AMOUNT`, `PP_DEPOSIT_AMOUNT`).
+- `create_stream.rs`:
+  `test_pp_create_stream_private_owner_succeeds`.
+- `pause_stream.rs`:
+  `test_pp_pause_stream_private_owner_succeeds`.
+- `resume_stream.rs`:
+  `test_pp_resume_stream_private_owner_succeeds`.
+- `top_up.rs`:
+  `test_pp_top_up_stream_private_owner_succeeds`.
+- `initialize.rs`:
+  `test_pp_initialize_vault_private_owner_succeeds`
+  (Phase 4 constants: `PP4_FUND_EPK_SCALAR`, `PP4_INIT_EPK_SCALAR`, `PP4_OWNER_FUND_AMOUNT`).
+
+Constants and helpers shared across pause, resume, top-up, create-stream, and withdraw
+(`PpOwnerSetup`, `pp_owner_setup`, Phase 3 constants) could either live in `pp_common.rs`
+or be defined in whichever file is read first and re-exported from there.
+The former avoids tight coupling between instruction files.
+
+#### `mod.rs`
+
+Add `mod pp_common;`.
+Remove `mod shielded_execution;` once all tests are migrated.
+Update the module-level doc comment to note that each instruction file
+contains both transparent and PP tests.
+
+### Implementation Notes
+
+- Proceed in stages, one instruction at a time.
+  After each move, run:
+  ```bash
+  RISC0_DEV_MODE=1 cargo test -p lez_payment_streams_core --lib program_tests
+  ```
+  before proceeding to the next.
+- Keep `mod shielded_execution;` in `mod.rs` until all tests are moved.
+  Delete the file only at the end.
+- Start with `initialize.rs` (Phase 4, self-contained, no shared state with other tests).
+- Move `claim.rs` and `close_stream.rs` together (they share `PpClaimCloseSetup`).
+- Move Phase 3 tests together (they share `PpOwnerSetup` and `pp_owner_setup`).
+- `architecture.md` should be updated after the migration:
+  revise the "Privacy-Preserving Tests" section to reflect the new layout.
