@@ -13,7 +13,7 @@ use crate::{
 use super::common::{
     assert_execution_failed_with_code, claim_stream_prelude_at_t1, signed_claim_stream,
     signed_close_stream, transition_ok, ClaimStreamIxAccounts, CloseStreamIxAccounts,
-    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
+    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT, TEST_PUBLIC_TX_TIMESTAMP,
 };
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_PROVIDER};
 
@@ -254,4 +254,143 @@ fn test_claim_after_close_succeeds() {
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(r, ErrorCode::ZeroClaimAmount);
+}
+
+// ---- PP tests ---- //
+
+use nssa::{
+    execute_and_prove,
+    privacy_preserving_transaction::{
+        circuit::ProgramWithDependencies,
+        message::Message,
+        witness_set::WitnessSet,
+        PrivacyPreservingTransaction,
+    },
+    program::Program,
+};
+use nssa_core::{
+    account::{AccountId, AccountWithMetadata},
+    encryption::EphemeralPublicKey,
+    Commitment, EncryptionScheme, SharedSecretKey,
+};
+use crate::test_helpers::{force_clock_account_monotonic, load_guest_program};
+use super::pp_common::{
+    account_meta, pp_claim_close_setup, PpClaimCloseSetup,
+    recipient_npk, recipient_vpk,
+    RECIPIENT_NSK, EPK_SCALAR,
+    PP_T1, PP_STREAM_ALLOCATION, PP_WITHDRAW_AMOUNT, PP_CLAIM_PAYOUT,
+};
+
+#[test]
+fn test_pp_claim_private_provider_succeeds() {
+    let PpClaimCloseSetup {
+        mut fx,
+        stream_id,
+        stream_pda,
+        provider_committed_account,
+    } = pp_claim_close_setup();
+
+    let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
+    force_clock_account_monotonic(&mut fx.state, clock_id, 2, PP_T1);
+
+    let guest_program = load_guest_program();
+    assert_eq!(guest_program.id(), fx.program_id);
+
+    let provider_npk = recipient_npk();
+    let provider_id = AccountId::from(&provider_npk);
+    let provider_commitment = Commitment::new(&provider_npk, &provider_committed_account);
+    let membership_proof = fx
+        .state
+        .get_proof_for_commitment(&provider_commitment)
+        .expect("provider commitment not found in state after PP withdraw");
+
+    let pre_states = vec![
+        account_meta(&fx.state, fx.vault_config_account_id, false),
+        account_meta(&fx.state, fx.vault_holding_account_id, false),
+        account_meta(&fx.state, stream_pda, false),
+        account_meta(&fx.state, fx.owner_account_id, false),
+        AccountWithMetadata {
+            account: provider_committed_account.clone(),
+            is_authorized: true,
+            account_id: provider_id,
+        },
+        account_meta(&fx.state, clock_id, false),
+    ];
+
+    let provider_shared_secret = SharedSecretKey::new(&EPK_SCALAR, &recipient_vpk());
+    let provider_epk = EphemeralPublicKey::from_scalar(EPK_SCALAR);
+
+    let (output, proof) = execute_and_prove(
+        pre_states,
+        Program::serialize_instruction(crate::Instruction::Claim {
+            vault_id: fx.vault_id,
+            stream_id,
+        })
+        .expect("claim instruction serializes"),
+        vec![0u8, 0, 0, 0, 1, 0],
+        vec![(provider_npk.clone(), provider_shared_secret)],
+        vec![RECIPIENT_NSK],
+        vec![Some(membership_proof)],
+        &ProgramWithDependencies::from(guest_program),
+    )
+    .expect("execute_and_prove claim");
+
+    let holding_before = fx
+        .state
+        .get_account_by_id(fx.vault_holding_account_id)
+        .balance;
+
+    let message = Message::try_from_circuit_output(
+        vec![
+            fx.vault_config_account_id,
+            fx.vault_holding_account_id,
+            stream_pda,
+            fx.owner_account_id,
+            clock_id,
+        ],
+        vec![],
+        vec![(provider_npk, recipient_vpk(), provider_epk)],
+        output,
+    )
+    .expect("try_from_circuit_output for claim");
+
+    let witness_set = WitnessSet::for_message(&message, proof, &[]);
+    let tx = PrivacyPreservingTransaction::new(message, witness_set);
+
+    fx.state
+        .transition_from_privacy_preserving_transaction(&tx, 5 as BlockId, TEST_PUBLIC_TX_TIMESTAMP)
+        .expect("claim PP transition");
+
+    assert_eq!(
+        fx.state
+            .get_account_by_id(fx.vault_holding_account_id)
+            .balance,
+        holding_before - PP_CLAIM_PAYOUT
+    );
+
+    let stream_after =
+        StreamConfig::from_bytes(&fx.state.get_account_by_id(stream_pda).data).expect("stream");
+    assert_eq!(stream_after.accrued, 0);
+    assert_eq!(stream_after.allocation, PP_STREAM_ALLOCATION - PP_CLAIM_PAYOUT);
+    assert_eq!(stream_after.state, StreamState::Active);
+
+    let vault_after =
+        VaultConfig::from_bytes(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
+            .expect("vault");
+    assert_eq!(
+        vault_after.total_allocated,
+        PP_STREAM_ALLOCATION - PP_CLAIM_PAYOUT
+    );
+
+    assert_eq!(tx.message().new_commitments.len(), 1);
+    assert_eq!(tx.message().encrypted_private_post_states.len(), 1);
+    let new_commitment = &tx.message().new_commitments[0];
+    let decrypted = EncryptionScheme::decrypt(
+        &tx.message().encrypted_private_post_states[0].ciphertext,
+        &provider_shared_secret,
+        new_commitment,
+        0,
+    )
+    .expect("decrypt provider post-state after claim");
+    assert_eq!(decrypted.balance, PP_WITHDRAW_AMOUNT + PP_CLAIM_PAYOUT);
 }

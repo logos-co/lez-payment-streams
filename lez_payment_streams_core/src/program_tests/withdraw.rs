@@ -1,9 +1,19 @@
 //! `withdraw` to third-party recipients.
 
-use nssa::program::Program;
+use nssa::{
+    execute_and_prove,
+    privacy_preserving_transaction::{
+        circuit::ProgramWithDependencies,
+        message::Message,
+        witness_set::WitnessSet,
+        PrivacyPreservingTransaction,
+    },
+    program::Program,
+};
 use nssa_core::{
-    account::{Balance, Nonce},
-    BlockId,
+    account::{Account, AccountId, AccountWithMetadata, Balance, Nonce},
+    encryption::EphemeralPublicKey,
+    BlockId, Commitment, EncryptionScheme, SharedSecretKey,
 };
 
 use crate::Instruction;
@@ -14,8 +24,9 @@ use crate::{
         force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
         patch_vault_config, state_with_initialized_vault_with_recipient,
     },
-    error_codes::ErrorCode, TokensPerSecond, VaultConfig, VaultId,
+    error_codes::ErrorCode, TokensPerSecond, VaultConfig, VaultId, VaultPrivacyTier,
 };
+use crate::test_helpers::load_guest_program;
 
 use super::common::{
     assert_execution_failed_with_code, DEFAULT_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE,
@@ -814,4 +825,188 @@ fn test_withdraw_recipient_not_present_in_state_fails() {
         result.is_err(),
         "withdraw to an account id absent from public state should fail: {result:?}"
     );
+}
+
+// ---- PP tests ---- //
+
+use super::pp_common::{
+    account_meta, owner_vpk, pp3_recipient_npk, pp3_recipient_vpk, pp_owner_setup,
+    run_pp_withdraw_to_private_recipient, vault_fixture_pseudonymous_funder_funded_via_native_transfer,
+    vault_fixture_public_tier_funded_via_deposit,
+    OWNER_NSK, PP3_OWNER_FUND_AMOUNT, PP3_RECIPIENT_EPK_SCALAR, PP3_SIGNER_EPK_SCALAR,
+    PP3_WITHDRAW_AMOUNT,
+};
+
+#[test]
+fn test_withdraw_private_recipient_pp_transition_succeeds() {
+    let withdraw_amount = 100 as Balance;
+    let block_withdraw = 3 as BlockId;
+
+    let mut fx = vault_fixture_public_tier_funded_via_deposit();
+    let holding_before = fx
+        .state
+        .get_account_by_id(fx.vault_holding_account_id)
+        .balance;
+    let owner_before = fx.state.get_account_by_id(fx.owner_account_id);
+
+    let receipt = run_pp_withdraw_to_private_recipient(&mut fx, withdraw_amount, block_withdraw);
+
+    assert_eq!(
+        fx.state
+            .get_account_by_id(fx.vault_holding_account_id)
+            .balance,
+        holding_before - withdraw_amount
+    );
+    let owner_after = fx.state.get_account_by_id(fx.owner_account_id);
+    assert_eq!(owner_after.balance, owner_before.balance);
+    let mut expected_nonce = owner_before.nonce;
+    expected_nonce.public_account_nonce_increment();
+    assert_eq!(owner_after.nonce, expected_nonce);
+
+    let cfg = VaultConfig::from_bytes(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
+        .expect("vault");
+    assert_eq!(cfg.total_allocated, 0u128);
+
+    assert_eq!(receipt.tx.message().new_commitments.len(), 1);
+    let commitment = receipt.tx.message().new_commitments[0].clone();
+    let ciphertext = &receipt.tx.message().encrypted_private_post_states[0].ciphertext;
+    let decrypted = EncryptionScheme::decrypt(ciphertext, &receipt.shared_secret, &commitment, 0)
+        .expect("decrypt private withdraw_to post-state");
+    assert_eq!(decrypted.balance, withdraw_amount);
+}
+
+#[test]
+fn test_pp_withdraw_private_recipient_pseudonymous_funded_vault_succeeds() {
+    let withdraw_amount = 100 as Balance;
+    let block_withdraw = 3 as BlockId;
+
+    let mut fx = vault_fixture_pseudonymous_funder_funded_via_native_transfer();
+    let holding_before = fx
+        .state
+        .get_account_by_id(fx.vault_holding_account_id)
+        .balance;
+    let owner_before = fx.state.get_account_by_id(fx.owner_account_id);
+
+    let _receipt = run_pp_withdraw_to_private_recipient(&mut fx, withdraw_amount, block_withdraw);
+
+    assert_eq!(
+        fx.state
+            .get_account_by_id(fx.vault_holding_account_id)
+            .balance,
+        holding_before - withdraw_amount
+    );
+    let owner_after = fx.state.get_account_by_id(fx.owner_account_id);
+    assert_eq!(owner_after.balance, owner_before.balance);
+    let mut expected_nonce = owner_before.nonce;
+    expected_nonce.public_account_nonce_increment();
+    assert_eq!(owner_after.nonce, expected_nonce);
+
+    let cfg = VaultConfig::from_bytes(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
+        .expect("vault");
+    assert_eq!(cfg.privacy_tier, VaultPrivacyTier::PseudonymousFunder);
+    assert_eq!(cfg.total_allocated, 0u128);
+}
+
+#[test]
+fn test_pp_withdraw_private_owner_succeeds() {
+    let mut setup = pp_owner_setup();
+
+    let recipient_npk_val = pp3_recipient_npk();
+    let recipient_id = AccountId::from(&recipient_npk_val);
+
+    let owner_commitment_obj = Commitment::new(&setup.owner_npk, &setup.owner_committed_account);
+    let membership_proof = setup
+        .fx
+        .state
+        .get_proof_for_commitment(&owner_commitment_obj)
+        .expect("owner commitment in state after PP withdraw");
+
+    let owner_shared_secret = SharedSecretKey::new(&PP3_SIGNER_EPK_SCALAR, &owner_vpk());
+    let owner_epk = EphemeralPublicKey::from_scalar(PP3_SIGNER_EPK_SCALAR);
+    let recipient_shared_secret =
+        SharedSecretKey::new(&PP3_RECIPIENT_EPK_SCALAR, &pp3_recipient_vpk());
+    let recipient_epk = EphemeralPublicKey::from_scalar(PP3_RECIPIENT_EPK_SCALAR);
+
+    let holding_before = setup.fx.state.get_account_by_id(setup.vault_holding_b_id).balance;
+
+    let pre_states = vec![
+        account_meta(&setup.fx.state, setup.vault_config_b_id, false),
+        account_meta(&setup.fx.state, setup.vault_holding_b_id, false),
+        AccountWithMetadata {
+            account: setup.owner_committed_account.clone(),
+            is_authorized: true,
+            account_id: AccountId::from(&setup.owner_npk),
+        },
+        AccountWithMetadata {
+            account: Account::default(),
+            is_authorized: false,
+            account_id: recipient_id,
+        },
+    ];
+
+    let (output, proof) = execute_and_prove(
+        pre_states,
+        Program::serialize_instruction(Instruction::Withdraw {
+            vault_id: setup.vault_b_id,
+            amount: PP3_WITHDRAW_AMOUNT,
+        })
+        .expect("withdraw instruction serializes"),
+        vec![0u8, 0, 1, 2],
+        vec![
+            (setup.owner_npk.clone(), owner_shared_secret),
+            (recipient_npk_val.clone(), recipient_shared_secret),
+        ],
+        vec![OWNER_NSK],
+        vec![Some(membership_proof), None],
+        &ProgramWithDependencies::from(load_guest_program()),
+    )
+    .expect("execute_and_prove: PP withdraw private owner");
+
+    let message = Message::try_from_circuit_output(
+        vec![setup.vault_config_b_id, setup.vault_holding_b_id],
+        vec![],
+        vec![
+            (setup.owner_npk.clone(), owner_vpk(), owner_epk),
+            (recipient_npk_val.clone(), pp3_recipient_vpk(), recipient_epk),
+        ],
+        output,
+    )
+    .expect("try_from_circuit_output: withdraw private owner");
+
+    let witness_set = WitnessSet::for_message(&message, proof, &[]);
+    let tx = PrivacyPreservingTransaction::new(message, witness_set);
+
+    setup
+        .fx
+        .state
+        .transition_from_privacy_preserving_transaction(&tx, 5 as BlockId, super::common::TEST_PUBLIC_TX_TIMESTAMP)
+        .expect("withdraw private owner PP transition");
+
+    assert_eq!(
+        setup.fx.state.get_account_by_id(setup.vault_holding_b_id).balance,
+        holding_before - PP3_WITHDRAW_AMOUNT
+    );
+
+    assert_eq!(tx.message().new_commitments.len(), 2);
+    assert_eq!(tx.message().encrypted_private_post_states.len(), 2);
+
+    let owner_decrypted = EncryptionScheme::decrypt(
+        &tx.message().encrypted_private_post_states[0].ciphertext,
+        &owner_shared_secret,
+        &tx.message().new_commitments[0],
+        0,
+    )
+    .expect("decrypt owner post-state after withdraw");
+    assert_eq!(owner_decrypted.balance, PP3_OWNER_FUND_AMOUNT);
+
+    // `output_index` increments for each private slot in account order:
+    // owner (vis-1, mask index 2) → 0; recipient (vis-2, mask index 3) → 1.
+    let recipient_decrypted = EncryptionScheme::decrypt(
+        &tx.message().encrypted_private_post_states[1].ciphertext,
+        &recipient_shared_secret,
+        &tx.message().new_commitments[1],
+        1,
+    )
+    .expect("decrypt recipient post-state after withdraw");
+    assert_eq!(recipient_decrypted.balance, PP3_WITHDRAW_AMOUNT);
 }

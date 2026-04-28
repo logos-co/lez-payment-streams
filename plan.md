@@ -67,12 +67,6 @@ for example
 or
 `cargo build -p lez_payment_streams-methods`.
 
-Keep Borsh guest-safe:
-on guest, avoid `#[derive(BorshSerialize, BorshDeserialize)]`—
-use manual serialization.
-Shared types are guest-relevant,
-so direct derive-based Borsh in shared code isn't expected.
-
 ## Code Placement in SPEL Repository
 
 - `methods/guest/src/bin/lez_payment_streams.rs`

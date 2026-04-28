@@ -19,7 +19,7 @@ use crate::{
 
 use super::common::{
     assert_execution_failed_with_code, state_deposited_with_clock, DEFAULT_CLOCK_INITIAL_TS,
-    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
+    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT, TEST_PUBLIC_TX_TIMESTAMP,
 };
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER};
 
@@ -582,4 +582,195 @@ fn test_deposit_vault_holding_version_mismatch_fails() {
         crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
     );
     assert_execution_failed_with_code(result, ErrorCode::VersionMismatch);
+}
+
+// ---- PP tests ---- //
+
+use nssa::{
+    execute_and_prove,
+    privacy_preserving_transaction::{
+        circuit::ProgramWithDependencies,
+        message::Message,
+        witness_set::WitnessSet,
+        PrivacyPreservingTransaction,
+    },
+};
+use nssa_core::{
+    account::{Account, AccountId, AccountWithMetadata},
+    encryption::EphemeralPublicKey,
+    Commitment, EncryptionScheme, MembershipProof, SharedSecretKey,
+};
+use crate::VaultPrivacyTier;
+use super::pp_common::{
+    account_meta, load_payment_streams_with_auth_transfer, owner_npk, owner_vpk,
+    vault_fixture_public_tier_funded_via_deposit,
+    OWNER_FUND_EPK_SCALAR, OWNER_NSK, PP_DEPOSIT_AMOUNT, PP_DEPOSIT_EPK_SCALAR,
+    PP_OWNER_FUND_AMOUNT,
+};
+
+#[test]
+fn test_pp_deposit_private_owner_succeeds() {
+    let mut fx_a = vault_fixture_public_tier_funded_via_deposit();
+
+    let owner_npk = owner_npk();
+    let owner_id = AccountId::from(&owner_npk);
+    let owner_fund_shared_secret = SharedSecretKey::new(&OWNER_FUND_EPK_SCALAR, &owner_vpk());
+    let owner_fund_epk = EphemeralPublicKey::from_scalar(OWNER_FUND_EPK_SCALAR);
+
+    let fx_a_sender_before = fx_a.state.get_account_by_id(fx_a.owner_account_id);
+
+    let auth_transfer_program = Program::authenticated_transfer_program();
+    let pre_states_fund = vec![
+        account_meta(&fx_a.state, fx_a.owner_account_id, true),
+        AccountWithMetadata {
+            account: Account::default(),
+            is_authorized: false,
+            account_id: owner_id,
+        },
+    ];
+
+    let (fund_output, fund_proof) = execute_and_prove(
+        pre_states_fund,
+        Program::serialize_instruction(PP_OWNER_FUND_AMOUNT)
+            .expect("serialize auth_transfer amount"),
+        vec![0u8, 2],
+        vec![(owner_npk.clone(), owner_fund_shared_secret)],
+        vec![],
+        vec![None::<MembershipProof>],
+        &ProgramWithDependencies::from(auth_transfer_program),
+    )
+    .expect("execute_and_prove: fund owner via PP auth_transfer");
+
+    let fund_message = Message::try_from_circuit_output(
+        vec![fx_a.owner_account_id],
+        vec![fx_a_sender_before.nonce],
+        vec![(owner_npk.clone(), owner_vpk(), owner_fund_epk)],
+        fund_output,
+    )
+    .expect("try_from_circuit_output: fund owner");
+
+    let fund_witness =
+        WitnessSet::for_message(&fund_message, fund_proof, &[&fx_a.owner_private_key]);
+    let fund_tx = PrivacyPreservingTransaction::new(fund_message, fund_witness);
+
+    fx_a.state
+        .transition_from_privacy_preserving_transaction(
+            &fund_tx,
+            3 as BlockId,
+            TEST_PUBLIC_TX_TIMESTAMP,
+        )
+        .expect("transition: fund owner via PP auth_transfer");
+
+    let owner_commitment = &fund_tx.message().new_commitments[0];
+    let owner_committed_account = EncryptionScheme::decrypt(
+        &fund_tx.message().encrypted_private_post_states[0].ciphertext,
+        &owner_fund_shared_secret,
+        owner_commitment,
+        0,
+    )
+    .expect("decrypt owner state from PP auth_transfer");
+    assert_eq!(owner_committed_account.balance, PP_OWNER_FUND_AMOUNT);
+
+    let vault_b_id = 2u64;
+    let (vault_config_b_id, vault_holding_b_id) =
+        derive_vault_pdas(fx_a.program_id, owner_id, vault_b_id);
+
+    let vault_config_b = Account {
+        program_owner: fx_a.program_id,
+        balance: 0,
+        data: Data::try_from(
+            VaultConfig::new(
+                owner_id,
+                vault_b_id,
+                None,
+                Some(VaultPrivacyTier::PseudonymousFunder),
+            )
+            .to_bytes(),
+        )
+        .expect("vault_config_b data fits"),
+        ..Account::default()
+    };
+    fx_a.state.force_insert_account(vault_config_b_id, vault_config_b);
+
+    let vault_holding_b = Account {
+        program_owner: fx_a.program_id,
+        balance: 0,
+        data: Data::try_from(VaultHolding::new(None).to_bytes())
+            .expect("vault_holding_b data fits"),
+        ..Account::default()
+    };
+    fx_a.state.force_insert_account(vault_holding_b_id, vault_holding_b);
+
+    let owner_commitment_obj = Commitment::new(&owner_npk, &owner_committed_account);
+    let membership_proof = fx_a
+        .state
+        .get_proof_for_commitment(&owner_commitment_obj)
+        .expect("owner commitment not in state after PP auth_transfer");
+
+    let deposit_shared_secret = SharedSecretKey::new(&PP_DEPOSIT_EPK_SCALAR, &owner_vpk());
+    let deposit_epk = EphemeralPublicKey::from_scalar(PP_DEPOSIT_EPK_SCALAR);
+
+    let pre_states_deposit = vec![
+        account_meta(&fx_a.state, vault_config_b_id, false),
+        account_meta(&fx_a.state, vault_holding_b_id, false),
+        AccountWithMetadata {
+            account: owner_committed_account.clone(),
+            is_authorized: true,
+            account_id: owner_id,
+        },
+    ];
+
+    let (deposit_output, deposit_proof) = execute_and_prove(
+        pre_states_deposit,
+        Program::serialize_instruction(Instruction::Deposit {
+            vault_id: vault_b_id,
+            amount: PP_DEPOSIT_AMOUNT,
+            authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+        })
+        .expect("deposit instruction serializes"),
+        vec![0u8, 0, 1],
+        vec![(owner_npk.clone(), deposit_shared_secret)],
+        vec![OWNER_NSK],
+        vec![Some(membership_proof)],
+        &load_payment_streams_with_auth_transfer(),
+    )
+    .expect("execute_and_prove: PP deposit");
+
+    let holding_b_before = fx_a.state.get_account_by_id(vault_holding_b_id).balance;
+
+    let deposit_message = Message::try_from_circuit_output(
+        vec![vault_config_b_id, vault_holding_b_id],
+        vec![],
+        vec![(owner_npk, owner_vpk(), deposit_epk)],
+        deposit_output,
+    )
+    .expect("try_from_circuit_output: deposit");
+
+    let deposit_witness = WitnessSet::for_message(&deposit_message, deposit_proof, &[]);
+    let deposit_tx = PrivacyPreservingTransaction::new(deposit_message, deposit_witness);
+
+    fx_a.state
+        .transition_from_privacy_preserving_transaction(
+            &deposit_tx,
+            4 as BlockId,
+            TEST_PUBLIC_TX_TIMESTAMP,
+        )
+        .expect("PP deposit transition");
+
+    assert_eq!(
+        fx_a.state.get_account_by_id(vault_holding_b_id).balance,
+        holding_b_before + PP_DEPOSIT_AMOUNT
+    );
+
+    assert_eq!(deposit_tx.message().new_commitments.len(), 1);
+    assert_eq!(deposit_tx.message().encrypted_private_post_states.len(), 1);
+    let new_commitment = &deposit_tx.message().new_commitments[0];
+    let decrypted = EncryptionScheme::decrypt(
+        &deposit_tx.message().encrypted_private_post_states[0].ciphertext,
+        &deposit_shared_secret,
+        new_commitment,
+        0,
+    )
+    .expect("decrypt owner post-state after deposit");
+    assert_eq!(decrypted.balance, PP_OWNER_FUND_AMOUNT - PP_DEPOSIT_AMOUNT);
 }
