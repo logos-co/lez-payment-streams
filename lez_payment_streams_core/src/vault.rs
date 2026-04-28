@@ -11,8 +11,9 @@ use nssa_core::account::{AccountId, Balance};
 use crate::error_codes::ErrorCode;
 use crate::{StreamId, VaultId, VersionId};
 
-/// Product or harness policy hint stored on [`VaultConfig`].
-/// The guest treats this as informational when choosing public versus PP execution.
+/// Execution-mode intent stored on [`VaultConfig`], immutable at creation.
+/// The guest stores this field but cannot determine execution mode at runtime;
+/// host or wallet enforces shielded-only policy for [`VaultPrivacyTier::PseudonymousFunder`] vaults.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 #[borsh(use_discriminant = true)]
 #[repr(u8)]

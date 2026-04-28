@@ -5,20 +5,13 @@ A SPEL program built with [spel-framework](https://github.com/logos-co/spel).
 Protocol semantics are defined in
 `rfc-index/docs/ift-ts/raw/payment-streams.md`.
 
-## Platform Pins
-
-| Component | Pin |
-|---|---|
-| LEZ / NSSA | `logos-execution-zone` git tag `v0.2.0-rc1` |
-| SPEL | git rev `82204ab5c4e4f3a94003211dbf6dcca7f4cfa38d` |
-
 ## Code Map
 
 | Path | Concern |
 |---|---|
 | `methods/guest/src/bin/lez_payment_streams.rs` | Guest program: `#[lez_program]` module, `#[instruction]` handlers, account attributes |
 | `lez_payment_streams_core/src/` | Shared types and pure logic: `VaultConfig`, `VaultHolding`, `StreamConfig`, `Instruction`, error codes, accrual math |
-| `lez_payment_streams_core/src/program_tests/` | In-process `V03State` tests, one module per instruction plus `common` helpers and `shielded_execution` |
+| `lez_payment_streams_core/src/program_tests/` | In-process `V03State` tests, one module per instruction plus `common.rs`, `pp_common.rs`, `invariants.rs`, `serialization.rs`, `privacy_tier_policy.rs` |
 | `lez_payment_streams_core/src/test_helpers.rs` | Test harness helpers: keypairs, state setup, guest deployment, transaction builders |
 | `examples/src/bin/` | IDL generator and CLI wrapper |
 
@@ -42,6 +35,10 @@ cargo build -p lez_payment_streams-methods
 # or equivalently
 cargo risczero build --manifest-path methods/guest/Cargo.toml
 ```
+
+`RISC0_DEV_MODE=1` skips ZK proof generation and is the standard mode for both
+local development and CI test runs.
+Full proof generation is reserved for release or dedicated proving jobs.
 
 ## Prerequisites (Integration Only)
 

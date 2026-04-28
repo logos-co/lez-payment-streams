@@ -32,7 +32,7 @@ impl StreamState {
     }
 }
 
-/// Stream PDA account body. Vault comes from PDA seeds (`vault_config_pda`), not from this struct.
+/// Stream PDA account body. Vault identity comes from the stream PDA seeds at derivation time, not from this struct.
 #[spel_framework_macros::account_type]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 pub struct StreamConfig {

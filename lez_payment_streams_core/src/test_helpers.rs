@@ -255,7 +255,6 @@ pub(crate) struct VaultFixtureWithRecipient {
     pub recipient_account_id: AccountId,
 }
 
-/// Rewrite `StreamConfig` account data in the test harness (bypasses normal transitions).
 /// Single-owner genesis with guest deployed and `initialize_vault` done.
 /// Next public tx is usually block 2, signer nonce `Nonce(1)`.
 pub(crate) fn state_with_initialized_vault(owner_balance: Balance) -> VaultFixture {

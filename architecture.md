@@ -25,7 +25,8 @@ It comes from the PDA seeds at derivation time.
 Both vault accounts are required together on every vault-touching instruction.
 Their version fields must match.
 
-The spec's "On-Chain Data Model" section lists each field and its type.
+Field types and serialization details are in the source files;
+the spec's "On-Chain Protocol" section covers the account model at a higher level.
 
 ## Codebase Layout
 
@@ -34,16 +35,25 @@ Core types and logic live under `lez_payment_streams_core/src/`:
 - `stream_config.rs` — `StreamConfig`, `StreamState`, and the `at_time` accrual method
 - `vault.rs` — `VaultConfig`, `VaultHolding`, and balance predicates
 - `error_codes.rs` — `ErrorCode` enum
+- `instruction.rs` — `Instruction` enum (wire payload for all instructions)
 - `test_helpers.rs` — fixture builders, state-construction helpers, transaction builders
+
+`lib.rs` is the shared types and pure-logic boundary.
+Keep `VaultConfig`, `VaultHolding`, `StreamConfig`, error codes, and pure helpers here.
+Guest runtime code and account I/O belong in the guest binary, not in `lib.rs`.
 
 The guest binary is `methods/guest/src/bin/lez_payment_streams.rs`.
 It contains all `#[instruction]` handlers and helper functions called by multiple handlers.
 
 Tests live in `lez_payment_streams_core/src/program_tests/`,
 one module per instruction.
-Each module contains both transparent and privacy-preserving tests for that instruction.
+Each module contains both transparent and PP tests for that instruction.
 `common.rs` holds shared test builders.
 `pp_common.rs` holds shared PP infrastructure: fixture builders, key helpers, and setup structs.
+Three additional modules cover cross-cutting concerns:
+`invariants.rs` for solvency invariant tests,
+`serialization.rs` for account layout round-trip checks,
+and `privacy_tier_policy.rs` for host-enforcement policy tests.
 
 ## Suggested Reading Order
 
@@ -113,6 +123,9 @@ that the new `(timestamp, block_id)` pair is strictly after the prior.
 `force_clock_account_unchecked` is for time-regression tests
 and for cases that reuse the same timestamp.
 
+Negative-case tests follow a `*_fails` suffix convention
+(e.g., `pause_stream_fails_when_already_paused`).
+
 ## Privacy-Preserving Tests
 
 PP tests live alongside the transparent tests in each instruction's module.
@@ -154,3 +167,27 @@ is owned by the payment-streams program.
 That ownership works for all other PP instructions but not for `deposit`.
 Tests that exercise PP `deposit` must source the owner commitment
 from an `authenticated_transfer_program`-owned context.
+
+## Future Work
+
+The items below are out of scope for the current implementation
+but are natural next steps.
+
+### Multi-Token Vaults
+
+The current implementation is single-token (platform-native balance only).
+The `VaultHolding` PDA derivation includes an `asset_tag` seed (`"native"`)
+to reserve a path for future per-token vaults without breaking the current address space.
+Adding token support requires a separate holding account per token type
+and corresponding deposit, withdraw, and claim logic for each.
+
+### Protocol Extensions
+
+The spec defines the following optional extensions, none of which are implemented:
+
+- Auto-Pause: streams automatically pause after a configurable duration,
+  limiting loss if the user goes offline.
+- Delivery Receipts: claims require user-signed receipts as proof of service delivery.
+- Automatic Claim on Closure: an optional flag that triggers a claim when a stream is closed.
+- Activation Fee: a fixed amount accrues immediately when a stream becomes active,
+  discouraging abuse of the pause/resume mechanism.
