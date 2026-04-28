@@ -11,7 +11,8 @@ Its content was redistributed to:
 `lez-payment-streams/README.md` (code map, test commands, fixture hierarchy, PP coverage),
 `rfc-index/docs/ift-ts/raw/payment-streams.md` Implementation Considerations (PDA derivation,
 account types, balance accounting, time source, authorization, privacy tier, PP execution model),
-and targeted code comments in guest and core source files.
+targeted code comments in guest and core source files,
+and `lez-payment-streams/architecture.md` (codebase orientation, test layout, reading order).
 
 ## Scope
 
@@ -801,10 +802,11 @@ Test: `test_pp_initialize_vault_private_owner_succeeds`
 ### 11. Documentation pass
 
 No separate reviewer guide document.
-Distribute documentation across three artifacts:
-the spec's on-chain Implementation Considerations section (step 11),
+Distribute documentation across four artifacts:
+the spec's on-chain Implementation Considerations section,
 `README.md`,
-and code comments.
+code comments,
+and `architecture.md`.
 Retire `design.md` once its content is redistributed;
 drop pure implementation history ("in step X we did Y")
 and preserve only what describes the system as it stands.
@@ -866,10 +868,28 @@ Do not add comments that restate what well-named identifiers already express.
 - PP deposit uses `ProgramWithDependencies` with `authenticated_transfer_program`
   as the chained dependency;
   the deposit amount is publicly visible because vault_holding is a public PDA
-  → `deposit` handler and `shielded_execution.rs`.
+  → `deposit` handler and the PP test in `deposit.rs`.
 - `output_index` starts at 0 and increments for each private account slot (vis-1 or vis-2)
   in account order; decryption must pass the matching index or it fails with `DataTooBigError`
-  → PP decryption call sites in `shielded_execution.rs`.
+  → PP decryption call sites in per-instruction test files.
+
+#### architecture.md
+
+`architecture.md` orients a developer reading or reviewing the codebase:
+structural choices, reading order, and test layout.
+Design rationale lives in the spec; operational setup lives in the README.
+
+Sections to cover:
+
+- Codebase Layout: per-instruction modules each contain both transparent and PP tests;
+  `pp_common.rs` holds shared PP infrastructure (fixture builders, key helpers, setup structs).
+- Suggested Reading Order: PP tests are co-located with transparent tests in each instruction module;
+  `pp_common.rs` provides the shared PP infrastructure referenced across modules.
+- Privacy-Preserving Tests: contents of `pp_common.rs`
+  (fixture builders, key helpers, `PpClaimCloseSetup`, `PpOwnerSetup`, and their builders);
+  `pp_owner_setup` builds the shared state for owner-private tests
+  by funding the owner via a PP withdraw from vault A
+  and force-inserting a pre-funded vault B holding account.
 
 #### Spec on-chain section
 

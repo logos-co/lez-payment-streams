@@ -41,8 +41,9 @@ It contains all `#[instruction]` handlers and helper functions called by multipl
 
 Tests live in `lez_payment_streams_core/src/program_tests/`,
 one module per instruction.
+Each module contains both transparent and privacy-preserving tests for that instruction.
 `common.rs` holds shared test builders.
-`shielded_execution.rs` holds privacy-preserving tests for all instructions.
+`pp_common.rs` holds shared PP infrastructure: fixture builders, key helpers, and setup structs.
 
 ## Suggested Reading Order
 
@@ -61,10 +62,11 @@ Then read the guest binary top to bottom.
 The file opens with the shared parsing helpers,
 then the instruction handlers in declaration order.
 
-For tests, read the individual-instruction modules first,
-then `shielded_execution.rs`.
-The PP tests build on the same fixture helpers as the plain tests,
+For tests, read the individual-instruction modules.
+Each module's transparent tests come first, followed by its PP tests.
+The PP tests build on the same fixture helpers as the transparent tests,
 with PP-specific setup steps layered on top.
+`pp_common.rs` provides the shared PP infrastructure referenced across modules.
 
 ## Two Clock-Loading Paths
 
@@ -113,13 +115,20 @@ and for cases that reuse the same timestamp.
 
 ## Privacy-Preserving Tests
 
-PP tests live in `shielded_execution.rs`.
+PP tests live alongside the transparent tests in each instruction's module.
 Every instruction has at least one PP test.
 All PP test names contain `pp`.
 
+Shared PP infrastructure lives in `pp_common.rs`:
+fixture builders (`vault_fixture_public_tier_funded_via_deposit`,
+`vault_fixture_pseudonymous_funder_funded_via_native_transfer`),
+the `fund_private_account_via_pp_withdraw` helper,
+key constants and derivation functions for recipient and owner identities,
+and setup structs (`PpClaimCloseSetup`, `PpOwnerSetup`) with their builders.
+
 The `pp_owner_setup` helper builds the shared starting state for owner-private tests:
 a Public-tier vault is funded and PP-withdrawn to establish the owner's private commitment,
-and a PseudonymousFunder vault is funded via `transfer_native_balance_for_tests`.
+and a PseudonymousFunder vault (vault B) is force-inserted with a pre-funded holding account.
 
 ## output_index and Multi-Slot Decryption
 
