@@ -121,13 +121,13 @@ fn test_create_stream_succeeds() {
     );
 
     let vault_config =
-        VaultConfig::from_bytes(&v.state.get_account_by_id(v.vault_config_account_id).data)
+        borsh::from_slice::<VaultConfig>(&v.state.get_account_by_id(v.vault_config_account_id).data)
             .expect("vault config");
     assert_eq!(vault_config.next_stream_id, 1);
     assert_eq!(vault_config.total_allocated, allocation);
 
     let stream_data = v.state.get_account_by_id(stream_pda).data.clone();
-    let stream_cfg = StreamConfig::from_bytes(&stream_data).expect("stream config");
+    let stream_cfg = borsh::from_slice::<StreamConfig>(&stream_data).expect("stream config");
     assert_eq!(stream_cfg.version, DEFAULT_VERSION);
     assert_eq!(stream_cfg.stream_id, stream_id);
     assert_eq!(stream_cfg.provider, provider_account_id);
@@ -649,7 +649,7 @@ fn test_create_stream_allocation_equals_unallocated_succeeds() {
         "create_stream at exact unallocated failed: {:?}",
         result
     );
-    let vc = VaultConfig::from_bytes(
+    let vc = borsh::from_slice::<VaultConfig>(
         &dep.vault
             .state
             .get_account_by_id(dep.vault.vault_config_account_id)
@@ -732,7 +732,7 @@ fn test_create_stream_second_stream_succeeds() {
     );
     assert!(result.is_ok(), "second create_stream failed: {:?}", result);
 
-    let vc = VaultConfig::from_bytes(
+    let vc = borsh::from_slice::<VaultConfig>(
         &dep.vault
             .state
             .get_account_by_id(dep.vault.vault_config_account_id)
@@ -742,7 +742,7 @@ fn test_create_stream_second_stream_succeeds() {
     assert_eq!(vc.next_stream_id, 2);
     assert_eq!(vc.total_allocated, expected_total_allocated);
 
-    let s1 = StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream1).data)
+    let s1 = borsh::from_slice::<StreamConfig>(&dep.vault.state.get_account_by_id(stream1).data)
         .expect("stream 1");
     assert_eq!(s1.stream_id, 1);
     assert_eq!(s1.provider, provider_b);
@@ -765,7 +765,7 @@ fn test_create_stream_next_stream_id_overflow_fails() {
         clock_initial_ts,
     );
 
-    let mut vc = VaultConfig::from_bytes(
+    let mut vc = borsh::from_slice::<VaultConfig>(
         &dep.vault
             .state
             .get_account_by_id(dep.vault.vault_config_account_id)
@@ -780,7 +780,7 @@ fn test_create_stream_next_stream_id_overflow_fails() {
         .get_account_by_id(dep.vault.vault_config_account_id)
         .clone();
     config_account.data =
-        Data::try_from(vc.to_bytes()).expect("vault config payload fits Data limits");
+        Data::try_from(borsh::to_vec(&vc).unwrap()).expect("vault config payload fits Data limits");
     dep.vault
         .state
         .force_insert_account(dep.vault.vault_config_account_id, config_account);
@@ -911,7 +911,7 @@ fn test_pp_create_stream_private_owner_succeeds() {
         .expect("create_stream PP transition");
 
     let stream =
-        StreamConfig::from_bytes(&fx.state.get_account_by_id(stream_pda).data)
+        borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
             .expect("stream config after create_stream");
     assert_eq!(stream.state, StreamState::Active);
     assert_eq!(stream.rate, PP3_STREAM_RATE);
@@ -919,7 +919,7 @@ fn test_pp_create_stream_private_owner_succeeds() {
     assert_eq!(stream.provider, provider_id);
 
     let vault =
-        VaultConfig::from_bytes(&fx.state.get_account_by_id(vault_config_b_id).data)
+        borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(vault_config_b_id).data)
             .expect("vault config after create_stream");
     assert_eq!(vault.total_allocated, PP3_STREAM_ALLOCATION);
     assert_eq!(vault.next_stream_id, 1);

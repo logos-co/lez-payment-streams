@@ -64,7 +64,7 @@ fn test_close_unaccrued_succeeds() {
         "create_stream failed",
     );
 
-    let vault_before = VaultConfig::from_bytes(
+    let vault_before = borsh::from_slice::<VaultConfig>(
         &dep.vault
             .state
             .get_account_by_id(dep.vault.vault_config_account_id)
@@ -98,7 +98,7 @@ fn test_close_unaccrued_succeeds() {
         "close_stream failed",
     );
 
-    let vault_after = VaultConfig::from_bytes(
+    let vault_after = borsh::from_slice::<VaultConfig>(
         &dep.vault
             .state
             .get_account_by_id(dep.vault.vault_config_account_id)
@@ -108,7 +108,7 @@ fn test_close_unaccrued_succeeds() {
     assert_eq!(vault_after.total_allocated, 50 as Balance);
 
     let stream_after =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+        borsh::from_slice::<StreamConfig>(&dep.vault.state.get_account_by_id(stream_pda).data)
             .expect("stream");
     assert_eq!(stream_after.state, StreamState::Closed);
     assert_eq!(stream_after.allocation, 50 as Balance);
@@ -328,7 +328,7 @@ fn test_pp_close_stream_private_provider_authority_succeeds() {
     let authority_shared_secret = SharedSecretKey::new(&EPK_SCALAR, &recipient_vpk());
     let authority_epk = EphemeralPublicKey::from_scalar(EPK_SCALAR);
 
-    let vault_total_allocated_before = VaultConfig::from_bytes(
+    let vault_total_allocated_before = borsh::from_slice::<VaultConfig>(
         &fx.state.get_account_by_id(fx.vault_config_account_id).data,
     )
     .expect("vault config")
@@ -371,7 +371,7 @@ fn test_pp_close_stream_private_provider_authority_succeeds() {
         .expect("close_stream PP transition");
 
     let stream_after =
-        StreamConfig::from_bytes(&fx.state.get_account_by_id(stream_pda).data).expect("stream");
+        borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data).expect("stream");
     assert_eq!(stream_after.state, StreamState::Closed);
     let accrued_at_t1 = PP_STREAM_RATE as Balance * (PP_T1 - PP_T0) as Balance;
     assert_eq!(stream_after.allocation, accrued_at_t1);
@@ -379,7 +379,7 @@ fn test_pp_close_stream_private_provider_authority_succeeds() {
 
     let unaccrued = PP_STREAM_ALLOCATION - accrued_at_t1;
     let vault_after =
-        VaultConfig::from_bytes(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
+        borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
             .expect("vault");
     assert_eq!(
         vault_after.total_allocated,

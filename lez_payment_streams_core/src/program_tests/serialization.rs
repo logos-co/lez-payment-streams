@@ -35,9 +35,9 @@ fn test_vault_config_roundtrip_serialization_succeeds() {
         None::<VersionId>,
         None::<VaultPrivacyTier>,
     );
-    let serialized = vault_config.to_bytes();
-    let deserialized = VaultConfig::from_bytes(&serialized);
-    assert_eq!(Some(vault_config), deserialized);
+    let serialized = borsh::to_vec(&vault_config).unwrap();
+    let deserialized = borsh::from_slice::<VaultConfig>(&serialized).unwrap();
+    assert_eq!(vault_config, deserialized);
 }
 
 #[test]
@@ -48,9 +48,9 @@ fn test_vault_config_roundtrip_pseudonymous_funder_tier_succeeds() {
         None::<VersionId>,
         Some(VaultPrivacyTier::PseudonymousFunder),
     );
-    let serialized = vault_config.to_bytes();
-    let deserialized = VaultConfig::from_bytes(&serialized);
-    assert_eq!(Some(vault_config), deserialized);
+    let serialized = borsh::to_vec(&vault_config).unwrap();
+    let deserialized = borsh::from_slice::<VaultConfig>(&serialized).unwrap();
+    assert_eq!(vault_config, deserialized);
 }
 
 #[test]
@@ -61,52 +61,52 @@ fn test_vault_config_from_bytes_wrong_len_fails() {
         None::<VersionId>,
         None::<VaultPrivacyTier>,
     );
-    let bytes = vault_config.to_bytes();
+    let bytes = borsh::to_vec(&vault_config).unwrap();
     let short = &bytes[..bytes.len() - 1];
-    assert!(VaultConfig::from_bytes(short).is_none());
+    assert!(borsh::from_slice::<VaultConfig>(short).is_err());
     let mut long = bytes.clone();
     long.push(0);
-    assert!(VaultConfig::from_bytes(&long).is_none());
+    assert!(borsh::from_slice::<VaultConfig>(&long).is_err());
 }
 
 #[test]
 fn test_vault_holding_roundtrip_serialization_succeeds() {
     let vault_holding = VaultHolding::new(None::<VersionId>);
-    let serialized = vault_holding.to_bytes();
-    let deserialized = VaultHolding::from_bytes(&serialized);
-    assert_eq!(Some(vault_holding), deserialized);
+    let serialized = borsh::to_vec(&vault_holding).unwrap();
+    let deserialized = borsh::from_slice::<VaultHolding>(&serialized).unwrap();
+    assert_eq!(vault_holding, deserialized);
 }
 
 #[test]
 fn test_vault_holding_from_bytes_wrong_len_fails() {
     let vault_holding = VaultHolding::new(None::<VersionId>);
-    let bytes = vault_holding.to_bytes();
+    let bytes = borsh::to_vec(&vault_holding).unwrap();
     let short = &bytes[..bytes.len() - 1];
-    assert!(VaultHolding::from_bytes(short).is_none());
+    assert!(borsh::from_slice::<VaultHolding>(short).is_err());
     let mut long = bytes.clone();
     long.push(0);
-    assert!(VaultHolding::from_bytes(&long).is_none());
+    assert!(borsh::from_slice::<VaultHolding>(&long).is_err());
 }
 
 #[test]
 fn test_stream_config_roundtrip_serialization_succeeds() {
     let (_, provider) = create_keypair(SERIALIZATION_SEED_PROVIDER);
     let s_original = StreamConfig::new(7, provider, 10, 200, 12_345, None::<VersionId>);
-    let serialized = s_original.to_bytes();
-    let deserialized = StreamConfig::from_bytes(&serialized);
-    assert_eq!(Some(s_original), deserialized);
+    let serialized = borsh::to_vec(&s_original).unwrap();
+    let deserialized = borsh::from_slice::<StreamConfig>(&serialized).unwrap();
+    assert_eq!(s_original, deserialized);
 }
 
 #[test]
 fn test_stream_config_from_bytes_wrong_len_fails() {
     let (_, provider) = create_keypair(SERIALIZATION_SEED_PROVIDER);
     let s_original = StreamConfig::new(7, provider, 10, 200, 12_345, None::<VersionId>);
-    let bytes = s_original.to_bytes();
+    let bytes = borsh::to_vec(&s_original).unwrap();
     let short = &bytes[..bytes.len() - 1];
-    assert!(StreamConfig::from_bytes(short).is_none());
+    assert!(borsh::from_slice::<StreamConfig>(short).is_err());
     let mut long = bytes.clone();
     long.push(0);
-    assert!(StreamConfig::from_bytes(&long).is_none());
+    assert!(borsh::from_slice::<StreamConfig>(&long).is_err());
 }
 
 #[test]
@@ -129,9 +129,9 @@ fn test_stream_config_from_bytes_invalid_stream_state_fails() {
 
     let (_, provider) = create_keypair(SERIALIZATION_SEED_PROVIDER);
     let s_valid = StreamConfig::new(0, provider, 1, 1, 1, None::<VersionId>);
-    let mut serialized = s_valid.to_bytes();
+    let mut serialized = borsh::to_vec(&s_valid).unwrap();
     let timestamp_field_size = size_of::<Timestamp>();
     let stream_state_byte_index = serialized.len() - timestamp_field_size - 1;
     serialized[stream_state_byte_index] = undefined_discriminant_after_max;
-    assert!(StreamConfig::from_bytes(&serialized).is_none());
+    assert!(borsh::from_slice::<StreamConfig>(&serialized).is_err());
 }

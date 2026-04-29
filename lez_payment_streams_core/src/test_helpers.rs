@@ -231,10 +231,10 @@ pub(crate) fn patch_vault_config(
     f: impl FnOnce(&mut VaultConfig),
 ) {
     let existing = state.get_account_by_id(vault_config_account_id).clone();
-    let mut vc = VaultConfig::from_bytes(&existing.data).expect("vault config");
+    let mut vc = borsh::from_slice::<VaultConfig>(&existing.data).expect("vault config");
     f(&mut vc);
     let mut acc = existing;
-    acc.data = Data::try_from(vc.to_bytes()).expect("vault config payload fits Data");
+    acc.data = Data::try_from(borsh::to_vec(&vc).unwrap()).expect("vault config payload fits Data");
     state.force_insert_account(vault_config_account_id, acc);
 }
 
@@ -361,7 +361,7 @@ pub(crate) fn assert_public_payment_streams_instruction_allowed(
     vault_config_account_id: AccountId,
 ) -> Result<(), &'static str> {
     let acc = state.get_account_by_id(vault_config_account_id);
-    let cfg = VaultConfig::from_bytes(acc.data.as_ref()).ok_or("invalid vault config bytes")?;
+    let cfg = borsh::from_slice::<VaultConfig>(acc.data.as_ref()).map_err(|_| "invalid vault config bytes")?;
     if cfg.privacy_tier == VaultPrivacyTier::PseudonymousFunder {
         return Err("public instruction disallowed for PseudonymousFunder vault");
     }

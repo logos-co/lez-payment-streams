@@ -74,7 +74,7 @@ fn test_claim_balance_succeeds() {
     );
 
     let payout = 50 as Balance;
-    let vault_after = VaultConfig::from_bytes(
+    let vault_after = borsh::from_slice::<VaultConfig>(
         &wp.deposited
             .vault
             .state
@@ -85,7 +85,7 @@ fn test_claim_balance_succeeds() {
     assert_eq!(vault_after.total_allocated, CLAIM_ALLOCATION - payout);
 
     let stream_after =
-        StreamConfig::from_bytes(&wp.deposited.vault.state.get_account_by_id(stream_pda).data)
+        borsh::from_slice::<StreamConfig>(&wp.deposited.vault.state.get_account_by_id(stream_pda).data)
             .expect("stream");
     assert_eq!(stream_after.state, StreamState::Active);
     assert_eq!(stream_after.accrued, 0 as Balance);
@@ -224,7 +224,7 @@ fn test_claim_after_close_succeeds() {
         "claim failed",
     );
 
-    let vault_after = VaultConfig::from_bytes(
+    let vault_after = borsh::from_slice::<VaultConfig>(
         &wp.deposited
             .vault
             .state
@@ -235,7 +235,7 @@ fn test_claim_after_close_succeeds() {
     assert_eq!(vault_after.total_allocated, 0 as Balance);
 
     let stream_after =
-        StreamConfig::from_bytes(&wp.deposited.vault.state.get_account_by_id(stream_pda).data)
+        borsh::from_slice::<StreamConfig>(&wp.deposited.vault.state.get_account_by_id(stream_pda).data)
             .expect("stream");
     assert_eq!(stream_after.state, StreamState::Closed);
     assert_eq!(stream_after.allocation, 0 as Balance);
@@ -369,13 +369,13 @@ fn test_pp_claim_private_provider_succeeds() {
     );
 
     let stream_after =
-        StreamConfig::from_bytes(&fx.state.get_account_by_id(stream_pda).data).expect("stream");
+        borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data).expect("stream");
     assert_eq!(stream_after.accrued, 0);
     assert_eq!(stream_after.allocation, PP_STREAM_ALLOCATION - PP_CLAIM_PAYOUT);
     assert_eq!(stream_after.state, StreamState::Active);
 
     let vault_after =
-        VaultConfig::from_bytes(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
+        borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
             .expect("vault");
     assert_eq!(
         vault_after.total_allocated,

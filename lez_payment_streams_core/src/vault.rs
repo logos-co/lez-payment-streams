@@ -1,8 +1,7 @@
 //! [`VaultConfig`], [`VaultHolding`], and vault `total_allocated` bookkeeping helpers.
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use serde::de::Error as DeError;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 use nssa_core::account::{AccountId, Balance};
 
@@ -12,51 +11,40 @@ use crate::{StreamId, VaultId, VersionId};
 /// Execution-mode intent stored on [`VaultConfig`], immutable at creation.
 /// The guest stores this field but cannot determine execution mode at runtime;
 /// the wallet enforces shielded-only policy for [`VaultPrivacyTier::PseudonymousFunder`] vaults.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 #[borsh(use_discriminant = true)]
+#[serde(into = "u8", try_from = "u8")]
 #[repr(u8)]
 pub enum VaultPrivacyTier {
     Public = 0,
     PseudonymousFunder = 1,
 }
 
-impl VaultPrivacyTier {
-    pub const fn as_wire_byte(self) -> u8 {
-        self as u8
+impl From<VaultPrivacyTier> for u8 {
+    fn from(tier: VaultPrivacyTier) -> u8 {
+        tier as u8
     }
+}
 
-    pub const fn from_wire_byte(byte: u8) -> Option<Self> {
+impl TryFrom<u8> for VaultPrivacyTier {
+    type Error = &'static str;
+
+    fn try_from(byte: u8) -> Result<Self, Self::Error> {
         match byte {
-            0 => Some(Self::Public),
-            1 => Some(Self::PseudonymousFunder),
-            _ => None,
+            0 => Ok(Self::Public),
+            1 => Ok(Self::PseudonymousFunder),
+            _ => Err("unknown vault privacy tier"),
         }
     }
 }
 
-impl Serialize for VaultPrivacyTier {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_u8(self.as_wire_byte())
-    }
-}
-
-impl<'de> Deserialize<'de> for VaultPrivacyTier {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let b = <u8 as Deserialize>::deserialize(deserializer)?;
-        Self::from_wire_byte(b).ok_or_else(|| DeError::custom("unknown vault privacy tier"))
-    }
-}
-
 #[cfg(test)]
-mod vault_privacy_tier_wire_tests {
+mod vault_privacy_tier_tests {
     use super::VaultPrivacyTier;
 
-    /// Wire byte with no [`VaultPrivacyTier`] variant (reserved on the `InitializeVault` wire).
-    const UNDEFINED_PRIVACY_TIER_WIRE_BYTE: u8 = 99;
-
     #[test]
-    fn from_wire_byte_rejects_undefined_privacy_tier_wire_byte() {
-        assert!(VaultPrivacyTier::from_wire_byte(UNDEFINED_PRIVACY_TIER_WIRE_BYTE).is_none());
+    fn try_from_unknown_byte_fails() {
+        assert!(VaultPrivacyTier::try_from(99u8).is_err());
     }
 }
 
@@ -106,14 +94,6 @@ pub struct VaultConfig {
 }
 
 impl VaultConfig {
-    pub fn to_bytes(&self) -> Vec<u8> {
-        borsh::to_vec(self).expect("VaultConfig borsh serialization is infallible")
-    }
-
-    pub fn from_bytes(data: &[u8]) -> Option<Self> {
-        borsh::from_slice(data).ok()
-    }
-
     /// Fresh vault config: `next_stream_id` at [`StreamId::MIN`], `total_allocated` at zero.
     ///
     /// Use `None` for `version` to pick [`crate::DEFAULT_VERSION`], and `None` for `privacy_tier`
@@ -142,14 +122,6 @@ pub struct VaultHolding {
 }
 
 impl VaultHolding {
-    pub fn to_bytes(&self) -> Vec<u8> {
-        borsh::to_vec(self).expect("VaultHolding borsh serialization is infallible")
-    }
-
-    pub fn from_bytes(data: &[u8]) -> Option<Self> {
-        borsh::from_slice(data).ok()
-    }
-
     /// Use `None` for `version` to pick [`crate::DEFAULT_VERSION`].
     pub fn new(version: Option<VersionId>) -> Self {
         Self {

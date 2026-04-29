@@ -87,7 +87,7 @@ fn test_resume_succeeds() {
         "resume_stream failed",
     );
 
-    let s_resumed = StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+    let s_resumed = borsh::from_slice::<StreamConfig>(&dep.vault.state.get_account_by_id(stream_pda).data)
         .expect("stream");
     assert_eq!(s_resumed.state, StreamState::Active);
     assert_eq!(s_resumed.accrued, 0 as Balance);
@@ -384,7 +384,7 @@ fn test_resume_then_accrual_ignores_paused_gap_succeeds() {
     // pause_stream folds at_time(t1) internally: accrued = rate*(t1-t0) = 10*5 = 50.
     // resume_from_paused_at(t_gap) sets accrued_as_of = t_gap, leaving accrued unchanged.
     let s_after_resume =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+        borsh::from_slice::<StreamConfig>(&dep.vault.state.get_account_by_id(stream_pda).data)
             .expect("stream");
     assert_eq!(s_after_resume.accrued, 50 as Balance);
     assert_eq!(s_after_resume.accrued_as_of, t_gap);
@@ -579,7 +579,7 @@ fn test_pp_resume_stream_private_owner_succeeds() {
     let stream_account = Account {
         program_owner: fx.program_id,
         balance: 0,
-        data: Data::try_from(stream_config.to_bytes()).expect("stream config fits"),
+        data: Data::try_from(borsh::to_vec(&stream_config).unwrap()).expect("stream config fits"),
         ..Account::default()
     };
     fx.state.force_insert_account(stream_pda, stream_account);
@@ -641,7 +641,7 @@ fn test_pp_resume_stream_private_owner_succeeds() {
         .expect("resume_stream PP transition");
 
     let stream =
-        StreamConfig::from_bytes(&fx.state.get_account_by_id(stream_pda).data)
+        borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
             .expect("stream config after resume");
     assert_eq!(stream.state, StreamState::Active);
     assert_eq!(stream.accrued, accrued);

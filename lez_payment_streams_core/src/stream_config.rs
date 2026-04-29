@@ -38,14 +38,6 @@ pub struct StreamConfig {
 }
 
 impl StreamConfig {
-    pub fn to_bytes(&self) -> Vec<u8> {
-        borsh::to_vec(self).expect("StreamConfig borsh serialization is infallible")
-    }
-
-    pub fn from_bytes(data: &[u8]) -> Option<Self> {
-        borsh::from_slice(data).ok()
-    }
-
     /// Use `None` for `version` to pick [`DEFAULT_VERSION`].
     pub fn new(
         stream_id: StreamId,

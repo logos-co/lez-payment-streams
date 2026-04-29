@@ -88,7 +88,7 @@ fn test_topup_paused_depleted_stream_succeeds() {
     );
 
     let s_after_top_up =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+        borsh::from_slice::<StreamConfig>(&dep.vault.state.get_account_by_id(stream_pda).data)
             .expect("stream");
     assert_eq!(s_after_top_up.state, StreamState::Active);
     assert_eq!(s_after_top_up.accrued_as_of, t2);
@@ -146,7 +146,7 @@ fn test_topup_active_stream_increases_allocation_succeeds() {
     );
 
     let s_after_top_up =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+        borsh::from_slice::<StreamConfig>(&dep.vault.state.get_account_by_id(stream_pda).data)
             .expect("stream");
     assert_eq!(s_after_top_up.state, StreamState::Active);
     assert_eq!(s_after_top_up.allocation, 400 as Balance);
@@ -216,7 +216,7 @@ fn test_topup_manual_pause_then_active_succeeds() {
     );
 
     let s_resumed_after_top_up =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+        borsh::from_slice::<StreamConfig>(&dep.vault.state.get_account_by_id(stream_pda).data)
             .expect("stream");
     assert_eq!(s_resumed_after_top_up.state, StreamState::Active);
     assert_eq!(s_resumed_after_top_up.accrued_as_of, t1);
@@ -398,12 +398,12 @@ fn test_topup_allocation_overflow_fails() {
     );
 
     let mut s_near_max_allocation =
-        StreamConfig::from_bytes(&dep.vault.state.get_account_by_id(stream_pda).data)
+        borsh::from_slice::<StreamConfig>(&dep.vault.state.get_account_by_id(stream_pda).data)
             .expect("stream");
     s_near_max_allocation.allocation = Balance::MAX - 5;
     s_near_max_allocation.accrued = 0 as Balance;
     let mut stream_account = dep.vault.state.get_account_by_id(stream_pda).clone();
-    stream_account.data = nssa_core::account::Data::try_from(s_near_max_allocation.to_bytes())
+    stream_account.data = nssa_core::account::Data::try_from(borsh::to_vec(&s_near_max_allocation).unwrap())
         .expect("stream payload fits");
     dep.vault
         .state
@@ -539,7 +539,7 @@ fn test_pp_top_up_stream_private_owner_succeeds() {
     let stream_account = Account {
         program_owner: fx.program_id,
         balance: 0,
-        data: Data::try_from(stream_config.to_bytes()).expect("stream config fits"),
+        data: Data::try_from(borsh::to_vec(&stream_config).unwrap()).expect("stream config fits"),
         ..Account::default()
     };
     fx.state.force_insert_account(stream_pda, stream_account);
@@ -602,14 +602,14 @@ fn test_pp_top_up_stream_private_owner_succeeds() {
         .expect("top_up_stream PP transition");
 
     let stream =
-        StreamConfig::from_bytes(&fx.state.get_account_by_id(stream_pda).data)
+        borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
             .expect("stream config after top_up");
     assert_eq!(stream.state, StreamState::Active);
     assert_eq!(stream.allocation, depleted_allocation + PP3_TOP_UP_AMOUNT);
     assert_eq!(stream.accrued, depleted_allocation);
 
     let vault =
-        VaultConfig::from_bytes(&fx.state.get_account_by_id(vault_config_b_id).data)
+        borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(vault_config_b_id).data)
             .expect("vault config after top_up");
     assert_eq!(vault.total_allocated, depleted_allocation + PP3_TOP_UP_AMOUNT);
 

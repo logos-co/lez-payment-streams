@@ -78,7 +78,7 @@ fn test_withdraw_succeeds() {
         .state
         .get_account_by_id(wr.vault.vault_config_account_id);
     let vault_config_state_before =
-        VaultConfig::from_bytes(&vault_config_before.data).expect("valid vault config bytes");
+        borsh::from_slice::<VaultConfig>(&vault_config_before.data).expect("valid vault config bytes");
     let owner_after_deposit = wr
         .vault
         .state
@@ -127,7 +127,7 @@ fn test_withdraw_succeeds() {
         .state
         .get_account_by_id(wr.vault.vault_config_account_id);
     let vault_config_state_after =
-        VaultConfig::from_bytes(&vault_config_after.data).expect("valid vault config bytes");
+        borsh::from_slice::<VaultConfig>(&vault_config_after.data).expect("valid vault config bytes");
 
     assert_eq!(
         wr.vault
@@ -500,7 +500,7 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
         .state
         .get_account_by_id(wr.vault.vault_config_account_id);
     let vault_config_state_before =
-        VaultConfig::from_bytes(&vault_config_before.data).expect("vault config");
+        borsh::from_slice::<VaultConfig>(&vault_config_before.data).expect("vault config");
     let owner_after_funding = wr
         .vault
         .state
@@ -549,7 +549,7 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
         .state
         .get_account_by_id(wr.vault.vault_config_account_id);
     let vault_config_state_after =
-        VaultConfig::from_bytes(&vault_config_after.data).expect("vault config");
+        borsh::from_slice::<VaultConfig>(&vault_config_after.data).expect("vault config");
 
     assert_eq!(
         wr.vault
@@ -863,7 +863,7 @@ fn test_withdraw_private_recipient_pp_transition_succeeds() {
     expected_nonce.public_account_nonce_increment();
     assert_eq!(owner_after.nonce, expected_nonce);
 
-    let cfg = VaultConfig::from_bytes(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
+    let cfg = borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
         .expect("vault");
     assert_eq!(cfg.total_allocated, 0u128);
 
@@ -901,7 +901,7 @@ fn test_pp_withdraw_private_recipient_pseudonymous_funded_vault_succeeds() {
     expected_nonce.public_account_nonce_increment();
     assert_eq!(owner_after.nonce, expected_nonce);
 
-    let cfg = VaultConfig::from_bytes(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
+    let cfg = borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
         .expect("vault");
     assert_eq!(cfg.privacy_tier, VaultPrivacyTier::PseudonymousFunder);
     assert_eq!(cfg.total_allocated, 0u128);

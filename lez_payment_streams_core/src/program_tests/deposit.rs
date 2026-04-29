@@ -39,7 +39,7 @@ fn test_deposit_succeeds() {
 
     let vault_config_before = fx.state.get_account_by_id(fx.vault_config_account_id);
     let vault_config_state_before =
-        VaultConfig::from_bytes(&vault_config_before.data).expect("valid vault config bytes");
+        borsh::from_slice::<VaultConfig>(&vault_config_before.data).expect("valid vault config bytes");
     let instruction_deposit = Instruction::Deposit {
         vault_id: fx.vault_id,
         amount: deposit_amount,
@@ -76,7 +76,7 @@ fn test_deposit_succeeds() {
         .balance;
     let vault_config_after = fx.state.get_account_by_id(fx.vault_config_account_id);
     let vault_config_state_after =
-        VaultConfig::from_bytes(&vault_config_after.data).expect("valid vault config bytes");
+        borsh::from_slice::<VaultConfig>(&vault_config_after.data).expect("valid vault config bytes");
 
     assert_eq!(owner_balance_after, owner_balance_before - deposit_amount);
     assert_eq!(
@@ -153,7 +153,7 @@ fn test_deposit_after_create_stream_succeeds() {
         "create_stream failed"
     );
 
-    let vc_after_stream = VaultConfig::from_bytes(
+    let vc_after_stream = borsh::from_slice::<VaultConfig>(
         &dep.vault
             .state
             .get_account_by_id(dep.vault.vault_config_account_id)
@@ -194,7 +194,7 @@ fn test_deposit_after_create_stream_succeeds() {
     );
     assert!(result.is_ok(), "second deposit failed: {:?}", result);
 
-    let vc_after = VaultConfig::from_bytes(
+    let vc_after = borsh::from_slice::<VaultConfig>(
         &dep.vault
             .state
             .get_account_by_id(dep.vault.vault_config_account_id)
@@ -557,7 +557,7 @@ fn test_deposit_vault_holding_version_mismatch_fails() {
         .state
         .get_account_by_id(fx.vault_holding_account_id)
         .clone();
-    holding.data = Data::try_from(VaultHolding::new(Some(2 as VersionId)).to_bytes())
+    holding.data = Data::try_from(borsh::to_vec(&VaultHolding::new(Some(2 as VersionId))).unwrap())
         .expect("vault holding payload fits Data limits");
     fx.state
         .force_insert_account(fx.vault_holding_account_id, holding);
@@ -679,13 +679,13 @@ fn test_pp_deposit_private_owner_succeeds() {
         program_owner: fx_a.program_id,
         balance: 0,
         data: Data::try_from(
-            VaultConfig::new(
+            borsh::to_vec(&VaultConfig::new(
                 owner_id,
                 vault_b_id,
                 None,
                 Some(VaultPrivacyTier::PseudonymousFunder),
-            )
-            .to_bytes(),
+            ))
+            .unwrap(),
         )
         .expect("vault_config_b data fits"),
         ..Account::default()
@@ -695,7 +695,7 @@ fn test_pp_deposit_private_owner_succeeds() {
     let vault_holding_b = Account {
         program_owner: fx_a.program_id,
         balance: 0,
-        data: Data::try_from(VaultHolding::new(None).to_bytes())
+        data: Data::try_from(borsh::to_vec(&VaultHolding::new(None)).unwrap())
             .expect("vault_holding_b data fits"),
         ..Account::default()
     };

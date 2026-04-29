@@ -104,7 +104,7 @@ mod lez_payment_streams {
         vault_holding: &AccountWithMetadata,
     ) -> Result<(VaultConfig, VaultHolding), SpelError> {
         let vault_config_state =
-            VaultConfig::from_bytes(&vault_config.account.data).ok_or_else(|| {
+            borsh::from_slice::<VaultConfig>(&vault_config.account.data).map_err(|_| {
                 SpelError::DeserializationError {
                     account_index: 0,
                     message: "invalid vault config data".into(),
@@ -112,7 +112,7 @@ mod lez_payment_streams {
             })?;
 
         let vault_holding_state =
-            VaultHolding::from_bytes(&vault_holding.account.data).ok_or_else(|| {
+            borsh::from_slice::<VaultHolding>(&vault_holding.account.data).map_err(|_| {
                 SpelError::DeserializationError {
                     account_index: 1,
                     message: "invalid vault holding data".into(),
@@ -220,7 +220,7 @@ mod lez_payment_streams {
         )?;
 
         let stream_config_state =
-            StreamConfig::from_bytes(&stream_config.account.data).ok_or_else(|| {
+            borsh::from_slice::<StreamConfig>(&stream_config.account.data).map_err(|_| {
                 SpelError::DeserializationError {
                     account_index: 2,
                     message: "invalid stream config data".into(),
@@ -267,7 +267,7 @@ mod lez_payment_streams {
         validate_vault_owner_signer(&vault_config_state, owner_account_id)?;
 
         let stream_config_state =
-            StreamConfig::from_bytes(&stream_config.account.data).ok_or_else(|| {
+            borsh::from_slice::<StreamConfig>(&stream_config.account.data).map_err(|_| {
                 SpelError::DeserializationError {
                     account_index: 2,
                     message: "invalid stream config data".into(),
@@ -335,8 +335,8 @@ mod lez_payment_streams {
         let mut vault_config = vault_config;
         let mut vault_holding = vault_holding;
 
-        vault_config.account.data = vault_config_state.to_bytes().try_into().unwrap();
-        vault_holding.account.data = vault_holding_state.to_bytes().try_into().unwrap();
+        vault_config.account.data = borsh::to_vec(&vault_config_state).unwrap().try_into().unwrap();
+        vault_holding.account.data = borsh::to_vec(&vault_holding_state).unwrap().try_into().unwrap();
 
         Ok(SpelOutput::execute(
             vec![vault_config, vault_holding, owner],
@@ -439,11 +439,11 @@ mod lez_payment_streams {
 
         let recipient_was_default = withdraw_to.account == Account::default();
 
-        vault_holding.account.balance = vault_holding.account.balance.checked_sub(amount).ok_or_else(|| {
+        vault_holding.account.balance = vault_holding.account.balance.checked_sub(amount).map_err(|_| {
             spel_err(ErrorCode::InsufficientFunds, "vault holding balance underflow")
         })?;
 
-        withdraw_to.account.balance = withdraw_to.account.balance.checked_add(amount).ok_or_else(|| {
+        withdraw_to.account.balance = withdraw_to.account.balance.checked_add(amount).map_err(|_| {
             spel_err(ErrorCode::ArithmeticOverflow, "recipient balance overflow")
         })?;
 
@@ -551,8 +551,8 @@ mod lez_payment_streams {
         let mut vault_config = vault_config;
         let mut stream_config = stream_config;
 
-        vault_config.account.data = vault_config_state.to_bytes().try_into().unwrap();
-        stream_config.account.data = stream_config_state.to_bytes().try_into().unwrap();
+        vault_config.account.data = borsh::to_vec(&vault_config_state).unwrap().try_into().unwrap();
+        stream_config.account.data = borsh::to_vec(&stream_config_state).unwrap().try_into().unwrap();
 
         Ok(SpelOutput::execute(
             vec![vault_config, vault_holding, stream_config, owner, clock_account],
@@ -599,7 +599,7 @@ mod lez_payment_streams {
 
         let vault_config_account = vault_config.account;
         let mut stream_account = stream_config.account;
-        stream_account.data = stream_config_state.to_bytes().try_into().unwrap();
+        stream_account.data = borsh::to_vec(&stream_config_state).unwrap().try_into().unwrap();
 
         Ok(execute_five_owner_stream_accounts(
             vault_config_account,
@@ -644,7 +644,7 @@ mod lez_payment_streams {
 
         let vault_config_account = vault_config.account;
         let mut stream_account = stream_config.account;
-        stream_account.data = stream_config_state.to_bytes().try_into().unwrap();
+        stream_account.data = borsh::to_vec(&stream_config_state).unwrap().try_into().unwrap();
 
         Ok(execute_five_owner_stream_accounts(
             vault_config_account,
@@ -713,10 +713,10 @@ mod lez_payment_streams {
         }
 
         let mut vault_config_account = vault_config.account;
-        vault_config_account.data = vault_config_state.to_bytes().try_into().unwrap();
+        vault_config_account.data = borsh::to_vec(&vault_config_state).unwrap().try_into().unwrap();
 
         let mut stream_account = stream_config.account;
-        stream_account.data = stream_config_state.to_bytes().try_into().unwrap();
+        stream_account.data = borsh::to_vec(&stream_config_state).unwrap().try_into().unwrap();
 
         Ok(execute_five_owner_stream_accounts(
             vault_config_account,
@@ -776,8 +776,8 @@ mod lez_payment_streams {
         let mut vault_config = vault_config;
         let mut stream_config = stream_config;
 
-        vault_config.account.data = vault_config_state.to_bytes().try_into().unwrap();
-        stream_config.account.data = stream_after_close.to_bytes().try_into().unwrap();
+        vault_config.account.data = borsh::to_vec(&vault_config_state).unwrap().try_into().unwrap();
+        stream_config.account.data = borsh::to_vec(&stream_after_close).unwrap().try_into().unwrap();
 
         Ok(SpelOutput::execute(
             vec![vault_config, vault_holding, stream_config, owner, authority, clock_account],
@@ -834,16 +834,16 @@ mod lez_payment_streams {
         let mut stream_config = stream_config;
         let mut provider = provider;
 
-        vault_holding.account.balance = vault_holding.account.balance.checked_sub(payout).ok_or_else(|| {
+        vault_holding.account.balance = vault_holding.account.balance.checked_sub(payout).map_err(|_| {
             spel_err(ErrorCode::InsufficientFunds, "vault holding balance underflow")
         })?;
 
-        provider.account.balance = provider.account.balance.checked_add(payout).ok_or_else(|| {
+        provider.account.balance = provider.account.balance.checked_add(payout).map_err(|_| {
             spel_err(ErrorCode::ArithmeticOverflow, "provider balance overflow")
         })?;
 
-        vault_config.account.data = vault_config_state.to_bytes().try_into().unwrap();
-        stream_config.account.data = stream_after_claim.to_bytes().try_into().unwrap();
+        vault_config.account.data = borsh::to_vec(&vault_config_state).unwrap().try_into().unwrap();
+        stream_config.account.data = borsh::to_vec(&stream_after_claim).unwrap().try_into().unwrap();
 
         Ok(SpelOutput::execute(
             vec![vault_config, vault_holding, stream_config, owner, provider, clock_account],

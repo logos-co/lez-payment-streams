@@ -357,13 +357,13 @@ pub(crate) fn pp_owner_setup() -> PpOwnerSetup {
         program_owner: fx.program_id,
         balance: 0,
         data: Data::try_from(
-            VaultConfig::new(
+            borsh::to_vec(&VaultConfig::new(
                 owner_id,
                 vault_b_id,
                 None,
                 Some(VaultPrivacyTier::PseudonymousFunder),
-            )
-            .to_bytes(),
+            ))
+            .unwrap(),
         )
         .expect("vault_config_b data fits"),
         ..Account::default()
@@ -373,7 +373,7 @@ pub(crate) fn pp_owner_setup() -> PpOwnerSetup {
     let vault_holding_b = Account {
         program_owner: fx.program_id,
         balance: PP3_VAULT_B_BALANCE,
-        data: Data::try_from(VaultHolding::new(None).to_bytes())
+        data: Data::try_from(borsh::to_vec(&VaultHolding::new(None)).unwrap())
             .expect("vault_holding_b data fits"),
         ..Account::default()
     };

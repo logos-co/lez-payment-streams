@@ -54,7 +54,7 @@ fn test_initialize_vault_then_reinitialize_fails() {
     assert!(result.is_ok(), "initialize_vault tx failed: {:?}", result);
     let vault_config_account = state.get_account_by_id(vault_config_account_id);
     let vault_config =
-        VaultConfig::from_bytes(&vault_config_account.data).expect("valid vault config bytes");
+        borsh::from_slice::<VaultConfig>(&vault_config_account.data).expect("valid vault config bytes");
     assert_eq!(vault_config.version, DEFAULT_VERSION);
     assert_eq!(vault_config.owner, owner_account_id);
     assert_eq!(vault_config.vault_id, vault_id);
@@ -63,7 +63,7 @@ fn test_initialize_vault_then_reinitialize_fails() {
     assert_eq!(vault_config.privacy_tier, crate::VaultPrivacyTier::Public);
     let vault_holding_account = state.get_account_by_id(vault_holding_account_id);
     let vault_holding =
-        VaultHolding::from_bytes(&vault_holding_account.data).expect("valid vault holding bytes");
+        borsh::from_slice::<VaultHolding>(&vault_holding_account.data).expect("valid vault holding bytes");
     assert_eq!(vault_holding.version, DEFAULT_VERSION);
 
     // Second `init` hits SPEL validation before program `ERR_*` strings. Expect `is_err()` only.
@@ -158,7 +158,7 @@ fn test_initialize_vault_pseudonymous_funder_succeeds() {
     let result =
         state.transition_from_public_transaction(&tx, 1 as BlockId, TEST_PUBLIC_TX_TIMESTAMP);
     assert!(result.is_ok(), "{result:?}");
-    let vc = VaultConfig::from_bytes(&state.get_account_by_id(vault_config_account_id).data)
+    let vc = borsh::from_slice::<VaultConfig>(&state.get_account_by_id(vault_config_account_id).data)
         .expect("vault config");
     assert_eq!(vc.privacy_tier, VaultPrivacyTier::PseudonymousFunder);
 }
@@ -276,7 +276,7 @@ fn test_pp_initialize_vault_private_owner_succeeds() {
         .expect("PP initialize_vault transition");
 
     let vault_config_after =
-        VaultConfig::from_bytes(&fx.state.get_account_by_id(vault_config_b_id).data)
+        borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(vault_config_b_id).data)
             .expect("vault_config_b created");
     assert_eq!(vault_config_after.owner, owner_id);
     assert_eq!(vault_config_after.vault_id, vault_b_id);
@@ -285,7 +285,7 @@ fn test_pp_initialize_vault_private_owner_succeeds() {
     assert_eq!(vault_config_after.next_stream_id, 0);
 
     assert!(
-        VaultHolding::from_bytes(&fx.state.get_account_by_id(vault_holding_b_id).data).is_some()
+        borsh::from_slice::<VaultHolding>(&fx.state.get_account_by_id(vault_holding_b_id).data).is_ok()
     );
 
     assert_eq!(init_tx.message().new_commitments.len(), 1);
