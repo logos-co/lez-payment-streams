@@ -1,7 +1,5 @@
 //! [`StreamState`], [`StreamConfig`], and lazy accrual math.
 
-use core::mem::size_of;
-
 use borsh::{BorshDeserialize, BorshSerialize};
 use nssa_core::account::{AccountId, Balance};
 
@@ -19,7 +17,8 @@ pub enum StreamState {
     Closed = 2,
 }
 
-/// Stream PDA account body. Vault identity comes from the stream PDA seeds at derivation time, not from this struct.
+/// Stream PDA account body.
+/// Vault identity comes from the stream PDA seeds at derivation time, not from this struct.
 #[spel_framework_macros::account_type]
 #[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 pub struct StreamConfig {
@@ -27,36 +26,24 @@ pub struct StreamConfig {
     /// Match the `stream_id` seed in the stream PDA derivation.
     pub stream_id: StreamId,
     pub provider: AccountId,
-    /// Tokens per second (LEZ MVP uses one-second steps).
     pub rate: TokensPerSecond,
     pub allocation: Balance,
     pub accrued: Balance,
     pub state: StreamState,
     /// Latest chain time folded into `accrued`.
-    /// When not depleted: equals `t` after the most recent `at_time` call.
-    /// When depleted: equals the depletion instant `⌈unaccrued/rate⌉` seconds after the prior
-    /// snapshot, which may be before `t` when the stream exhausted mid-interval.
+    /// When not depleted: equals `t` after each fold.
+    /// When depleted: equals the depletion instant
+    /// (`⌈unaccrued/rate⌉` seconds after the prior `accrued_as_of`),
+    /// which may precede `t` if depletion occurred within the accrual interval.
     pub accrued_as_of: Timestamp,
 }
 
 impl StreamConfig {
-    pub const SIZE: usize = size_of::<VersionId>()
-        + size_of::<StreamId>()
-        + size_of::<AccountId>()
-        + size_of::<TokensPerSecond>()
-        + size_of::<Balance>()
-        + size_of::<Balance>()
-        + size_of::<StreamState>()
-        + size_of::<Timestamp>();
-
     pub fn to_bytes(&self) -> Vec<u8> {
         borsh::to_vec(self).expect("StreamConfig borsh serialization is infallible")
     }
 
     pub fn from_bytes(data: &[u8]) -> Option<Self> {
-        if data.len() != Self::SIZE {
-            return None;
-        }
         borsh::from_slice(data).ok()
     }
 
@@ -134,11 +121,11 @@ impl StreamConfig {
 
         if stream_after_accrual.unaccrued() == (0 as Balance) {
             stream_after_accrual.state = StreamState::Paused;
-            let unaccrued_before_interval = self.unaccrued();
+            let unaccrued_before_accrual_interval = self.unaccrued();
             // Ceiling division: the stream depleted partway through the last second.
             // Rounding up places `accrued_as_of` at the first second when `accrued == allocation`,
             // which is the earliest time a fold from `base_as_of` could reach depletion.
-            let time_to_depletion = u64::try_from(unaccrued_before_interval.div_ceil(u128::from(rate)))
+            let time_to_depletion = u64::try_from(unaccrued_before_accrual_interval.div_ceil(u128::from(rate)))
                 .map_err(|_| ErrorCode::ArithmeticOverflow)?;
             let depleted_at = base_as_of
                 .checked_add(time_to_depletion)

@@ -1,7 +1,5 @@
 //! [`VaultConfig`], [`VaultHolding`], and vault `total_allocated` bookkeeping helpers.
 
-use core::mem::size_of;
-
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::de::Error as DeError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -115,21 +113,11 @@ pub struct VaultConfig {
 }
 
 impl VaultConfig {
-    pub const SIZE: usize = size_of::<VersionId>()
-        + size_of::<AccountId>()
-        + size_of::<VaultId>()
-        + size_of::<StreamId>()
-        + size_of::<Balance>()
-        + size_of::<VaultPrivacyTier>();
-
     pub fn to_bytes(&self) -> Vec<u8> {
         borsh::to_vec(self).expect("VaultConfig borsh serialization is infallible")
     }
 
     pub fn from_bytes(data: &[u8]) -> Option<Self> {
-        if data.len() != Self::SIZE {
-            return None;
-        }
         borsh::from_slice(data).ok()
     }
 
@@ -161,16 +149,11 @@ pub struct VaultHolding {
 }
 
 impl VaultHolding {
-    pub const SIZE: usize = size_of::<VersionId>();
-
     pub fn to_bytes(&self) -> Vec<u8> {
         borsh::to_vec(self).expect("VaultHolding borsh serialization is infallible")
     }
 
     pub fn from_bytes(data: &[u8]) -> Option<Self> {
-        if data.len() != Self::SIZE {
-            return None;
-        }
         borsh::from_slice(data).ok()
     }
 

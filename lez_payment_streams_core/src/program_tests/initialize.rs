@@ -53,7 +53,6 @@ fn test_initialize_vault_then_reinitialize_fails() {
         state.transition_from_public_transaction(&tx_init, block_init, TEST_PUBLIC_TX_TIMESTAMP);
     assert!(result.is_ok(), "initialize_vault tx failed: {:?}", result);
     let vault_config_account = state.get_account_by_id(vault_config_account_id);
-    assert_eq!(vault_config_account.data.len(), VaultConfig::SIZE);
     let vault_config =
         VaultConfig::from_bytes(&vault_config_account.data).expect("valid vault config bytes");
     assert_eq!(vault_config.version, DEFAULT_VERSION);
@@ -63,7 +62,6 @@ fn test_initialize_vault_then_reinitialize_fails() {
     assert_eq!(vault_config.total_allocated, 0 as Balance);
     assert_eq!(vault_config.privacy_tier, crate::VaultPrivacyTier::Public);
     let vault_holding_account = state.get_account_by_id(vault_holding_account_id);
-    assert_eq!(vault_holding_account.data.len(), VaultHolding::SIZE);
     let vault_holding =
         VaultHolding::from_bytes(&vault_holding_account.data).expect("valid vault holding bytes");
     assert_eq!(vault_holding.version, DEFAULT_VERSION);

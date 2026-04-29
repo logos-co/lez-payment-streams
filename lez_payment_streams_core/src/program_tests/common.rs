@@ -283,10 +283,7 @@ pub(crate) fn assert_vault_conservation_invariants(
     for stream_id in 0u64..vc.next_stream_id {
         let pda = derive_stream_pda(program_id, vault.vault_config_account_id, stream_id);
         let data = &state.get_account_by_id(pda).data;
-        if data.len() != StreamConfig::SIZE {
-            continue;
-        }
-        let sc = StreamConfig::from_bytes(data).expect("stream row");
+        let Some(sc) = StreamConfig::from_bytes(data) else { continue };
         sum = sum
             .checked_add(sc.allocation)
             .expect("allocation sum overflow");
