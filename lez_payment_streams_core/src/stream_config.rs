@@ -138,8 +138,8 @@ impl StreamConfig {
             // Ceiling division: the stream depleted partway through the last second.
             // Rounding up places `accrued_as_of` at the first second when `accrued == allocation`,
             // which is the earliest time a fold from `base_as_of` could reach depletion.
-            let time_to_depletion = div_ceil_u128(unaccrued_before_interval, rate)
-                .ok_or(ErrorCode::ArithmeticOverflow)?;
+            let time_to_depletion = u64::try_from(unaccrued_before_interval.div_ceil(u128::from(rate)))
+                .map_err(|_| ErrorCode::ArithmeticOverflow)?;
             let depleted_at = base_as_of
                 .checked_add(time_to_depletion)
                 .ok_or(ErrorCode::ArithmeticOverflow)?;
@@ -245,16 +245,6 @@ impl StreamConfig {
         stream_after_claim.validate_invariants()?;
         Ok((next_vault_total_allocated, payout, stream_after_claim))
     }
-}
-
-/// `ceil(rem / rate)` with `rate > 0`. Zero remainder yields zero.
-fn div_ceil_u128(rem: u128, rate: u64) -> Option<u64> {
-    if rate == 0 {
-        return None;
-    }
-    let r = u128::from(rate);
-    let q = (rem + r - 1) / r;
-    u64::try_from(q).ok()
 }
 
 #[cfg(test)]
