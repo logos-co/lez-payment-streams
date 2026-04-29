@@ -69,7 +69,7 @@ mod lez_payment_streams {
 
     fn parse_clock_account(meta: &AccountWithMetadata) -> Result<Timestamp, SpelError> {
         // Allowlist check against the three system clock account ids.
-        // Any other account id (including a client-supplied fake) is rejected.
+        // Any other account id (including a caller-supplied fake) is rejected.
         if !CLOCK_PROGRAM_ACCOUNT_IDS
             .iter()
             .any(|id| *id == meta.account_id)

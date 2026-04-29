@@ -13,7 +13,7 @@ use crate::{StreamId, VaultId, VersionId};
 
 /// Execution-mode intent stored on [`VaultConfig`], immutable at creation.
 /// The guest stores this field but cannot determine execution mode at runtime;
-/// host or wallet enforces shielded-only policy for [`VaultPrivacyTier::PseudonymousFunder`] vaults.
+/// the wallet enforces shielded-only policy for [`VaultPrivacyTier::PseudonymousFunder`] vaults.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 #[borsh(use_discriminant = true)]
 #[repr(u8)]
@@ -104,7 +104,7 @@ pub fn checked_total_allocated_after_release(
 }
 
 #[spel_framework_macros::account_type]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 pub struct VaultConfig {
     pub version: VersionId,
     pub owner: AccountId,
@@ -123,51 +123,14 @@ impl VaultConfig {
         + size_of::<VaultPrivacyTier>();
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(Self::SIZE);
-        buf.extend_from_slice(&self.version.to_le_bytes());
-        buf.extend_from_slice(self.owner.value());
-        buf.extend_from_slice(&self.vault_id.to_le_bytes());
-        buf.extend_from_slice(&self.next_stream_id.to_le_bytes());
-        buf.extend_from_slice(&self.total_allocated.to_le_bytes());
-        buf.push(self.privacy_tier.as_wire_byte());
-        buf
+        borsh::to_vec(self).expect("VaultConfig borsh serialization is infallible")
     }
 
     pub fn from_bytes(data: &[u8]) -> Option<Self> {
         if data.len() != Self::SIZE {
             return None;
         }
-        let mut offset = 0;
-        let size = size_of::<VersionId>();
-        let version = VersionId::from_le_bytes(data[offset..offset + size].try_into().ok()?);
-        offset += size;
-
-        let size = size_of::<AccountId>();
-        let owner = AccountId::new(data[offset..offset + size].try_into().ok()?);
-        offset += size;
-
-        let size = size_of::<VaultId>();
-        let vault_id = VaultId::from_le_bytes(data[offset..offset + size].try_into().ok()?);
-        offset += size;
-
-        let size = size_of::<StreamId>();
-        let next_stream_id = StreamId::from_le_bytes(data[offset..offset + size].try_into().ok()?);
-        offset += size;
-
-        let size = size_of::<Balance>();
-        let total_allocated = Balance::from_le_bytes(data[offset..offset + size].try_into().ok()?);
-        offset += size;
-
-        let privacy_tier = VaultPrivacyTier::from_wire_byte(*data.get(offset)?)?;
-
-        Some(Self {
-            version,
-            owner,
-            vault_id,
-            next_stream_id,
-            total_allocated,
-            privacy_tier,
-        })
+        borsh::from_slice(data).ok()
     }
 
     /// Fresh vault config: `next_stream_id` at [`StreamId::MIN`], `total_allocated` at zero.
@@ -192,7 +155,7 @@ impl VaultConfig {
 }
 
 #[spel_framework_macros::account_type]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 pub struct VaultHolding {
     pub version: VersionId,
 }
@@ -201,18 +164,14 @@ impl VaultHolding {
     pub const SIZE: usize = size_of::<VersionId>();
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(Self::SIZE);
-        buf.extend_from_slice(&self.version.to_le_bytes());
-        buf
+        borsh::to_vec(self).expect("VaultHolding borsh serialization is infallible")
     }
 
     pub fn from_bytes(data: &[u8]) -> Option<Self> {
         if data.len() != Self::SIZE {
             return None;
         }
-        let version = VersionId::from_le_bytes(data[..Self::SIZE].try_into().ok()?);
-
-        Some(Self { version })
+        borsh::from_slice(data).ok()
     }
 
     /// Use `None` for `version` to pick [`crate::DEFAULT_VERSION`].

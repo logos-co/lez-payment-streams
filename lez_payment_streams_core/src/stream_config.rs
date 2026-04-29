@@ -3,8 +3,6 @@
 use core::mem::size_of;
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use serde::{Deserialize, Serialize};
-
 use nssa_core::account::{AccountId, Balance};
 
 use crate::error_codes::ErrorCode;
@@ -13,7 +11,7 @@ use crate::{StreamId, Timestamp, TokensPerSecond, VersionId, DEFAULT_VERSION};
 
 /// Stream lifecycle. One byte on the wire (ordinal).
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 #[borsh(use_discriminant = true)]
 pub enum StreamState {
     Active = 0,
@@ -21,20 +19,9 @@ pub enum StreamState {
     Closed = 2,
 }
 
-impl StreamState {
-    pub fn from_discriminant(d: u8) -> Option<Self> {
-        match d {
-            0 => Some(Self::Active),
-            1 => Some(Self::Paused),
-            2 => Some(Self::Closed),
-            _ => None,
-        }
-    }
-}
-
 /// Stream PDA account body. Vault identity comes from the stream PDA seeds at derivation time, not from this struct.
 #[spel_framework_macros::account_type]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 pub struct StreamConfig {
     pub version: VersionId,
     /// Match the `stream_id` seed in the stream PDA derivation.
@@ -63,64 +50,14 @@ impl StreamConfig {
         + size_of::<Timestamp>();
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(Self::SIZE);
-        buf.extend_from_slice(&self.version.to_le_bytes());
-        buf.extend_from_slice(&self.stream_id.to_le_bytes());
-        buf.extend_from_slice(self.provider.value());
-        buf.extend_from_slice(&self.rate.to_le_bytes());
-        buf.extend_from_slice(&self.allocation.to_le_bytes());
-        buf.extend_from_slice(&self.accrued.to_le_bytes());
-        buf.push(self.state as u8);
-        buf.extend_from_slice(&self.accrued_as_of.to_le_bytes());
-        buf
+        borsh::to_vec(self).expect("StreamConfig borsh serialization is infallible")
     }
 
     pub fn from_bytes(data: &[u8]) -> Option<Self> {
         if data.len() != Self::SIZE {
             return None;
         }
-        let mut offset = 0;
-
-        let size = size_of::<VersionId>();
-        let version = VersionId::from_le_bytes(data[offset..offset + size].try_into().ok()?);
-        offset += size;
-
-        let size = size_of::<StreamId>();
-        let stream_id = StreamId::from_le_bytes(data[offset..offset + size].try_into().ok()?);
-        offset += size;
-
-        let size = size_of::<AccountId>();
-        let provider = AccountId::new(data[offset..offset + size].try_into().ok()?);
-        offset += size;
-
-        let size = size_of::<TokensPerSecond>();
-        let rate = TokensPerSecond::from_le_bytes(data[offset..offset + size].try_into().ok()?);
-        offset += size;
-
-        let size = size_of::<Balance>();
-        let allocation = Balance::from_le_bytes(data[offset..offset + size].try_into().ok()?);
-        offset += size;
-
-        let size = size_of::<Balance>();
-        let accrued = Balance::from_le_bytes(data[offset..offset + size].try_into().ok()?);
-        offset += size;
-
-        let state = StreamState::from_discriminant(*data.get(offset)?)?;
-        offset += size_of::<StreamState>();
-
-        let size = size_of::<Timestamp>();
-        let accrued_as_of = Timestamp::from_le_bytes(data[offset..offset + size].try_into().ok()?);
-
-        Some(Self {
-            version,
-            stream_id,
-            provider,
-            rate,
-            allocation,
-            accrued,
-            state,
-            accrued_as_of,
-        })
+        borsh::from_slice(data).ok()
     }
 
     /// Use `None` for `version` to pick [`DEFAULT_VERSION`].
