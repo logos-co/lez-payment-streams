@@ -4,6 +4,7 @@ use spel_framework::prelude::*;
 
 use lez_payment_streams_core::{
     checked_total_allocated_after_add,
+    checked_total_allocated_after_release,
     ClockAccountData,
     CLOCK_PROGRAM_ACCOUNT_IDS,
     ErrorCode,
@@ -62,7 +63,7 @@ mod lez_payment_streams {
             (ErrorCode::ResumeZeroUnaccrued, ResumeFromPausedInstruction::TopUpStream) => {
                 "unaccrued is zero after top-up"
             }
-            _ => "resume_from_paused_at failed",
+            _ => "resume_from_paused_at_time failed",
         };
         spel_err(code, message)
     }
@@ -638,7 +639,7 @@ mod lez_payment_streams {
             .map_err(|e| spel_err(e, "at_time failed"))?;
 
         stream_config_state = stream_config_state
-            .resume_from_paused_at(now)
+            .resume_from_paused_at_time(now)
             .map_err(|e| spel_resume_from_paused_at_err(e, ResumeFromPausedInstruction::ResumeStream))?;
 
         let vault_config_account = vault_config.account;
@@ -707,7 +708,7 @@ mod lez_payment_streams {
 
         if stream_config_state.state == StreamState::Paused {
             stream_config_state = stream_config_state
-                .resume_from_paused_at(now)
+                .resume_from_paused_at_time(now)
                 .map_err(|e| spel_resume_from_paused_at_err(e, ResumeFromPausedInstruction::TopUpStream))?;
         }
 
@@ -762,11 +763,15 @@ mod lez_payment_streams {
             return Err(spel_err(ErrorCode::CloseUnauthorized, "not vault owner or stream provider"));
         }
 
-        let (next_vault_total_allocated, stream_after_close) = stream_config_state
-            .close_at_time(now, vault_config_state.total_allocated)
+        let (unaccrued_released, stream_after_close) = stream_config_state
+            .close_at_time(now)
             .map_err(|e| spel_err(e, "close_at_time failed"))?;
 
-        vault_config_state.total_allocated = next_vault_total_allocated;
+        vault_config_state.total_allocated = checked_total_allocated_after_release(
+            vault_config_state.total_allocated,
+            unaccrued_released,
+        )
+        .map_err(|e| spel_err(e, "total_allocated release failed"))?;
 
         let mut vault_config = vault_config;
         let mut stream_config = stream_config;
@@ -814,11 +819,15 @@ mod lez_payment_streams {
             return Err(spel_err(ErrorCode::ClaimUnauthorized, "not stream provider"));
         }
 
-        let (next_vault_total_allocated, payout, stream_after_claim) = stream_config_state
-            .claim_at_time(now, vault_config_state.total_allocated)
+        let (payout, stream_after_claim) = stream_config_state
+            .claim_at_time(now)
             .map_err(|e| spel_err(e, "claim_at_time failed"))?;
 
-        vault_config_state.total_allocated = next_vault_total_allocated;
+        vault_config_state.total_allocated = checked_total_allocated_after_release(
+            vault_config_state.total_allocated,
+            payout,
+        )
+        .map_err(|e| spel_err(e, "total_allocated release failed"))?;
 
         let mut vault_config = vault_config;
         let mut vault_holding = vault_holding;

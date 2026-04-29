@@ -64,12 +64,6 @@ mod vault_privacy_tier_wire_tests {
 /// capped by unallocated liquidity. Pure helper (guest persists the value).
 ///
 /// Unallocated is `vault_holding_balance.saturating_sub(vault_total_allocated)`.
-/// [`crate::Instruction::CreateStream`] applies the new stream allocation.
-/// [`crate::Instruction::TopUpStream`] applies the top-up increment.
-///
-/// Zero `increase_total_allocated_by` is invalid where [`crate::error_codes::ErrorCode::ZeroStreamAllocation`] or [`crate::error_codes::ErrorCode::ZeroTopUpAmount`] apply.
-///
-/// [`crate::error_codes::ErrorCode::TotalAllocatedOverflow`] guards `checked_add` (defensive given the unallocated bound).
 pub fn checked_total_allocated_after_add(
     vault_holding_balance: Balance,
     vault_total_allocated: Balance,
@@ -88,7 +82,6 @@ pub fn checked_total_allocated_after_add(
 /// Pure helper (guest persists the value).
 ///
 /// Zero decrease: return the input unchanged (e.g. close with nothing left to release).
-/// [`crate::error_codes::ErrorCode::TotalAllocatedUnderflow`] when the decrease exceeds current `total_allocated`.
 pub fn checked_total_allocated_after_release(
     vault_total_allocated: Balance,
     decrease_total_allocated_by: Balance,
