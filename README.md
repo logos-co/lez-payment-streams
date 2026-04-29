@@ -19,21 +19,21 @@ For the rationale behind these choices and a suggested reading order, see [archi
 
 ## Running Tests
 
+After any change to the guest binary or to types shared with the guest,
+rebuild the guest ELF before testing:
+
+```bash
+cargo risczero build --manifest-path methods/guest/Cargo.toml
+```
+
+Run tests:
+
 ```bash
 # Fast local loop (no ZK proof generation)
 RISC0_DEV_MODE=1 cargo test -p lez_payment_streams_core --lib
 
 # Narrower filter when not touching other unit tests
 RISC0_DEV_MODE=1 cargo test -p lez_payment_streams_core --lib program_tests
-```
-
-After any change to the guest binary or to types shared with the guest,
-rebuild the guest ELF before relying on test results:
-
-```bash
-cargo build -p lez_payment_streams-methods
-# or equivalently
-cargo risczero build --manifest-path methods/guest/Cargo.toml
 ```
 
 `RISC0_DEV_MODE=1` skips ZK proof generation and is the standard mode for both
@@ -48,18 +48,6 @@ Full proof generation is reserved for release or dedicated proving jobs.
 
 Local `cargo test` does not require a wallet or sequencer.
 
-## Make Targets
-
-| Target | Description |
-|---|---|
-| `make build` | Build the guest binary (risc0) |
-| `make idl` | Generate IDL JSON from program source |
-| `make cli ARGS="..."` | Run the IDL-driven CLI |
-| `make deploy` | Deploy program to sequencer |
-| `make inspect` | Show ProgramId for built binary |
-| `make setup` | Create accounts via wallet |
-| `make status` | Show saved state and binary info |
-| `make clean` | Remove saved state |
 
 ## Quick Start (Integration)
 

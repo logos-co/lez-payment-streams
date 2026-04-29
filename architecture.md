@@ -1,6 +1,6 @@
 # Architecture
 
-This document orients a developer reading or reviewing the codebase.
+This document orients a developer reviewing the codebase.
 It covers the rationale behind structural choices
 and suggests a reading order.
 The protocol semantics live in the spec
@@ -17,10 +17,20 @@ The program stores state in three LEZ account types:
 Giving vault funds a dedicated account makes `VaultHolding.balance` unambiguously equal
 to the vault's treasury.
 `VaultHolding` stores only a version byte in its application data.
+The current implementation is single-token (native balance only)
+(see [Multi-Token Vaults](#multi-token-vaults)).
+
+Because `VaultHolding` is a public account, any party can increase its balance via a direct
+native transfer outside the `deposit` instruction.
+The solvency invariants are unaffected: `unallocated` grows and streams are unchanged.
+For `PseudonymousFunder`-tier vaults,
+a transparent transfer creates a traceable on-chain link.
+Addressing its privacy implications is wallet responsibility,
+as described in the spec's Security and Privacy Considerations section.
 
 `StreamConfig` carries per-stream parameters and lazy accrual state.
-Vault identity is not stored as a field in `StreamConfig`.
-It comes from the PDA seeds at derivation time.
+Vault identity is not stored as a field in `StreamConfig`;
+the PDA derivation already encodes it by including the `VaultConfig` address as a seed.
 
 Both vault accounts are required together on every vault-touching instruction.
 Their version fields must match.
@@ -53,7 +63,7 @@ Each module contains both transparent and PP tests for that instruction.
 Three additional modules cover cross-cutting concerns:
 `invariants.rs` for solvency invariant tests,
 `serialization.rs` for account layout round-trip checks,
-and `privacy_tier_policy.rs` for host-enforcement policy tests.
+and `privacy_tier_policy.rs` for wallet-enforcement policy tests.
 
 ## Suggested Reading Order
 
@@ -180,6 +190,9 @@ The `VaultHolding` PDA derivation includes an `asset_tag` seed (`"native"`)
 to reserve a path for future per-token vaults without breaking the current address space.
 Adding token support requires a separate holding account per token type
 and corresponding deposit, withdraw, and claim logic for each.
+The main structural change is that `VaultConfig.total_allocated` would need to become
+a per-token map rather than a single scalar, and `StreamConfig` would need a token field
+to identify which holding backs each stream.
 
 ### Protocol Extensions
 
