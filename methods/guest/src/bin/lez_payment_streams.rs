@@ -158,17 +158,6 @@ mod lez_payment_streams {
         Ok(())
     }
 
-    fn validate_vault_for_owner(
-        vault_config_state: &VaultConfig,
-        vault_holding_state: &VaultHolding,
-        vault_id: VaultId,
-        owner_account_id: AccountId,
-    ) -> Result<(), SpelError> {
-        validate_vault_structure(vault_config_state, vault_holding_state, vault_id)?;
-        validate_vault_owner(vault_config_state, owner_account_id)?;
-        Ok(())
-    }
-
     fn validate_stream_for_vault(
         stream_config: &StreamConfig,
         vault_config_state: &VaultConfig,
@@ -223,12 +212,8 @@ mod lez_payment_streams {
             vault_holding,
         )?;
 
-        validate_vault_for_owner(
-            &vault_config_state,
-            &vault_holding_state,
-            vault_id,
-            owner_account_id,
-        )?;
+        validate_vault_structure(&vault_config_state, &vault_holding_state, vault_id)?;
+        validate_vault_owner(&vault_config_state, owner_account_id)?;
 
         let stream_config_state =
             borsh::from_slice::<StreamConfig>(&stream_config.account.data).map_err(|_| {
@@ -409,12 +394,8 @@ mod lez_payment_streams {
             &vault_holding,
         )?;
 
-        validate_vault_for_owner(
-            &vault_config_state,
-            &vault_holding_state,
-            vault_id,
-            owner.account_id,
-        )?;
+        validate_vault_structure(&vault_config_state, &vault_holding_state, vault_id)?;
+        validate_vault_owner(&vault_config_state, owner.account_id)?;
 
         // The native balance decrease on the owner's account is executed by
         // `authenticated_transfer_program`, not by this guest, because `validate_execution`
@@ -462,12 +443,8 @@ mod lez_payment_streams {
             &vault_holding,
         )?;
 
-        validate_vault_for_owner(
-            &vault_config_state,
-            &vault_holding_state,
-            vault_id,
-            owner.account_id,
-        )?;
+        validate_vault_structure(&vault_config_state, &vault_holding_state, vault_id)?;
+        validate_vault_owner(&vault_config_state, owner.account_id)?;
 
         let unallocated = vault_holding.account.balance
             .saturating_sub(vault_config_state.total_allocated);
@@ -559,12 +536,8 @@ mod lez_payment_streams {
             &vault_holding,
         )?;
 
-        validate_vault_for_owner(
-            &vault_config_state,
-            &vault_holding_state,
-            vault_id,
-            owner.account_id,
-        )?;
+        validate_vault_structure(&vault_config_state, &vault_holding_state, vault_id)?;
+        validate_vault_owner(&vault_config_state, owner.account_id)?;
 
         if stream_id != vault_config_state.next_stream_id {
             return Err(spel_err(
