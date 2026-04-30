@@ -3,9 +3,7 @@
 use nssa::{
     execute_and_prove,
     privacy_preserving_transaction::{
-        circuit::ProgramWithDependencies,
-        message::Message,
-        witness_set::WitnessSet,
+        circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
         PrivacyPreservingTransaction,
     },
     program::Program,
@@ -16,17 +14,18 @@ use nssa_core::{
     BlockId, Commitment, EncryptionScheme, SharedSecretKey,
 };
 
+use crate::test_helpers::load_guest_program;
 use crate::Instruction;
 use crate::{
+    error_codes::ErrorCode,
     test_helpers::{
         assert_vault_state_unchanged_with_recipient, build_signed_public_tx, create_keypair,
         create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
         force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
         patch_vault_config, state_with_initialized_vault_with_recipient,
     },
-    error_codes::ErrorCode, TokensPerSecond, VaultConfig, VaultId, VaultPrivacyTier,
+    TokensPerSecond, VaultConfig, VaultId, VaultPrivacyTier,
 };
-use crate::test_helpers::load_guest_program;
 
 use super::common::{
     assert_execution_failed_with_code, DEFAULT_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE,
@@ -77,8 +76,8 @@ fn test_withdraw_succeeds() {
         .vault
         .state
         .get_account_by_id(wr.vault.vault_config_account_id);
-    let vault_config_state_before =
-        borsh::from_slice::<VaultConfig>(&vault_config_before.data).expect("valid vault config bytes");
+    let vault_config_state_before = borsh::from_slice::<VaultConfig>(&vault_config_before.data)
+        .expect("valid vault config bytes");
     let owner_after_deposit = wr
         .vault
         .state
@@ -126,8 +125,8 @@ fn test_withdraw_succeeds() {
         .vault
         .state
         .get_account_by_id(wr.vault.vault_config_account_id);
-    let vault_config_state_after =
-        borsh::from_slice::<VaultConfig>(&vault_config_after.data).expect("valid vault config bytes");
+    let vault_config_state_after = borsh::from_slice::<VaultConfig>(&vault_config_after.data)
+        .expect("valid vault config bytes");
 
     assert_eq!(
         wr.vault
@@ -831,10 +830,10 @@ fn test_withdraw_recipient_not_present_in_state_fails() {
 
 use super::pp_common::{
     account_meta, owner_vpk, pp3_recipient_npk, pp3_recipient_vpk, pp_owner_setup,
-    run_pp_withdraw_to_private_recipient, vault_fixture_pseudonymous_funder_funded_via_native_transfer,
-    vault_fixture_public_tier_funded_via_deposit,
-    OWNER_NSK, PP3_OWNER_FUND_AMOUNT, PP3_RECIPIENT_EPK_SCALAR, PP3_SIGNER_EPK_SCALAR,
-    PP3_WITHDRAW_AMOUNT,
+    run_pp_withdraw_to_private_recipient,
+    vault_fixture_pseudonymous_funder_funded_via_native_transfer,
+    vault_fixture_public_tier_funded_via_deposit, OWNER_NSK, PP3_OWNER_FUND_AMOUNT,
+    PP3_RECIPIENT_EPK_SCALAR, PP3_SIGNER_EPK_SCALAR, PP3_WITHDRAW_AMOUNT,
 };
 
 #[test]
@@ -863,8 +862,10 @@ fn test_withdraw_private_recipient_pp_transition_succeeds() {
     expected_nonce.public_account_nonce_increment();
     assert_eq!(owner_after.nonce, expected_nonce);
 
-    let cfg = borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
-        .expect("vault");
+    let cfg = borsh::from_slice::<VaultConfig>(
+        &fx.state.get_account_by_id(fx.vault_config_account_id).data,
+    )
+    .expect("vault");
     assert_eq!(cfg.total_allocated, 0u128);
 
     assert_eq!(receipt.tx.message().new_commitments.len(), 1);
@@ -901,8 +902,10 @@ fn test_pp_withdraw_private_recipient_pseudonymous_funded_vault_succeeds() {
     expected_nonce.public_account_nonce_increment();
     assert_eq!(owner_after.nonce, expected_nonce);
 
-    let cfg = borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
-        .expect("vault");
+    let cfg = borsh::from_slice::<VaultConfig>(
+        &fx.state.get_account_by_id(fx.vault_config_account_id).data,
+    )
+    .expect("vault");
     assert_eq!(cfg.privacy_tier, VaultPrivacyTier::PseudonymousFunder);
     assert_eq!(cfg.total_allocated, 0u128);
 }
@@ -927,7 +930,11 @@ fn test_pp_withdraw_private_owner_succeeds() {
         SharedSecretKey::new(&PP3_RECIPIENT_EPK_SCALAR, &pp3_recipient_vpk());
     let recipient_epk = EphemeralPublicKey::from_scalar(PP3_RECIPIENT_EPK_SCALAR);
 
-    let holding_before = setup.fx.state.get_account_by_id(setup.vault_holding_b_id).balance;
+    let holding_before = setup
+        .fx
+        .state
+        .get_account_by_id(setup.vault_holding_b_id)
+        .balance;
 
     let pre_states = vec![
         account_meta(&setup.fx.state, setup.vault_config_b_id, false),
@@ -967,7 +974,11 @@ fn test_pp_withdraw_private_owner_succeeds() {
         vec![],
         vec![
             (setup.owner_npk.clone(), owner_vpk(), owner_epk),
-            (recipient_npk_val.clone(), pp3_recipient_vpk(), recipient_epk),
+            (
+                recipient_npk_val.clone(),
+                pp3_recipient_vpk(),
+                recipient_epk,
+            ),
         ],
         output,
     )
@@ -979,11 +990,19 @@ fn test_pp_withdraw_private_owner_succeeds() {
     setup
         .fx
         .state
-        .transition_from_privacy_preserving_transaction(&tx, 5 as BlockId, super::common::TEST_PUBLIC_TX_TIMESTAMP)
+        .transition_from_privacy_preserving_transaction(
+            &tx,
+            5 as BlockId,
+            super::common::TEST_PUBLIC_TX_TIMESTAMP,
+        )
         .expect("withdraw private owner PP transition");
 
     assert_eq!(
-        setup.fx.state.get_account_by_id(setup.vault_holding_b_id).balance,
+        setup
+            .fx
+            .state
+            .get_account_by_id(setup.vault_holding_b_id)
+            .balance,
         holding_before - PP3_WITHDRAW_AMOUNT
     );
 

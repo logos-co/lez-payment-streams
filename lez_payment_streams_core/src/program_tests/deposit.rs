@@ -8,13 +8,14 @@ use nssa_core::{
 
 use crate::Instruction;
 use crate::{
+    error_codes::ErrorCode,
     test_helpers::{
         assert_vault_state_unchanged, build_signed_public_tx, create_keypair,
         create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
         harness_clock_01_and_provider_account_ids, patch_vault_config,
         state_with_initialized_vault,
     },
-    error_codes::ErrorCode, TokensPerSecond, VaultConfig, VaultHolding, VaultId, VersionId,
+    TokensPerSecond, VaultConfig, VaultHolding, VaultId, VersionId,
 };
 
 use super::common::{
@@ -38,8 +39,8 @@ fn test_deposit_succeeds() {
     ];
 
     let vault_config_before = fx.state.get_account_by_id(fx.vault_config_account_id);
-    let vault_config_state_before =
-        borsh::from_slice::<VaultConfig>(&vault_config_before.data).expect("valid vault config bytes");
+    let vault_config_state_before = borsh::from_slice::<VaultConfig>(&vault_config_before.data)
+        .expect("valid vault config bytes");
     let instruction_deposit = Instruction::Deposit {
         vault_id: fx.vault_id,
         amount: deposit_amount,
@@ -75,8 +76,8 @@ fn test_deposit_succeeds() {
         .get_account_by_id(fx.vault_holding_account_id)
         .balance;
     let vault_config_after = fx.state.get_account_by_id(fx.vault_config_account_id);
-    let vault_config_state_after =
-        borsh::from_slice::<VaultConfig>(&vault_config_after.data).expect("valid vault config bytes");
+    let vault_config_state_after = borsh::from_slice::<VaultConfig>(&vault_config_after.data)
+        .expect("valid vault config bytes");
 
     assert_eq!(owner_balance_after, owner_balance_before - deposit_amount);
     assert_eq!(
@@ -586,12 +587,16 @@ fn test_deposit_vault_holding_version_mismatch_fails() {
 
 // ---- PP tests ---- //
 
+use super::pp_common::{
+    account_meta, load_payment_streams_with_auth_transfer, owner_npk, owner_vpk,
+    vault_fixture_public_tier_funded_via_deposit, OWNER_FUND_EPK_SCALAR, OWNER_NSK,
+    PP_DEPOSIT_AMOUNT, PP_DEPOSIT_EPK_SCALAR, PP_OWNER_FUND_AMOUNT,
+};
+use crate::VaultPrivacyTier;
 use nssa::{
     execute_and_prove,
     privacy_preserving_transaction::{
-        circuit::ProgramWithDependencies,
-        message::Message,
-        witness_set::WitnessSet,
+        circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
         PrivacyPreservingTransaction,
     },
 };
@@ -599,13 +604,6 @@ use nssa_core::{
     account::{Account, AccountId, AccountWithMetadata},
     encryption::EphemeralPublicKey,
     Commitment, EncryptionScheme, MembershipProof, SharedSecretKey,
-};
-use crate::VaultPrivacyTier;
-use super::pp_common::{
-    account_meta, load_payment_streams_with_auth_transfer, owner_npk, owner_vpk,
-    vault_fixture_public_tier_funded_via_deposit,
-    OWNER_FUND_EPK_SCALAR, OWNER_NSK, PP_DEPOSIT_AMOUNT, PP_DEPOSIT_EPK_SCALAR,
-    PP_OWNER_FUND_AMOUNT,
 };
 
 #[test]
@@ -690,7 +688,8 @@ fn test_pp_deposit_private_owner_succeeds() {
         .expect("vault_config_b data fits"),
         ..Account::default()
     };
-    fx_a.state.force_insert_account(vault_config_b_id, vault_config_b);
+    fx_a.state
+        .force_insert_account(vault_config_b_id, vault_config_b);
 
     let vault_holding_b = Account {
         program_owner: fx_a.program_id,
@@ -699,7 +698,8 @@ fn test_pp_deposit_private_owner_succeeds() {
             .expect("vault_holding_b data fits"),
         ..Account::default()
     };
-    fx_a.state.force_insert_account(vault_holding_b_id, vault_holding_b);
+    fx_a.state
+        .force_insert_account(vault_holding_b_id, vault_holding_b);
 
     let owner_commitment_obj = Commitment::new(&owner_npk, &owner_committed_account);
     let membership_proof = fx_a

@@ -32,15 +32,13 @@ mod lez_payment_streams {
     #[allow(unused_imports)]
     use super::*;
 
-    fn spel_custom(code: u32, message: &'static str) -> SpelError {
-        SpelError::Custom {
-            code,
-            message: message.into(),
-        }
-    }
+    // ---- Error helpers ---- //
 
     fn spel_err(code: ErrorCode, message: &'static str) -> SpelError {
-        spel_custom(code as u32, message)
+        SpelError::Custom {
+            code: code as u32,
+            message: message.into(),
+        }
     }
 
     #[derive(Clone, Copy)]
@@ -68,36 +66,7 @@ mod lez_payment_streams {
         spel_err(code, message)
     }
 
-    fn parse_clock_account(meta: &AccountWithMetadata) -> Result<Timestamp, SpelError> {
-        // Allowlist check against the three system clock account ids.
-        // Any other account id (including a caller-supplied fake) is rejected.
-        if !CLOCK_PROGRAM_ACCOUNT_IDS
-            .iter()
-            .any(|id| *id == meta.account_id)
-        {
-            return Err(spel_err(
-                ErrorCode::InvalidClockAccount,
-                "not a system clock account",
-            ));
-        }
-        // `block_id` is validated structurally as part of the Borsh parse but is not used for
-        // stream math. Unknown or future clock payload extensions fail here intentionally.
-        let parsed: ClockAccountData =
-            borsh::from_slice(meta.account.data.as_ref()).map_err(|_| {
-                spel_err(ErrorCode::InvalidClockAccount, "invalid clock account data")
-            })?;
-        Ok(parsed.timestamp)
-    }
-
-    fn stream_invariant_err(code: ErrorCode) -> SpelError {
-        let message = match code {
-            ErrorCode::ZeroStreamRate => "zero stream rate",
-            ErrorCode::ZeroStreamAllocation => "zero stream allocation",
-            ErrorCode::StreamExceedsAllocation => "accrued exceeds allocation",
-            _ => "invalid stream config",
-        };
-        spel_err(code, message)
-    }
+    // ---- Parsing helpers ---- //
 
     fn parse_vault_config_and_holding(
         vault_config: &AccountWithMetadata,
@@ -120,6 +89,39 @@ mod lez_payment_streams {
             })?;
 
         Ok((vault_config_state, vault_holding_state))
+    }
+
+    fn parse_clock_account(meta: &AccountWithMetadata) -> Result<Timestamp, SpelError> {
+        // Allowlist check against the three system clock account ids.
+        // Any other account id (including a caller-supplied fake) is rejected.
+        if !CLOCK_PROGRAM_ACCOUNT_IDS
+            .iter()
+            .any(|id| *id == meta.account_id)
+        {
+            return Err(spel_err(
+                ErrorCode::InvalidClockAccount,
+                "not a system clock account",
+            ));
+        }
+        // `block_id` is validated structurally as part of the Borsh parse but is not used for
+        // stream math. Unknown or future clock payload extensions fail here intentionally.
+        let parsed: ClockAccountData =
+            borsh::from_slice(meta.account.data.as_ref()).map_err(|_| {
+                spel_err(ErrorCode::InvalidClockAccount, "invalid clock account data")
+            })?;
+        Ok(parsed.timestamp)
+    }
+
+    // ---- Validation helpers ---- //
+
+    fn stream_invariant_err(code: ErrorCode) -> SpelError {
+        let message = match code {
+            ErrorCode::ZeroStreamRate => "zero stream rate",
+            ErrorCode::ZeroStreamAllocation => "zero stream allocation",
+            ErrorCode::StreamExceedsAllocation => "accrued exceeds allocation",
+            _ => "invalid stream config",
+        };
+        spel_err(code, message)
     }
 
     fn validate_vault_structural(
@@ -194,6 +196,8 @@ mod lez_payment_streams {
             .validate_invariants()
             .map_err(stream_invariant_err)
     }
+
+    // ---- Shared account loaders ---- //
 
     /// Load and validate vault, stream, and clock for instructions where the **vault owner is
     /// the transaction signer** (pause, resume, top-up).
@@ -286,6 +290,8 @@ mod lez_payment_streams {
         Ok((vault_config_state, vault_holding_state, stream_config_state, now))
     }
 
+    // ---- Shared output helpers ---- //
+
     fn execute_five_owner_stream_accounts(
         vault_config_account: Account,
         vault_holding_account: Account,
@@ -310,6 +316,8 @@ mod lez_payment_streams {
             message: "failed to serialize transfer amount".into(),
         })
     }
+
+    // ---- Vault instructions ---- //
 
     #[instruction]
     pub fn initialize_vault(
@@ -483,6 +491,8 @@ mod lez_payment_streams {
             vec![],
         ))
     }
+
+    // ---- Stream instructions ---- //
 
     #[instruction]
     pub fn create_stream(

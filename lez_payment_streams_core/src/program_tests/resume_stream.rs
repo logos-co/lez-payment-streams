@@ -8,19 +8,20 @@ use nssa_core::{
 
 use crate::Instruction;
 use crate::{
+    error_codes::ErrorCode,
     test_helpers::{
         create_keypair, create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
         force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
         patch_vault_config,
     },
-    error_codes::ErrorCode, StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId,
+    StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId,
 };
 
 use super::common::{
     assert_execution_failed_with_code, first_stream_ix_accounts, force_stream_state_closed,
-    signed_create_stream, signed_pause_stream, signed_resume_stream,
-    state_deposited_with_clock, transition_ok, DEFAULT_CLOCK_INITIAL_TS,
-    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
+    signed_create_stream, signed_pause_stream, signed_resume_stream, state_deposited_with_clock,
+    transition_ok, DEFAULT_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE,
+    DEFAULT_STREAM_TEST_DEPOSIT,
 };
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER};
 use crate::test_helpers::build_signed_public_tx;
@@ -87,8 +88,9 @@ fn test_resume_succeeds() {
         "resume_stream failed",
     );
 
-    let s_resumed = borsh::from_slice::<StreamConfig>(&dep.vault.state.get_account_by_id(stream_pda).data)
-        .expect("stream");
+    let s_resumed =
+        borsh::from_slice::<StreamConfig>(&dep.vault.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     assert_eq!(s_resumed.state, StreamState::Active);
     assert_eq!(s_resumed.accrued, 0 as Balance);
     assert_eq!(s_resumed.accrued_as_of, t1);
@@ -527,12 +529,17 @@ fn test_resume_stream_owner_mismatch_fails() {
 
 // ---- PP tests ---- //
 
+use super::common::TEST_PUBLIC_TX_TIMESTAMP;
+use super::pp_common::{
+    account_meta, owner_vpk, pp_owner_setup, recipient_npk, PpOwnerSetup, OWNER_NSK,
+    PP3_OWNER_FUND_AMOUNT, PP3_SIGNER_EPK_SCALAR, PP3_STREAM_ALLOCATION, PP3_STREAM_RATE, PP3_T0,
+    PP3_T1,
+};
+use crate::{test_helpers::load_guest_program, CLOCK_01_PROGRAM_ACCOUNT_ID};
 use nssa::{
     execute_and_prove,
     privacy_preserving_transaction::{
-        circuit::ProgramWithDependencies,
-        message::Message,
-        witness_set::WitnessSet,
+        circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
         PrivacyPreservingTransaction,
     },
 };
@@ -540,13 +547,6 @@ use nssa_core::{
     account::{Account, AccountId, AccountWithMetadata, Data},
     encryption::EphemeralPublicKey,
     Commitment, EncryptionScheme, SharedSecretKey,
-};
-use crate::{test_helpers::load_guest_program, CLOCK_01_PROGRAM_ACCOUNT_ID};
-use super::common::TEST_PUBLIC_TX_TIMESTAMP;
-use super::pp_common::{
-    account_meta, owner_vpk, pp_owner_setup, recipient_npk, PpOwnerSetup,
-    OWNER_NSK, PP3_OWNER_FUND_AMOUNT, PP3_SIGNER_EPK_SCALAR, PP3_STREAM_ALLOCATION,
-    PP3_STREAM_RATE, PP3_T0, PP3_T1,
 };
 
 #[test]
@@ -640,9 +640,8 @@ fn test_pp_resume_stream_private_owner_succeeds() {
         .transition_from_privacy_preserving_transaction(&tx, 5 as BlockId, TEST_PUBLIC_TX_TIMESTAMP)
         .expect("resume_stream PP transition");
 
-    let stream =
-        borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
-            .expect("stream config after resume");
+    let stream = borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
+        .expect("stream config after resume");
     assert_eq!(stream.state, StreamState::Active);
     assert_eq!(stream.accrued, accrued);
     assert_eq!(stream.allocation, PP3_STREAM_ALLOCATION);

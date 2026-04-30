@@ -6,9 +6,7 @@
 use nssa::{
     execute_and_prove,
     privacy_preserving_transaction::{
-        circuit::ProgramWithDependencies,
-        message::Message,
-        witness_set::WitnessSet,
+        circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
         PrivacyPreservingTransaction,
     },
     program::Program,
@@ -55,7 +53,11 @@ fn withdraw_instruction_data(vault_id: u64, amount: Balance) -> InstructionData 
         .expect("withdraw instruction serializes")
 }
 
-pub(crate) fn account_meta(state: &V03State, id: AccountId, is_authorized: bool) -> AccountWithMetadata {
+pub(crate) fn account_meta(
+    state: &V03State,
+    id: AccountId,
+    is_authorized: bool,
+) -> AccountWithMetadata {
     AccountWithMetadata {
         account: state.get_account_by_id(id),
         is_authorized,
@@ -368,7 +370,8 @@ pub(crate) fn pp_owner_setup() -> PpOwnerSetup {
         .expect("vault_config_b data fits"),
         ..Account::default()
     };
-    fx.state.force_insert_account(vault_config_b_id, vault_config_b);
+    fx.state
+        .force_insert_account(vault_config_b_id, vault_config_b);
 
     let vault_holding_b = Account {
         program_owner: fx.program_id,
@@ -377,7 +380,8 @@ pub(crate) fn pp_owner_setup() -> PpOwnerSetup {
             .expect("vault_holding_b data fits"),
         ..Account::default()
     };
-    fx.state.force_insert_account(vault_holding_b_id, vault_holding_b);
+    fx.state
+        .force_insert_account(vault_holding_b_id, vault_holding_b);
 
     force_clock_account_monotonic(&mut fx.state, CLOCK_01_PROGRAM_ACCOUNT_ID, 4, PP3_T0);
 

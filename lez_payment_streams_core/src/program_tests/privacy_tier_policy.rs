@@ -9,8 +9,7 @@ use crate::Instruction;
 use crate::{
     test_helpers::{
         assert_public_payment_streams_instruction_allowed, create_keypair, derive_stream_pda,
-        force_clock_account_monotonic,
-        state_with_initialized_vault_pseudonymous_funder_preseeded,
+        force_clock_account_monotonic, state_with_initialized_vault_pseudonymous_funder_preseeded,
         state_with_initialized_vault_with_privacy_tier, transfer_native_balance_for_tests,
         transition_public_payment_streams_tx_respecting_privacy_tier,
     },
@@ -138,4 +137,3 @@ fn public_create_stream_pseudonymous_funder_vault_fails() {
         Err(NssaError::InvalidInput(_))
     ));
 }
-

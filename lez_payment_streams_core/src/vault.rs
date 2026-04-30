@@ -11,7 +11,9 @@ use crate::{StreamId, VaultId, VersionId};
 /// Execution-mode intent stored on [`VaultConfig`], immutable at creation.
 /// The guest stores this field but cannot determine execution mode at runtime;
 /// the wallet enforces shielded-only policy for [`VaultPrivacyTier::PseudonymousFunder`] vaults.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
+)]
 #[borsh(use_discriminant = true)]
 #[serde(into = "u8", try_from = "u8")]
 #[repr(u8)]

@@ -8,12 +8,13 @@ use nssa_core::{
 
 use crate::Instruction;
 use crate::{
+    error_codes::ErrorCode,
     test_helpers::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
         derive_vault_pdas, force_clock_account_monotonic, force_clock_account_unchecked,
         harness_clock_01_and_provider_account_ids, patch_vault_config,
     },
-    error_codes::ErrorCode, StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId,
+    StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId,
 };
 
 use super::common::{
@@ -68,8 +69,9 @@ fn test_pause_succeeds() {
         "pause_stream failed",
     );
 
-    let s_paused = borsh::from_slice::<StreamConfig>(&dep.vault.state.get_account_by_id(stream_pda).data)
-        .expect("stream");
+    let s_paused =
+        borsh::from_slice::<StreamConfig>(&dep.vault.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     assert_eq!(s_paused.state, StreamState::Paused);
     assert_eq!(s_paused.accrued, 0 as Balance);
     assert_eq!(s_paused.accrued_as_of, t0);
@@ -449,12 +451,17 @@ fn test_pause_stream_wrong_vault_id_fails() {
 
 // ---- PP tests ---- //
 
+use super::common::TEST_PUBLIC_TX_TIMESTAMP;
+use super::pp_common::{
+    account_meta, owner_vpk, pp_owner_setup, recipient_npk, PpOwnerSetup, OWNER_NSK,
+    PP3_OWNER_FUND_AMOUNT, PP3_SIGNER_EPK_SCALAR, PP3_STREAM_ALLOCATION, PP3_STREAM_RATE, PP3_T0,
+    PP3_T1,
+};
+use crate::{test_helpers::load_guest_program, CLOCK_01_PROGRAM_ACCOUNT_ID};
 use nssa::{
     execute_and_prove,
     privacy_preserving_transaction::{
-        circuit::ProgramWithDependencies,
-        message::Message,
-        witness_set::WitnessSet,
+        circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
         PrivacyPreservingTransaction,
     },
 };
@@ -462,13 +469,6 @@ use nssa_core::{
     account::{Account, AccountId, AccountWithMetadata, Data},
     encryption::EphemeralPublicKey,
     Commitment, EncryptionScheme, SharedSecretKey,
-};
-use crate::{test_helpers::load_guest_program, CLOCK_01_PROGRAM_ACCOUNT_ID};
-use super::common::TEST_PUBLIC_TX_TIMESTAMP;
-use super::pp_common::{
-    account_meta, owner_vpk, pp_owner_setup, recipient_npk, PpOwnerSetup,
-    OWNER_NSK, PP3_OWNER_FUND_AMOUNT, PP3_SIGNER_EPK_SCALAR, PP3_STREAM_ALLOCATION,
-    PP3_STREAM_RATE, PP3_T0, PP3_T1,
 };
 
 #[test]
@@ -561,9 +561,8 @@ fn test_pp_pause_stream_private_owner_succeeds() {
         .transition_from_privacy_preserving_transaction(&tx, 5 as BlockId, TEST_PUBLIC_TX_TIMESTAMP)
         .expect("pause_stream PP transition");
 
-    let stream =
-        borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
-            .expect("stream config after pause");
+    let stream = borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
+        .expect("stream config after pause");
     assert_eq!(stream.state, StreamState::Paused);
     let expected_accrued = PP3_STREAM_RATE as Balance * (PP3_T1 - PP3_T0) as Balance;
     assert_eq!(stream.accrued, expected_accrued);

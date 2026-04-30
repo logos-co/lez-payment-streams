@@ -6,17 +6,18 @@ use nssa_core::{
 };
 
 use crate::{
+    error_codes::ErrorCode,
     test_helpers::{
         force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
         patch_vault_config,
     },
-    error_codes::ErrorCode, StreamConfig, StreamState, Timestamp, TokensPerSecond,
+    StreamConfig, StreamState, Timestamp, TokensPerSecond,
 };
 
 use super::common::{
     assert_execution_failed_with_code, first_stream_ix_accounts, force_stream_state_closed,
-    signed_create_stream, signed_deposit, signed_pause_stream,
-    signed_top_up_stream, state_deposited_with_clock, transition_ok, DEFAULT_CLOCK_INITIAL_TS,
+    signed_create_stream, signed_deposit, signed_pause_stream, signed_top_up_stream,
+    state_deposited_with_clock, transition_ok, DEFAULT_CLOCK_INITIAL_TS,
     DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
 
@@ -403,8 +404,9 @@ fn test_topup_allocation_overflow_fails() {
     s_near_max_allocation.allocation = Balance::MAX - 5;
     s_near_max_allocation.accrued = 0 as Balance;
     let mut stream_account = dep.vault.state.get_account_by_id(stream_pda).clone();
-    stream_account.data = nssa_core::account::Data::try_from(borsh::to_vec(&s_near_max_allocation).unwrap())
-        .expect("stream payload fits");
+    stream_account.data =
+        nssa_core::account::Data::try_from(borsh::to_vec(&s_near_max_allocation).unwrap())
+            .expect("stream payload fits");
     dep.vault
         .state
         .force_insert_account(stream_pda, stream_account);
@@ -482,13 +484,20 @@ fn test_top_up_stream_owner_mismatch_fails() {
 
 // ---- PP tests ---- //
 
+use super::common::TEST_PUBLIC_TX_TIMESTAMP;
+use super::pp_common::{
+    account_meta, owner_vpk, pp_owner_setup, recipient_npk, PpOwnerSetup, OWNER_NSK,
+    PP3_OWNER_FUND_AMOUNT, PP3_SIGNER_EPK_SCALAR, PP3_STREAM_RATE, PP3_T0, PP3_TOP_UP_AMOUNT,
+};
 use crate::Instruction;
+use crate::{
+    test_helpers::{derive_stream_pda, load_guest_program},
+    VaultConfig, CLOCK_01_PROGRAM_ACCOUNT_ID,
+};
 use nssa::{
     execute_and_prove,
     privacy_preserving_transaction::{
-        circuit::ProgramWithDependencies,
-        message::Message,
-        witness_set::WitnessSet,
+        circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
         PrivacyPreservingTransaction,
     },
     program::Program,
@@ -497,16 +506,6 @@ use nssa_core::{
     account::{Account, AccountId, AccountWithMetadata, Data},
     encryption::EphemeralPublicKey,
     Commitment, EncryptionScheme, SharedSecretKey,
-};
-use crate::{
-    test_helpers::{derive_stream_pda, load_guest_program},
-    VaultConfig, CLOCK_01_PROGRAM_ACCOUNT_ID,
-};
-use super::common::TEST_PUBLIC_TX_TIMESTAMP;
-use super::pp_common::{
-    account_meta, owner_vpk, pp_owner_setup, recipient_npk, PpOwnerSetup,
-    OWNER_NSK, PP3_OWNER_FUND_AMOUNT, PP3_SIGNER_EPK_SCALAR, PP3_STREAM_RATE, PP3_T0,
-    PP3_TOP_UP_AMOUNT,
 };
 
 #[test]
@@ -601,9 +600,8 @@ fn test_pp_top_up_stream_private_owner_succeeds() {
         .transition_from_privacy_preserving_transaction(&tx, 5 as BlockId, TEST_PUBLIC_TX_TIMESTAMP)
         .expect("top_up_stream PP transition");
 
-    let stream =
-        borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
-            .expect("stream config after top_up");
+    let stream = borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
+        .expect("stream config after top_up");
     assert_eq!(stream.state, StreamState::Active);
     assert_eq!(stream.allocation, depleted_allocation + PP3_TOP_UP_AMOUNT);
     assert_eq!(stream.accrued, depleted_allocation);
@@ -611,7 +609,10 @@ fn test_pp_top_up_stream_private_owner_succeeds() {
     let vault =
         borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(vault_config_b_id).data)
             .expect("vault config after top_up");
-    assert_eq!(vault.total_allocated, depleted_allocation + PP3_TOP_UP_AMOUNT);
+    assert_eq!(
+        vault.total_allocated,
+        depleted_allocation + PP3_TOP_UP_AMOUNT
+    );
 
     assert_eq!(tx.message().new_commitments.len(), 1);
     let decrypted = EncryptionScheme::decrypt(

@@ -361,7 +361,8 @@ pub(crate) fn assert_public_payment_streams_instruction_allowed(
     vault_config_account_id: AccountId,
 ) -> Result<(), &'static str> {
     let acc = state.get_account_by_id(vault_config_account_id);
-    let cfg = borsh::from_slice::<VaultConfig>(acc.data.as_ref()).map_err(|_| "invalid vault config bytes")?;
+    let cfg = borsh::from_slice::<VaultConfig>(acc.data.as_ref())
+        .map_err(|_| "invalid vault config bytes")?;
     if cfg.privacy_tier == VaultPrivacyTier::PseudonymousFunder {
         return Err("public instruction disallowed for PseudonymousFunder vault");
     }

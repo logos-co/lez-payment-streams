@@ -6,16 +6,17 @@ use nssa_core::{
 };
 
 use crate::{
+    error_codes::ErrorCode,
     test_helpers::{create_keypair, derive_stream_pda, force_clock_account_monotonic},
-    error_codes::ErrorCode, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond,
-    VaultConfig, CLOCK_01_PROGRAM_ACCOUNT_ID,
+    StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig,
+    CLOCK_01_PROGRAM_ACCOUNT_ID,
 };
 
 use super::common::{
     assert_execution_failed_with_code, force_stream_state_closed, signed_close_stream,
-    signed_create_stream, state_deposited_with_clock, transition_ok,
-    CloseStreamIxAccounts, DEFAULT_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE,
-    DEFAULT_STREAM_TEST_DEPOSIT, TEST_PUBLIC_TX_TIMESTAMP,
+    signed_create_stream, state_deposited_with_clock, transition_ok, CloseStreamIxAccounts,
+    DEFAULT_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
+    TEST_PUBLIC_TX_TIMESTAMP,
 };
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_PROVIDER};
 
@@ -266,12 +267,16 @@ fn test_close_already_closed_fails() {
 
 // ---- PP tests ---- //
 
+use super::pp_common::{
+    account_meta, pp_claim_close_setup, recipient_npk, recipient_vpk, PpClaimCloseSetup,
+    EPK_SCALAR, PP_STREAM_ALLOCATION, PP_STREAM_RATE, PP_T0, PP_T1, PP_WITHDRAW_AMOUNT,
+    RECIPIENT_NSK,
+};
+use crate::test_helpers::load_guest_program;
 use nssa::{
     execute_and_prove,
     privacy_preserving_transaction::{
-        circuit::ProgramWithDependencies,
-        message::Message,
-        witness_set::WitnessSet,
+        circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
         PrivacyPreservingTransaction,
     },
     program::Program,
@@ -280,13 +285,6 @@ use nssa_core::{
     account::{AccountId, AccountWithMetadata},
     encryption::EphemeralPublicKey,
     Commitment, EncryptionScheme, SharedSecretKey,
-};
-use crate::test_helpers::load_guest_program;
-use super::pp_common::{
-    account_meta, pp_claim_close_setup, PpClaimCloseSetup,
-    recipient_npk, recipient_vpk,
-    RECIPIENT_NSK, EPK_SCALAR,
-    PP_T0, PP_T1, PP_STREAM_RATE, PP_STREAM_ALLOCATION, PP_WITHDRAW_AMOUNT,
 };
 
 #[test]
@@ -371,16 +369,18 @@ fn test_pp_close_stream_private_provider_authority_succeeds() {
         .expect("close_stream PP transition");
 
     let stream_after =
-        borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data).expect("stream");
+        borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     assert_eq!(stream_after.state, StreamState::Closed);
     let accrued_at_t1 = PP_STREAM_RATE as Balance * (PP_T1 - PP_T0) as Balance;
     assert_eq!(stream_after.allocation, accrued_at_t1);
     assert_eq!(stream_after.accrued, accrued_at_t1);
 
     let unaccrued = PP_STREAM_ALLOCATION - accrued_at_t1;
-    let vault_after =
-        borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
-            .expect("vault");
+    let vault_after = borsh::from_slice::<VaultConfig>(
+        &fx.state.get_account_by_id(fx.vault_config_account_id).data,
+    )
+    .expect("vault");
     assert_eq!(
         vault_after.total_allocated,
         vault_total_allocated_before - unaccrued

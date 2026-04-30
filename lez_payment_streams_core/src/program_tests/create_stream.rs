@@ -7,14 +7,15 @@ use nssa_core::{
 
 use crate::Instruction;
 use crate::{
+    error_codes::ErrorCode,
     test_helpers::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
         derive_vault_pdas, force_clock_account_monotonic,
         harness_clock_01_and_provider_account_ids, patch_vault_config,
         state_with_initialized_vault,
     },
-    error_codes::ErrorCode, StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond,
-    VaultConfig, VaultId, DEFAULT_VERSION,
+    StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig, VaultId,
+    DEFAULT_VERSION,
 };
 
 use super::common::{
@@ -120,9 +121,10 @@ fn test_create_stream_succeeds() {
         result_stream
     );
 
-    let vault_config =
-        borsh::from_slice::<VaultConfig>(&v.state.get_account_by_id(v.vault_config_account_id).data)
-            .expect("vault config");
+    let vault_config = borsh::from_slice::<VaultConfig>(
+        &v.state.get_account_by_id(v.vault_config_account_id).data,
+    )
+    .expect("vault config");
     assert_eq!(vault_config.next_stream_id, 1);
     assert_eq!(vault_config.total_allocated, allocation);
 
@@ -817,12 +819,16 @@ fn test_create_stream_next_stream_id_overflow_fails() {
 
 // ---- PP tests ---- //
 
+use super::common::TEST_PUBLIC_TX_TIMESTAMP;
+use super::pp_common::{
+    account_meta, owner_vpk, pp_owner_setup, recipient_npk, PpOwnerSetup, OWNER_NSK,
+    PP3_OWNER_FUND_AMOUNT, PP3_SIGNER_EPK_SCALAR, PP3_STREAM_ALLOCATION, PP3_STREAM_RATE,
+};
+use crate::{test_helpers::load_guest_program, CLOCK_01_PROGRAM_ACCOUNT_ID};
 use nssa::{
     execute_and_prove,
     privacy_preserving_transaction::{
-        circuit::ProgramWithDependencies,
-        message::Message,
-        witness_set::WitnessSet,
+        circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
         PrivacyPreservingTransaction,
     },
     program::Program,
@@ -831,13 +837,6 @@ use nssa_core::{
     account::{AccountId, AccountWithMetadata},
     encryption::EphemeralPublicKey,
     Commitment, EncryptionScheme, SharedSecretKey,
-};
-use crate::{test_helpers::load_guest_program, CLOCK_01_PROGRAM_ACCOUNT_ID};
-use super::common::TEST_PUBLIC_TX_TIMESTAMP;
-use super::pp_common::{
-    account_meta, owner_vpk, pp_owner_setup, recipient_npk, PpOwnerSetup,
-    OWNER_NSK, PP3_OWNER_FUND_AMOUNT, PP3_SIGNER_EPK_SCALAR, PP3_STREAM_ALLOCATION,
-    PP3_STREAM_RATE,
 };
 
 #[test]
@@ -910,9 +909,8 @@ fn test_pp_create_stream_private_owner_succeeds() {
         .transition_from_privacy_preserving_transaction(&tx, 5 as BlockId, TEST_PUBLIC_TX_TIMESTAMP)
         .expect("create_stream PP transition");
 
-    let stream =
-        borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
-            .expect("stream config after create_stream");
+    let stream = borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
+        .expect("stream config after create_stream");
     assert_eq!(stream.state, StreamState::Active);
     assert_eq!(stream.rate, PP3_STREAM_RATE);
     assert_eq!(stream.allocation, PP3_STREAM_ALLOCATION);

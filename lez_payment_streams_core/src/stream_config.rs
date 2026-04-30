@@ -115,8 +115,9 @@ impl StreamConfig {
             // Ceiling division: the stream depleted partway through the last second.
             // Rounding up places `accrued_as_of` at the first second when `accrued == allocation`,
             // which is the earliest time a fold from `base_as_of` could reach depletion.
-            let time_to_depletion = u64::try_from(unaccrued_before_accrual_interval.div_ceil(u128::from(rate)))
-                .map_err(|_| ErrorCode::ArithmeticOverflow)?;
+            let time_to_depletion =
+                u64::try_from(unaccrued_before_accrual_interval.div_ceil(u128::from(rate)))
+                    .map_err(|_| ErrorCode::ArithmeticOverflow)?;
             let depleted_at = base_as_of
                 .checked_add(time_to_depletion)
                 .ok_or(ErrorCode::ArithmeticOverflow)?;

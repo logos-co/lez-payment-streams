@@ -269,8 +269,10 @@ pub(crate) fn assert_vault_conservation_invariants(
     program_id: ProgramId,
     vault: &VaultFixture,
 ) {
-    let vc = borsh::from_slice::<VaultConfig>(&state.get_account_by_id(vault.vault_config_account_id).data)
-        .expect("vault config");
+    let vc = borsh::from_slice::<VaultConfig>(
+        &state.get_account_by_id(vault.vault_config_account_id).data,
+    )
+    .expect("vault config");
     let holding_bal: Balance = state
         .get_account_by_id(vault.vault_holding_account_id)
         .balance;
@@ -283,7 +285,9 @@ pub(crate) fn assert_vault_conservation_invariants(
     for stream_id in 0u64..vc.next_stream_id {
         let pda = derive_stream_pda(program_id, vault.vault_config_account_id, stream_id);
         let data = &state.get_account_by_id(pda).data;
-        let Ok(sc) = borsh::from_slice::<StreamConfig>(data) else { continue };
+        let Ok(sc) = borsh::from_slice::<StreamConfig>(data) else {
+            continue;
+        };
         sum = sum
             .checked_add(sc.allocation)
             .expect("allocation sum overflow");
@@ -297,10 +301,12 @@ pub(crate) fn assert_vault_conservation_invariants(
 /// Test-only: set stream state to `Closed` by rewriting the stream account (bypasses `close_stream`).
 pub(crate) fn force_stream_state_closed(state: &mut V03State, stream_pda: AccountId) {
     let mut stream_cfg =
-        borsh::from_slice::<StreamConfig>(&state.get_account_by_id(stream_pda).data).expect("stream");
+        borsh::from_slice::<StreamConfig>(&state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     stream_cfg.state = StreamState::Closed;
     let mut stream_account = state.get_account_by_id(stream_pda).clone();
-    stream_account.data = Data::try_from(borsh::to_vec(&stream_cfg).unwrap()).expect("stream payload fits");
+    stream_account.data =
+        Data::try_from(borsh::to_vec(&stream_cfg).unwrap()).expect("stream payload fits");
     state.force_insert_account(stream_pda, stream_account);
 }
 

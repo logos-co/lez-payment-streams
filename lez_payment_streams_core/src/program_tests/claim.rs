@@ -84,9 +84,10 @@ fn test_claim_balance_succeeds() {
     .expect("vault config");
     assert_eq!(vault_after.total_allocated, CLAIM_ALLOCATION - payout);
 
-    let stream_after =
-        borsh::from_slice::<StreamConfig>(&wp.deposited.vault.state.get_account_by_id(stream_pda).data)
-            .expect("stream");
+    let stream_after = borsh::from_slice::<StreamConfig>(
+        &wp.deposited.vault.state.get_account_by_id(stream_pda).data,
+    )
+    .expect("stream");
     assert_eq!(stream_after.state, StreamState::Active);
     assert_eq!(stream_after.accrued, 0 as Balance);
     assert_eq!(stream_after.allocation, CLAIM_ALLOCATION - payout);
@@ -234,9 +235,10 @@ fn test_claim_after_close_succeeds() {
     .expect("vault config");
     assert_eq!(vault_after.total_allocated, 0 as Balance);
 
-    let stream_after =
-        borsh::from_slice::<StreamConfig>(&wp.deposited.vault.state.get_account_by_id(stream_pda).data)
-            .expect("stream");
+    let stream_after = borsh::from_slice::<StreamConfig>(
+        &wp.deposited.vault.state.get_account_by_id(stream_pda).data,
+    )
+    .expect("stream");
     assert_eq!(stream_after.state, StreamState::Closed);
     assert_eq!(stream_after.allocation, 0 as Balance);
     assert_eq!(stream_after.accrued, 0 as Balance);
@@ -258,12 +260,15 @@ fn test_claim_after_close_succeeds() {
 
 // ---- PP tests ---- //
 
+use super::pp_common::{
+    account_meta, pp_claim_close_setup, recipient_npk, recipient_vpk, PpClaimCloseSetup,
+    EPK_SCALAR, PP_CLAIM_PAYOUT, PP_STREAM_ALLOCATION, PP_T1, PP_WITHDRAW_AMOUNT, RECIPIENT_NSK,
+};
+use crate::test_helpers::{force_clock_account_monotonic, load_guest_program};
 use nssa::{
     execute_and_prove,
     privacy_preserving_transaction::{
-        circuit::ProgramWithDependencies,
-        message::Message,
-        witness_set::WitnessSet,
+        circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
         PrivacyPreservingTransaction,
     },
     program::Program,
@@ -272,13 +277,6 @@ use nssa_core::{
     account::{AccountId, AccountWithMetadata},
     encryption::EphemeralPublicKey,
     Commitment, EncryptionScheme, SharedSecretKey,
-};
-use crate::test_helpers::{force_clock_account_monotonic, load_guest_program};
-use super::pp_common::{
-    account_meta, pp_claim_close_setup, PpClaimCloseSetup,
-    recipient_npk, recipient_vpk,
-    RECIPIENT_NSK, EPK_SCALAR,
-    PP_T1, PP_STREAM_ALLOCATION, PP_WITHDRAW_AMOUNT, PP_CLAIM_PAYOUT,
 };
 
 #[test]
@@ -369,14 +367,19 @@ fn test_pp_claim_private_provider_succeeds() {
     );
 
     let stream_after =
-        borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data).expect("stream");
+        borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
+            .expect("stream");
     assert_eq!(stream_after.accrued, 0);
-    assert_eq!(stream_after.allocation, PP_STREAM_ALLOCATION - PP_CLAIM_PAYOUT);
+    assert_eq!(
+        stream_after.allocation,
+        PP_STREAM_ALLOCATION - PP_CLAIM_PAYOUT
+    );
     assert_eq!(stream_after.state, StreamState::Active);
 
-    let vault_after =
-        borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(fx.vault_config_account_id).data)
-            .expect("vault");
+    let vault_after = borsh::from_slice::<VaultConfig>(
+        &fx.state.get_account_by_id(fx.vault_config_account_id).data,
+    )
+    .expect("vault");
     assert_eq!(
         vault_after.total_allocated,
         PP_STREAM_ALLOCATION - PP_CLAIM_PAYOUT
