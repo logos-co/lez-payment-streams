@@ -439,13 +439,17 @@ mod lez_payment_streams {
 
         let recipient_was_default = withdraw_to.account == Account::default();
 
-        vault_holding.account.balance = vault_holding.account.balance.checked_sub(amount).map_err(|_| {
-            spel_err(ErrorCode::InsufficientFunds, "vault holding balance underflow")
-        })?;
+        vault_holding.account.balance = vault_holding
+            .account
+            .balance
+            .checked_sub(amount)
+            .ok_or_else(|| spel_err(ErrorCode::InsufficientFunds, "vault holding balance underflow"))?;
 
-        withdraw_to.account.balance = withdraw_to.account.balance.checked_add(amount).map_err(|_| {
-            spel_err(ErrorCode::ArithmeticOverflow, "recipient balance overflow")
-        })?;
+        withdraw_to.account.balance = withdraw_to
+            .account
+            .balance
+            .checked_add(amount)
+            .ok_or_else(|| spel_err(ErrorCode::ArithmeticOverflow, "recipient balance overflow"))?;
 
         // The PP circuit requires that any account modified during execution carries an ownership
         // claim if it was default-owned (Account::default()) in pre-state.  A default-owned
@@ -834,13 +838,17 @@ mod lez_payment_streams {
         let mut stream_config = stream_config;
         let mut provider = provider;
 
-        vault_holding.account.balance = vault_holding.account.balance.checked_sub(payout).map_err(|_| {
-            spel_err(ErrorCode::InsufficientFunds, "vault holding balance underflow")
-        })?;
+        vault_holding.account.balance = vault_holding
+            .account
+            .balance
+            .checked_sub(payout)
+            .ok_or_else(|| spel_err(ErrorCode::InsufficientFunds, "vault holding balance underflow"))?;
 
-        provider.account.balance = provider.account.balance.checked_add(payout).map_err(|_| {
-            spel_err(ErrorCode::ArithmeticOverflow, "provider balance overflow")
-        })?;
+        provider.account.balance = provider
+            .account
+            .balance
+            .checked_add(payout)
+            .ok_or_else(|| spel_err(ErrorCode::ArithmeticOverflow, "provider balance overflow"))?;
 
         vault_config.account.data = borsh::to_vec(&vault_config_state).unwrap().try_into().unwrap();
         stream_config.account.data = borsh::to_vec(&stream_after_claim).unwrap().try_into().unwrap();
