@@ -160,7 +160,7 @@ mod lez_payment_streams {
         Ok(())
     }
 
-    fn validate_stream_against_vault(
+    fn validate_stream_binding_against_vault(
         stream_config: &StreamConfig,
         vault_config_state: &VaultConfig,
         vault_holding_state: &VaultHolding,
@@ -190,6 +190,10 @@ mod lez_payment_streams {
                 "stream id does not match account",
             ));
         }
+        Ok(())
+    }
+
+    fn validate_stream_local_invariants(stream_config: &StreamConfig) -> Result<(), SpelError> {
         stream_config.validate_invariants().map_err(|code| {
             let message = match code {
                 ErrorCode::ZeroStreamRate => "zero stream rate",
@@ -225,12 +229,13 @@ mod lez_payment_streams {
 
         let stream_config_state = parse_stream_account(stream_config)?;
 
-        validate_stream_against_vault(
+        validate_stream_binding_against_vault(
             &stream_config_state,
             &vault_config_state,
             &vault_holding_state,
             stream_id,
         )?;
+        validate_stream_local_invariants(&stream_config_state)?;
 
         let now = parse_clock_timestamp(clock_account)?;
 
@@ -266,12 +271,13 @@ mod lez_payment_streams {
 
         let stream_config_state = parse_stream_account(stream_config)?;
 
-        validate_stream_against_vault(
+        validate_stream_binding_against_vault(
             &stream_config_state,
             &vault_config_state,
             &vault_holding_state,
             stream_id,
         )?;
+        validate_stream_local_invariants(&stream_config_state)?;
 
         let now = parse_clock_timestamp(clock_account)?;
 
