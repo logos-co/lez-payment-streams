@@ -32,6 +32,10 @@ mod lez_payment_streams {
     #[allow(unused_imports)]
     use super::*;
 
+    // Helpers are grouped in the same order they are typically used by an instruction handler:
+    // parse accounts, validate relationships, load a full context, write account data, then execute
+    // the instruction-specific state transition.
+
     // ---- Account role conventions ---- //
 
     // These indices match the account order declared by each `#[instruction]` signature.

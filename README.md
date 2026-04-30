@@ -15,6 +15,12 @@ For the rationale behind design choices and a suggested reading order, see [arch
 | `lez_payment_streams_core/src/test_helpers.rs` | Test harness helpers: keypairs, state setup, guest deployment, transaction builders |
 | `examples/src/bin/` | IDL generator and CLI wrapper |
 
+For semantics review, one distinction matters early:
+`close_stream` may be initiated by the vault owner or the provider,
+while `claim` is provider-specific.
+Closing releases only the unaccrued remainder.
+Claiming pays out accrued funds.
+
 
 ## Running Tests
 

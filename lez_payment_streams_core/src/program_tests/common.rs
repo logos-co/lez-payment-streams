@@ -3,6 +3,8 @@
 //! Default balances, account-layout type aliases, signed [`Instruction`] builders,
 //! deposit fixtures with a system clock account, `transition_ok`, and test-only stream tweaks.
 //! Guest deployment, genesis, PDAs, and raw tx wiring live in [`crate::test_helpers`].
+//! Fixtures in this module model progressively later protocol states,
+//! so higher-level fixtures embed lower-level ones rather than rebuilding from scratch.
 
 use nssa::{
     error::NssaError, program::Program, PrivateKey, ProgramId, PublicTransaction, V03State,
