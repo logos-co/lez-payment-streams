@@ -32,6 +32,13 @@ mod lez_payment_streams {
     #[allow(unused_imports)]
     use super::*;
 
+    // ---- Account role conventions ---- //
+
+    // These indices match the account order declared by each `#[instruction]` signature.
+    const VAULT_CONFIG_ACCOUNT_INDEX: usize = 0;
+    const VAULT_HOLDING_ACCOUNT_INDEX: usize = 1;
+    const STREAM_CONFIG_ACCOUNT_INDEX: usize = 2;
+
     // ---- Error helpers ---- //
 
     fn spel_err(code: ErrorCode, message: &'static str) -> SpelError {
@@ -75,7 +82,7 @@ mod lez_payment_streams {
         let vault_config_state =
             borsh::from_slice::<VaultConfig>(&vault_config.account.data).map_err(|_| {
                 SpelError::DeserializationError {
-                    account_index: 0,
+                    account_index: VAULT_CONFIG_ACCOUNT_INDEX,
                     message: "invalid vault config data".into(),
                 }
             })?;
@@ -83,7 +90,7 @@ mod lez_payment_streams {
         let vault_holding_state =
             borsh::from_slice::<VaultHolding>(&vault_holding.account.data).map_err(|_| {
                 SpelError::DeserializationError {
-                    account_index: 1,
+                    account_index: VAULT_HOLDING_ACCOUNT_INDEX,
                     message: "invalid vault holding data".into(),
                 }
             })?;
@@ -226,7 +233,7 @@ mod lez_payment_streams {
         let stream_config_state =
             borsh::from_slice::<StreamConfig>(&stream_config.account.data).map_err(|_| {
                 SpelError::DeserializationError {
-                    account_index: 2,
+                    account_index: STREAM_CONFIG_ACCOUNT_INDEX,
                     message: "invalid stream config data".into(),
                 }
             })?;
@@ -273,7 +280,7 @@ mod lez_payment_streams {
         let stream_config_state =
             borsh::from_slice::<StreamConfig>(&stream_config.account.data).map_err(|_| {
                 SpelError::DeserializationError {
-                    account_index: 2,
+                    account_index: STREAM_CONFIG_ACCOUNT_INDEX,
                     message: "invalid stream config data".into(),
                 }
             })?;
@@ -292,7 +299,9 @@ mod lez_payment_streams {
 
     // ---- Shared output helpers ---- //
 
-    fn execute_five_owner_stream_accounts(
+    /// Shared account order for owner-authorized stream instructions:
+    /// `[vault_config, vault_holding, stream_config, owner, clock_account]`.
+    fn execute_owner_stream_instruction(
         vault_config_account: Account,
         vault_holding_account: Account,
         stream_account: Account,
@@ -305,6 +314,29 @@ mod lez_payment_streams {
                 vault_holding_account,
                 stream_account,
                 owner_account,
+                clock_account,
+            ],
+            vec![],
+        )
+    }
+
+    /// Shared account order for instructions with an explicit non-signing owner:
+    /// `[vault_config, vault_holding, stream_config, owner, signer, clock_account]`.
+    fn execute_stream_instruction_with_explicit_owner(
+        vault_config_account: Account,
+        vault_holding_account: Account,
+        stream_account: Account,
+        owner_account: Account,
+        signer_account: Account,
+        clock_account: Account,
+    ) -> SpelOutput {
+        SpelOutput::execute(
+            vec![
+                vault_config_account,
+                vault_holding_account,
+                stream_account,
+                owner_account,
+                signer_account,
                 clock_account,
             ],
             vec![],
@@ -615,7 +647,7 @@ mod lez_payment_streams {
         let mut stream_account = stream_config.account;
         stream_account.data = borsh::to_vec(&stream_config_state).unwrap().try_into().unwrap();
 
-        Ok(execute_five_owner_stream_accounts(
+        Ok(execute_owner_stream_instruction(
             vault_config_account,
             vault_holding.account,
             stream_account,
@@ -660,7 +692,7 @@ mod lez_payment_streams {
         let mut stream_account = stream_config.account;
         stream_account.data = borsh::to_vec(&stream_config_state).unwrap().try_into().unwrap();
 
-        Ok(execute_five_owner_stream_accounts(
+        Ok(execute_owner_stream_instruction(
             vault_config_account,
             vault_holding.account,
             stream_account,
@@ -732,7 +764,7 @@ mod lez_payment_streams {
         let mut stream_account = stream_config.account;
         stream_account.data = borsh::to_vec(&stream_config_state).unwrap().try_into().unwrap();
 
-        Ok(execute_five_owner_stream_accounts(
+        Ok(execute_owner_stream_instruction(
             vault_config_account,
             vault_holding.account,
             stream_account,
@@ -793,9 +825,13 @@ mod lez_payment_streams {
         vault_config.account.data = borsh::to_vec(&vault_config_state).unwrap().try_into().unwrap();
         stream_config.account.data = borsh::to_vec(&stream_after_close).unwrap().try_into().unwrap();
 
-        Ok(SpelOutput::execute(
-            vec![vault_config, vault_holding, stream_config, owner, authority, clock_account],
-            vec![],
+        Ok(execute_stream_instruction_with_explicit_owner(
+            vault_config.account,
+            vault_holding.account,
+            stream_config.account,
+            owner.account,
+            authority.account,
+            clock_account.account,
         ))
     }
 
@@ -863,9 +899,13 @@ mod lez_payment_streams {
         vault_config.account.data = borsh::to_vec(&vault_config_state).unwrap().try_into().unwrap();
         stream_config.account.data = borsh::to_vec(&stream_after_claim).unwrap().try_into().unwrap();
 
-        Ok(SpelOutput::execute(
-            vec![vault_config, vault_holding, stream_config, owner, provider, clock_account],
-            vec![],
+        Ok(execute_stream_instruction_with_explicit_owner(
+            vault_config.account,
+            vault_holding.account,
+            stream_config.account,
+            owner.account,
+            provider.account,
+            clock_account.account,
         ))
     }
 }
