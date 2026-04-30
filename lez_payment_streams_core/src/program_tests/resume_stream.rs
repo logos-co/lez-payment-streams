@@ -1,4 +1,4 @@
-//! `resume_stream` success and failure cases.
+//! `resume_stream` success and failure cases, including fold-before-resume and depleted streams.
 
 use nssa::program::Program;
 use nssa_core::{

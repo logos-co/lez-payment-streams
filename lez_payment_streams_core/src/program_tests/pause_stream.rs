@@ -1,4 +1,4 @@
-//! `pause_stream` success and failure cases.
+//! `pause_stream` success and failure cases, especially fold-before-pause behavior and PP parity.
 
 use nssa::program::Program;
 use nssa_core::{

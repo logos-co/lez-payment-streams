@@ -1,4 +1,4 @@
-//! `top_up_stream` allocation increases and pause handling.
+//! `top_up_stream` allocation increases, fold-before-top-up behavior, and pause/resume handling.
 
 use nssa_core::{
     account::{Balance, Nonce},

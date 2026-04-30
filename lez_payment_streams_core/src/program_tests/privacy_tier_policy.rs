@@ -1,4 +1,9 @@
-//! Harness-side checks for [`crate::VaultPrivacyTier::PseudonymousFunder`] public transitions.
+//! Harness-side policy checks for [`crate::VaultPrivacyTier::PseudonymousFunder`] public transitions.
+//!
+//! These tests deliberately exercise wallet / harness enforcement rather than guest logic.
+//! The guest stores `VaultPrivacyTier` in `VaultConfig`, but shielded-only submission policy for
+//! `PseudonymousFunder` vaults is enforced outside the guest because the guest cannot observe
+//! whether execution was transparent or shielded.
 
 use nssa::error::NssaError;
 use nssa_core::account::Nonce;

@@ -1,4 +1,4 @@
-//! `create_stream` integration tests (happy paths, bounds, account layout).
+//! `create_stream` happy paths, bounds checks, account layout, and transparent/PP parity.
 
 use nssa_core::{
     account::{Account, Balance, Data, Nonce},

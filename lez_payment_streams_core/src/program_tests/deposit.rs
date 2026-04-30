@@ -1,4 +1,4 @@
-//! `deposit` and `authenticated_transfer` wiring.
+//! `deposit` and `authenticated_transfer` wiring, including transparent/PP funding paths.
 
 use nssa::program::Program;
 use nssa_core::{

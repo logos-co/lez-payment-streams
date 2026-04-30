@@ -1,4 +1,4 @@
-//! `close_stream` payouts and authorization.
+//! `close_stream` authorization, payout accounting, and residual accrued balance behavior.
 
 use nssa_core::{
     account::{Balance, Nonce},

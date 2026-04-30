@@ -54,6 +54,11 @@ mod vault_privacy_tier_tests {
 /// capped by unallocated liquidity. Pure helper (guest persists the value).
 ///
 /// Unallocated is `vault_holding_balance.saturating_sub(vault_total_allocated)`.
+///
+/// This helper protects the vault-side half of the accounting invariants during `create_stream`
+/// and `top_up_stream`:
+/// 1. `vault_holding.balance >= vault_config.total_allocated`
+/// 2. `vault_config.total_allocated` tracks the sum of all stream `allocation` values
 pub fn checked_total_allocated_after_add(
     vault_holding_balance: Balance,
     vault_total_allocated: Balance,
@@ -68,10 +73,14 @@ pub fn checked_total_allocated_after_add(
         .ok_or(ErrorCode::TotalAllocatedOverflow)
 }
 
-/// Compute the next [`VaultConfig::total_allocated`] after subtracting `decrease_total_allocated_by` (`claim`, `close`, …).
-/// Pure helper (guest persists the value).
+/// Compute the next [`VaultConfig::total_allocated`] after subtracting `decrease_total_allocated_by`
+/// (`claim`, `close`, …). Pure helper (guest persists the value).
 ///
 /// Zero decrease: return the input unchanged (e.g. close with nothing left to release).
+///
+/// Callers must pass exactly the amount by which some stream's `allocation` shrank:
+/// - `close_stream` releases only the stream's unaccrued remainder back to the vault
+/// - `claim` releases the full payout amount because `claim_at_time` reduces `allocation` by payout
 pub fn checked_total_allocated_after_release(
     vault_total_allocated: Balance,
     decrease_total_allocated_by: Balance,

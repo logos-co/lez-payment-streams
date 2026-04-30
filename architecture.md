@@ -1,206 +1,291 @@
 # Architecture
 
-This document orients a developer reviewing the codebase.
-It covers the rationale behind structural choices
-and suggests a reading order.
-The protocol semantics live in the spec
-(`rfc-index/docs/ift-ts/raw/payment-streams.md`).
-Operational setup — how to build, run, and test — is in the README.
+This document is for a reviewer who wants to understand the codebase quickly.
+It explains where protocol semantics live,
+how the implementation is split,
+and which distinctions matter during review.
 
-## Account Model
+The protocol definition lives in the
+[LIP-155 payment-streams spec](https://lip.logos.co/ift-ts/raw/payment-streams.html).
+Build, run, and test instructions live in `README.md`.
 
-The program stores state in three LEZ account types:
+## Review order
+
+Read the codebase in this order:
+
+1. The LIP-155 spec for protocol requirements.
+2. `lez_payment_streams_core/src/stream_config.rs` for lazy accrual.
+3. `lez_payment_streams_core/src/vault.rs` for vault accounting.
+4. `methods/guest/src/bin/lez_payment_streams.rs` for instruction handlers.
+5. `lez_payment_streams_core/src/program_tests/` for execution coverage.
+
+Two ideas appear throughout the implementation.
+
+First, stream instructions follow a fold-first rule.
+Any instruction that touches a stream first computes
+the stream state at the current clock time,
+then applies its own transition.
+
+Second, privacy tier is stored on-chain,
+but shielded-only use of `VaultPrivacyTier::PseudonymousFunder`
+is not enforced by the guest.
+That restriction is wallet or harness policy.
+The guest cannot tell whether execution was transparent or shielded.
+
+## Account model
+
+The program stores three account types:
 `VaultConfig`, `VaultHolding`, and `StreamConfig`.
 
-`VaultConfig` carries vault metadata and the authorization anchor.
-`VaultHolding` is a dedicated account whose LEZ-native balance is the vault's funds.
-Giving vault funds a dedicated account makes `VaultHolding.balance` unambiguously equal
-to the vault's treasury.
-`VaultHolding` stores only a version byte in its application data.
-The current implementation is single-token (native balance only)
-(see [Multi-Token Vaults](#multi-token-vaults)).
+`VaultConfig` stores vault metadata
+and the authorization anchor.
+Its `owner` field is the identity checked by owner-gated instructions.
 
-Because `VaultHolding` is a public account, any party can increase its balance via a direct
-native transfer outside the `deposit` instruction.
-The solvency invariants are unaffected: `unallocated` grows and streams are unchanged.
-For `PseudonymousFunder`-tier vaults,
-a transparent transfer creates a traceable on-chain link.
-Addressing its privacy implications is wallet responsibility,
-as described in the spec's Security and Privacy Considerations section.
+`VaultHolding` is a dedicated account
+whose native balance is the vault treasury.
+It stores only a version byte in its data.
+Using a dedicated holding account makes
+`VaultHolding.balance` equal to vault funds without ambiguity.
 
-`StreamConfig` carries per-stream parameters and lazy accrual state.
-Vault identity is not stored as a field in `StreamConfig`;
-the PDA derivation already encodes it by including the `VaultConfig` address as a seed.
+`StreamConfig` stores per-stream parameters
+and lazy accrual state.
+It does not store vault identity as a field.
+The vault binding is already present in the stream PDA seeds.
 
-Both vault accounts are required together on every vault-touching instruction.
+Both vault accounts are required together
+on every vault-touching instruction.
 Their version fields must match.
 
-Field types and serialization details are in the source files;
-the spec's "On-Chain Protocol" section covers the account model at a higher level.
+The current implementation uses native balance only.
+The `VaultHolding` PDA still includes the `"native"` seed
+to preserve a clean extension path for future per-token vaults.
 
-## Codebase Layout
+Because `VaultHolding` is a public account,
+any party can transfer native funds into it directly
+without calling `deposit`.
+This does not break solvency.
+It only increases unallocated liquidity.
+For `PseudonymousFunder` vaults,
+such a transfer creates a public link.
+Handling that privacy consequence is a wallet concern,
+not guest logic.
 
-Core types and logic live under `lez_payment_streams_core/src/`:
+## Core semantics
 
-- `stream_config.rs` — `StreamConfig`, `StreamState`, and the `at_time` accrual method
-- `vault.rs` — `VaultConfig`, `VaultHolding`, and balance predicates
-- `error_codes.rs` — `ErrorCode` enum
-- `instruction.rs` — `Instruction` enum (wire payload for all instructions)
-- `test_helpers.rs` — fixture builders, state-construction helpers, transaction builders
+The semantic center of the program is `StreamConfig::at_time`.
+It computes accrual and auto-pauses depleted streams.
 
-`lib.rs` is the shared types and pure-logic boundary.
-Keep `VaultConfig`, `VaultHolding`, `StreamConfig`, error codes, and pure helpers here.
-Guest runtime code and account I/O belong in the guest binary, not in `lib.rs`.
+A reviewer should treat every stream instruction as:
 
-The guest binary is `methods/guest/src/bin/lez_payment_streams.rs`.
-It contains all `#[instruction]` handlers and helper functions called by multiple handlers.
+1. load accounts and clock
+2. fold stream state to `now`
+3. apply the instruction-specific transition
+4. update vault accounting if stream allocation changed
 
-Tests live in `lez_payment_streams_core/src/program_tests/`,
-one module per instruction.
-Each module contains both transparent and PP tests for that instruction.
-`common.rs` holds shared test builders.
-`pp_common.rs` holds shared PP infrastructure: fixture builders, key helpers, and setup structs.
-Three additional modules cover cross-cutting concerns:
-`invariants.rs` for solvency invariant tests,
-`serialization.rs` for account layout round-trip checks,
-and `privacy_tier_policy.rs` for wallet-enforcement policy tests.
+This pattern is used by `pause_stream`,
+`resume_stream`,
+`top_up_stream`,
+`close_stream`,
+and `claim`.
 
-## Suggested Reading Order
-
-Start in `stream_config.rs`.
-The `at_time` method is the core of the program.
-Every instruction handler that touches a stream calls it first.
-Understanding lazy accrual, depletion, and time regression here
-is prerequisite for reading any instruction handler.
-
-Next, read `vault.rs` for balance accounting:
-`unallocated`, `checked_total_allocated_after_add`,
+Vault accounting is centered on `VaultConfig.total_allocated`.
+That value must stay aligned with the sum of all stream allocations.
+It is updated through
+`checked_total_allocated_after_add`
 and `checked_total_allocated_after_release`.
-These appear in every instruction that mutates the vault's `total_allocated`.
 
-Then read the guest binary top to bottom.
-The file opens with the shared parsing helpers,
-then the instruction handlers in declaration order.
+The close and claim paths are easy to confuse.
+They differ in an important way.
 
-For tests, read the individual-instruction modules.
-Each module's transparent tests come first, followed by its PP tests.
-The PP tests build on the same fixture helpers as the transparent tests,
-with PP-specific setup steps layered on top.
-`pp_common.rs` provides the shared PP infrastructure referenced across modules.
+Closing a stream can be initiated by either the vault owner
+or the stream provider.
+It releases only the unaccrued remainder back to the vault.
+Accrued funds may remain on the closed stream for later claim.
 
-## Two Clock-Loading Paths
+Claiming a stream is provider-specific.
+It pays out accrued funds
+and reduces both stream allocation
+and vault `total_allocated`
+by the payout amount.
 
-Five instructions need vault, stream, and clock data together.
-Two helper functions provide that bundle.
+## Code layout
 
-`load_vault_stream_and_clock` handles `pause_stream`, `resume_stream`, and `top_up_stream`.
-All three require the vault owner as the transaction signer,
-so the helper checks ownership and signature together.
+Core types and pure logic live in `lez_payment_streams_core/src/`.
 
-`load_vault_stream_and_clock_with_explicit_owner` handles `close_stream` and `claim`.
-`close_stream` accepts either the vault owner or the stream provider as the closing authority.
-`claim` is signed by the provider.
-Neither instruction can require the owner's signature.
-But both still need the owner's identity checked against `VaultConfig.owner`.
-This helper separates structural vault validation from the owner equality check
-so both verifications run without requiring the owner to sign.
+- `stream_config.rs` contains stream state,
+  accrual logic,
+  and stream-local transitions.
+- `vault.rs` contains vault state
+  and vault allocation bookkeeping helpers.
+- `error_codes.rs` defines `ErrorCode`.
+- `instruction.rs` defines the wire-level instruction enum.
+- `test_helpers.rs` contains harness builders and transaction helpers.
 
-## Test Fixture Pattern
+`lib.rs` is the shared pure-logic boundary.
+Shared account types,
+error codes,
+and pure helpers belong there.
+Guest runtime code does not.
 
-Fixtures are layered structs.
-Each level embeds the level below and adds the accounts its instruction created.
+The guest binary is
+`methods/guest/src/bin/lez_payment_streams.rs`.
+It contains:
 
-`VaultFixture` represents state after `initialize_vault`.
-`DepositedVaultFixture` embeds `VaultFixture` and adds a clock account
-after one `deposit` and a `force_clock_account` call.
-`DepositedVaultWithProviderFixture` embeds `DepositedVaultFixture`
-and adds a provider account at zero balance.
+- small SPEL error helpers
+- account parsing helpers
+- validation helpers
+- context-loading helpers
+- account-write helpers
+- instruction handlers in declaration order
 
-Builders for each level live in `test_helpers.rs` and `program_tests/common.rs`.
-Builder names follow the pattern `state_with_initialized_vault*`,
-`state_deposited_with_clock*`, and `state_deposited_with_clock_and_provider`.
-Variants of the same level accept additional parameters such as a custom vault id
-or a non-default privacy tier.
+Tests live in `lez_payment_streams_core/src/program_tests/`.
+There is one module per instruction.
+Transparent and privacy-preserving cases live side by side.
+That mirrors the program model:
+the business logic is shared,
+while visibility and submission policy differ.
 
-For tests that need a stream without exercising `create_stream` as a prerequisite,
-the force-insert pattern writes a `StreamConfig` account directly into state
-and calls `patch_vault_config` to update `next_stream_id` and `total_allocated` consistently.
-PP pause, resume, and top-up tests use this pattern.
+Cross-cutting test modules are:
 
-Two clock-forcing helpers exist in `test_helpers.rs`.
-`force_clock_account_monotonic` asserts in debug builds
-that the new `(timestamp, block_id)` pair is strictly after the prior.
-`force_clock_account_unchecked` is for time-regression tests
-and for cases that reuse the same timestamp.
+- `common.rs` for shared transaction builders and fixtures
+- `pp_common.rs` for shared privacy-preserving setup
+- `invariants.rs` for vault solvency checks
+- `serialization.rs` for account layout round trips
+- `privacy_tier_policy.rs` for wallet or harness policy checks
 
-Negative-case tests follow a `*_fails` suffix convention
-(e.g., `pause_stream_fails_when_already_paused`).
+## Guest helper structure
 
-## Privacy-Preserving Tests
+The guest has two stream-loading helpers.
+They exist because authorization differs across instructions.
 
-PP tests live alongside the transparent tests in each instruction's module.
-Every instruction has at least one PP test.
-All PP test names contain `pp`.
+`load_owner_stream_context`
+is used by `pause_stream`,
+`resume_stream`,
+and `top_up_stream`.
+These instructions require the vault owner authorization.
 
-Shared PP infrastructure lives in `pp_common.rs`:
-fixture builders (`vault_fixture_public_tier_funded_via_deposit`,
-`vault_fixture_pseudonymous_funder_funded_via_native_transfer`),
-the `fund_private_account_via_pp_withdraw` helper,
-key constants and derivation functions for recipient and owner identities,
-and setup structs (`PpClaimCloseSetup`, `PpOwnerSetup`) with their builders.
+`load_stream_context_with_explicit_owner`
+is used by `close_stream`
+and `claim`.
+Those instructions still need the owner identity checked
+against `VaultConfig.owner`,
+but the owner does not necessarily authorize.
+`close_stream` accepts either the owner
+or the provider as the authority.
+`claim` must be authorized by the provider.
 
-The `pp_owner_setup` helper builds the shared starting state for owner-private tests:
-a Public-tier vault is funded and PP-withdrawn to establish the owner's private commitment,
-and a PseudonymousFunder vault (vault B) is force-inserted with a pre-funded holding account.
+The duplication between these helpers is intentional.
+It keeps the two authorization paths obvious during review.
 
-## output_index and Multi-Slot Decryption
+## Test structure
 
-The PP circuit assigns `output_index` values starting at 0,
-incrementing for each private account slot (visibility 1 or 2) in account order.
-A decryption call must pass the index matching that slot's position.
+The test harness uses layered fixtures.
+Each layer adds the accounts created by one more setup step.
 
-For instructions with two private slots —
-such as `withdraw` with a private owner and a visibility-2 recipient —
-the first private slot receives `output_index = 0`
-and the second receives `output_index = 1`.
+`VaultFixture`
+represents state after `initialize_vault`.
 
-## PP Deposit and authenticated_transfer_program
+`DepositedVaultFixture`
+adds one deposit and a clock account.
 
-`deposit` chains to `authenticated_transfer_program` to move native balance.
-A PP `deposit` therefore uses `ProgramWithDependencies` wrapping both programs.
-The PP proof covers both in one circuit.
+`DepositedVaultWithProviderFixture`
+adds a provider account for claim-related flows.
 
-The owner's private commitment used in a PP `deposit` must be
-owned by `authenticated_transfer_program`.
-A commitment created by a PP `withdraw` from a payment-streams vault
-is owned by the payment-streams program.
-That ownership works for all other PP instructions but not for `deposit`.
-Tests that exercise PP `deposit` must source the owner commitment
-from an `authenticated_transfer_program`-owned context.
+Fixture builders live in `test_helpers.rs`
+and `program_tests/common.rs`.
+Builder names follow the fixture ladder:
+`state_with_initialized_vault*`,
+`state_deposited_with_clock*`,
+and `state_deposited_with_clock_and_provider`.
 
-## Future Work
+Some tests need a stream
+without exercising `create_stream`.
+Those tests use a force-insert pattern.
+They write a `StreamConfig` directly into harness state
+and patch `VaultConfig`
+so `next_stream_id` and `total_allocated` stay consistent.
+This is used in several privacy-preserving pause,
+resume,
+and top-up tests.
 
-The items below are out of scope for the current implementation
-but are natural next steps.
+Two clock helpers matter during review:
 
-### Multi-Token Vaults
+`force_clock_account_monotonic`
+is the normal helper.
+It asserts that the new clock value moves forward.
 
-The current implementation is single-token (platform-native balance only).
-The `VaultHolding` PDA derivation includes an `asset_tag` seed (`"native"`)
-to reserve a path for future per-token vaults without breaking the current address space.
-Adding token support requires a separate holding account per token type
-and corresponding deposit, withdraw, and claim logic for each.
-The main structural change is that `VaultConfig.total_allocated` would need to become
-a per-token map rather than a single scalar, and `StreamConfig` would need a token field
-to identify which holding backs each stream.
+`force_clock_account_unchecked`
+exists for negative tests,
+especially time regression
+or repeated timestamps.
 
-### Protocol Extensions
+Negative test names use the `*_fails` suffix.
 
-The spec defines the following optional extensions, none of which are implemented:
+## Privacy-preserving coverage
 
-- Auto-Pause: streams automatically pause after a configurable duration,
-  limiting loss if the user goes offline.
-- Delivery Receipts: claims require user-signed receipts as proof of service delivery.
-- Automatic Claim on Closure: an optional flag that triggers a claim when a stream is closed.
-- Activation Fee: a fixed amount accrues immediately when a stream becomes active,
-  discouraging abuse of the pause/resume mechanism.
+Every instruction has at least one privacy-preserving (PP) test.
+PP tests live in the same instruction module
+as the transparent tests.
+
+`pp_common.rs` provides shared PP infrastructure.
+It contains fixture builders,
+recipient and owner identity helpers,
+and setup structs used by multiple instruction modules.
+
+The privacy-tier policy tests need special interpretation.
+They do not test guest enforcement.
+They test harness or wallet behavior
+that refuses transparent transitions
+for `PseudonymousFunder` vaults.
+
+This distinction is important.
+The guest stores privacy tier in `VaultConfig`,
+but privacy-tier submission policy lives outside the guest.
+
+## PP-specific notes
+
+The PP circuit assigns `output_index`
+in account order
+for private slots.
+If an instruction creates two private outputs,
+the first private slot has index `0`
+and the second has index `1`.
+
+`deposit` is special.
+It chains into `authenticated_transfer_program`
+to move native balance.
+A PP `deposit` therefore proves both programs together
+through `ProgramWithDependencies`.
+
+The owner commitment used for a PP `deposit`
+must belong to `authenticated_transfer_program`.
+A commitment created by a PP `withdraw`
+from the payment-streams program
+cannot be reused for PP `deposit`,
+because it has the wrong program owner.
+
+## Future work
+
+The current implementation intentionally excludes
+several natural extensions.
+
+### Multi-token vaults
+
+The present code supports native balance only.
+A token-aware version would need:
+
+- one holding account per token
+- token-aware deposit, withdraw, and claim logic
+- `VaultConfig.total_allocated` changed from a scalar
+  to a per-token structure
+- a token field on `StreamConfig`
+
+### Optional protocol extensions
+
+The spec defines several optional extensions
+that are not implemented here:
+
+- auto-pause
+- delivery receipts
+- automatic claim on closure
+- activation fee

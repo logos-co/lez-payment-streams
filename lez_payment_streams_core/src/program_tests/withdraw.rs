@@ -1,4 +1,4 @@
-//! `withdraw` to third-party recipients.
+//! `withdraw` to third-party recipients, including public and privacy-preserving recipient flows.
 
 use nssa::{
     execute_and_prove,

@@ -2,8 +2,8 @@
 
 LEZ implementation of payment streams.
 A SPEL program built with [spel-framework](https://github.com/logos-co/spel).
-Protocol semantics are defined in
-`rfc-index/docs/ift-ts/raw/payment-streams.md`.
+Protocol semantics are defined in [LIP-155](https://lip.logos.co/ift-ts/raw/payment-streams.html).
+For the rationale behind design choices and a suggested reading order, see [architecture.md](architecture.md).
 
 ## Code Map
 
@@ -15,7 +15,6 @@ Protocol semantics are defined in
 | `lez_payment_streams_core/src/test_helpers.rs` | Test harness helpers: keypairs, state setup, guest deployment, transaction builders |
 | `examples/src/bin/` | IDL generator and CLI wrapper |
 
-For the rationale behind these choices and a suggested reading order, see [architecture.md](architecture.md).
 
 ## Running Tests
 

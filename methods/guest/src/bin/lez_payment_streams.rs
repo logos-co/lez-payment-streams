@@ -54,7 +54,10 @@ mod lez_payment_streams {
         TopUpStream,
     }
 
-    fn spel_resume_from_paused_at_err(code: ErrorCode, ix: ResumeFromPausedInstruction) -> SpelError {
+    fn spel_map_resume_from_paused_error(
+        code: ErrorCode,
+        ix: ResumeFromPausedInstruction,
+    ) -> SpelError {
         let message = match (code, ix) {
             (ErrorCode::StreamNotPaused, ResumeFromPausedInstruction::ResumeStream) => {
                 "stream is not paused after accrual fold"
@@ -119,17 +122,16 @@ mod lez_payment_streams {
         Ok(parsed.timestamp)
     }
 
-    // ---- Validation helpers ---- //
-
-    fn stream_invariant_err(code: ErrorCode) -> SpelError {
-        let message = match code {
-            ErrorCode::ZeroStreamRate => "zero stream rate",
-            ErrorCode::ZeroStreamAllocation => "zero stream allocation",
-            ErrorCode::StreamExceedsAllocation => "accrued exceeds allocation",
-            _ => "invalid stream config",
-        };
-        spel_err(code, message)
+    fn parse_stream_account(stream_config: &AccountWithMetadata) -> Result<StreamConfig, SpelError> {
+        borsh::from_slice::<StreamConfig>(&stream_config.account.data).map_err(|_| {
+            SpelError::DeserializationError {
+                account_index: STREAM_CONFIG_ACCOUNT_INDEX,
+                message: "invalid stream config data".into(),
+            }
+        })
     }
+
+    // ---- Validation helpers ---- //
 
     fn validate_vault_structure(
         vault_config_state: &VaultConfig,
@@ -158,7 +160,7 @@ mod lez_payment_streams {
         Ok(())
     }
 
-    fn validate_stream_for_vault(
+    fn validate_stream_against_vault(
         stream_config: &StreamConfig,
         vault_config_state: &VaultConfig,
         vault_holding_state: &VaultHolding,
@@ -188,9 +190,15 @@ mod lez_payment_streams {
                 "stream id does not match account",
             ));
         }
-        stream_config
-            .validate_invariants()
-            .map_err(stream_invariant_err)
+        stream_config.validate_invariants().map_err(|code| {
+            let message = match code {
+                ErrorCode::ZeroStreamRate => "zero stream rate",
+                ErrorCode::ZeroStreamAllocation => "zero stream allocation",
+                ErrorCode::StreamExceedsAllocation => "accrued exceeds allocation",
+                _ => "invalid stream config",
+            };
+            spel_err(code, message)
+        })
     }
 
     // ---- Shared account loaders ---- //
@@ -215,15 +223,9 @@ mod lez_payment_streams {
         validate_vault_structure(&vault_config_state, &vault_holding_state, vault_id)?;
         validate_vault_owner(&vault_config_state, owner_account_id)?;
 
-        let stream_config_state =
-            borsh::from_slice::<StreamConfig>(&stream_config.account.data).map_err(|_| {
-                SpelError::DeserializationError {
-                    account_index: STREAM_CONFIG_ACCOUNT_INDEX,
-                    message: "invalid stream config data".into(),
-                }
-            })?;
+        let stream_config_state = parse_stream_account(stream_config)?;
 
-        validate_stream_for_vault(
+        validate_stream_against_vault(
             &stream_config_state,
             &vault_config_state,
             &vault_holding_state,
@@ -262,15 +264,9 @@ mod lez_payment_streams {
 
         validate_vault_owner(&vault_config_state, owner_account_id)?;
 
-        let stream_config_state =
-            borsh::from_slice::<StreamConfig>(&stream_config.account.data).map_err(|_| {
-                SpelError::DeserializationError {
-                    account_index: STREAM_CONFIG_ACCOUNT_INDEX,
-                    message: "invalid stream config data".into(),
-                }
-            })?;
+        let stream_config_state = parse_stream_account(stream_config)?;
 
-        validate_stream_for_vault(
+        validate_stream_against_vault(
             &stream_config_state,
             &vault_config_state,
             &vault_holding_state,
@@ -663,7 +659,9 @@ mod lez_payment_streams {
 
         stream_config_state = stream_config_state
             .resume_from_paused_at_time(now)
-            .map_err(|e| spel_resume_from_paused_at_err(e, ResumeFromPausedInstruction::ResumeStream))?;
+            .map_err(|e| {
+                spel_map_resume_from_paused_error(e, ResumeFromPausedInstruction::ResumeStream)
+            })?;
 
         let vault_config_account = vault_config.account;
         let mut stream_account = stream_config.account;
@@ -732,7 +730,9 @@ mod lez_payment_streams {
         if stream_config_state.state == StreamState::Paused {
             stream_config_state = stream_config_state
                 .resume_from_paused_at_time(now)
-                .map_err(|e| spel_resume_from_paused_at_err(e, ResumeFromPausedInstruction::TopUpStream))?;
+                .map_err(|e| {
+                    spel_map_resume_from_paused_error(e, ResumeFromPausedInstruction::TopUpStream)
+                })?;
         }
 
         let mut vault_config_account = vault_config.account;
@@ -790,6 +790,8 @@ mod lez_payment_streams {
             .close_at_time(now)
             .map_err(|e| spel_err(e, "close_at_time failed"))?;
 
+        // `close_at_time` shrinks stream allocation only by the unaccrued remainder returned to
+        // the vault. Any accrued residual stays allocated on the closed stream until a later claim.
         vault_config_state.total_allocated = checked_total_allocated_after_release(
             vault_config_state.total_allocated,
             unaccrued_released,
@@ -850,6 +852,8 @@ mod lez_payment_streams {
             .claim_at_time(now)
             .map_err(|e| spel_err(e, "claim_at_time failed"))?;
 
+        // `claim_at_time` reduces stream allocation by exactly `payout`, so the vault-side
+        // `total_allocated` must release the same amount to preserve allocation conservation.
         vault_config_state.total_allocated = checked_total_allocated_after_release(
             vault_config_state.total_allocated,
             payout,

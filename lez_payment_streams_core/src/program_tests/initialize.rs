@@ -1,4 +1,4 @@
-//! `initialize_vault` PDAs and vault bytes.
+//! `initialize_vault` PDAs, account bytes, privacy-tier persistence, and transparent/PP parity.
 
 use crate::Instruction;
 use crate::{

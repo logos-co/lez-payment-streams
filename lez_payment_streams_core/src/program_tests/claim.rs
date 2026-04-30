@@ -1,4 +1,4 @@
-//! Test `claim` payouts to the provider.
+//! `claim` payout accounting, provider authorization, and claims from active/closed streams.
 
 use nssa_core::{
     account::{Balance, Nonce},

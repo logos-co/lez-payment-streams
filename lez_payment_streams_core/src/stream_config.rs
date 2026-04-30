@@ -175,6 +175,8 @@ impl StreamConfig {
     ///
     /// Returns the unaccrued amount released and the closed [`StreamConfig`].
     /// The caller is responsible for applying the released amount to `VaultConfig.total_allocated`.
+    /// Closed streams may still retain accrued funds after this step: `allocation` is trimmed to
+    /// `accrued`, not to zero, so the provider can still claim the residual later.
     ///
     /// Returns [`ErrorCode::StreamClosed`] if the stream is already closed.
     pub fn close_at_time(self, now: Timestamp) -> Result<(Balance, Self), ErrorCode> {
@@ -195,6 +197,9 @@ impl StreamConfig {
     ///
     /// Returns the payout amount and the post-claim [`StreamConfig`].
     /// The caller is responsible for applying the payout to `VaultConfig.total_allocated`.
+    /// This keeps vault and stream accounting aligned even for claims from closed streams with
+    /// residual accrued balance: both the stream's `allocation` and the vault's
+    /// `total_allocated` decrease by the same payout.
     ///
     /// Returns [`ErrorCode::ZeroClaimAmount`] when accrued is zero after the fold.
     pub fn claim_at_time(self, now: Timestamp) -> Result<(Balance, Self), ErrorCode> {
