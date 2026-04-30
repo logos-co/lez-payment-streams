@@ -211,9 +211,9 @@ mod lez_payment_streams {
 
     // ---- Shared account loaders ---- //
 
-    /// Load and validate vault, stream, and clock for instructions where the **vault owner is
-    /// the transaction signer** (pause, resume, top-up).
-    /// The `owner_account_id` parameter is the account id of the signing owner account.
+    /// Load and validate vault, stream, and clock for instructions authorized by the vault owner
+    /// (pause, resume, top-up).
+    /// The `owner_account_id` parameter is the account id used for owner authorization.
     fn load_owner_stream_context(
         vault_config: &AccountWithMetadata,
         vault_holding: &AccountWithMetadata,
@@ -246,12 +246,12 @@ mod lez_payment_streams {
         Ok((vault_config_state, vault_holding_state, stream_config_state, now))
     }
 
-    /// Load and validate vault, stream, and clock for instructions where the **owner is an
-    /// explicit non-signing account** and the actual signer is a different authority (close)
-    /// or the stream provider (claim).
+    /// Load and validate vault, stream, and clock for instructions where the owner account is
+    /// present for identity binding but authorization comes from a different account (`close`,
+    /// `claim`).
     /// `owner_account_id` is still checked against `VaultConfig.owner` as defense in depth
-    /// alongside the PDA binding; the owner account does not need to sign.
-    fn load_stream_context_with_explicit_owner(
+    /// alongside the PDA binding.
+    fn load_stream_context_with_owner_binding(
         vault_config: &AccountWithMetadata,
         vault_holding: &AccountWithMetadata,
         stream_config: &AccountWithMetadata,
@@ -311,14 +311,14 @@ mod lez_payment_streams {
         )
     }
 
-    /// Shared account order for instructions with an explicit non-signing owner:
-    /// `[vault_config, vault_holding, stream_config, owner, signer, clock_account]`.
+    /// Shared account order for instructions with owner binding and separate authorization:
+    /// `[vault_config, vault_holding, stream_config, owner, authority, clock_account]`.
     fn execute_stream_instruction_with_explicit_owner(
         vault_config_account: Account,
         vault_holding_account: Account,
         stream_account: Account,
         owner_account: Account,
-        signer_account: Account,
+        authority_account: Account,
         clock_account: Account,
     ) -> SpelOutput {
         SpelOutput::execute(
@@ -327,7 +327,7 @@ mod lez_payment_streams {
                 vault_holding_account,
                 stream_account,
                 owner_account,
-                signer_account,
+                authority_account,
                 clock_account,
             ],
             vec![],
@@ -350,8 +350,7 @@ mod lez_payment_streams {
     pub fn initialize_vault(
         #[account(init, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
         vault_config: AccountWithMetadata,
-        // The "native" seed reserves a path for future per-token vaults: changing this literal
-        // to a token mint id will produce a distinct address without altering other seeds.
+        // The "native" seed reserves a path for future per-token vaults.
         #[account(init, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
         vault_holding: AccountWithMetadata,
         #[account(signer)]
@@ -478,10 +477,11 @@ mod lez_payment_streams {
             .checked_add(amount)
             .ok_or_else(|| spel_err(ErrorCode::ArithmeticOverflow, "recipient balance overflow"))?;
 
-        // The PP circuit requires that any account modified during execution carries an ownership
-        // claim if it was default-owned (Account::default()) in pre-state.  A default-owned
-        // recipient is a new private commitment; claiming it here lets the circuit set
-        // `program_owner` correctly before its "modified but not claimed" invariant check.
+        // The PP circuit requires that any account modified during execution
+        // carries an ownership claim if it was default-owned (Account::default()) in pre-state.
+        // A default-owned recipient is a new private commitment;
+        // claiming it here lets the circuit set `program_owner` correctly
+        // before its "modified but not claimed" invariant check.
         // Public withdrawals to existing accounts are unaffected: `AutoClaim::None` is a no-op.
         let withdraw_to_claim = if recipient_was_default {
             AutoClaim::Claimed(Claim::Authorized)
@@ -768,9 +768,10 @@ mod lez_payment_streams {
         vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
         stream_config: AccountWithMetadata,
-        // `owner` is an explicit non-signing account: either the vault owner or the stream
-        // provider may be `authority`, so we cannot require the owner to sign.
-        // The owner id is still verified against `VaultConfig.owner` in `load_stream_context_with_explicit_owner`
+        // `owner` is present for identity binding.
+        // Authorization may come from the vault owner or from the stream provider,
+        // so we cannot require the owner account to be the authorizing account here.
+        // The owner id is still verified against `VaultConfig.owner` in `load_stream_context_with_owner_binding`
         // as defense in depth alongside the PDA seed binding.
         #[account(mut)]
         owner: AccountWithMetadata,
@@ -780,8 +781,7 @@ mod lez_payment_streams {
         vault_id: VaultId,
         stream_id: StreamId,
     ) -> SpelResult {
-        let (mut vault_config_state, _, stream_config_state, now) =
-            load_stream_context_with_explicit_owner(
+        let (mut vault_config_state, _, stream_config_state, now) = load_stream_context_with_owner_binding(
                 &vault_config,
                 &vault_holding,
                 &stream_config,
@@ -832,7 +832,8 @@ mod lez_payment_streams {
         vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
         stream_config: AccountWithMetadata,
-        // `owner` is an explicit non-signing account: the provider signs, not the vault owner.
+        // `owner` is present for identity binding.
+        // Authorization comes from the provider account, not from the owner account.
         // The owner id is verified against `VaultConfig.owner` for defense in depth alongside
         // the PDA seed binding (same pattern as `close_stream`).
         #[account(mut)]
@@ -843,8 +844,7 @@ mod lez_payment_streams {
         vault_id: VaultId,
         stream_id: StreamId,
     ) -> SpelResult {
-        let (mut vault_config_state, _, stream_config_state, now) =
-            load_stream_context_with_explicit_owner(
+        let (mut vault_config_state, _, stream_config_state, now) = load_stream_context_with_owner_binding(
                 &vault_config,
                 &vault_holding,
                 &stream_config,

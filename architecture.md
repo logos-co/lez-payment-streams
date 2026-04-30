@@ -164,7 +164,7 @@ is used by `pause_stream`,
 and `top_up_stream`.
 These instructions require the vault owner authorization.
 
-`load_stream_context_with_explicit_owner`
+`load_stream_context_with_owner_binding`
 is used by `close_stream`
 and `claim`.
 Those instructions still need the owner identity checked
