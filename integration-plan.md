@@ -178,9 +178,26 @@ Identify available verification APIs in Nim, Rust, or existing dependencies.
 
 Discover demo tooling contracts:
 Record the exact localnet, deploy, account funding, and program interaction commands.
-Check whether the guest, generated IDL, CLI, and scaffold use compatible SPEL revisions.
+Confirm the repo pins a SPEL revision that includes the IDL fix from
+`logos-co/spel` issue `#176` and PR `#180`.
+Treat generated IDL as a reliable source for account and instruction schema
+for this integration.
 
-Definition of done: A short findings document records each discovered contract with source references. A spike command or script proves direct account-read RPC works against a deployed local program. Key derivation, signature verification options, command path, and dependency alignment status are known.
+Definition of done: A short findings document records each discovered contract
+with source references.
+A spike command or script proves direct account-read RPC works against a
+deployed local program.
+Key derivation, signature verification options, command path, and dependency
+alignment status are known.
+IDL generation is verified with
+`cargo run -p lez_payment_streams-examples --bin generate_idl`
+and correctness checks on the output artifact:
+top-level `accounts` is non-empty and includes
+`VaultConfig`, `VaultHolding`, and `StreamConfig`;
+instruction entries include expected account metadata
+(`init`, `mut`, signer flags, and PDA seeds);
+and one decode smoke test confirms generated account schema
+matches Borsh layout used by on-chain account types.
 
 ## Step 2 Discovery Informed Decisions
 
@@ -200,6 +217,11 @@ Choose whether stream folding is implemented directly in Nim
 or delegated to Rust through FFI or a small sidecar.
 For MVP, prefer Nim if the port of `StreamConfig.at_time` stays small
 and can be covered by Rust test vectors.
+Maintenance tradeoff to document explicitly:
+Nim implementation keeps one language toolchain and simpler debugging,
+but requires careful parity maintenance when LEZ stream logic evolves.
+Rust sidecar or FFI keeps logic close to upstream Rust semantics and may reduce
+drift risk, but adds cross-language build, release, and observability overhead.
 
 Decide local demo configuration:
 Choose how paid Store mode is enabled on the provider.
@@ -226,6 +248,9 @@ Payment-streams uses LEZ state queries instead of Web3 and txhash validation.
 Verify `lez-payment-streams` builds and deploys with `logos-scaffold`.
 Run through the scaffold first-success path in a fresh directory.
 Use the command path discovered in Step 1 for account funding and stream operations.
+Use generated IDL from `examples/src/bin/generate_idl.rs` as the canonical
+schema artifact for integration tooling.
+Maintain generated IDL as the single schema source for integration tooling.
 
 Definition of done: A document lists all files to be modified with one-line rationale per file. A script deploys `lez-payment-streams` to a fresh scaffold localnet, captures the program ID, and outputs the program ID for provider configuration.
 
@@ -573,8 +598,8 @@ Define QML views for stream creation and monitoring.
 Display stream state including accrued amount and activity status.
 Show historical Store queries backed by each stream.
 
-Implement Rust FFI layer:
-Create `ffi/` directory with Rust cdylib for Qt integration.
+Implement optional Rust FFI layer only if required by Qt-runtime boundaries:
+Create `ffi/` directory with Rust cdylib for Qt integration when needed.
 Expose functions to query LEZ state for display.
 Expose functions to initiate on-chain operations.
 
