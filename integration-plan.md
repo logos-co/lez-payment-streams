@@ -75,8 +75,9 @@ Paid Store mode is enabled explicitly on the provider.
 The MVP does not support mixed paid and unpaid Store interoperability.
 The MVP keeps `/vac/waku/store-query/3.0.0`;
 no versioned Store request type or new protocol ID is introduced.
-Payment-stream eligibility outcomes use existing Store `statusCode` and `statusDesc` fields.
-No separate `eligibility_status` response field is added.
+Store requests are extended with an explicit `eligibility_proof` field.
+Store responses are extended with an explicit `eligibility_status` field.
+Store `status_code` and `status_desc` remain reserved for Store query execution outcomes.
 The demo covers public and private LEZ modes.
 Privacy implications are documented from the payment-streams specification
 and do not block the MVP implementation.
@@ -252,7 +253,7 @@ Find server implementation in `protocol.nim`.
 The `waku/incentivization/` directory houses the payment-stream helper.
 Reuse the existing manager pattern where useful (lifecycle, async Result methods).
 Extend `EligibilityProof` with `stream_proposal` and `stream_proof` fields per the spec.
-Map eligibility outcomes onto existing Store response status fields.
+Map eligibility outcomes onto a dedicated Store response eligibility field.
 Payment-streams uses LEZ state queries instead of Web3 and txhash validation.
 
 Verify `lez-payment-streams` builds and deploys with `logos-scaffold`.
@@ -291,39 +292,45 @@ Definition of done: Values are chosen and documented. A test reads each policy c
 
 ## Step 5 Extend Store Wire Types
 
-Add eligibility fields to Store request types
-and implement the MVP status-field assumption for payment-stream rejections.
-If a request is not eligible,
-the provider returns a non-2xx Store response
-with a payment-stream-specific `statusCode` and `statusDesc`.
+Add explicit eligibility fields to Store request and response types.
+Keep Store execution statuses and payment-stream eligibility statuses separate.
 
 Extend `StoreQueryRequest` in `waku/waku_store/common.nim` with:
-`EligibilityProof` message containing three mutually exclusive optional bytes fields:
+`optional EligibilityProof eligibility_proof = <new tag>;`
+where `<new tag>` does not collide with existing Store tags.
+The request tag MUST NOT reuse `10`, because Store v3 already uses tag `10` for `pubsub_topic`.
+
+Define `EligibilityProof` message containing three mutually exclusive optional bytes fields:
 - `proof_of_payment` for txhash-based proofs
 - `stream_proposal` for first-time stream setup
 - `stream_proof` for subsequent requests with established stream
 
-Define new error codes for payment-stream-specific failures:
+Extend `StoreQueryResponse` with:
+`optional EligibilityStatus eligibility_status = 3;`
+following the Lightpush incentivization extension pattern.
+
+Define eligibility status codes for payment-stream-specific failures:
 `PARAMS_REJECTED` for unacceptable stream parameters.
 `PROOF_INVALID` for invalid vault or stream proof.
 `STREAM_NOT_ACTIVE` for inactive or missing stream.
 `PENDING_EXPIRED` for proposals past `open_stream_by`.
 `PERMANENTLY_REJECTED` for unusable vault or stream state.
 
-Assign concrete numeric values for these codes in the Store status-code space.
-Use `statusDesc` for actionable rejection descriptions.
+Assign concrete numeric values for these codes in the eligibility-status space.
+Use `eligibility_status.status_desc` for actionable eligibility rejection descriptions.
+Keep `StoreQueryResponse.status_code` and `status_desc` for Store query execution result semantics.
 
 Update protobuf codec in `waku/waku_store/rpc_codec.nim` to encode and decode the new fields.
 Use optional fields to preserve backward compatibility.
 
 Paid Store mode is enabled by configuration on the provider.
 When paid Store mode is enabled, requests without `stream_proposal` or `stream_proof`
-are rejected with the configured payment-required status.
+are rejected with the configured payment-required eligibility status.
 
 Add targeted codec tests for the new fields.
 Ensure existing Store behavior still encodes and decodes correctly.
 
-Definition of done: A codec test round-trips `EligibilityProof` message with its `stream_proposal` and `stream_proof` fields without data loss. Status-code tests cover each payment-stream-specific rejection. All existing Store codec tests pass unchanged.
+Definition of done: A codec test round-trips `EligibilityProof` message with its `stream_proposal` and `stream_proof` fields without data loss. A codec test round-trips `eligibility_status` in `StoreQueryResponse`. Eligibility-status tests cover each payment-stream-specific rejection. All existing Store codec tests pass unchanged.
 
 ## Step 6 Create Provider Payment-Stream Helper
 
@@ -417,7 +424,7 @@ Successful rejection with explicit status.
 Expiry of `open_stream_by` window.
 Detection of established stream.
 
-Definition of done: An integration test sends `StoreQueryRequest` with valid `stream_proposal` and receives response with `statusCode` 200. A test with invalid proposal receives `PARAMS_REJECTED` or `PROOF_INVALID` status. A test verifies pending state expires after `open_stream_by` window and subsequent requests receive `PENDING_EXPIRED` status.
+Definition of done: An integration test sends `StoreQueryRequest` with valid `stream_proposal` and receives a served response with success Store status and success eligibility status. A test with invalid proposal receives `PARAMS_REJECTED` or `PROOF_INVALID` in `eligibility_status`. A test verifies pending state expires after `open_stream_by` window and subsequent requests receive `PENDING_EXPIRED` in `eligibility_status`.
 
 ## Step 9 Implement Stream Proof Validation
 
@@ -460,7 +467,7 @@ Verify stream was established before `open_stream_by` deadline.
 Serve the Store request only if all validations pass.
 Return `STREAM_NOT_ACTIVE` or `PROOF_INVALID` status on failure.
 
-Definition of done: An integration test sends `StoreQueryRequest` with valid `stream_proof` and receives served response. A test with tampered signature receives `PROOF_INVALID` status. A test querying paused stream receives `STREAM_NOT_ACTIVE` status. A test with unknown stream ID receives error status.
+Definition of done: An integration test sends `StoreQueryRequest` with valid `stream_proof` and receives served response with success Store status and success eligibility status. A test with tampered signature receives `PROOF_INVALID` in `eligibility_status`. A test querying paused stream receives `STREAM_NOT_ACTIVE` in `eligibility_status`. A test with unknown stream ID receives eligibility rejection.
 
 ## Step 10 Implement Termination Semantics
 
@@ -472,14 +479,14 @@ Define eligibility status codes for termination-equivalent states:
 `PERMANENTLY_REJECTED` for unusable vault or stream state.
 
 Make provider behavior consistent with these statuses.
-Return appropriate status on the next request when service should stop.
+Return appropriate `eligibility_status` on the next request when service should stop.
 
 Clean up session state when:
 Stream transitions to closed.
 Provider decides to stop serving.
 User closes the stream.
 
-Definition of done: An integration test simulates stream closure and subsequent Store request receives rejection status. A test with expired pending proposal returns `PENDING_EXPIRED` status. The test verifies no unsolicited messages are sent from provider to user.
+Definition of done: An integration test simulates stream closure and subsequent Store request receives rejection in `eligibility_status`. A test with expired pending proposal returns `PENDING_EXPIRED` in `eligibility_status`. The test verifies no unsolicited messages are sent from provider to user.
 
 ## Step 11 Integrate LEZ Access
 
@@ -524,9 +531,10 @@ If paid Store mode is enabled,
 validate `stream_proposal` or `stream_proof` before calling `toArchiveQuery`
 and `node.wakuArchive.findMessages`.
 If validation fails,
-return a Store response with the payment-stream-specific status code and description.
+return a Store response with payment-stream-specific `eligibility_status`.
 If validation succeeds,
-serve the request as an ordinary Store success and return `200 OK`.
+serve the request as an ordinary Store success and return Store `200 OK`
+with success `eligibility_status`.
 
 Keep the Store archive path focused on message retrieval.
 The payment-stream helper owns validation,
@@ -543,7 +551,7 @@ near the successful response overwrite.
 The comment should state that paid Store treats eligible requests as ordinary success
 and that non-standard success statuses would require revisiting this overwrite.
 
-Definition of done: With paid Store mode enabled, requests without proof are rejected before archive lookup. A valid proposal-backed request reaches archive lookup and returns `200 OK`. A valid stream-proof-backed request reaches archive lookup and returns `200 OK`. Invalid proofs return payment-stream-specific Store status codes.
+Definition of done: With paid Store mode enabled, requests without proof are rejected before archive lookup with payment-required `eligibility_status`. A valid proposal-backed request reaches archive lookup and returns Store `200 OK` plus success `eligibility_status`. A valid stream-proof-backed request reaches archive lookup and returns Store `200 OK` plus success `eligibility_status`. Invalid proofs return payment-stream-specific eligibility status codes.
 
 ## Step 13 Add Integration Tests
 
