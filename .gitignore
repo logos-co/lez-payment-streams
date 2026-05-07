@@ -18,3 +18,4 @@ debug/
 *.bin
 .lez_payment_streams-state
 .lez_payment_streams-state.tmp
+.scaffold

@@ -185,10 +185,20 @@ for this integration.
 
 Definition of done: A short findings document records each discovered contract
 with source references.
+Primary record location:
+`docs/step1-findings-scaffold-rpc.md`.
 A spike command or script proves direct account-read RPC works against a
 deployed local program.
 Key derivation, signature verification options, command path, and dependency
 alignment status are known.
+Clean-rerun status is deferred.
+Deferred gate: complete one clean rerun before opening the first
+`logos-delivery` integration PR (and no later than Step 3 execution).
+Rerun dependencies:
+- fresh scaffold workspace state for the rerun
+- scaffold-managed LEZ and SPEL repos reporting clean working trees in
+  `lgs doctor`
+Record the clean rerun output in the findings document when this gate is met.
 IDL generation is verified with
 `cargo run -p lez_payment_streams-examples --bin generate_idl`
 and correctness checks on the output artifact:
