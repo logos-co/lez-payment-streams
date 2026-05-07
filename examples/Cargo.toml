@@ -12,9 +12,9 @@ name = "lez_payment_streams_cli"
 path = "src/bin/lez_payment_streams_cli.rs"
 
 [dependencies]
-spel-framework = { git = "https://github.com/logos-co/spel.git", rev = "3457c7431e9b5b88661ed87b53677511ef88d113" }
-nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1" }
-spel = { git = "https://github.com/logos-co/spel.git", rev = "3457c7431e9b5b88661ed87b53677511ef88d113" }
+spel-framework = { git = "https://github.com/logos-co/spel.git", rev = "767826d2b32943c1e43c7c983c02225fb7a68075" }
+nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3" }
+spel = { git = "https://github.com/logos-co/spel.git", rev = "767826d2b32943c1e43c7c983c02225fb7a68075" }
 lez_payment_streams_core = { path = "../lez_payment_streams_core" }
 serde_json = "1.0"
 tokio = { version = "1.28.2", features = ["net", "rt-multi-thread", "sync", "macros"] }

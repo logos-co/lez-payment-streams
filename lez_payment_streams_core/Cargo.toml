@@ -6,11 +6,11 @@ edition = "2021"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 borsh = "1.5"
-nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1", features = ["host"] }
-clock_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1" }
-spel-framework-macros = { git = "https://github.com/logos-co/spel.git", rev = "82204ab5c4e4f3a94003211dbf6dcca7f4cfa38d" }
+nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["host"] }
+clock_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3" }
+spel-framework-macros = { git = "https://github.com/logos-co/spel.git", rev = "767826d2b32943c1e43c7c983c02225fb7a68075" }
 
 [dev-dependencies]
-nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1", features = ["test-utils"] }
-spel-framework-core = { git = "https://github.com/logos-co/spel.git", rev = "82204ab5c4e4f3a94003211dbf6dcca7f4cfa38d" }
+nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["test-utils"] }
+spel-framework-core = { git = "https://github.com/logos-co/spel.git", rev = "767826d2b32943c1e43c7c983c02225fb7a68075" }
 sha2 = "0.10"
