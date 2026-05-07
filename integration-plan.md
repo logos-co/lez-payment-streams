@@ -214,14 +214,33 @@ matches Borsh layout used by on-chain account types.
 
 Make MVP choices that depend on Step 1 findings.
 
-Decide proof formats:
-Choose the `VaultProof.owner_signature` scheme.
-Define the exact public key format.
-Define the exact signature encoding.
-Define how proof public keys map to `VaultConfig.owner`.
-Define the canonical byte layout for the signed `VaultProof` payload.
-Decide whether `StreamProof.signature` uses the same scheme.
-Define the canonical Store request payload signed by `StreamProof`.
+Consolidated Step 2 understanding:
+
+Step 2 treats LEZ and NSSA cryptographic semantics as the source of truth
+for off-chain payment-stream proof verification.
+The objective is compatibility between off-chain request proofs
+and on-chain account identity and stream state.
+
+Decide proof formats and compatibility contracts:
+- choose the `VaultProof.owner_signature` scheme
+- define exact public key format and signature encoding
+- define how proof public keys map to `VaultConfig.owner`
+- define canonical bytes signed by `VaultProof.owner_signature`
+- decide whether `StreamProof.signature` uses the same scheme
+- define canonical Store request payload signed by `StreamProof`
+- freeze cross-language test vectors for public key bytes,
+  account-id derivation outputs, canonical signable payload bytes,
+  and signature verification pass and fail cases
+
+Decide implementation boundary for cryptographic source-of-truth:
+- `logos-delivery` crypto paths for transport, relay validation, and RLN
+  are not the LEZ/NSSA account-identity contract
+- avoid introducing a parallel account-identity or signature contract in Nim
+- Nim cannot directly import Rust crates
+- preserve one source of truth with a narrow Rust boundary
+  (small FFI library or sidecar process) for crypto-critical operations
+- Nim remains responsible for orchestration, Store flow integration,
+  policy evaluation, and LEZ account-read logic
 
 Decide validation support strategy:
 Choose whether stream folding is implemented directly in Nim
@@ -237,6 +256,13 @@ drift risk, but adds cross-language build, release, and observability overhead.
 Decide local demo configuration:
 Choose how paid Store mode is enabled on the provider.
 Choose how the user-side request-signing private key is supplied during the demo.
+
+Replay hardening beyond canonical payload binding is not a separate Step 2
+track for MVP.
+Given Noise-protected libp2p transport and strict canonical payload signing,
+the dominant remaining risk is service abuse through high-volume valid requests,
+which belongs to provider rate-control and DoS policy rather than cryptographic
+compatibility decisions.
 
 Definition of done: The plan records the chosen proof scheme, payload formats, stream-folding strategy, provider configuration surface, and user key handling. Later implementation steps no longer contain open design questions except locally chosen constants such as numeric status codes.
 
