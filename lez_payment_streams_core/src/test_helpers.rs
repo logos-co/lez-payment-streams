@@ -71,7 +71,7 @@ pub(crate) fn create_state_with_guest_program(
 ) -> Option<(V03State, Program)> {
     let guest_bytecode = fs::read(guest_binary_path()).ok()?;
     let guest_program = Program::new(guest_bytecode.clone()).ok()?;
-    let mut state = V03State::new_with_genesis_accounts(initial_accounts_data, &[], 0u64);
+    let mut state = V03State::new_with_genesis_accounts(initial_accounts_data, vec![], 0u64);
 
     let deploy_message = DeployMessage::new(guest_bytecode);
     let deploy_tx = ProgramDeploymentTransaction::new(deploy_message);
