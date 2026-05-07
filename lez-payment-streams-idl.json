@@ -1,0 +1,982 @@
+{
+  "accounts": [
+    {
+      "name": "StreamConfig",
+      "type": {
+        "fields": [
+          {
+            "name": "version",
+            "type": {
+              "defined": "VersionId"
+            }
+          },
+          {
+            "name": "stream_id",
+            "type": {
+              "defined": "StreamId"
+            }
+          },
+          {
+            "name": "provider",
+            "type": "account_id"
+          },
+          {
+            "name": "rate",
+            "type": {
+              "defined": "TokensPerSecond"
+            }
+          },
+          {
+            "name": "allocation",
+            "type": {
+              "defined": "Balance"
+            }
+          },
+          {
+            "name": "accrued",
+            "type": {
+              "defined": "Balance"
+            }
+          },
+          {
+            "name": "state",
+            "type": {
+              "defined": "StreamState"
+            }
+          },
+          {
+            "name": "accrued_as_of",
+            "type": {
+              "defined": "Timestamp"
+            }
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "VaultConfig",
+      "type": {
+        "fields": [
+          {
+            "name": "version",
+            "type": {
+              "defined": "VersionId"
+            }
+          },
+          {
+            "name": "owner",
+            "type": "account_id"
+          },
+          {
+            "name": "vault_id",
+            "type": {
+              "defined": "VaultId"
+            }
+          },
+          {
+            "name": "next_stream_id",
+            "type": {
+              "defined": "StreamId"
+            }
+          },
+          {
+            "name": "total_allocated",
+            "type": {
+              "defined": "Balance"
+            }
+          },
+          {
+            "name": "privacy_tier",
+            "type": {
+              "defined": "VaultPrivacyTier"
+            }
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "VaultHolding",
+      "type": {
+        "fields": [
+          {
+            "name": "version",
+            "type": {
+              "defined": "VersionId"
+            }
+          }
+        ],
+        "kind": "struct"
+      }
+    }
+  ],
+  "errors": [],
+  "instruction_type": "lez_payment_streams_core::Instruction",
+  "instructions": [
+    {
+      "accounts": [
+        {
+          "init": true,
+          "name": "vault_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_config"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "vault_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": true,
+          "name": "vault_holding",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_holding"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "const",
+                "value": "native"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "owner",
+          "signer": true,
+          "writable": false
+        }
+      ],
+      "args": [
+        {
+          "name": "vault_id",
+          "type": {
+            "defined": "VaultId"
+          }
+        },
+        {
+          "name": "privacy_tier",
+          "type": {
+            "defined": "VaultPrivacyTier"
+          }
+        }
+      ],
+      "name": "initialize_vault"
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "vault_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_config"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "vault_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "vault_holding",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_holding"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "const",
+                "value": "native"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "owner",
+          "signer": true,
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "vault_id",
+          "type": {
+            "defined": "VaultId"
+          }
+        },
+        {
+          "name": "amount",
+          "type": {
+            "defined": "Balance"
+          }
+        },
+        {
+          "name": "authenticated_transfer_program_id",
+          "type": "program_id"
+        }
+      ],
+      "name": "deposit"
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "vault_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_config"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "vault_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "vault_holding",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_holding"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "const",
+                "value": "native"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "owner",
+          "signer": true,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "withdraw_to",
+          "signer": false,
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "vault_id",
+          "type": {
+            "defined": "VaultId"
+          }
+        },
+        {
+          "name": "amount",
+          "type": {
+            "defined": "Balance"
+          }
+        }
+      ],
+      "name": "withdraw"
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "vault_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_config"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "vault_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "vault_holding",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_holding"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "const",
+                "value": "native"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": true,
+          "name": "stream_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "stream_config"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "arg",
+                "path": "stream_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "owner",
+          "signer": true,
+          "writable": false
+        },
+        {
+          "init": false,
+          "name": "clock_account",
+          "signer": false,
+          "writable": false
+        }
+      ],
+      "args": [
+        {
+          "name": "vault_id",
+          "type": {
+            "defined": "VaultId"
+          }
+        },
+        {
+          "name": "stream_id",
+          "type": {
+            "defined": "StreamId"
+          }
+        },
+        {
+          "name": "provider",
+          "type": "account_id"
+        },
+        {
+          "name": "rate",
+          "type": {
+            "defined": "TokensPerSecond"
+          }
+        },
+        {
+          "name": "allocation",
+          "type": {
+            "defined": "Balance"
+          }
+        }
+      ],
+      "name": "create_stream"
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "vault_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_config"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "vault_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "vault_holding",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_holding"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "const",
+                "value": "native"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "stream_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "stream_config"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "arg",
+                "path": "stream_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "owner",
+          "signer": true,
+          "writable": false
+        },
+        {
+          "init": false,
+          "name": "clock_account",
+          "signer": false,
+          "writable": false
+        }
+      ],
+      "args": [
+        {
+          "name": "vault_id",
+          "type": {
+            "defined": "VaultId"
+          }
+        },
+        {
+          "name": "stream_id",
+          "type": {
+            "defined": "StreamId"
+          }
+        }
+      ],
+      "name": "pause_stream"
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "vault_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_config"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "vault_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "vault_holding",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_holding"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "const",
+                "value": "native"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "stream_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "stream_config"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "arg",
+                "path": "stream_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "owner",
+          "signer": true,
+          "writable": false
+        },
+        {
+          "init": false,
+          "name": "clock_account",
+          "signer": false,
+          "writable": false
+        }
+      ],
+      "args": [
+        {
+          "name": "vault_id",
+          "type": {
+            "defined": "VaultId"
+          }
+        },
+        {
+          "name": "stream_id",
+          "type": {
+            "defined": "StreamId"
+          }
+        }
+      ],
+      "name": "resume_stream"
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "vault_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_config"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "vault_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "vault_holding",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_holding"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "const",
+                "value": "native"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "stream_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "stream_config"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "arg",
+                "path": "stream_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "owner",
+          "signer": true,
+          "writable": false
+        },
+        {
+          "init": false,
+          "name": "clock_account",
+          "signer": false,
+          "writable": false
+        }
+      ],
+      "args": [
+        {
+          "name": "vault_id",
+          "type": {
+            "defined": "VaultId"
+          }
+        },
+        {
+          "name": "stream_id",
+          "type": {
+            "defined": "StreamId"
+          }
+        },
+        {
+          "name": "vault_total_allocated_increase",
+          "type": {
+            "defined": "Balance"
+          }
+        }
+      ],
+      "name": "top_up_stream"
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "vault_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_config"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "vault_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "vault_holding",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_holding"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "const",
+                "value": "native"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "stream_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "stream_config"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "arg",
+                "path": "stream_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "owner",
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "authority",
+          "signer": true,
+          "writable": false
+        },
+        {
+          "init": false,
+          "name": "clock_account",
+          "signer": false,
+          "writable": false
+        }
+      ],
+      "args": [
+        {
+          "name": "vault_id",
+          "type": {
+            "defined": "VaultId"
+          }
+        },
+        {
+          "name": "stream_id",
+          "type": {
+            "defined": "StreamId"
+          }
+        }
+      ],
+      "name": "close_stream"
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "vault_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_config"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "vault_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "vault_holding",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_holding"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "const",
+                "value": "native"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "stream_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "stream_config"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "arg",
+                "path": "stream_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "owner",
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "provider",
+          "signer": true,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "clock_account",
+          "signer": false,
+          "writable": false
+        }
+      ],
+      "args": [
+        {
+          "name": "vault_id",
+          "type": {
+            "defined": "VaultId"
+          }
+        },
+        {
+          "name": "stream_id",
+          "type": {
+            "defined": "StreamId"
+          }
+        }
+      ],
+      "name": "claim"
+    }
+  ],
+  "name": "lez_payment_streams",
+  "types": [
+    {
+      "kind": "enum",
+      "name": "VaultPrivacyTier",
+      "variants": [
+        {
+          "name": "Public"
+        },
+        {
+          "name": "PseudonymousFunder"
+        }
+      ]
+    },
+    {
+      "kind": "enum",
+      "name": "StreamState",
+      "variants": [
+        {
+          "name": "Active"
+        },
+        {
+          "name": "Paused"
+        },
+        {
+          "name": "Closed"
+        }
+      ]
+    }
+  ],
+  "version": "0.1.0"
+}
