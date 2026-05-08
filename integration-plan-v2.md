@@ -69,6 +69,10 @@ is the existing Logos Core module that wraps `liblogosdelivery`.
 This work adds two thin methods on its interface,
 `setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`,
 that bridge the new `liblogosdelivery` hooks to a named module via the SDK.
+At registration time the bridge uses the auto-generated `getPluginMethods` surface
+(the same introspection facility Basecamp uses to enumerate module methods)
+to confirm that the named module exposes the expected verifier and provider methods,
+so a misconfigured registration fails fast with a structured error.
 `payment_streams_module` is one such named module;
 future modules (different incentivization schemes) can register the same way.
 
@@ -116,6 +120,11 @@ We need agreement from the maintainers
 that the generic-hook approach is acceptable,
 that the proposed method names are fine,
 and that the `liblogosdelivery` ABI bump is acceptable.
+The risk of this abstraction is partly mitigated by the auto-generated
+`getPluginMethods` surface on every module,
+which lets `delivery_module` validate at registration time
+that the named verifier and provider modules expose the expected method names
+rather than failing silently on the first request.
 Until this clears, Steps 12 and 13 ship as a fork.
 
 ### Q3, Wallet write path PR landing
@@ -395,12 +404,18 @@ and `setEligibilityProvider(moduleName)`.
 Implement the bridge that translates the new `liblogosdelivery` callbacks
 into SDK calls on the named module
 (`verifyEligibilityForStoreQuery`, `prepareEligibilityForStoreQuery`).
+On registration, the bridge calls the named module's auto-generated
+`getPluginMethods` and rejects the registration with a structured error
+if the expected method names are not present,
+so misconfiguration surfaces at setup time rather than on the first Store request.
 Add a configuration toggle for paid Store mode.
 While Q2 is open, ship this as a fork.
 
 Definition of done:
 without any verifier registered,
 `delivery_module` behaves exactly as it does today,
+registering a module that does not expose the expected methods
+returns a structured error and leaves the previous registration in place,
 and with `payment_streams_module` registered as both verifier and provider,
 an end-to-end Store query produced by the user
 returns a successful Store outcome and a successful eligibility outcome
