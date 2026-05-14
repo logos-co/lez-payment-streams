@@ -2,7 +2,7 @@ language = "C"
 include_guard = "LEZ_PAYMENT_STREAMS_FFI_H"
 
 [export]
-include = ["Error"]
+include = ["PaymentStreamsFfiStatus"]
 prefix = "PaymentStreamsFfi"
 
 [enum]

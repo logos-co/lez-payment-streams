@@ -2899,17 +2899,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
+name = "lez-payment-streams-core"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+ "clock_core",
+ "nssa",
+ "nssa_core",
+ "serde",
+ "sha2",
+ "spel-framework-core",
+ "spel-framework-macros",
+]
+
+[[package]]
 name = "lez-payment-streams-ffi"
 version = "0.1.0"
 dependencies = [
+ "borsh",
  "cbindgen",
+ "hex",
+ "lez-payment-streams-core",
+ "nssa_core",
 ]
 
 [[package]]
 name = "lez_payment_streams-examples"
 version = "0.1.0"
 dependencies = [
- "lez_payment_streams_core",
+ "lez-payment-streams-core",
  "nssa_core",
  "serde_json",
  "spel",
@@ -2921,23 +2939,9 @@ dependencies = [
 name = "lez_payment_streams-methods"
 version = "0.1.0"
 dependencies = [
- "lez_payment_streams_core",
+ "lez-payment-streams-core",
  "risc0-build",
  "risc0-zkvm",
-]
-
-[[package]]
-name = "lez_payment_streams_core"
-version = "0.1.0"
-dependencies = [
- "borsh",
- "clock_core",
- "nssa",
- "nssa_core",
- "serde",
- "sha2",
- "spel-framework-core",
- "spel-framework-macros",
 ]
 
 [[package]]

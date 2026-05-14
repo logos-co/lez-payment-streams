@@ -129,14 +129,26 @@ Generated IDL contains top-level account types:
 
 ## Pda derivation results
 
-Derived in current environment:
+The deploy output hex from this discovery run is:
 
-- vault_config PDA: `5iyXRxdaXH9xZHbNvPG3ZjxqQgtY5nebRX6xPxnNxu8i`
-- vault_holding PDA: `6CXxQd4HxPu8KFqE1AHq5PXkVqRRgzd4KFpsBnmyWxJ2`
+- program_id: `0b9349a24ceccf031fd2e06af23722e086dd2a8fec388e4d179619045ffb377d`
 
-Derived stream_config PDA with only arg seed path:
+To match NSSA `/ SPEL` guest PDA binding, treat that hex as thirty-two raw bytes
+and interpret those bytes as eight little-endian `u32` words
+(the `ProgramId` wire layout used throughout `payment_streams` PDAs).
 
-- `AprUVPgJAmRkcuEew34n4hg1bD1zSbxbvMmjrTAyQUEf`
+For the scaffold owner id recorded above and `vault_id = 0`,
+the resulting PDAs are:
+
+- vault_config PDA: `EKnp4sr9HL1vxJX1vdBUf82v2xGoDJhPSreqQXRhYAUS`
+- vault_holding PDA: `H1Py4DETrQARSuqH66nL47gRsonsrkLaKNJNCG9hRjnT`
+
+For `stream_id = 0` against that vault_config PDA, the derived stream_config PDA is:
+
+- `HnVEXVhzdzywjAb1JEPbMoCHZ6LXguhwBTkjAGubDri4`
+
+Earlier handwritten base58 placeholders in earlier drafts skipped this interpretation
+detail and diverged from the guest seed scheme documented in the IDL macros.
 
 Attempt to provide explicit account-seed input for stream config:
 

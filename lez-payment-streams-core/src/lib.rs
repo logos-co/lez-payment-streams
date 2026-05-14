@@ -13,6 +13,7 @@ mod program_tests;
 
 mod error_codes;
 mod instruction;
+mod pda;
 mod stream_config;
 mod vault;
 
@@ -22,6 +23,7 @@ pub use clock_core::{
 };
 pub use error_codes::*;
 pub use instruction::Instruction;
+pub use pda::{derive_stream_config_account_id, derive_vault_account_ids};
 pub use stream_config::{StreamConfig, StreamState};
 pub use vault::{
     checked_total_allocated_after_add, checked_total_allocated_after_release, VaultConfig,

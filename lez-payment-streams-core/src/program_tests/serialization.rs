@@ -117,7 +117,7 @@ fn test_stream_config_from_bytes_invalid_stream_state_fails() {
         StreamState::Paused,
         StreamState::Closed,
     ]
-    .map(|state| state as u8)
+    .map(u8::from)
     .into_iter()
     .max()
     .expect("StreamState should have variants");

@@ -10,10 +10,13 @@ For the rationale behind design choices and a suggested reading order, see [arch
 | Path | Concern |
 |---|---|
 | `methods/guest/src/bin/lez_payment_streams.rs` | Guest program: `#[lez_program]` module, `#[instruction]` handlers, account attributes |
-| `lez_payment_streams_core/src/` | Shared types and pure logic: `VaultConfig`, `VaultHolding`, `StreamConfig`, `Instruction`, error codes, accrual math |
-| `lez_payment_streams_core/src/program_tests/` | In-process `V03State` tests, one module per instruction plus `common.rs`, `pp_common.rs`, `invariants.rs`, `serialization.rs`, `privacy_tier_policy.rs` |
-| `lez_payment_streams_core/src/test_helpers.rs` | Test harness helpers: keypairs, state setup, guest deployment, transaction builders |
+| `lez-payment-streams-core/src/` | Shared types and pure logic: `VaultConfig`, `VaultHolding`, `StreamConfig`, `Instruction`, error codes, accrual math |
+| `lez-payment-streams-core/src/program_tests/` | In-process `V03State` tests, one module per instruction plus `common.rs`, `pp_common.rs`, `invariants.rs`, `serialization.rs`, `privacy_tier_policy.rs` |
+| `lez-payment-streams-core/src/test_helpers.rs` | Test harness helpers: keypairs, state setup, guest deployment, transaction builders |
 | `examples/src/bin/` | IDL generator and CLI wrapper |
+
+The workspace directories use hyphenated Cargo package names (`lez-payment-streams-core`, `lez-payment-streams-ffi`);
+Rust code still imports `lez_payment_streams_core` for the protocol library crate.
 
 For semantics review, one distinction matters early:
 `close_stream` may be initiated by the vault owner or the provider,
@@ -35,10 +38,10 @@ Run tests:
 
 ```bash
 # Fast local loop (no ZK proof generation)
-RISC0_DEV_MODE=1 cargo test -p lez_payment_streams_core --lib
+RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib
 
 # Narrower filter when not touching other unit tests
-RISC0_DEV_MODE=1 cargo test -p lez_payment_streams_core --lib program_tests
+RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib program_tests
 ```
 
 `RISC0_DEV_MODE=1` skips ZK proof generation and is the standard mode for both

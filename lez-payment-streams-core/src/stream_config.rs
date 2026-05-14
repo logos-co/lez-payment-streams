@@ -16,6 +16,12 @@ pub enum StreamState {
     Closed = 2,
 }
 
+impl From<StreamState> for u8 {
+    fn from(state: StreamState) -> u8 {
+        state as u8
+    }
+}
+
 /// Stream PDA account body.
 /// Vault identity comes from the stream PDA seeds at derivation time, not from this struct.
 #[spel_framework_macros::account_type]

@@ -14,10 +14,10 @@ Build, run, and test instructions live in `README.md`.
 Read the codebase in this order:
 
 1. The LIP-155 spec for protocol requirements.
-2. `lez_payment_streams_core/src/stream_config.rs` for lazy accrual.
-3. `lez_payment_streams_core/src/vault.rs` for vault accounting.
+2. `lez-payment-streams-core/src/stream_config.rs` for lazy accrual.
+3. `lez-payment-streams-core/src/vault.rs` for vault accounting.
 4. `methods/guest/src/bin/lez_payment_streams.rs` for instruction handlers.
-5. `lez_payment_streams_core/src/program_tests/` for execution coverage.
+5. `lez-payment-streams-core/src/program_tests/` for execution coverage.
 
 Two ideas appear throughout the implementation.
 
@@ -110,7 +110,7 @@ by the payout amount.
 
 ## Code layout
 
-Core types and pure logic live in `lez_payment_streams_core/src/`.
+Core types and pure logic live in `lez-payment-streams-core/src/`.
 
 - `stream_config.rs` contains stream state,
   accrual logic,
@@ -138,7 +138,7 @@ It contains:
 - account-write helpers
 - instruction handlers in declaration order
 
-Tests live in `lez_payment_streams_core/src/program_tests/`.
+Tests live in `lez-payment-streams-core/src/program_tests/`.
 There is one module per instruction.
 Transparent and privacy-preserving cases live side by side.
 That mirrors the program model:

@@ -1,5 +1,5 @@
 [package]
-name = "lez_payment_streams_core"
+name = "lez-payment-streams-core"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,8 +9,8 @@ borsh = "1.5"
 nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["host"] }
 clock_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3" }
 spel-framework-macros = { git = "https://github.com/logos-co/spel.git", rev = "767826d2b32943c1e43c7c983c02225fb7a68075" }
+spel-framework-core = { git = "https://github.com/logos-co/spel.git", rev = "767826d2b32943c1e43c7c983c02225fb7a68075" }
 
 [dev-dependencies]
 nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["test-utils"] }
-spel-framework-core = { git = "https://github.com/logos-co/spel.git", rev = "767826d2b32943c1e43c7c983c02225fb7a68075" }
 sha2 = "0.10"
