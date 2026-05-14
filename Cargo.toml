@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "lez_payment_streams_core",
+    "lez-payment-streams-ffi",
     "methods",
     "examples",
 ]
