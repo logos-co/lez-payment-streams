@@ -31,6 +31,46 @@ mixed paid and unpaid Store interoperability,
 production hardening of off-chain key custody,
 and any new wire format for protocols other than Store.
 
+## Onboarding
+
+### Recommended reading order
+
+1. This file (`integration-plan-v2.md`).
+   The 15-step plan, definitions of done,
+   resolved decisions (D1–D5),
+   and non-blocking notes (N1–N8).
+   Day-to-day reference for the work.
+2. `logos-architecture-overview.md` in this directory.
+   Architectural facts about hosts versus modules,
+   the Rust FFI layer inside a module versus `LogosAPI` between modules,
+   Qt's three roles,
+   C++ as the module-shell language,
+   and the LEZ-only chain side.
+   Read once end-to-end; refer back when terms feel ambiguous.
+   That document uses "Boundary A" and "Boundary B" terminology
+   for the two layers;
+   this plan uses descriptive terms (Rust FFI and LogosAPI) instead.
+3. `docs/step1-findings-scaffold-rpc.md` in this repo.
+   Concrete, validated commands for launching localnet,
+   deploying `lez_payment_streams`,
+   and reading accounts through `getAccount`.
+4. LIP-155 spec at `rfc-index/docs/ift-ts/raw/payment-streams.md`.
+   Protocol source of truth for vault, stream, proof types, and lifecycle.
+
+### Prerequisites
+
+- Nix with flakes enabled.
+- Rust stable toolchain.
+- `logos-scaffold` binary (`lgs` alias)
+  for localnet, wallet, and program deploy.
+- `logoscore`, `lgpm`, `lm` —
+  available through `logos-module-builder` outputs
+  or as separate flake-buildable binaries.
+- Outbound internet access for the `logos.dev` messaging-network preset
+  during Step 14 and Step 15.
+- A working `git` and the workspace already checked out
+  with all repos pulled to their latest commits.
+
 ## Component Overview
 
 For background on hosts vs. modules,
@@ -149,6 +189,16 @@ via `LogosAPIClient::invokeRemoteMethod`.
 We reuse its file layout,
 the JSON request shape for `send_public_transaction`,
 and its hex/byte conversion-helper patterns.
+Start at `src/logos_rln_module.cpp`.
+Note the JSON request shape it sends to `send_public_transaction`
+(`program_id`, `accounts`, `instruction`, `signer_account`) —
+we adopt the same shape per D3.
+
+`logos-delivery-module` (currently pinned at `v0.1.1` upstream)
+is the module we extend in Step 13.
+Skim `README.md` and `src/delivery_module_plugin.h`
+to see the surface we add `setEligibilityVerifier`
+and `setEligibilityProvider` to.
 
 `logos-delivery-demo`
 is the reference `ui_qml` module showing how a Qt module consumes `delivery_module`.
@@ -162,6 +212,9 @@ and worked examples
 (`logos-calc-module` for an external-library wrap,
 `logos-calc-ui*` for UI variants).
 First reading material for the module shape.
+Read it once early;
+it covers `metadata.json`, `mkLogosModule`, `lgpm`, `logoscore`, `lm`,
+and the C++ SDK code generator.
 
 `logos-execution-zone`
 is the LEZ source repo
@@ -581,6 +634,19 @@ the new approach is preferable and future-proof.
 If they remain on legacy, stick with legacy to avoid runtime compatibility risk.
 The ecosystem direction should be checked at this step; do not proceed
 with either pattern until the partner module status is confirmed.
+
+Before implementing Step 6, check the current state of
+`lez_wallet_module` and `delivery_module`.
+If they have adopted the universal pattern
+(`"interface": "universal"` in `metadata.json`,
+code generation via `logos-cpp-generator`),
+use the new pattern for `payment_streams_module`.
+If they remain on the legacy pattern
+(manual `Q_INVOKABLE`, `PluginInterface`),
+stay with legacy to avoid runtime compatibility risk.
+
+Confirm the partner modules' status before proceeding,
+and refer to the "Module Implementation Patterns" section in `logos-architecture-overview.md` for details.
 
 Scaffold the module from the `logos-module-builder`
 `with-external-lib` template, modeled on `logos-rln-module`
