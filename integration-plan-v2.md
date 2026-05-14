@@ -69,11 +69,10 @@ is the existing Logos Core module (repo `logos-execution-zone-module`)
 that wraps `wallet_ffi`.
 It is the single point of contact with the LEZ chain.
 Reads of vault, stream, and clock accounts go through `get_account_public`.
-Writes go through `send_public_transaction`,
+Writes go through `send_public_transaction`
+(JSON request shape `program_id` / `accounts` / `instruction` / `signer_account`),
 which is already exercised by `logos-rln-module`
-(JSON request shape `program_id` / `accounts` / `instruction` / `signer_account`)
-but is not yet present in the current `lez_wallet_module` interface.
-This work adds it on our branch, matching the shape `logos-rln-module` already calls.
+and is implemented in an open PR on the wallet module (see D3).
 
 `logos-delivery` and `liblogosdelivery`
 host the Store protocol implementation in Nim and its C FFI surface.
@@ -192,13 +191,23 @@ Tags currently used on the request are `1`, `2`, `10`, `11`, `12`, `13`, `20`, `
 The new fields take tags from a fresh block starting at `30`,
 i.e. `eligibility_proof` at tag `30` on the request
 and `eligibility_status` at tag `30` on the response.
+
+Eligibility semantics are fully hidden from Store.
 Store status codes (`status_code`, `status_desc`) remain reserved for query-execution outcomes.
-Eligibility outcomes use a separate enumeration carried inside `eligibility_status`.
+Eligibility outcomes use a separate enumeration carried exclusively inside `eligibility_status`.
 If eligibility fails,
-the Store handler MUST return a `StoreQueryResponse`
-with a 400-level `status_code` (e.g., 403 Forbidden)
+the Store handler returns a `StoreQueryResponse`
+with the existing `BAD_REQUEST` status code (`400`)
 and an empty `messages` list,
 skipping the database query.
+The detailed eligibility verdict
+(`OK`, `PARAMS_REJECTED`, `PROOF_INVALID`, `STREAM_NOT_ACTIVE`)
+lives only inside the `eligibility_status` object at tag `30`.
+Store never interprets these values;
+the payment-streams module on each side
+reads and acts on the structured `eligibility_status` payload.
+No new status codes are added to the Store `StatusCode` enum.
+
 No protocol-ID version bump and no codec migration is required for the demo.
 Confirm tag `30` is unused in `waku/waku_store/rpc_codec.nim` before implementation.
 
@@ -228,9 +237,9 @@ We ship this on our branches and do not negotiate spec changes.
 `payment_streams_module` writes go through `lez_wallet_module.send_public_transaction`,
 matching the JSON request shape `logos-rln-module` already uses
 (`program_id`, `accounts`, `instruction`, `signer_account`).
-That method is not yet exposed by the current `lez_wallet_module`,
-so we add it on our branch of `logos-execution-zone-module`
-as part of Step 8, modeled on the consumer side already shipped in `logos-rln-module`.
+That method is implemented in an open PR on `logos-execution-zone-module`.
+If the PR is merged before we reach Step 8, we use mainline;
+otherwise we use the feature branch where it is implemented.
 No subprocess fallback is needed.
 
 ### D4, Wallet module dependency name
@@ -269,8 +278,22 @@ Neither `wallet_ffi` nor `lez_wallet_module` currently exposes
 a primitive that signs an arbitrary canonical payload with a wallet account's key.
 That primitive is required for `VaultProof.owner_signature`,
 because the vault proof must prove control of the LEZ vault owner key.
-For the MVP, we add a narrow public-account payload-signing method
-to `lez_wallet_module` on our branch.
+For the MVP, we add `sign_public_payload` to `lez_wallet_module`
+on our branch (see Step 8a for the method signature).
+
+No domain parameter is included.
+The NSSA wallet avoids exposing generic signing entirely
+(`wallet_ffi` only exposes complete transaction workflows;
+see `logos-execution-zone/wallet-ffi/src/transfer.rs`).
+Our method introduces the first generic signing endpoint,
+but any co-hosted module can already submit arbitrary transactions
+via `send_public_transaction`, which is strictly more powerful.
+Domain separation would not reduce the attack surface
+in the current trust model.
+The payment-streams FFI already applies its own domain-separated prehashing
+(see N8).
+If the ecosystem later introduces a module permission model,
+domain separation on signing should be revisited.
 
 Payment-stream proofs use NSSA's existing transparent signature contract:
 32-byte x-only secp256k1 public keys,
@@ -338,17 +361,93 @@ while avoiding hardcoded IDs.
 
 The lower-level `logos-delivery` C ABI already exposes Store queries,
 but the current `logos-delivery-module` Qt surface does not.
-We will ask upstream whether `storeQuery(jsonQuery, peerAddr, timeoutMs)`
-fits the intended module API and whether there are reasons Store querying
-has not been exposed yet.
-If that is not addressed in time for the demo,
-we implement the method on our branch and may suggest it upstream later.
+We ask the Delivery team to expose the existing Store query functionality
+through the module surface as
+`storeQuery(jsonQuery, peerAddr, timeoutMs)`.
+This is exposing already-implemented functionality, not a spec change;
+no Store protocol semantics are modified.
+If the upstream change does not land in time for the demo,
+we implement the method on our branch.
 
 ### N7, Session key concurrency
 
 Session key signing is synchronous.
 Concurrent Store queries to the same provider serialize at the session key.
 The MVP assumes low concurrency; production would need key pooling or async queuing.
+
+### N8, Canonical Store request bytes format
+
+The canonical Store request bytes are the payload
+signed by `StreamProof.signature` and verified by `payment_streams_module`.
+They are produced by `liblogosdelivery` (Nim, Step 12)
+and consumed by `lez-payment-streams-ffi` (Rust, Step 4).
+Both sides must produce identical bytes for the same input.
+
+The format follows the NSSA precedent
+from `nssa/src/public_transaction/message.rs`:
+Borsh-serialize a struct,
+prepend a fixed 32-byte domain prefix,
+SHA-256 the concatenation to produce a 32-byte prehash.
+
+#### Domain prefix
+
+```
+b"/LEZ/v0.1/StoreEligibility/\x00\x00\x00\x00\x00"
+```
+
+Padded to exactly 32 bytes with null bytes,
+matching the `PREFIX` pattern in `nssa/src/public_transaction/message.rs`.
+
+#### `CanonicalStoreRequest` struct
+
+The struct is Borsh-serialized in the following field order.
+This matches `StoreQueryRequest` from `waku/waku_store/common.nim`
+with `eligibility_proof` excluded
+and response-only fields absent.
+
+| Field | Borsh type | Source |
+| --- | --- | --- |
+| `request_id` | `string` (4-byte LE length + UTF-8 bytes) | `StoreQueryRequest.requestId` |
+| `include_data` | `u8` (0 or 1) | `StoreQueryRequest.includeData` |
+| `has_pubsub_topic` | `u8` (0 or 1) | presence flag |
+| `pubsub_topic` | `string` (only if present) | `StoreQueryRequest.pubsubTopic` |
+| `content_topics_count` | `u32` LE | length of `contentTopics` |
+| `content_topics[i]` | `string` each | `StoreQueryRequest.contentTopics` |
+| `has_start_time` | `u8` (0 or 1) | presence flag |
+| `start_time` | `i64` LE (only if present) | `StoreQueryRequest.startTime` |
+| `has_end_time` | `u8` (0 or 1) | presence flag |
+| `end_time` | `i64` LE (only if present) | `StoreQueryRequest.endTime` |
+| `message_hashes_count` | `u32` LE | length of `messageHashes` |
+| `message_hashes[i]` | 32 bytes each | `StoreQueryRequest.messageHashes` |
+| `has_pagination_cursor` | `u8` (0 or 1) | presence flag |
+| `pagination_cursor` | 32 bytes (only if present) | `StoreQueryRequest.paginationCursor` |
+| `pagination_forward` | `u8` (0 or 1) | `StoreQueryRequest.paginationForward` |
+| `has_pagination_limit` | `u8` (0 or 1) | presence flag |
+| `pagination_limit` | `u64` LE (only if present) | `StoreQueryRequest.paginationLimit` |
+
+Borsh `string` encoding is a 4-byte little-endian length prefix
+followed by the raw UTF-8 bytes (no null terminator).
+Optional fields use a presence byte:
+`0x00` means absent (field bytes omitted),
+`0x01` means present (field bytes follow immediately).
+
+#### Prehash computation
+
+```
+prehash = SHA-256(PREFIX || borsh(CanonicalStoreRequest))
+```
+
+This 32-byte prehash is what `StreamProof.signature` signs.
+
+#### Cross-language test vector
+
+The definition of done for Step 12 requires a pinned test vector:
+construct a `StoreQueryRequest` with fixed known field values,
+produce canonical bytes from the Nim serializer and the Rust serializer independently,
+and assert byte-level equality.
+This mirrors the `hash_public_pinned` test
+in `nssa/src/public_transaction/message.rs`
+that spells out the expected Borsh encoding byte by byte.
 
 ## Integration Steps
 
@@ -359,7 +458,7 @@ without reading the implementation.
 ### Step 1, Bootstrap the Rust FFI crate
 
 Architectural context:
-this and the next four steps build out Boundary A (C FFI) of `payment_streams_module`.
+this and the next four steps build out the Rust FFI layer of `payment_streams_module`.
 No Qt plugin shell, no Logos host, no chain are involved yet —
 this is pure Rust crate work that will later be linked into the module.
 
@@ -423,6 +522,15 @@ and the bytes signed by `StreamProof.signature` over a Store request payload.
 Expose sign and verify primitives keyed by 32-byte NSSA public-key bytes
 using NSSA Schnorr signatures.
 The FFI owns all domain-separated canonicalization and prehashing.
+
+The canonicalization format follows the NSSA precedent
+established in `nssa/src/public_transaction/message.rs`:
+Borsh-serialize a struct, prepend a fixed 32-byte domain prefix,
+SHA-256 the result to produce the 32-byte prehash that is signed.
+See N8 for the full specification of this format
+and the canonical Store request bytes structure
+that is shared between the Rust FFI (this step) and Nim (Step 12).
+
 The `VaultProof.owner_signature` payload covers the vault proof fields,
 the proposed stream parameters,
 and the session public key committed in `StreamProposal.public_key`.
@@ -460,8 +568,19 @@ and account-list planners agree with the harness builders in
 Architectural context:
 this step lays down the C++ Qt-plugin shell of `payment_streams_module`.
 The shell is a Qt plugin (`type: core`)
-that will host the Boundary A FFI (from Steps 1–5)
-and expose Boundary B (`LogosAPI`) methods to other modules in later steps.
+that will host the Rust FFI crate (from Steps 1–5)
+and expose LogosAPI methods to other modules in later steps.
+
+Pattern decision point:
+the plan is written assuming the legacy `PluginInterface` pattern
+(manual `Q_INVOKABLE`, `QString` types) to match `logos-rln-module`.
+Before implementing Step 6, verify the current state of `delivery_module`
+and `lez_wallet_module` — if they have adopted the universal pattern
+(`"interface": "universal"`, pure C++ + code generation from `logos-dev-boost`),
+the new approach is preferable and future-proof.
+If they remain on legacy, stick with legacy to avoid runtime compatibility risk.
+The ecosystem direction should be checked at this step; do not proceed
+with either pattern until the partner module status is confirmed.
 
 Scaffold the module from the `logos-module-builder`
 `with-external-lib` template, modeled on `logos-rln-module`
@@ -473,7 +592,10 @@ It ships
 `metadata.json` (with `name = "payment_streams_module"`,
 `type = "core"`,
 `dependencies = ["lez_wallet_module"]`,
-and `include` covering the FFI shared library next to the plugin),
+and `include` listing all platform variants of the FFI shared library:
+`liblez_payment_streams_ffi.so`,
+`liblez_payment_streams_ffi.dylib`,
+`liblez_payment_streams_ffi.dll`),
 `flake.nix` calling `mkLogosModule`,
 `CMakeLists.txt`,
 and `src/payment_streams_module_plugin.{h,cpp}` plus `src/i_payment_streams_module.h`.
@@ -493,7 +615,7 @@ and `lm methods` reports the empty plugin surface as expected.
 ### Step 7, Wire chain reads from the module
 
 Architectural context:
-this step exercises Boundary B (`LogosAPI`) for the first time.
+this step exercises LogosAPI (inter-module calls) for the first time.
 `payment_streams_module` calls into `lez_wallet_module`,
 which in turn uses its own FFI (`wallet_ffi`) to reach the LEZ sequencer
 over JSON-RPC.
@@ -530,25 +652,25 @@ Architectural context:
 sub-step 8a adds new methods to `lez_wallet_module`'s Qt-plugin surface,
 delegating to `wallet_ffi` underneath
 (both boundaries of the wallet module are touched).
-Sub-step 8b uses Boundary B from `payment_streams_module` to call it.
+Sub-step 8b uses LogosAPI from `payment_streams_module` to call it.
 Instruction bytes and account lists are built through
-`payment_streams_module`'s Boundary A (the Rust FFI from Steps 1–5).
+`payment_streams_module`'s Rust FFI layer (from Steps 1–5).
 
 Two sub-steps that ship together:
 
 Sub-step 8a:
-on our branch of `logos-execution-zone-module`,
+on our branch of `logos-execution-zone-module`
+(or mainline if the open PR has merged; see D3),
 add `send_public_transaction(QString jsonRequest) -> QString`
 on `lez_wallet_module`,
 matching the JSON shape already produced by `logos-rln-module`
 (`program_id`, `accounts`, `instruction` hex, `signer_account`).
 The method delegates to the underlying `wallet_ffi` signing-and-submit path.
-Add a narrow `sign_public_payload(accountId, domain, prehashHex) -> QString`
-method on the same branch,
+Add `sign_public_payload(accountId, prehashHex) -> QString`
+on the same branch,
 returning a 64-byte NSSA Schnorr signature for a 32-byte prehash
 with the public account's signing key.
-The `domain` parameter is an explicit audit label;
-the payment-stream FFI remains responsible for domain-separated prehashing.
+No domain parameter; see N1 for rationale.
 
 Sub-step 8b:
 add a private helper inside `payment_streams_module`
@@ -557,9 +679,30 @@ and a signer account ID,
 builds the Borsh instruction bytes and account list through the FFI,
 serializes the JSON request,
 and submits via `lez_wallet_module.send_public_transaction`.
-Expose user-facing methods for the nine payment-stream operations
-(initialize vault, deposit, withdraw, create stream, top up,
-pause, resume, close, claim).
+
+Expose user-facing `Q_INVOKABLE` write methods
+for the nine payment-stream operations:
+initialize vault, deposit, withdraw, create stream, top up,
+pause, resume, close, claim.
+
+Expose user-facing `Q_INVOKABLE` read methods:
+`getVaultStatus(vaultConfigAccountId) -> QString`
+reads the vault config and vault holding accounts via `get_account_public`,
+decodes both through the FFI,
+and returns a JSON object with owner, privacy tier, total allocated,
+vault holding balance, and derived unallocated balance.
+`getStreamStatus(streamConfigAccountId) -> QString`
+reads the stream config account and the clock account,
+decodes both through the FFI,
+folds the stream to the current clock time via `at_time`,
+and returns a JSON object with stream ID, provider, rate, allocation,
+accrued, unaccrued, effective state, and `accrued_as_of`.
+
+These read methods compose the Step 7 chain-read helpers
+with the Step 2 decoders and Step 3 folding logic.
+They are used by the demo script in Step 14
+to verify intermediate state
+and by the optional Basecamp UI in Step 15.
 
 Components required to run:
 sub-step 8a needs no runtime
@@ -571,7 +714,7 @@ Definition of done:
 through `logoscore` against scaffold localnet,
 the module can drive a complete vault and stream lifecycle from initialization
 through claim,
-with on-chain state observable through the chain-read helpers from Step 7.
+with on-chain state observable through `getVaultStatus` and `getStreamStatus`.
 
 ### Step 9, Session keys and user-side proof construction
 
@@ -581,44 +724,137 @@ once registered as the outbound eligibility provider in Step 13.
 It does not, by itself, initiate any Store traffic;
 it just produces opaque bytes when asked.
 
+#### User-side flow
+
+The intended sequence for a new provider relationship is:
+
+1. Host application calls `registerProviderMapping`
+   to bind the provider's libp2p `PeerId`
+   to its generic `providerId` and LEZ account ID.
+2. User issues a Store query.
+   `delivery_module` invokes `prepareEligibilityForStoreQuery`.
+   The module has no established stream for this `(vault, provider)` pair,
+   so it generates a session keypair, persists it,
+   and returns a `StreamProposal`.
+3. Provider accepts the proposal and serves the first request.
+4. User explicitly calls `create_stream`
+   (the Step 8b write method) to open the stream on-chain.
+   This is a manual action by the host application or demo script,
+   never triggered automatically by any hook.
+5. User issues the next Store query.
+   `delivery_module` invokes `prepareEligibilityForStoreQuery` again.
+   The module queries `get_account_public` for the `StreamConfig` PDA,
+   confirms it exists and is `ACTIVE`,
+   and returns a `StreamProof` signed by the session key.
+
+#### Session and stream state management
+
 Add session-keypair management inside `payment_streams_module`,
 backed by atomic JSON in `instancePersistencePath` (see N4).
-Expose a single user-side `Q_INVOKABLE` method
-`prepareEligibilityForStoreQuery(canonicalRequestBytes, providerPeerId)`
-that returns either a `StreamProposal` or a `StreamProof` byte string,
+The persisted state per `(vault_id, provider_id)` includes:
+the `stream_id` (allocated locally, used as the PDA seed on-chain),
+the session keypair,
+the proposal status (pending, established, expired),
+and the last known on-chain stream state.
+
+The module maintains a local inventory of stream IDs per vault.
+Every `create_stream` call records the new `stream_id` in the inventory.
+This inventory is the backing store for `listMyStreams`.
+Stale proposals are evicted on a timer and on cold start.
+
+#### Exposed methods
+
+`prepareEligibilityForStoreQuery(canonicalRequestBytes, providerPeerId) -> QString`
+returns either a `StreamProposal` or a `StreamProof` byte string
 depending on whether the stream for the `(vault, provider)` pair
-has been established.
-The module MUST actively poll `get_account_public`
-to confirm the `StreamConfig` PDA exists on-chain
-before switching from sending `StreamProposal` to `StreamProof`.
-The module also exposes a `Q_INVOKABLE`
-`registerProviderMapping(providerPeerId, providerId, providerAccountId)` method
-to let the host configure the identity mapping (see N5).
-Calling `prepareEligibilityForStoreQuery` for an unmapped `providerPeerId` returns an error.
+has been established on-chain.
+Before returning a `StreamProof`,
+the module reads the `StreamConfig` PDA via `get_account_public`,
+decodes it through the FFI,
+folds it at the current clock time,
+and checks that the effective state is `ACTIVE`.
 For `StreamProposal` output,
 the module asks `lez_wallet_module.sign_public_payload`
-to produce `VaultProof.owner_signature` with the vault owner's LEZ key,
-and signs later `StreamProof`s with its own persisted session key.
-Eviction of stale proposals happens on a timer and on cold start.
+to produce `VaultProof.owner_signature` with the vault owner's LEZ key.
+Later `StreamProof`s are signed with the persisted session key.
 
-The user is responsible for creating the stream on-chain after a `StreamProposal`
-is accepted.
-The user-side `payment_streams_module` allocates and persists the `stream_id`
-for the vault-provider pair,
-then uses that `stream_id` when constructing later `StreamProof`s.
+`registerProviderMapping(providerPeerId, providerId, providerAccountId) -> LogosResult`
+lets the host configure the identity mapping (see N5).
 
-Components required to run:
+`listMyStreams(vaultId) -> QString`
+returns a JSON array of stream statuses
+for all locally known streams belonging to the given vault.
+For each stream in the local inventory,
+the module derives the `StreamConfig` PDA,
+reads it via `get_account_public`,
+decodes and folds to the current clock time,
+and returns the typed status.
+
+`rediscoverStreams(vaultId) -> QString`
+re-enumerates streams from the chain
+by deriving PDA addresses for `stream_id = 0, 1, 2, ...` sequentially,
+reading each via `get_account_public`,
+and stopping when an uninitialized account is encountered.
+Discovered streams are added to the local inventory.
+This is a recovery path for cold-start or persistence-loss scenarios.
+For the MVP demo, `listMyStreams` is the primary query path.
+
+#### User-side error conditions
+
+`prepareEligibilityForStoreQuery` returns a structured error
+in each of the following cases.
+The error string includes a machine-readable code
+and a human-readable description.
+
+- `UNKNOWN_PROVIDER`:
+  `providerPeerId` not registered via `registerProviderMapping`.
+- `NO_ELIGIBLE_VAULT`:
+  no vault configured or no vault with sufficient unallocated balance.
+- `PROPOSAL_PENDING`:
+  a `StreamProposal` for this `(vault_id, provider_id)` pair
+  was already issued and has not expired or been resolved.
+  User must wait for expiry or call `create_stream`.
+- `PROPOSAL_EXPIRED`:
+  the pending proposal's `open_stream_by` deadline has passed
+  without stream creation.
+  The module evicts the stale proposal.
+  The next call generates a fresh `StreamProposal`.
+- `STREAM_NOT_CONFIRMED`:
+  user called `create_stream` but the `StreamConfig` PDA
+  does not yet exist on-chain.
+  User should retry after a short delay.
+- `STREAM_DEPLETED`:
+  folded stream state shows allocation fully accrued (unaccrued is zero).
+  User must top up or close.
+- `STREAM_PAUSED`:
+  stream is paused (user-initiated).
+  User must resume before querying.
+- `STREAM_CLOSED`:
+  stream has been closed (by user or provider).
+  User must open a new stream to this provider.
+- `WALLET_SIGNING_FAILED`:
+  `sign_public_payload` call to wallet module failed.
+  Error includes upstream details.
+- `CHAIN_READ_FAILED`:
+  `get_account_public` call failed.
+  Error includes upstream details.
+
+#### Components required to run
+
 `logoscore` daemon hosting both modules.
 The definition of done's verifier round-trip is in-process through the FFI;
 a live sequencer is not strictly required for that verification itself,
 but the same Step 7 stack remains useful for sanity-checking
 that vault data the proof asserts matches chain state.
 
-Definition of done:
-the module produces a syntactically valid eligibility proof byte string
+#### Definition of done
+
+The module produces a syntactically valid eligibility proof byte string
 for fixed inputs;
 restarts cleanly with state intact;
 the FFI structural verifier accepts the proof format;
+`listMyStreams` returns correct folded status for locally known streams;
+each user-side error condition returns the documented error code;
 and (when chain state is available) the provider-side verifier accepts
 the proof against actual on-chain stream state.
 
@@ -627,8 +863,8 @@ the proof against actual on-chain stream state.
 Architectural context:
 this is the provider-side method that `delivery_module` will auto-invoke
 once registered as the inbound eligibility verifier in Step 13.
-Structural checks happen entirely through Boundary A (FFI);
-chain checks happen through Boundary B to `lez_wallet_module`.
+Structural checks happen entirely through the Rust FFI;
+chain checks happen via LogosAPI calls to `lez_wallet_module`.
 
 Expose a single provider-side `Q_INVOKABLE` method
 `verifyEligibilityForStoreQuery(proofBytes, canonicalRequestBytes, requesterPeerId)`
@@ -636,32 +872,64 @@ that parses and dispatches the proof,
 runs structural checks through the FFI,
 queries chain state through the wallet module,
 folds stream state at the current sequencer time,
-and returns a structured verdict mapping to LIP-155 outcomes
-(`OK`, `PARAMS_REJECTED`, `PROOF_INVALID`, `STREAM_NOT_ACTIVE`).
-This is the verifier callback; the user side uses `prepareEligibilityForStoreQuery` to generate proofs.
+and returns a structured verdict mapping to LIP-155 outcomes.
+
+#### Provider-side verdicts
+
+The verifier returns one of the following eligibility status codes.
+These are carried inside the `eligibility_status` object (D1)
+and never surface as Store status codes.
+
+- `OK`:
+  proof is valid, chain state confirms eligibility, request is served.
+- `PARAMS_REJECTED`:
+  stream parameters do not match provider policy
+  (rate too low, allocation insufficient, vault buffer below threshold),
+  or the proposal's `open_stream_by` deadline has already passed,
+  or vault balance is insufficient for the proposed allocation plus buffer.
+  The `VaultProof` is not marked as spent;
+  the user may retry with adjusted parameters.
+- `PROOF_INVALID`:
+  proof format is malformed,
+  `VaultProof.owner_signature` or `StreamProof.signature` verification failed,
+  or the owner public key does not derive to `VaultConfig.owner`.
+- `STREAM_NOT_ACTIVE`:
+  the referenced stream exists on-chain
+  but its folded state is not `ACTIVE`
+  (paused, closed, or depleted).
+
+#### Pending-proposal tracking
+
 Pending-proposal tracking on the provider side is independent
 of any user-side state and lives in `instancePersistencePath`.
-The provider stores pending proposal state keyed by the vault,
-the generic `providerId`,
-the provider LEZ account ID,
-and the committed session public key,
-then matches later `StreamProof.stream_id` values against both that pending state
-and the on-chain `StreamConfig`.
+The provider stores pending proposal state
+keyed by `(vault_id, provider_id)`,
+matching the LIP-155 constraint
+that a user must not have more than one pending proposal
+per vault-provider pair.
+The stored proposal record includes
+the committed session public key and the `open_stream_by` deadline
+for matching later `StreamProof.stream_id` values
+against both that pending state and the on-chain `StreamConfig`.
+
 The inbound `requesterPeerId` is available for logs,
 short-lived anti-abuse policy,
 and proposal retry limits,
 but Store eligibility is based on proof validity and chain state,
 not on transport peer continuity.
 
-Components required to run:
+#### Components required to run
+
 `logoscore` daemon hosting both modules.
 The structural-failure portion of the definition of done needs nothing more.
 The happy-path verdict portion needs the Step 7 stack
 (LEZ sequencer plus deployed program plus seeded vault/stream state).
 
-Definition of done:
-for fixed inputs the verifier returns a serve verdict on the happy path
-and a documented eligibility status code on each failure mode,
+#### Definition of done
+
+For fixed inputs the verifier returns `OK` on the happy path
+and the documented eligibility status code on each failure mode
+(`PARAMS_REJECTED`, `PROOF_INVALID`, `STREAM_NOT_ACTIVE`),
 without performing chain reads when the failure is purely structural.
 
 ### Step 11, Extend the Store wire format in `logos-delivery`
@@ -693,44 +961,84 @@ and existing Store codec coverage continues to pass.
 ### Step 12, Eligibility hooks in `liblogosdelivery`
 
 Architectural context:
-this step modifies Boundary A on the delivery side —
+this step modifies the internal FFI on the delivery side —
 the C ABI between `liblogosdelivery` (Nim) and `delivery_module` (C++ Qt plugin).
 No Qt, no `LogosAPI`, no Logos host yet;
 the C ABI is consumed by a C smoke test.
+
+#### Registration and callbacks
 
 In `liblogosdelivery`,
 add a single C ABI registration entry point that lets a host attach
 a verifier callback called for inbound Store requests carrying an `eligibility_proof`,
 and a path for attaching opaque eligibility-proof bytes to outgoing Store queries.
 Both surfaces are bytes-in / bytes-out and carry no payment-streams knowledge.
-`canonicalRequestBytes` are produced by `liblogosdelivery`
-from the Store query before eligibility bytes are attached.
-They are a deterministic signable serialization of the Store request fields
-that define the query,
-with `eligibility_proof` omitted and response-only fields absent.
-On the provider side,
-`liblogosdelivery` recomputes the same bytes from the decoded inbound request
-after extracting and clearing `eligibility_proof`.
-These bytes are the payload signed by `StreamProof.signature`
-and verified by `payment_streams_module`.
 Existing behaviour is preserved when no callback is registered.
 The verifier callback is synchronous (`Future`-returning) per N3.
 Bump the `liblogosdelivery` ABI on our branch.
 
-Components required to run:
-none beyond a Nim test rig and a small C consumer
+#### Eligibility check injection pattern
+
+The verifier callback is injected as a decorator (wrapper)
+around the existing `StoreQueryRequestHandler`.
+`protocol.nim` is not modified.
+At registration time,
+`liblogosdelivery` replaces the active `requestHandler`
+with a wrapper that:
+
+1. Extracts `eligibility_proof` from the decoded request.
+2. If present and `paidStoreMode` is enabled,
+   produces `canonicalRequestBytes` from the request (see below),
+   then calls the verifier callback with the proof bytes,
+   the canonical bytes, and the requester `PeerId`.
+3. On failure, returns early with `BAD_REQUEST` status code (400),
+   the `eligibility_status` object populated with the verdict,
+   and an empty `messages` list.
+   The inner `requestHandler` is never called.
+4. On success (or if no proof is present and `paidStoreMode` is off),
+   delegates to the inner `requestHandler`.
+
+This pattern keeps all eligibility logic
+outside `protocol.nim` and `client.nim`.
+
+#### Canonical Store request bytes
+
+`canonicalRequestBytes` are produced by `liblogosdelivery`
+from the Store query before eligibility bytes are attached.
+On the provider side,
+`liblogosdelivery` recomputes the same bytes
+from the decoded inbound request
+after extracting and clearing `eligibility_proof`.
+These bytes are the payload signed by `StreamProof.signature`
+and verified by `payment_streams_module`.
+
+The struct layout, domain prefix, serialization rules,
+and prehash computation are defined in N8.
+The Nim serializer in this step must produce bytes
+identical to the Rust serializer in Step 4.
+
+#### Components required to run
+
+None beyond a Nim test rig and a small C consumer
 linking against the new `liblogosdelivery`.
 
-Definition of done:
-the new C ABI is documented and used by a Nim-side smoke test,
-the inbound callback is invoked exactly once per Store request that carries a proof,
-and the outbound path delivers attached bytes onto the wire unchanged.
+#### Definition of done
+
+The new C ABI is documented and used by a Nim-side smoke test.
+The inbound callback is invoked exactly once
+per Store request that carries a proof.
+The outbound path delivers attached bytes onto the wire unchanged.
+A cross-language test vector confirms
+that the Nim canonical-bytes serializer
+produces output identical to the Rust serializer
+for a fixed `StoreQueryRequest` with known field values
+(see N8 for the test vector specification).
 
 ### Step 13, Generic eligibility routing in `logos-delivery-module`
 
 Architectural context:
 this step modifies the C++ Qt-plugin shell of `delivery_module`.
-It bridges the Step 12 C callbacks into Boundary B (`LogosAPI`) calls
+It bridges the Step 12 C callbacks into LogosAPI calls
 on a configurable named module
 (`payment_streams_module` in our demo;
 any module with the same method names in the future).
@@ -770,7 +1078,9 @@ an end-to-end Store query produced by the user
 returns a successful Store outcome
 and a successful eligibility outcome on the provider side.
 Requests failing eligibility checks immediately return
-a 403 Forbidden Store status code with an empty messages list.
+a `BAD_REQUEST` (400) Store status code,
+a populated `eligibility_status` object with the specific verdict,
+and an empty messages list.
 
 ### Step 14, End-to-end demo wiring
 
