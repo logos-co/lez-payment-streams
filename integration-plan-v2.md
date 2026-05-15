@@ -624,8 +624,10 @@ outbound response sizing, not inbound `StreamProof` verification.
 
 #### PolicyRejectReason and eligibility mapping
 
-Core uses `PolicyRejectReason` (enum).
-FFI exposes a stable `repr(C)` verdict enum (Step 3b).
+Core uses `PolicyRejectReason` (`#[repr(u32)]` in Rust with fixed discriminants
+`0`–`8`, plus `#[non_exhaustive]`; see `lez-payment-streams-core`).
+FFI Step 3b should expose stable integer verdict codes mapped from those
+discriminants, not the Rust enum’s memory layout treated as `repr(C)`.
 `payment_streams_module` maps variants to LIP-155 eligibility codes, for example:
 
 | PolicyRejectReason (examples) | Eligibility status |
@@ -670,10 +672,26 @@ Architectural context:
 Call Step 3a implementations only;
 do not duplicate folding or policy arithmetic here.
 
+Implementor notes (Step 3a as-shipped in `lez-payment-streams-core`):
+
+- Map `PolicyRejectReason` by `u32` discriminant (`0`–`8`), not by
+  assuming a C layout identical to Rust’s `enum`.
+- `response_within_policy(response_payload_byte_len, policy)` — argument
+  order matches core (subject size, then policy pointer).
+- `create_stream_deadline_satisfies_policy_as_of` is public in core for
+  deadline-only checks without assembling full `ProposalCheckInputs`.
+- `StreamFoldedAtTime` carries `Balance` (`u128`) in `accrued` / `unaccrued`;
+  split wide amounts for C using the same low/high limb pattern as other
+  `PaymentStreams` FFI types.
+- `MAX_SERVICE_ID_LEN` documents the intended `StreamParams.service_id` cap;
+  core does not reject overlong `Vec<u8>` — enforce length in the module
+  before signing (Step 4 owns wire validation).
+- `AcceptedStreamTerms.provider_id` is `AccountId` in Rust (32-byte id).
+
 Expose `extern "C"` entry points for stream folding and policy verdicts,
 using stable `repr(C)` structs and enums alongside the existing
 `PaymentStreamsFfiStatus` pattern.
-Expose `PolicyRejectReason` (or equivalent) from Step 3a through the C ABI.
+Expose `PolicyRejectReason` equivalents (map `u32` discriminants from core) through the C ABI.
 Map core errors to stable FFI status codes.
 Behavior must stay deterministic independent of host endianness
 (existing decode paths already use explicit low/high limbs for wide
