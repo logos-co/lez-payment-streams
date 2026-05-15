@@ -36,7 +36,8 @@ and any new wire format for protocols other than Store.
 ### Recommended reading order
 
 1. This file (`integration-plan-v2.md`).
-   The 15-step plan, definitions of done,
+   The 15-step plan (Step 3 is split into 3a core and 3b FFI),
+   definitions of done,
    resolved decisions (D1–D5),
    and non-blocking notes (N1–N8).
    Day-to-day reference for the work.
@@ -55,7 +56,8 @@ and any new wire format for protocols other than Store.
    deploying `lez_payment_streams`,
    and reading accounts through `getAccount`.
 4. LIP-155 spec at `rfc-index/docs/ift-ts/raw/payment-streams.md`.
-   Protocol source of truth for vault, stream, proof types, and lifecycle.
+   Protocol source of truth for vault, stream, proof types, lifecycle,
+   and `StreamProviderPolicy` (see `docs/step3-stream-provider-policy.md`).
 
 ### Prerequisites
 
@@ -82,11 +84,12 @@ see `logos-architecture-overview.md` in this directory.
 `lez-payment-streams`
 is the existing on-chain SPEL program plus the `lez-payment-streams-core` package
 (importable in Rust under `lez_payment_streams_core`).
-This work adds a sibling `lez-payment-streams-ffi` crate
+This work extends `lez-payment-streams-core` with stream folding helpers,
+`StreamProviderPolicy`, and pure policy predicates (Step 3a),
+then adds a sibling `lez-payment-streams-ffi` crate
 that exposes PDA derivation,
 account decoders,
-stream folding,
-policy validators,
+stream folding and policy across the C ABI (Step 3b),
 off-chain proof construction and verification,
 and Borsh instruction builders through `extern "C"`.
 The shape mirrors `lez-rln-ffi` in `logos-lez-rln`.
@@ -260,6 +263,9 @@ lives only inside the `eligibility_status` object at tag `30`.
 Store never interprets these values;
 the payment-streams module on each side
 reads and acts on the structured `eligibility_status` payload.
+The `eligibility_proof` field carries a protobuf `EligibilityProof`.
+`stream_proposal` and `stream_proof` contain serialized
+`StreamProposal` or `StreamProof` messages (see LIP-155 LEZ integration).
 No new status codes are added to the Store `StatusCode` enum.
 
 No protocol-ID version bump and no codec migration is required for the demo.
@@ -402,14 +408,14 @@ or keep them ephemeral.
 LIP-155's `provider_id` remains the generic provider identity
 used by the payment-stream protocol for replay protection
 and provider-specific policy.
-The LEZ demo binds that generic identity to two concrete values:
-the provider's libp2p `PeerId` for Store routing
-and the provider's on-chain LEZ account ID for stream creation and claims.
-For the MVP, we assume off-band negotiation where the host application learns
-this mapping and configures `payment_streams_module`
-with it (e.g., via a `registerProviderMapping` method).
-This keeps the delivery layer strictly agnostic to payment-stream identity
-while avoiding hardcoded IDs.
+The LEZ demo puts the 32-byte stream payee `AccountId` in
+`VaultProof.provider_id`.
+Predicates compare it to `StreamConfig.provider` with octet equality.
+The provider's libp2p `PeerId` is used only for Store routing.
+For the MVP, the host configures `payment_streams_module` with a mapping
+from `PeerId` to that `AccountId` (e.g. `registerProviderMapping`).
+This keeps the delivery layer agnostic to payment-stream identity
+while fixing the bytes used in proofs and on-chain streams.
 
 ### N6, Delivery module Store query exposure
 
@@ -508,11 +514,16 @@ that spells out the expected Borsh encoding byte by byte.
 Each step is independently testable.
 The definition of done is a statement that can be objectively verified
 without reading the implementation.
+Step 3 is intentionally split into Step 3a (core) and Step 3b (FFI)
+so policy and fold logic ship with tests before the C ABI wraps it.
 
 ### Step 1, Bootstrap the Rust FFI crate
 
 Architectural context:
-this and the next four steps build out the Rust FFI layer of `payment_streams_module`.
+Steps 1 through 5 build the Rust artifacts for `payment_streams_module`:
+`lez-payment-streams-ffi` (Steps 1–2 and 3b–5)
+and `lez-payment-streams-core` extensions for folding and policy (Step 3a),
+which Step 3b exposes across the C ABI.
 No Qt plugin shell, no Logos host, no chain are involved yet —
 this is pure Rust crate work that will later be linked into the module.
 
@@ -550,27 +561,145 @@ and PDA derivation produces account IDs that match the values
 already recorded in `docs/step1-findings-scaffold-rpc.md`
 for a known program deployment.
 
-### Step 3, Stream folding and policy in the FFI
+### Step 3a, Core stream folding and provider policy predicates
 
-Expose stream-state folding driven by `StreamConfig::at_time`,
-returning effective state, accrued amount, and remaining allocation
-for a given current sequencer time.
-Expose policy validators for stream rate, allocation, max stream window,
-response cap, and vault buffer percentage,
-so proposals with parameters outside policy are rejected uniformly
-on both sides of the wire.
+Architectural context:
+pure `lez-payment-streams-core` work.
+No `lez-payment-streams-ffi`, no C ABI, no Qt.
+This is the single source of truth for fold math and policy comparisons
+so Step 3b stays a thin wrapper.
+
+Semantic reference:
+LIP-155 at `rfc-index/docs/ift-ts/raw/payment-streams.md`
+(StreamProviderPolicy, protocol phases, predicate names).
+See also `docs/step3-stream-provider-policy.md` and
+`docs/step3a-implementor-notes.md` in this repo.
+
+#### Fold
+
+Add or reuse stream-state folding driven by `StreamConfig::at_time`,
+surfacing effective state, accrued amount, and remaining allocation
+(unaccrued) for a given sequencer time.
+
+#### StreamProviderPolicy
+
+Rust struct mirroring LIP-155:
+
+- `min_stream_rate`, `min_stream_allocation`
+- `max_create_stream_deadline_delay`
+- `vault_proof_max_response_bytes`
+
+Proposal-phase solvency: read on-chain unallocated for `vault_id` and
+require `unallocated ≥ stream_allocation`.
+`VaultProof` wire fields per LIP-155 [LEZ off-chain integration](rfc-index/docs/ift-ts/raw/payment-streams.md#lez-off-chain-integration).
+
+#### Policy predicates
+
+Implement pure functions in `lez-payment-streams-core` using the same
+names as LIP-155.
+Each returns `Result<(), PolicyRejectReason>` (Rust enum; map to FFI in 3b).
+Document test vectors for each:
+
+| Function | Phase | Inputs (summary) |
+| --- | --- | --- |
+| `proposal_satisfies_policy` | Proposal | Policy mins; `create_stream_deadline` vs `now` and `max_create_stream_deadline_delay` (LEZ: clock account timestamp); `vault_holding_balance` and `vault_config.total_allocated` or `unallocated ≥ stream_allocation` |
+| `new_stream_satisfies_proposal` | Service (first `StreamProof` per service session) | Folded `StreamConfig` at `now`; stored `allocation` and `rate` ≥ accepted `StreamParams`; `StreamConfig.provider` vs `VaultProof.provider_id` (LEZ: 32-byte equality). Later proofs need not run it (MAY re-run). |
+| `stream_satisfies_policy` | Service (every `StreamProof`) | Folded stream `ACTIVE`; rate ≥ `min_stream_rate`; provider binding; policy vs session commitment; `now` |
+| `response_within_policy` | Provider outbound | `response_len ≤ vault_proof_max_response_bytes` (MVP: enforce on first vault-proof `OK`; reject or trim) |
+
+The provider learns `stream_id` from the first `StreamProof`.
+Chain monitoring before that is optional (LIP-155).
+
+`proposal_satisfies_policy` and `stream_satisfies_policy` SHOULD run on
+user preflight and on provider verification so rejections stay aligned.
+
+`service_id` is not part of `stream_satisfies_policy`.
+The module MUST compare accepted `StreamParams.service_id` to the
+configured service identifier before serving (demo: UTF-8
+`/vac/waku/store-query/3.0.0`).
+On-chain predicates read `StreamConfig` payment fields only.
+
+`response_within_policy(policy, response_len)` is a core helper for
+outbound response sizing, not inbound `StreamProof` verification.
+
+#### PolicyRejectReason and eligibility mapping
+
+Core uses `PolicyRejectReason` (enum).
+FFI exposes a stable `repr(C)` verdict enum (Step 3b).
+`payment_streams_module` maps variants to LIP-155 eligibility codes, for example:
+
+| PolicyRejectReason (examples) | Eligibility status |
+| --- | --- |
+| Rate / allocation below policy or proposal | `PARAMS_REJECTED` |
+| Deadline / unallocated | `PARAMS_REJECTED` |
+| Signature / wire format | `PROOF_INVALID` (Step 4) |
+| Stream not `ACTIVE` | `STREAM_NOT_ACTIVE` |
+
+#### Out of scope for Step 3a
+
+- Cryptographic binding (`VaultProof` / `StreamProof` signatures) — Step 4.
+- Load cap (stateful metering) — LIP-155 extension; MVP deferred.
+- Discovery wire encoding for policy — future; core defines struct + checks only.
+
+#### Implementor clarifications
+
+- Units: `stream_rate` and `stream_allocation` in proposals use the same
+  integer scales as on-chain `TokensPerSecond` and `Balance` (native token).
+
+- Response cap: demo default 65536; LIP-155 SHOULD, demo provider MUST
+  (see `response_within_policy` above).
+
+- Step 3a uses typed Rust policy inputs only (no protobuf in core).
+  See `docs/step3a-implementor-notes.md` for suggested structs,
+  `PolicyRejectReason` variants, predicate pitfalls, and vector checklist.
+
+Components required to run: none.
+`cargo test` on `lez-payment-streams-core` only.
+
+Definition of done:
+folding outputs match `StreamConfig::at_time` on a documented vector set;
+each predicate (including `response_within_policy`) is deterministic with
+documented pass/fail inputs;
+vectors live in-repo (`docs/step3a-implementor-notes.md` and/or test modules)
+and are reused verbatim in Step 3b.
+
+### Step 3b, FFI exposure for folding and policy
+
+Architectural context:
+`lez-payment-streams-ffi` only.
+Call Step 3a implementations only;
+do not duplicate folding or policy arithmetic here.
+
+Expose `extern "C"` entry points for stream folding and policy verdicts,
+using stable `repr(C)` structs and enums alongside the existing
+`PaymentStreamsFfiStatus` pattern.
+Expose `PolicyRejectReason` (or equivalent) from Step 3a through the C ABI.
+Map core errors to stable FFI status codes.
+Behavior must stay deterministic independent of host endianness
+(existing decode paths already use explicit low/high limbs for wide
+integers).
 
 Components required to run: none.
 
 Definition of done:
-the folded state and policy verdicts agree with `lez-payment-streams-core`
-across a documented set of cross-language test vectors,
-and the FFI returns a deterministic verdict for each input
-independent of host endianness.
+the Step 3a vectors exercise the new symbols through the C ABI;
+`cbindgen` output stays in sync;
+no policy or fold math duplicated outside `lez-payment-streams-core`.
 
 ### Step 4, Off-chain proof types and canonicalization in the FFI
 
-Define byte layouts for `StreamProposal`, `VaultProof`, and `StreamProof`.
+Align wire layouts and signed-field names with LIP-155
+(`rfc-index/docs/ift-ts/raw/payment-streams.md`), including
+[LEZ off-chain integration](rfc-index/docs/ift-ts/raw/payment-streams.md#lez-off-chain-integration).
+Protobuf is for interchange; Borsh + domain prefix (N8) is for signatures.
+`StreamParams` includes `create_stream_deadline`.
+`StreamProviderPolicy` includes `max_create_stream_deadline_delay`.
+Liquidity at proposal verification uses on-chain unallocated only.
+
+Define protobuf parse/serialize for `StreamProposal`, `VaultProof`, and
+`StreamProof` with LEZ length checks on `bytes` fields.
+Define Borsh canonical structs and field order for signed payloads
+(test vectors in-repo).
 Expose canonicalization for the bytes signed by `VaultProof.owner_signature`
 and the bytes signed by `StreamProof.signature` over a Store request payload.
 Expose sign and verify primitives keyed by 32-byte NSSA public-key bytes
@@ -766,7 +895,7 @@ and returns a JSON object with stream ID, provider, rate, allocation,
 accrued, unaccrued, effective state, and `accrued_as_of`.
 
 These read methods compose the Step 7 chain-read helpers
-with the Step 2 decoders and Step 3 folding logic.
+with the Step 2 decoders and Step 3a/3b folding logic.
 They are used by the demo script in Step 14
 to verify intermediate state
 and by the optional Basecamp UI in Step 15.
@@ -882,7 +1011,7 @@ and a human-readable description.
   was already issued and has not expired or been resolved.
   User must wait for expiry or call `create_stream`.
 - `PROPOSAL_EXPIRED`:
-  the pending proposal's `open_stream_by` deadline has passed
+  the pending proposal's `create_stream_deadline` has passed
   without stream creation.
   The module evicts the stale proposal.
   The next call generates a fresh `StreamProposal`.
@@ -950,10 +1079,11 @@ and never surface as Store status codes.
 - `OK`:
   proof is valid, chain state confirms eligibility, request is served.
 - `PARAMS_REJECTED`:
-  stream parameters do not match provider policy
-  (rate too low, allocation insufficient, vault buffer below threshold),
-  or the proposal's `open_stream_by` deadline has already passed,
-  or vault balance is insufficient for the proposed allocation plus buffer.
+  stream parameters do not match `StreamProviderPolicy`
+  (rate below `min_stream_rate`, allocation below `min_stream_allocation`,
+  `create_stream_deadline` outside `max_create_stream_deadline_delay`),
+  or vault unallocated balance is below proposed `stream_allocation`,
+  or the proposal's `create_stream_deadline` has already passed.
   The `VaultProof` is not marked as spent;
   the user may retry with adjusted parameters.
 - `PROOF_INVALID`:
@@ -974,10 +1104,11 @@ keyed by `(vault_id, provider_id)`,
 matching the LIP-155 constraint
 that a user must not have more than one pending proposal
 per vault-provider pair.
-The stored proposal record includes
-the committed session public key and the `open_stream_by` deadline
-for matching later `StreamProof.stream_id` values
-against both that pending state and the on-chain `StreamConfig`.
+The stored record includes accepted or pending `StreamParams`,
+the committed session public key, and `create_stream_deadline`.
+After acceptance, add `stream_id` from the first valid `StreamProof`.
+Evict when LIP-155 treats negotiation as failed (no acceptance or no
+compliant stream by `create_stream_deadline`).
 
 The inbound `requesterPeerId` is available for logs,
 short-lived anti-abuse policy,
