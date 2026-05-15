@@ -1,6 +1,7 @@
 //! LEZ payment streams.
 //!
-//! Vault PDAs, stream accrual, and [`Instruction`] types for the guest and tests.
+//! Vault PDAs, stream accrual, [`Instruction`] types for the guest and tests, and the [`policy`]
+//! module (Step 3a: `fold_stream`, `proposal_satisfies_policy`, `stream_satisfies_policy`, ...).
 
 #[cfg(test)]
 mod harness_seeds;
@@ -14,7 +15,9 @@ mod program_tests;
 mod error_codes;
 mod instruction;
 mod pda;
+mod policy;
 mod stream_config;
+mod stream_provider_policy;
 mod vault;
 
 pub use clock_core::{
@@ -24,7 +27,16 @@ pub use clock_core::{
 pub use error_codes::*;
 pub use instruction::Instruction;
 pub use pda::{derive_stream_config_account_id, derive_vault_account_ids};
+pub use policy::{
+    fold_stream, new_stream_satisfies_proposal, proposal_satisfies_policy,
+    response_size_satisfies_policy, stream_satisfies_policy, unallocated_balance,
+    StreamFoldedAtTime,
+};
 pub use stream_config::{StreamConfig, StreamState};
+pub use stream_provider_policy::{
+    AcceptedStreamTerms, Balance, PolicyRejectReason, ProposalCheckInputs, StreamParams,
+    StreamProviderPolicy,
+};
 pub use vault::{
     checked_total_allocated_after_add, checked_total_allocated_after_release, VaultConfig,
     VaultHolding, VaultPrivacyTier,
