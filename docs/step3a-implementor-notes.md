@@ -34,9 +34,9 @@ Avoid coupling predicates to Step 4 wire types.
 | --- | --- |
 | `StreamProviderPolicy` | Advertised / pinned policy fields |
 | `StreamParams` | Proposed or accepted stream terms (`stream_rate`, `stream_allocation`, `create_stream_deadline`, `service_id` bytes) |
-| `ProposalCheckInputs` | `policy`, `params`, `vault_holding_balance`, `vault_total_allocated`, `now` |
-| `AcceptedSession` | `params`, `provider_id: [u8; 32]`, `policy_at_acceptance` |
-| `NewStreamCheckInputs` | `folded: StreamConfig`, `accepted: StreamParams`, `provider_id: [u8; 32]` |
+| `ProposalCheckInputs` | `params`, `policy`, `vault_holding_balance`, `vault_total_allocated`, `now` |
+| `AcceptedStreamTerms` | `params`, `provider_id` (`AccountId`), `policy_at_acceptance` |
+| (API shape) | First proof vs stream: `new_stream_satisfies_proposal(folded_stream, proposal_params, proposal_provider_id)` |
 
 `service_id` is compared in the module against a configured constant,
 not inside `stream_satisfies_policy`.
@@ -114,7 +114,7 @@ Reuse existing `stream_config` unit tests for fold where possible.
 
 ## Step 3b handoff
 
-- Same `PolicyRejectReason` variants through `repr(C)`.
+- Same `PolicyRejectReason` variants through `repr(u32)` (stable discriminants; FFI wraps in 3b).
 - No duplicate arithmetic in FFI.
 - Document endianness for any `u64` / wide integers crossing the C ABI
   (follow existing FFI patterns).

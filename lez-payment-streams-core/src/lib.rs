@@ -28,14 +28,14 @@ pub use error_codes::*;
 pub use instruction::Instruction;
 pub use pda::{derive_stream_config_account_id, derive_vault_account_ids};
 pub use policy::{
-    fold_stream, new_stream_satisfies_proposal, proposal_satisfies_policy,
-    response_size_satisfies_policy, stream_satisfies_policy, unallocated_balance,
-    StreamFoldedAtTime,
+    create_stream_deadline_satisfies_policy_as_of, fold_stream, new_stream_satisfies_proposal,
+    proposal_satisfies_policy, response_within_policy, stream_satisfies_policy,
+    unallocated_balance, StreamFoldedAtTime,
 };
 pub use stream_config::{StreamConfig, StreamState};
 pub use stream_provider_policy::{
     AcceptedStreamTerms, Balance, PolicyRejectReason, ProposalCheckInputs, StreamParams,
-    StreamProviderPolicy,
+    StreamProviderPolicy, MAX_SERVICE_ID_LEN,
 };
 pub use vault::{
     checked_total_allocated_after_add, checked_total_allocated_after_release, VaultConfig,

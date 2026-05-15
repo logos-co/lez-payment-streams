@@ -3,7 +3,7 @@
 mod predicates;
 
 pub use predicates::{
-    fold_stream, new_stream_satisfies_proposal, proposal_satisfies_policy,
-    response_size_satisfies_policy, stream_satisfies_policy, unallocated_balance,
-    StreamFoldedAtTime,
+    create_stream_deadline_satisfies_policy_as_of, fold_stream, new_stream_satisfies_proposal,
+    proposal_satisfies_policy, response_within_policy, stream_satisfies_policy,
+    unallocated_balance, StreamFoldedAtTime,
 };

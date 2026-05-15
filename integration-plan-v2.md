@@ -619,7 +619,7 @@ configured service identifier before serving (demo: UTF-8
 `/vac/waku/store-query/3.0.0`).
 On-chain predicates read `StreamConfig` payment fields only.
 
-`response_within_policy(policy, response_len)` is a core helper for
+`response_within_policy(response_len, policy)` is a core helper for
 outbound response sizing, not inbound `StreamProof` verification.
 
 #### PolicyRejectReason and eligibility mapping

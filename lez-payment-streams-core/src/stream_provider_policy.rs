@@ -10,6 +10,11 @@ use crate::{Timestamp, TokensPerSecond};
 /// Native token amount scale (matches on-chain stream `allocation` and vault accounting).
 pub use nssa_core::account::Balance;
 
+/// Max length for [`StreamParams::service_id`] bytes (LIP-155 LEZ integration).
+///
+/// Core does not reject longer `Vec`s here; callers (module / Step 4) should enforce before signing.
+pub const MAX_SERVICE_ID_LEN: usize = 128;
+
 /// Rules a provider advertises and that clients and on-chain terms must satisfy.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamProviderPolicy {
@@ -52,6 +57,7 @@ pub struct StreamParams {
     pub stream_allocation: Balance,
     /// Latest ledger time by which the payer must land `create_stream` on-chain (signed proposal field).
     pub create_stream_deadline: Timestamp,
+    /// Opaque service identifier; length SHOULD be at most [`MAX_SERVICE_ID_LEN`].
     pub service_id: Vec<u8>,
 }
 
@@ -97,29 +103,50 @@ pub struct ProposalCheckInputs<'a> {
     pub now: Timestamp,
 }
 
+impl<'a> ProposalCheckInputs<'a> {
+    #[must_use]
+    pub const fn new(
+        params: &'a StreamParams,
+        policy: &'a StreamProviderPolicy,
+        vault_holding_balance: Balance,
+        vault_total_allocated: Balance,
+        now: Timestamp,
+    ) -> Self {
+        Self {
+            params,
+            policy,
+            vault_holding_balance,
+            vault_total_allocated,
+            now,
+        }
+    }
+}
+
 /// Reasons a pure-policy check can reject before signature / protobuf failures (handled in Step 4).
 ///
 /// FFI Step 3b maps these variants to eligibility codes such as `PARAMS_REJECTED` and
-/// `STREAM_NOT_ACTIVE`; keep discriminant churn small once `repr(C)` lands.
+/// `STREAM_NOT_ACTIVE`. Discriminants are stable for `#[repr(u32)]` ABI; extend only by appending.
+#[non_exhaustive]
+#[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PolicyRejectReason {
     /// Proposed rate is below the provider minimum.
-    RateBelowPolicyMin,
+    RateBelowPolicyMin = 0,
     /// Proposed allocation is below the provider minimum.
-    AllocationBelowPolicyMin,
+    AllocationBelowPolicyMin = 1,
     /// [`StreamParams::create_stream_deadline`] is invalid for the proposal-clock `now`:
     /// not strictly in the future, or later than `now + StreamProviderPolicy::max_create_stream_deadline_delay`.
-    CreateStreamDeadlineInvalid,
+    CreateStreamDeadlineInvalid = 2,
     /// `vault_total_allocated + stream_allocation` would exceed holdings (unallocated holding balance).
-    UnallocatedInsufficient,
+    UnallocatedInsufficient = 3,
     /// Established on-chain rate is weaker than accepted proposal terms.
-    RateBelowAcceptedParams,
+    RateBelowAcceptedParams = 4,
     /// Established on-chain allocation is weaker than accepted proposal terms.
-    AllocationBelowAcceptedParams,
+    AllocationBelowAcceptedParams = 5,
     /// Folded [`crate::StreamConfig::provider`] or proof payee mismatch against the acceptance binding.
-    ProviderMismatch,
+    ProviderMismatch = 6,
     /// Only [`crate::StreamState::Active`] streams may serve proofs.
-    StreamNotActive,
+    StreamNotActive = 7,
     /// Outbound vault-proof response exceeds `vault_proof_max_response_bytes`.
-    ResponseTooLarge,
+    ResponseTooLarge = 8,
 }

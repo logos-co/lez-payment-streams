@@ -14,10 +14,15 @@ use crate::Timestamp;
 ///
 /// `as_of` is the ledger / clock timestamp passed into folding (historic, preflight, or head).
 /// It may differ from [`StreamConfig::accrued_as_of`] after mid-interval depletion.
+///
+/// `accrued` and `unaccrued` use LEZ `Balance` (`u128`); FFI Step 3b should split wide amounts into
+/// fixed limbs when crossing the C ABI (same pattern as decoded vault/stream configs).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamFoldedAtTime {
     pub stream_config: StreamConfig,
+    /// Accrued amount at `as_of` (LEZ `Balance` / `u128`).
     pub accrued: Balance,
+    /// Remaining principal cap not yet accrued at `as_of` (same width as `accrued`).
     pub unaccrued: Balance,
     pub as_of: Timestamp,
 }
@@ -54,8 +59,12 @@ pub fn unallocated_balance(
 /// LIP-155 deadline band: `params_create_stream_deadline` must lie in
 /// `(check_time, check_time + policy_max_create_stream_deadline_delay]`.
 /// `check_time` matches [`ProposalCheckInputs::now`] (not a signed proposal field).
-/// `check_time + policy_max_create_stream_deadline_delay` overflow pins the inclusive upper bound to [`Timestamp::MAX`].
-fn create_stream_deadline_satisfies_policy_as_of(
+///
+/// When `check_time + policy_max_create_stream_deadline_delay` overflows `u64`, the inclusive upper
+/// bound is pinned to [`Timestamp::MAX`]. Any finite deadline is then below that ceiling, so the
+/// check stays well-defined without wrapping.
+#[must_use]
+pub fn create_stream_deadline_satisfies_policy_as_of(
     params_create_stream_deadline: Timestamp,
     policy_max_create_stream_deadline_delay: Timestamp,
     check_time: Timestamp,
@@ -64,6 +73,8 @@ fn create_stream_deadline_satisfies_policy_as_of(
         return Err(PolicyRejectReason::CreateStreamDeadlineInvalid);
     }
 
+    // Overflow pins to MAX: if the delay sum does not fit in `Timestamp`, the admissible window
+    // upper bound is unbounded for all practical deadlines, so treat the ceiling as infinite.
     let max_allowed_create_stream_deadline =
         match check_time.checked_add(policy_max_create_stream_deadline_delay) {
             Some(upper) => upper,
@@ -143,7 +154,9 @@ pub fn new_stream_satisfies_proposal(
 ///
 /// - Stream must remain [`StreamState::Active`].
 /// - Payee pubkey must remain the accepted provider binding.
-/// - On-chain [`StreamConfig::rate`] must dominate both pinned policy minima and negotiated proposal floors.
+/// - On-chain [`StreamConfig::rate`] must be greater than or equal to the accepted proposal rate
+///   and remain at or above pinned policy minima. This is checked on every service proof (not only at
+///   `create_stream`) so a payer cannot downgrade an active stream below floors negotiated at acceptance.
 ///
 /// `service_id` is intentionally untouched here (module compares against `/vac/waku/store-query/3.0.0`).
 pub fn stream_satisfies_policy(
@@ -167,9 +180,9 @@ pub fn stream_satisfies_policy(
 
 /// Prevent oversized vault proofs on the outbound path (demo MUST enforce once per session).
 #[must_use]
-pub fn response_size_satisfies_policy(
-    policy: &StreamProviderPolicy,
+pub fn response_within_policy(
     response_payload_byte_len: u64,
+    policy: &StreamProviderPolicy,
 ) -> Result<(), PolicyRejectReason> {
     if response_payload_byte_len > policy.vault_proof_max_response_bytes {
         return Err(PolicyRejectReason::ResponseTooLarge);
@@ -197,9 +210,9 @@ mod predicates_unit_tests {
     use nssa_core::account::AccountId;
 
     use super::{
-        fold_stream, new_stream_satisfies_proposal, proposal_satisfies_policy,
-        response_size_satisfies_policy, stream_satisfies_policy, unallocated_balance,
-        ProposalCheckInputs, StreamFoldedAtTime,
+        create_stream_deadline_satisfies_policy_as_of, fold_stream, new_stream_satisfies_proposal,
+        proposal_satisfies_policy, response_within_policy, stream_satisfies_policy,
+        unallocated_balance, ProposalCheckInputs, StreamFoldedAtTime,
     };
     use crate::error_codes::ErrorCode;
     use crate::stream_provider_policy::{
@@ -239,6 +252,11 @@ mod predicates_unit_tests {
             200,
             "vault holding minus total_allocated uses saturating subtraction semantics"
         );
+    }
+
+    #[test]
+    fn unallocated_balance_saturates_at_zero_when_overallocated() {
+        assert_eq!(unallocated_balance(100, 200), 0);
     }
 
     #[test]
@@ -365,6 +383,23 @@ mod predicates_unit_tests {
             }),
             Err(PolicyRejectReason::CreateStreamDeadlineInvalid)
         );
+    }
+
+    #[test]
+    fn proposal_deadline_overflow_pins_upper_bound_to_max() {
+        let policy = StreamProviderPolicy::new(1, 1, Timestamp::MAX, 65_536);
+
+        create_stream_deadline_satisfies_policy_as_of(Timestamp::MAX - 1, Timestamp::MAX, 100)
+            .expect("overflow handling should pin upper bound to MAX");
+
+        proposal_satisfies_policy(&ProposalCheckInputs {
+            params: &StreamParams::new(1, 1, Timestamp::MAX - 1, vec![]),
+            policy: &policy,
+            vault_holding_balance: 1_000,
+            vault_total_allocated: 0,
+            now: 100,
+        })
+        .expect("finite deadline within overflow-pinned window");
     }
 
     #[test]
@@ -545,12 +580,27 @@ mod predicates_unit_tests {
     }
 
     #[test]
+    fn stream_policy_rejects_mismatched_provider() {
+        let bound = account_marker(20);
+        let wrong = account_marker(21);
+        let policy = StreamProviderPolicy::new(1, 1, 1_000, 65_536);
+        let params = StreamParams::new(10, 100, 0, vec![]);
+        let terms = accepted_terms_fixture(params, policy, bound);
+        let folded = stream_fixture(0, 100, 10, 0, StreamState::Active, wrong);
+
+        assert_eq!(
+            stream_satisfies_policy(&folded, &terms),
+            Err(PolicyRejectReason::ProviderMismatch)
+        );
+    }
+
+    #[test]
     fn response_cap_allows_exact_limit_and_rejects_overages() {
         let policy = StreamProviderPolicy::new(1, 1, 1, /* cap */ 128);
 
-        assert!(response_size_satisfies_policy(&policy, 128).is_ok());
+        assert!(response_within_policy(128, &policy).is_ok());
         assert_eq!(
-            response_size_satisfies_policy(&policy, 129),
+            response_within_policy(129, &policy),
             Err(PolicyRejectReason::ResponseTooLarge)
         );
     }
