@@ -164,141 +164,146 @@ fn test_initialize_vault_pseudonymous_funder_succeeds() {
     assert_eq!(vc.privacy_tier, VaultPrivacyTier::PseudonymousFunder);
 }
 
-// ---- PP tests ---- //
+#[cfg(feature = "pp-program-tests")]
+mod pp_program_tests {
+    use super::*;
 
-use super::pp_common::{
-    fund_private_account_via_pp_withdraw, owner_npk, owner_vpk,
-    vault_fixture_public_tier_funded_via_deposit, OWNER_NSK, PP4_FUND_EPK_SCALAR,
-    PP4_INIT_EPK_SCALAR, PP4_OWNER_FUND_AMOUNT,
-};
-use crate::test_helpers::load_guest_program;
-use nssa::{
-    execute_and_prove,
-    privacy_preserving_transaction::{
-        circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
-        PrivacyPreservingTransaction,
-    },
-    program::Program,
-};
-use nssa_core::{
-    account::{Account, AccountId, AccountWithMetadata},
-    encryption::EphemeralPublicKey,
-    Commitment, EncryptionScheme, SharedSecretKey,
-};
-
-#[test]
-fn test_pp_initialize_vault_private_owner_succeeds() {
-    let mut fx = vault_fixture_public_tier_funded_via_deposit();
-
-    let owner_npk = owner_npk();
-    let owner_id = AccountId::from(&owner_npk);
-    let fund_receipt = fund_private_account_via_pp_withdraw(
-        &mut fx,
-        &owner_npk,
-        owner_vpk(),
-        PP4_FUND_EPK_SCALAR,
-        PP4_OWNER_FUND_AMOUNT,
-        3 as BlockId,
-    );
-    let owner_committed_account = EncryptionScheme::decrypt(
-        &fund_receipt.tx.message().encrypted_private_post_states[0].ciphertext,
-        &fund_receipt.shared_secret,
-        &fund_receipt.tx.message().new_commitments[0],
-        0,
-    )
-    .expect("decrypt owner state from funding PP withdraw");
-    assert_eq!(owner_committed_account.balance, PP4_OWNER_FUND_AMOUNT);
-
-    let vault_b_id = 2u64;
-    let (vault_config_b_id, vault_holding_b_id) =
-        derive_vault_pdas(fx.program_id, owner_id, vault_b_id);
-
-    let owner_commitment_obj = Commitment::new(&owner_npk, &owner_committed_account);
-    let membership_proof = fx
-        .state
-        .get_proof_for_commitment(&owner_commitment_obj)
-        .expect("owner commitment in state after fund");
-
-    let init_shared_secret = SharedSecretKey::new(&PP4_INIT_EPK_SCALAR, &owner_vpk());
-    let init_epk = EphemeralPublicKey::from_scalar(PP4_INIT_EPK_SCALAR);
-
-    let pre_states = vec![
-        AccountWithMetadata {
-            account: Account::default(),
-            is_authorized: false,
-            account_id: vault_config_b_id,
+    use crate::program_tests::pp_common::{
+        fund_private_account_via_pp_withdraw, owner_npk, owner_vpk,
+        vault_fixture_public_tier_funded_via_deposit, OWNER_NSK, PP4_FUND_EPK_SCALAR,
+        PP4_INIT_EPK_SCALAR, PP4_OWNER_FUND_AMOUNT,
+    };
+    use crate::test_helpers::load_guest_program;
+    use nssa::{
+        execute_and_prove,
+        privacy_preserving_transaction::{
+            circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
+            PrivacyPreservingTransaction,
         },
-        AccountWithMetadata {
-            account: Account::default(),
-            is_authorized: false,
-            account_id: vault_holding_b_id,
-        },
-        AccountWithMetadata {
-            account: owner_committed_account.clone(),
-            is_authorized: true,
-            account_id: owner_id,
-        },
-    ];
+        program::Program,
+    };
+    use nssa_core::{
+        account::{Account, AccountId, AccountWithMetadata},
+        encryption::EphemeralPublicKey,
+        Commitment, EncryptionScheme, SharedSecretKey,
+    };
 
-    let (output, proof) = execute_and_prove(
-        pre_states,
-        Program::serialize_instruction(Instruction::initialize_vault(
-            vault_b_id,
-            VaultPrivacyTier::PseudonymousFunder,
-        ))
-        .expect("initialize_vault instruction serializes"),
-        vec![0u8, 0, 1],
-        vec![(owner_npk.clone(), init_shared_secret)],
-        vec![OWNER_NSK],
-        vec![Some(membership_proof)],
-        &ProgramWithDependencies::from(load_guest_program()),
-    )
-    .expect("execute_and_prove: PP initialize_vault");
+    #[test]
+    fn test_pp_initialize_vault_private_owner_succeeds() {
+        crate::program_tests::pp_common::guard_pp_tests_run_in_risc0_dev_mode_only();
 
-    let message = Message::try_from_circuit_output(
-        vec![vault_config_b_id, vault_holding_b_id],
-        vec![],
-        vec![(owner_npk, owner_vpk(), init_epk)],
-        output,
-    )
-    .expect("try_from_circuit_output: initialize_vault");
+        let mut fx = vault_fixture_public_tier_funded_via_deposit();
 
-    let witness_set = WitnessSet::for_message(&message, proof, &[]);
-    let init_tx = PrivacyPreservingTransaction::new(message, witness_set);
-
-    fx.state
-        .transition_from_privacy_preserving_transaction(
-            &init_tx,
-            4 as BlockId,
-            TEST_PUBLIC_TX_TIMESTAMP,
+        let owner_npk = owner_npk();
+        let owner_id = AccountId::from(&owner_npk);
+        let fund_receipt = fund_private_account_via_pp_withdraw(
+            &mut fx,
+            &owner_npk,
+            owner_vpk(),
+            PP4_FUND_EPK_SCALAR,
+            PP4_OWNER_FUND_AMOUNT,
+            3 as BlockId,
+        );
+        let owner_committed_account = EncryptionScheme::decrypt(
+            &fund_receipt.tx.message().encrypted_private_post_states[0].ciphertext,
+            &fund_receipt.shared_secret,
+            &fund_receipt.tx.message().new_commitments[0],
+            0,
         )
-        .expect("PP initialize_vault transition");
+        .expect("decrypt owner state from funding PP withdraw");
+        assert_eq!(owner_committed_account.balance, PP4_OWNER_FUND_AMOUNT);
 
-    let vault_config_after =
-        borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(vault_config_b_id).data)
-            .expect("vault_config_b created");
-    assert_eq!(vault_config_after.owner, owner_id);
-    assert_eq!(vault_config_after.vault_id, vault_b_id);
-    assert_eq!(
-        vault_config_after.privacy_tier,
-        VaultPrivacyTier::PseudonymousFunder
-    );
-    assert_eq!(vault_config_after.total_allocated, 0);
-    assert_eq!(vault_config_after.next_stream_id, 0);
+        let vault_b_id = 2u64;
+        let (vault_config_b_id, vault_holding_b_id) =
+            derive_vault_pdas(fx.program_id, owner_id, vault_b_id);
 
-    assert!(borsh::from_slice::<VaultHolding>(
-        &fx.state.get_account_by_id(vault_holding_b_id).data
-    )
-    .is_ok());
+        let owner_commitment_obj = Commitment::new(&owner_npk, &owner_committed_account);
+        let membership_proof = fx
+            .state
+            .get_proof_for_commitment(&owner_commitment_obj)
+            .expect("owner commitment in state after fund");
 
-    assert_eq!(init_tx.message().new_commitments.len(), 1);
-    assert_eq!(init_tx.message().encrypted_private_post_states.len(), 1);
-    let decrypted = EncryptionScheme::decrypt(
-        &init_tx.message().encrypted_private_post_states[0].ciphertext,
-        &init_shared_secret,
-        &init_tx.message().new_commitments[0],
-        0,
-    )
-    .expect("decrypt owner post-state after initialize_vault");
-    assert_eq!(decrypted.balance, PP4_OWNER_FUND_AMOUNT);
+        let init_shared_secret = SharedSecretKey::new(&PP4_INIT_EPK_SCALAR, &owner_vpk());
+        let init_epk = EphemeralPublicKey::from_scalar(PP4_INIT_EPK_SCALAR);
+
+        let pre_states = vec![
+            AccountWithMetadata {
+                account: Account::default(),
+                is_authorized: false,
+                account_id: vault_config_b_id,
+            },
+            AccountWithMetadata {
+                account: Account::default(),
+                is_authorized: false,
+                account_id: vault_holding_b_id,
+            },
+            AccountWithMetadata {
+                account: owner_committed_account.clone(),
+                is_authorized: true,
+                account_id: owner_id,
+            },
+        ];
+
+        let (output, proof) = execute_and_prove(
+            pre_states,
+            Program::serialize_instruction(Instruction::initialize_vault(
+                vault_b_id,
+                VaultPrivacyTier::PseudonymousFunder,
+            ))
+            .expect("initialize_vault instruction serializes"),
+            vec![0u8, 0, 1],
+            vec![(owner_npk.clone(), init_shared_secret)],
+            vec![OWNER_NSK],
+            vec![Some(membership_proof)],
+            &ProgramWithDependencies::from(load_guest_program()),
+        )
+        .expect("execute_and_prove: PP initialize_vault");
+
+        let message = Message::try_from_circuit_output(
+            vec![vault_config_b_id, vault_holding_b_id],
+            vec![],
+            vec![(owner_npk, owner_vpk(), init_epk)],
+            output,
+        )
+        .expect("try_from_circuit_output: initialize_vault");
+
+        let witness_set = WitnessSet::for_message(&message, proof, &[]);
+        let init_tx = PrivacyPreservingTransaction::new(message, witness_set);
+
+        fx.state
+            .transition_from_privacy_preserving_transaction(
+                &init_tx,
+                4 as BlockId,
+                TEST_PUBLIC_TX_TIMESTAMP,
+            )
+            .expect("PP initialize_vault transition");
+
+        let vault_config_after =
+            borsh::from_slice::<VaultConfig>(&fx.state.get_account_by_id(vault_config_b_id).data)
+                .expect("vault_config_b created");
+        assert_eq!(vault_config_after.owner, owner_id);
+        assert_eq!(vault_config_after.vault_id, vault_b_id);
+        assert_eq!(
+            vault_config_after.privacy_tier,
+            VaultPrivacyTier::PseudonymousFunder
+        );
+        assert_eq!(vault_config_after.total_allocated, 0);
+        assert_eq!(vault_config_after.next_stream_id, 0);
+
+        assert!(borsh::from_slice::<VaultHolding>(
+            &fx.state.get_account_by_id(vault_holding_b_id).data
+        )
+        .is_ok());
+
+        assert_eq!(init_tx.message().new_commitments.len(), 1);
+        assert_eq!(init_tx.message().encrypted_private_post_states.len(), 1);
+        let decrypted = EncryptionScheme::decrypt(
+            &init_tx.message().encrypted_private_post_states[0].ciphertext,
+            &init_shared_secret,
+            &init_tx.message().new_commitments[0],
+            0,
+        )
+        .expect("decrypt owner post-state after initialize_vault");
+        assert_eq!(decrypted.balance, PP4_OWNER_FUND_AMOUNT);
+    }
 }

@@ -527,132 +527,143 @@ fn test_resume_stream_owner_mismatch_fails() {
     assert_execution_failed_with_code(r, ErrorCode::VaultOwnerMismatch);
 }
 
-// ---- PP tests ---- //
+#[cfg(feature = "pp-program-tests")]
+mod pp_program_tests {
+    use super::*;
 
-use super::common::TEST_PUBLIC_TX_TIMESTAMP;
-use super::pp_common::{
-    account_meta, owner_vpk, pp_owner_setup, recipient_npk, PpOwnerSetup, OWNER_NSK,
-    PP3_OWNER_FUND_AMOUNT, PP3_SIGNER_EPK_SCALAR, PP3_STREAM_ALLOCATION, PP3_STREAM_RATE, PP3_T0,
-    PP3_T1,
-};
-use crate::{test_helpers::load_guest_program, CLOCK_01_PROGRAM_ACCOUNT_ID};
-use nssa::{
-    execute_and_prove,
-    privacy_preserving_transaction::{
-        circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
-        PrivacyPreservingTransaction,
-    },
-};
-use nssa_core::{
-    account::{Account, AccountId, AccountWithMetadata, Data},
-    encryption::EphemeralPublicKey,
-    Commitment, EncryptionScheme, SharedSecretKey,
-};
-
-#[test]
-fn test_pp_resume_stream_private_owner_succeeds() {
-    let PpOwnerSetup {
-        mut fx,
-        vault_b_id,
-        vault_config_b_id,
-        vault_holding_b_id,
-        owner_committed_account,
-        owner_npk,
-    } = pp_owner_setup();
-
-    let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
-    let stream_id = 0u64;
-    let stream_pda = derive_stream_pda(fx.program_id, vault_config_b_id, stream_id);
-    let provider_id = AccountId::from(&recipient_npk());
-    let accrued = PP3_STREAM_RATE as Balance * (PP3_T1 - PP3_T0) as Balance;
-
-    let mut stream_config = StreamConfig::new(
-        stream_id,
-        provider_id,
-        PP3_STREAM_RATE,
-        PP3_STREAM_ALLOCATION,
-        PP3_T0,
-        None,
-    );
-    stream_config.state = StreamState::Paused;
-    stream_config.accrued = accrued;
-    let stream_account = Account {
-        program_owner: fx.program_id,
-        balance: 0,
-        data: Data::try_from(borsh::to_vec(&stream_config).unwrap()).expect("stream config fits"),
-        ..Account::default()
+    use crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP;
+    use crate::program_tests::pp_common::{
+        account_meta, owner_vpk, pp_owner_setup, recipient_npk, PpOwnerSetup, OWNER_NSK,
+        PP3_OWNER_FUND_AMOUNT, PP3_SIGNER_EPK_SCALAR, PP3_STREAM_ALLOCATION, PP3_STREAM_RATE,
+        PP3_T0, PP3_T1,
     };
-    fx.state.force_insert_account(stream_pda, stream_account);
-
-    patch_vault_config(&mut fx.state, vault_config_b_id, |cfg| {
-        cfg.next_stream_id = 1;
-        cfg.total_allocated = PP3_STREAM_ALLOCATION;
-    });
-
-    let owner_commitment_obj = Commitment::new(&owner_npk, &owner_committed_account);
-    let membership_proof = fx
-        .state
-        .get_proof_for_commitment(&owner_commitment_obj)
-        .expect("owner commitment in state after PP withdraw");
-
-    let owner_shared_secret = SharedSecretKey::new(&PP3_SIGNER_EPK_SCALAR, &owner_vpk());
-    let owner_epk = EphemeralPublicKey::from_scalar(PP3_SIGNER_EPK_SCALAR);
-
-    let pre_states = vec![
-        account_meta(&fx.state, vault_config_b_id, false),
-        account_meta(&fx.state, vault_holding_b_id, false),
-        account_meta(&fx.state, stream_pda, false),
-        AccountWithMetadata {
-            account: owner_committed_account.clone(),
-            is_authorized: true,
-            account_id: AccountId::from(&owner_npk),
+    use crate::{test_helpers::load_guest_program, CLOCK_01_PROGRAM_ACCOUNT_ID};
+    use nssa::{
+        execute_and_prove,
+        privacy_preserving_transaction::{
+            circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
+            PrivacyPreservingTransaction,
         },
-        account_meta(&fx.state, clock_id, false),
-    ];
+    };
+    use nssa_core::{
+        account::{Account, AccountId, AccountWithMetadata, Data},
+        encryption::EphemeralPublicKey,
+        Commitment, EncryptionScheme, SharedSecretKey,
+    };
 
-    let (output, proof) = execute_and_prove(
-        pre_states,
-        Program::serialize_instruction(Instruction::ResumeStream {
-            vault_id: vault_b_id,
+    #[test]
+    fn test_pp_resume_stream_private_owner_succeeds() {
+        crate::program_tests::pp_common::guard_pp_tests_run_in_risc0_dev_mode_only();
+
+        let PpOwnerSetup {
+            mut fx,
+            vault_b_id,
+            vault_config_b_id,
+            vault_holding_b_id,
+            owner_committed_account,
+            owner_npk,
+        } = pp_owner_setup();
+
+        let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
+        let stream_id = 0u64;
+        let stream_pda = derive_stream_pda(fx.program_id, vault_config_b_id, stream_id);
+        let provider_id = AccountId::from(&recipient_npk());
+        let accrued = PP3_STREAM_RATE as Balance * (PP3_T1 - PP3_T0) as Balance;
+
+        let mut stream_config = StreamConfig::new(
             stream_id,
-        })
-        .expect("resume_stream instruction serializes"),
-        vec![0u8, 0, 0, 1, 0],
-        vec![(owner_npk.clone(), owner_shared_secret)],
-        vec![OWNER_NSK],
-        vec![Some(membership_proof)],
-        &ProgramWithDependencies::from(load_guest_program()),
-    )
-    .expect("execute_and_prove: PP resume_stream");
+            provider_id,
+            PP3_STREAM_RATE,
+            PP3_STREAM_ALLOCATION,
+            PP3_T0,
+            None,
+        );
+        stream_config.state = StreamState::Paused;
+        stream_config.accrued = accrued;
+        let stream_account = Account {
+            program_owner: fx.program_id,
+            balance: 0,
+            data: Data::try_from(borsh::to_vec(&stream_config).unwrap())
+                .expect("stream config fits"),
+            ..Account::default()
+        };
+        fx.state.force_insert_account(stream_pda, stream_account);
 
-    let message = Message::try_from_circuit_output(
-        vec![vault_config_b_id, vault_holding_b_id, stream_pda, clock_id],
-        vec![],
-        vec![(owner_npk.clone(), owner_vpk(), owner_epk)],
-        output,
-    )
-    .expect("try_from_circuit_output: resume_stream");
+        patch_vault_config(&mut fx.state, vault_config_b_id, |cfg| {
+            cfg.next_stream_id = 1;
+            cfg.total_allocated = PP3_STREAM_ALLOCATION;
+        });
 
-    let witness_set = WitnessSet::for_message(&message, proof, &[]);
-    let tx = PrivacyPreservingTransaction::new(message, witness_set);
+        let owner_commitment_obj = Commitment::new(&owner_npk, &owner_committed_account);
+        let membership_proof = fx
+            .state
+            .get_proof_for_commitment(&owner_commitment_obj)
+            .expect("owner commitment in state after PP withdraw");
 
-    fx.state
-        .transition_from_privacy_preserving_transaction(&tx, 5 as BlockId, TEST_PUBLIC_TX_TIMESTAMP)
-        .expect("resume_stream PP transition");
+        let owner_shared_secret = SharedSecretKey::new(&PP3_SIGNER_EPK_SCALAR, &owner_vpk());
+        let owner_epk = EphemeralPublicKey::from_scalar(PP3_SIGNER_EPK_SCALAR);
 
-    let stream = borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
-        .expect("stream config after resume");
-    assert_eq!(stream.state, StreamState::Active);
-    assert_eq!(stream.accrued, accrued);
-    assert_eq!(stream.allocation, PP3_STREAM_ALLOCATION);
+        let pre_states = vec![
+            account_meta(&fx.state, vault_config_b_id, false),
+            account_meta(&fx.state, vault_holding_b_id, false),
+            account_meta(&fx.state, stream_pda, false),
+            AccountWithMetadata {
+                account: owner_committed_account.clone(),
+                is_authorized: true,
+                account_id: AccountId::from(&owner_npk),
+            },
+            account_meta(&fx.state, clock_id, false),
+        ];
 
-    assert_eq!(tx.message().new_commitments.len(), 1);
-    let decrypted = EncryptionScheme::decrypt(
-        &tx.message().encrypted_private_post_states[0].ciphertext,
-        &owner_shared_secret,
-        &tx.message().new_commitments[0],
-        0,
-    )
-    .expect("decrypt owner post-state after resume_stream");
-    assert_eq!(decrypted.balance, PP3_OWNER_FUND_AMOUNT);
+        let (output, proof) = execute_and_prove(
+            pre_states,
+            Program::serialize_instruction(Instruction::ResumeStream {
+                vault_id: vault_b_id,
+                stream_id,
+            })
+            .expect("resume_stream instruction serializes"),
+            vec![0u8, 0, 0, 1, 0],
+            vec![(owner_npk.clone(), owner_shared_secret)],
+            vec![OWNER_NSK],
+            vec![Some(membership_proof)],
+            &ProgramWithDependencies::from(load_guest_program()),
+        )
+        .expect("execute_and_prove: PP resume_stream");
+
+        let message = Message::try_from_circuit_output(
+            vec![vault_config_b_id, vault_holding_b_id, stream_pda, clock_id],
+            vec![],
+            vec![(owner_npk.clone(), owner_vpk(), owner_epk)],
+            output,
+        )
+        .expect("try_from_circuit_output: resume_stream");
+
+        let witness_set = WitnessSet::for_message(&message, proof, &[]);
+        let tx = PrivacyPreservingTransaction::new(message, witness_set);
+
+        fx.state
+            .transition_from_privacy_preserving_transaction(
+                &tx,
+                5 as BlockId,
+                TEST_PUBLIC_TX_TIMESTAMP,
+            )
+            .expect("resume_stream PP transition");
+
+        let stream =
+            borsh::from_slice::<StreamConfig>(&fx.state.get_account_by_id(stream_pda).data)
+                .expect("stream config after resume");
+        assert_eq!(stream.state, StreamState::Active);
+        assert_eq!(stream.accrued, accrued);
+        assert_eq!(stream.allocation, PP3_STREAM_ALLOCATION);
+
+        assert_eq!(tx.message().new_commitments.len(), 1);
+        let decrypted = EncryptionScheme::decrypt(
+            &tx.message().encrypted_private_post_states[0].ciphertext,
+            &owner_shared_secret,
+            &tx.message().new_commitments[0],
+            0,
+        )
+        .expect("decrypt owner post-state after resume_stream");
+        assert_eq!(decrypted.balance, PP3_OWNER_FUND_AMOUNT);
+    }
 }

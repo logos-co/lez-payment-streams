@@ -11,7 +11,8 @@ For the rationale behind design choices and a suggested reading order, see [arch
 |---|---|
 | `methods/guest/src/bin/lez_payment_streams.rs` | Guest program: `#[lez_program]` module, `#[instruction]` handlers, account attributes |
 | `lez-payment-streams-core/src/` | Shared types and pure logic: `VaultConfig`, `VaultHolding`, `StreamConfig`, `Instruction`, error codes, accrual math |
-| `lez-payment-streams-core/src/program_tests/` | In-process `V03State` tests, one module per instruction plus `common.rs`, `pp_common.rs`, `invariants.rs`, `serialization.rs`, `privacy_tier_policy.rs` |
+| `lez-payment-streams-core/src/program_tests/` | In-process `V03State` tests: transparent flows always-on; PP flows behind `--features pp-program-tests` |
+
 | `lez-payment-streams-core/src/test_helpers.rs` | Test harness helpers: keypairs, state setup, guest deployment, transaction builders |
 | `examples/src/bin/` | IDL generator and CLI wrapper |
 
@@ -37,16 +38,23 @@ cargo risczero build --manifest-path methods/guest/Cargo.toml
 Run tests:
 
 ```bash
-# Fast local loop (no ZK proof generation)
+# Default (transparent program_tests only). Uses RISC0 dev proving for any guest proofs.
 RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib
 
-# Narrower filter when not touching other unit tests
+# Narrow filter when iterating on harness cases
 RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib program_tests
 ```
 
-`RISC0_DEV_MODE=1` skips ZK proof generation and is the standard mode for both
-local development and CI test runs.
-Full proof generation is reserved for release or dedicated proving jobs.
+`RISC0_DEV_MODE=1` skips zk proof generation in the RISC Zero zkVM harness and should be used for all routine test runs.
+
+Optional privacy-preserving program tests compile only with `--features pp-program-tests`; they intentionally **panic unless** `RISC0_DEV_MODE=1` so local or CI jobs never regress into full zk proving accidentally.
+
+```bash
+RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib \
+  --features pp-program-tests pp_program_tests
+```
+
+Full zk proving stays reserved for release or dedicated proving jobs.
 
 ## Prerequisites (Integration Only)
 

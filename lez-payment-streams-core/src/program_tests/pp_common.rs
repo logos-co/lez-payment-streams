@@ -34,6 +34,23 @@ use crate::{
 
 use super::common::TEST_PUBLIC_TX_TIMESTAMP;
 
+/// Privacy-preserving program tests invoke `execute_and_prove`. Without RISC Zero dev mode they do
+/// real zk proving (very slow). Calling this at the top of PP tests or PP helpers rejects that
+/// footgun deterministically when `RISC0_DEV_MODE` is unset or not `1`.
+pub(crate) fn guard_pp_tests_run_in_risc0_dev_mode_only() {
+    match std::env::var("RISC0_DEV_MODE") {
+        Ok(flag) if flag == "1" => {}
+        Ok(other) => panic!(
+            "PP program_tests require RISC0_DEV_MODE=1 (dev proving). Got RISC0_DEV_MODE={other:?}. \
+             Full zk proving is intentionally unsupported in this harness."
+        ),
+        Err(std::env::VarError::NotPresent) => panic!(
+            "PP program_tests require RISC0_DEV_MODE=1. Set env RISC0_DEV_MODE=1 to skip real zk proofs."
+        ),
+        Err(e) => panic!("Could not read RISC0_DEV_MODE for PP harness: {e}"),
+    }
+}
+
 // ---- Shared recipient identity (Phase 1 and withdraw tests) ---- //
 
 pub(crate) const RECIPIENT_NSK: NullifierSecretKey = [0x5a; 32];
@@ -126,6 +143,8 @@ pub(crate) fn fund_private_account_via_pp_withdraw(
     withdraw_amount: Balance,
     block: BlockId,
 ) -> PpWithdrawReceipt {
+    guard_pp_tests_run_in_risc0_dev_mode_only();
+
     let guest_program = load_guest_program();
     assert_eq!(guest_program.id(), fx.program_id);
 
