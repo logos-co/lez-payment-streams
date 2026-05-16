@@ -15,8 +15,8 @@ use crate::Timestamp;
 /// `as_of` is the ledger / clock timestamp passed into folding (historic, preflight, or head).
 /// It may differ from [`StreamConfig::accrued_as_of`] after mid-interval depletion.
 ///
-/// `accrued` and `unaccrued` use LEZ `Balance` (`u128`); FFI Step 3b should split wide amounts into
-/// fixed limbs when crossing the C ABI (same pattern as decoded vault/stream configs).
+/// `accrued` and `unaccrued` use LEZ `Balance` (`u128`); the C FFI represents wide amounts as
+/// little-endian `lo` / `hi` `u64` halves (same pattern as decoded vault/stream configs).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamFoldedAtTime {
     pub stream_config: StreamConfig,
@@ -29,7 +29,7 @@ pub struct StreamFoldedAtTime {
 
 /// Apply [`StreamConfig::at_time`] and surface accrued / unaccrued balances for tooling + tests.
 ///
-/// Downstream FFI (Step 3b) can forward the struct fields verbatim without redoing arithmetic.
+/// Downstream FFI can forward the struct fields verbatim without redoing arithmetic.
 pub fn fold_stream(
     stream: &StreamConfig,
     as_of: Timestamp,
@@ -62,7 +62,8 @@ pub fn unallocated_balance(
 ///
 /// When `check_time + policy_max_create_stream_deadline_delay` overflows `u64`, the inclusive upper
 /// bound is pinned to [`Timestamp::MAX`]. Any finite deadline is then below that ceiling, so the
-/// check stays well-defined without wrapping.
+/// check stays well-defined without wrapping. For example, `checked_add(delay)` overflowing still
+/// leaves `Timestamp::MAX` as the upper bound rather than wrapping a smaller timestamp.
 pub fn create_stream_deadline_satisfies_policy_as_of(
     params_create_stream_deadline: Timestamp,
     policy_max_create_stream_deadline_delay: Timestamp,

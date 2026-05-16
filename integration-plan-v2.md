@@ -689,7 +689,7 @@ Implementor notes (Step 3a as-shipped in `lez-payment-streams-core`):
 - `create_stream_deadline_satisfies_policy_as_of` is public in core for
   deadline-only checks without assembling full `ProposalCheckInputs`.
 - `StreamFoldedAtTime` carries `Balance` (`u128`) in `accrued` / `unaccrued`;
-  split wide amounts for C using the same low/high limb pattern as other
+  split wide amounts for C using the same low/high pattern as other
   `PaymentStreams` FFI types.
 - `MAX_SERVICE_ID_LEN` documents the intended `StreamParams.service_id` cap;
   core does not reject overlong `Vec<u8>` — enforce length in the module
@@ -746,7 +746,9 @@ Expose canonicalization for the bytes signed by `VaultProof.owner_signature`
 and the bytes signed by `StreamProof.signature` over a Store request payload.
 Expose sign and verify primitives keyed by 32-byte NSSA public-key bytes
 using NSSA Schnorr signatures.
-The FFI owns all domain-separated canonicalization and prehashing.
+Expose domain-separated canonicalization and prehashing through `extern "C"` in `lez-payment-streams-ffi`,
+but implement layouts and hashing in `lez-payment-streams-core` (unit-tested Rust, same layering as Step 3a/3b).
+Keep the workspace `borsh` crate line aligned with core so `CanonicalStoreRequest` matches N8 exactly across crates.
 
 The canonicalization format follows the NSSA precedent
 established in `nssa/src/public_transaction/message.rs`:

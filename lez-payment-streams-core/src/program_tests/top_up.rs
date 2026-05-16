@@ -7,9 +7,7 @@ use nssa_core::{
 
 use crate::{
     error_codes::ErrorCode,
-    test_helpers::{
-        harness_clock_provider, patch_vault_config,
-    },
+    test_helpers::{harness_clock_provider, patch_vault_config},
     StreamConfig, StreamState, Timestamp, TokensPerSecond,
 };
 

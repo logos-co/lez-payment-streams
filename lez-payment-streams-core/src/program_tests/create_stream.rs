@@ -10,7 +10,8 @@ use crate::{
     error_codes::ErrorCode,
     test_helpers::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
-        derive_vault_pdas, harness_clock_provider, patch_vault_config, state_with_initialized_vault,
+        derive_vault_pdas, harness_clock_provider, patch_vault_config,
+        state_with_initialized_vault,
     },
     StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig, VaultId,
     DEFAULT_VERSION,

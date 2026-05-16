@@ -1,6 +1,7 @@
 //! C ABI for LEZ payment streams (LIP-155).
 
 mod decode;
+mod policy_abi;
 
 pub use lez_payment_streams_core::{
     derive_stream_config_account_id, derive_vault_account_ids, VaultConfig,
@@ -8,6 +9,7 @@ pub use lez_payment_streams_core::{
 };
 pub use nssa_core::account::AccountId;
 pub use nssa_core::program::ProgramId;
+pub use policy_abi::*;
 
 use core::slice;
 
@@ -28,6 +30,10 @@ pub enum PaymentStreamsFfiStatus {
     /// Malformed/unusable inputs (truncated payloads, unexpected wire shape, invalid fixed sizes).
     Malformed = 2,
     BadVersion = 3,
+    /// Policy predicates rejected cleanly; inspect [`PaymentStreamsFfiPolicyRejectReason`] out-parameters.
+    PolicyRejected = 4,
+    /// [`fold_stream`] could not evaluate (non-policy guest failure); inspect optional `guest_error_out`.
+    StreamFoldFailed = 5,
 }
 
 #[repr(u32)]
@@ -92,6 +98,96 @@ pub struct PaymentStreamsFfiDecodedClock {
     pub timestamp: u64,
 }
 
+/// Mirrors [`lez_payment_streams_core::MAX_SERVICE_ID_LEN`] — array sizes must stay literals for portable C headers.
+pub const PAYMENT_STREAMS_FFI_MAX_SERVICE_ID_LEN: usize =
+    lez_payment_streams_core::MAX_SERVICE_ID_LEN;
+
+/// [`StreamProviderPolicy`] snapshot crossing the FFI (wide balances split as `lo` / `hi` `u64` halves).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct PaymentStreamsFfiStreamProviderPolicy {
+    pub min_rate: u64,
+    pub min_allocation_lo: u64,
+    pub min_allocation_hi: u64,
+    pub max_create_stream_deadline_delay: u64,
+    pub vault_proof_max_response_bytes: u64,
+}
+
+/// Accepted / proposed [`StreamParams`] fields without heap indirection (`service_id` prefix + fixed buffer tail).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct PaymentStreamsFfiStreamParams {
+    pub rate: u64,
+    pub allocation_lo: u64,
+    pub allocation_hi: u64,
+    pub create_stream_deadline: u64,
+    pub service_id_len: u32,
+    pub _padding: u32,
+    pub service_id_bytes: [u8; 128],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct PaymentStreamsFfiProposalCheckInputs {
+    pub params: PaymentStreamsFfiStreamParams,
+    pub policy: PaymentStreamsFfiStreamProviderPolicy,
+    pub vault_holding_balance_lo: u64,
+    pub vault_holding_balance_hi: u64,
+    pub vault_total_allocated_lo: u64,
+    pub vault_total_allocated_hi: u64,
+    pub now: u64,
+}
+
+/// Pinned session terms surfaced on the wire as [`lez_payment_streams_core::AcceptedStreamTerms`].
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct PaymentStreamsFfiAcceptedStreamTerms {
+    pub params: PaymentStreamsFfiStreamParams,
+    pub provider_id: [u8; 32],
+    pub policy_at_acceptance: PaymentStreamsFfiStreamProviderPolicy,
+}
+
+/// [`lez_payment_streams_core::StreamFoldedAtTime`] mirrored for C callers.
+///
+/// Numeric fields split LEZ balances into deterministic little-endian `lo` / `hi` halves.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct PaymentStreamsFfiStreamFoldAtTime {
+    pub folded_stream: PaymentStreamsFfiDecodedStreamConfig,
+    pub accrued_lo: u64,
+    pub accrued_hi: u64,
+    pub unaccrued_lo: u64,
+    pub unaccrued_hi: u64,
+    pub as_of: u64,
+}
+
+/// Stable policy rejection codes for FFI consumers.
+///
+/// Values `0..=8` mirror [`lez_payment_streams_core::PolicyRejectReason`] today (`repr(u32)`).
+/// `Unknown` (`9`) is reserved for forward compatibility when core adds `#[non_exhaustive]` variants
+/// before this FFI crate’s rejection mapping catches up.
+///
+/// Hosts map these to Store-style eligibility buckets (see payment streams integration docs / LIP‑155):
+/// most predicate outcomes map to `PARAMS_REJECTED`, `StreamNotActive` maps to `STREAM_NOT_ACTIVE`,
+/// and proof-layer failures use `PROOF_INVALID`. Until a host defines finer rules, treat `Unknown` like `PARAMS_REJECTED`.
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum PaymentStreamsFfiPolicyRejectReason {
+    RateBelowPolicyMin = 0,
+    AllocationBelowPolicyMin = 1,
+    CreateStreamDeadlineInvalid = 2,
+    UnallocatedInsufficient = 3,
+    RateBelowAcceptedParams = 4,
+    AllocationBelowAcceptedParams = 5,
+    ProviderMismatch = 6,
+    StreamNotActive = 7,
+    ResponseTooLarge = 8,
+    /// Core [`PolicyRejectReason`] variant not yet surfaced by this FFI layer.
+    Unknown = 9,
+}
+
+const _: () = assert!(PAYMENT_STREAMS_FFI_MAX_SERVICE_ID_LEN == 128usize);
+
 #[must_use]
 fn map_decode_fault(err: DecodeFault) -> PaymentStreamsFfiStatus {
     match err {
@@ -100,10 +196,10 @@ fn map_decode_fault(err: DecodeFault) -> PaymentStreamsFfiStatus {
     }
 }
 
-/// Split NSSA [`Balance`] (effectively `u128`) into low/high limbs for portable C FFI
-/// (`*_lo`/`*_hi` as `uint64_t`), avoiding non-standard 128-bit C types across targets.
+/// Split NSSA [`Balance`] (effectively `u128`) into low/high `u64` halves for portable C FFI
+/// (`*_lo` / `*_hi` as `uint64_t`), avoiding non-standard 128-bit C types across targets.
 #[must_use]
-fn balance_pair(value: Balance) -> (u64, u64) {
+pub(crate) fn balance_pair(value: Balance) -> (u64, u64) {
     ((value & u128::from(u64::MAX)) as u64, (value >> 64) as u64)
 }
 
@@ -128,7 +224,7 @@ fn account_id_from_le_bytes(bytes: &[u8]) -> Result<AccountId, PaymentStreamsFfi
 /// C ABI `stream_state` via [`StreamState`]'s `impl From<Self> for u8` in
 /// `lez_payment_streams_core` (`#[repr(u8)]`, `#[borsh(use_discriminant = true)]`).
 #[must_use]
-fn stream_state_repr(state: StreamState) -> u8 {
+pub(crate) fn stream_state_repr(state: StreamState) -> u8 {
     u8::from(state)
 }
 
@@ -146,7 +242,7 @@ fn privacy_tier_repr(tier: VaultPrivacyTier) -> u8 {
 /// When `len > 0`, `ptr` must be valid for `len` contiguous bytes of immutable reads for lifetime
 /// `'a`, and nothing may mutate aliasing memory covering that slice for `'a`. When `len == 0`,
 /// `ptr` may be dangling or null (empty slice returned).
-unsafe fn borrow_input<'a>(
+pub(crate) unsafe fn borrow_input<'a>(
     ptr: *const u8,
     len: usize,
 ) -> Result<&'a [u8], PaymentStreamsFfiStatus> {
@@ -161,7 +257,7 @@ unsafe fn borrow_input<'a>(
     })
 }
 
-/// Placeholder linkage smoke exported in Step 1 (can be removed in later steps).
+/// Placeholder linkage smoke (may be removed once the FFI surface is fully wired).
 #[no_mangle]
 pub extern "C" fn payment_streams_ffi_ping() -> PaymentStreamsFfiStatus {
     PaymentStreamsFfiStatus::Success
@@ -169,7 +265,7 @@ pub extern "C" fn payment_streams_ffi_ping() -> PaymentStreamsFfiStatus {
 
 /// Decode serialized `VaultConfig` bytes copied from sequencer account payload.
 ///
-/// `vault_cfg_decoded` is Borsh + version-checked core state; writes the flattened FFI view via
+/// `vault_cfg_decoded` is Borsh + version-checked core state; writes the flattened `repr(C)` struct via
 /// `ffi_out_decoded` / `ffi_out_decoded_mut`.
 ///
 /// # Safety
@@ -450,9 +546,9 @@ mod tests {
     use lez_payment_streams_core::VaultPrivacyTier;
     use std::str::FromStr;
 
-    /// Base58 fixtures recorded in `docs/step1-findings-scaffold-rpc.md`: same deploy program wire as
-    /// [`doc_scaffold_program_id`], doc owner, and PDAs for `vault_id` / `stream_id` below (canonical
-    /// NSSA program-id wire encoding for the hex in that doc).
+    /// Base58 fixtures from the scaffold localnet notes in this repo (same deploy program wire as
+    /// [`doc_scaffold_program_id`], canonical owner, and PDAs for `vault_id` / `stream_id` below; NSSA
+    /// program-id wire encoding matches the documented hex literal).
     const DOC_SCAFFOLD_OWNER_BASE58: &str = "8UUCxCrkZAiP8A6g6rQAVMmk6bVxfurKqYi8aFxfEZqf";
     const DOC_SCAFFOLD_VAULT_CONFIG_PDA_BASE58: &str =
         "EKnp4sr9HL1vxJX1vdBUf82v2xGoDJhPSreqQXRhYAUS";
@@ -472,8 +568,8 @@ mod tests {
         raw
     }
 
-    /// Hex from `docs/step1-findings-scaffold-rpc.md` deploy output, interpreted as NSSA
-    /// `ProgramId` wire bytes (eight little-endian `u32` words, see `program_id_from_le_bytes`).
+    /// Hex deploy id from the scaffold localnet notes, interpreted as NSSA `ProgramId` wire bytes
+    /// (eight little-endian `u32` words, see `program_id_from_le_bytes`).
     fn doc_scaffold_program_id() -> ProgramId {
         let hex_literal = concat!(
             "0b9349a24ceccf031fd2e06af23722e086dd2",
@@ -635,5 +731,415 @@ mod tests {
         };
         assert_eq!(status, PaymentStreamsFfiStatus::Success);
         assert_eq!(rendered, *CLOCK_10_PROGRAM_ACCOUNT_ID.value());
+    }
+
+    // Predicate vectors mirror `lez_payment_streams_core` policy unit tests (integration plan "Step 3a/3b").
+    mod policy_ffi_abi_vectors {
+        use super::*;
+        use lez_payment_streams_core::{
+            fold_stream, AcceptedStreamTerms, Balance, ErrorCode, PolicyRejectReason, StreamConfig,
+            StreamId, StreamParams, StreamProviderPolicy, StreamState, Timestamp, TokensPerSecond,
+            DEFAULT_VERSION,
+        };
+
+        fn marker_account(marker_byte: u8) -> AccountId {
+            AccountId::new([marker_byte; 32])
+        }
+
+        fn stream_fixture_row(
+            accrued: Balance,
+            allocation: Balance,
+            rate_tokens_per_second: TokensPerSecond,
+            accrued_as_of_checkpoint: Timestamp,
+            stream_state: StreamState,
+            provider_account: AccountId,
+        ) -> StreamConfig {
+            StreamConfig {
+                version: DEFAULT_VERSION,
+                stream_id: StreamId::MIN,
+                provider: provider_account,
+                rate: rate_tokens_per_second,
+                allocation,
+                accrued,
+                state: stream_state,
+                accrued_as_of: accrued_as_of_checkpoint,
+            }
+        }
+
+        fn decoded_stream_fixture_row(
+            snapshot: &StreamConfig,
+        ) -> PaymentStreamsFfiDecodedStreamConfig {
+            let allocation_halves = balance_pair(snapshot.allocation);
+            let accrued_halves = balance_pair(snapshot.accrued);
+            PaymentStreamsFfiDecodedStreamConfig {
+                version: snapshot.version,
+                stream_state: stream_state_repr(snapshot.state),
+                _padding: [0; 6],
+                stream_id: snapshot.stream_id,
+                provider: *snapshot.provider.value(),
+                rate_tokens_per_second: snapshot.rate,
+                allocation_lo: allocation_halves.0,
+                allocation_hi: allocation_halves.1,
+                accrued_lo: accrued_halves.0,
+                accrued_hi: accrued_halves.1,
+                accrued_as_of: snapshot.accrued_as_of,
+            }
+        }
+
+        fn zero_fold_outcome_scratch() -> PaymentStreamsFfiStreamFoldAtTime {
+            PaymentStreamsFfiStreamFoldAtTime {
+                folded_stream: PaymentStreamsFfiDecodedStreamConfig {
+                    version: 0,
+                    stream_state: 0,
+                    _padding: [0; 6],
+                    stream_id: 0,
+                    provider: [0; 32],
+                    rate_tokens_per_second: 0,
+                    allocation_lo: 0,
+                    allocation_hi: 0,
+                    accrued_lo: 0,
+                    accrued_hi: 0,
+                    accrued_as_of: 0,
+                },
+                accrued_lo: 0,
+                accrued_hi: 0,
+                unaccrued_lo: 0,
+                unaccrued_hi: 0,
+                as_of: 0,
+            }
+        }
+
+        fn ffi_provider_policy_fixture(
+            policy_snapshot: &StreamProviderPolicy,
+        ) -> PaymentStreamsFfiStreamProviderPolicy {
+            let min_alloc_halves = balance_pair(policy_snapshot.min_allocation);
+            PaymentStreamsFfiStreamProviderPolicy {
+                min_rate: policy_snapshot.min_rate,
+                min_allocation_lo: min_alloc_halves.0,
+                min_allocation_hi: min_alloc_halves.1,
+                max_create_stream_deadline_delay: policy_snapshot.max_create_stream_deadline_delay,
+                vault_proof_max_response_bytes: policy_snapshot.vault_proof_max_response_bytes,
+            }
+        }
+
+        fn ffi_stream_params_fixture(
+            params_snapshot: &StreamParams,
+        ) -> PaymentStreamsFfiStreamParams {
+            assert!(
+                params_snapshot.service_id.len() <= PAYMENT_STREAMS_FFI_MAX_SERVICE_ID_LEN,
+                "vectors obey the capped `service_id` length documented for callers before signing",
+            );
+            let allocation_halves = balance_pair(params_snapshot.allocation);
+            let mut service_id_scratch = [0_u8; PAYMENT_STREAMS_FFI_MAX_SERVICE_ID_LEN];
+            service_id_scratch[..params_snapshot.service_id.len()]
+                .copy_from_slice(&params_snapshot.service_id);
+            PaymentStreamsFfiStreamParams {
+                rate: params_snapshot.rate,
+                allocation_lo: allocation_halves.0,
+                allocation_hi: allocation_halves.1,
+                create_stream_deadline: params_snapshot.create_stream_deadline,
+                service_id_len: params_snapshot.service_id.len() as u32,
+                _padding: 0,
+                service_id_bytes: service_id_scratch,
+            }
+        }
+
+        #[test]
+        fn policy_reason_discriminants_match_core_abi() {
+            let alignment_pairs = [
+                (
+                    PolicyRejectReason::RateBelowPolicyMin,
+                    PaymentStreamsFfiPolicyRejectReason::RateBelowPolicyMin,
+                ),
+                (
+                    PolicyRejectReason::AllocationBelowPolicyMin,
+                    PaymentStreamsFfiPolicyRejectReason::AllocationBelowPolicyMin,
+                ),
+                (
+                    PolicyRejectReason::CreateStreamDeadlineInvalid,
+                    PaymentStreamsFfiPolicyRejectReason::CreateStreamDeadlineInvalid,
+                ),
+                (
+                    PolicyRejectReason::UnallocatedInsufficient,
+                    PaymentStreamsFfiPolicyRejectReason::UnallocatedInsufficient,
+                ),
+                (
+                    PolicyRejectReason::RateBelowAcceptedParams,
+                    PaymentStreamsFfiPolicyRejectReason::RateBelowAcceptedParams,
+                ),
+                (
+                    PolicyRejectReason::AllocationBelowAcceptedParams,
+                    PaymentStreamsFfiPolicyRejectReason::AllocationBelowAcceptedParams,
+                ),
+                (
+                    PolicyRejectReason::ProviderMismatch,
+                    PaymentStreamsFfiPolicyRejectReason::ProviderMismatch,
+                ),
+                (
+                    PolicyRejectReason::StreamNotActive,
+                    PaymentStreamsFfiPolicyRejectReason::StreamNotActive,
+                ),
+                (
+                    PolicyRejectReason::ResponseTooLarge,
+                    PaymentStreamsFfiPolicyRejectReason::ResponseTooLarge,
+                ),
+            ];
+
+            for (reason_from_core_row, ffi_reason_row) in alignment_pairs {
+                assert_eq!(reason_from_core_row as u32, ffi_reason_row as u32);
+            }
+
+            assert_eq!(PaymentStreamsFfiPolicyRejectReason::Unknown as u32, 9);
+        }
+
+        #[test]
+        fn ffi_fold_matches_core_vectors() {
+            let provider_payee_binding = marker_account(9);
+            let stream_snapshot = stream_fixture_row(
+                0,
+                1_000,
+                10,
+                100,
+                StreamState::Active,
+                provider_payee_binding,
+            );
+            let decoded_snapshot = decoded_stream_fixture_row(&stream_snapshot);
+            let mut fold_scratch = zero_fold_outcome_scratch();
+            let mut guest_error_slot = 0_u32;
+            let guest_error_ptr = &mut guest_error_slot as *mut u32;
+
+            assert_eq!(
+                unsafe {
+                    payment_streams_ffi_fold_stream(
+                        &decoded_snapshot,
+                        105,
+                        &mut fold_scratch,
+                        guest_error_ptr,
+                    )
+                },
+                PaymentStreamsFfiStatus::Success,
+            );
+
+            let expected_fold_snapshot =
+                fold_stream(&stream_snapshot, 105).expect("core vector stays valid");
+            let ffi_accrued = Balance::from(fold_scratch.accrued_lo)
+                | Balance::from(fold_scratch.accrued_hi) << 64;
+            let ffi_unaccrued = Balance::from(fold_scratch.unaccrued_lo)
+                | Balance::from(fold_scratch.unaccrued_hi) << 64;
+
+            assert_eq!(ffi_accrued, expected_fold_snapshot.accrued);
+            assert_eq!(ffi_unaccrued, expected_fold_snapshot.unaccrued);
+            assert_eq!(fold_scratch.as_of, expected_fold_snapshot.as_of);
+            assert_eq!(
+                stream_state_repr(expected_fold_snapshot.stream_config.state),
+                fold_scratch.folded_stream.stream_state,
+            );
+            assert_eq!(
+                fold_scratch.folded_stream.accrued_as_of,
+                expected_fold_snapshot.stream_config.accrued_as_of,
+            );
+        }
+
+        #[test]
+        fn ffi_fold_surfaces_time_regression_through_guest_slot() {
+            let provider_payee_binding = marker_account(8);
+            let stream_snapshot = stream_fixture_row(
+                0,
+                1_000,
+                10,
+                100,
+                StreamState::Active,
+                provider_payee_binding,
+            );
+            let decoded_snapshot = decoded_stream_fixture_row(&stream_snapshot);
+            let mut fold_scratch = zero_fold_outcome_scratch();
+            let mut guest_error_slot = 0_u32;
+            let guest_error_ptr = &mut guest_error_slot as *mut u32;
+
+            assert_eq!(
+                unsafe {
+                    payment_streams_ffi_fold_stream(
+                        &decoded_snapshot,
+                        /* folds before accrued_as_of */ 99,
+                        &mut fold_scratch,
+                        guest_error_ptr,
+                    )
+                },
+                PaymentStreamsFfiStatus::StreamFoldFailed,
+            );
+            assert_eq!(guest_error_slot, ErrorCode::TimeRegression as u32);
+        }
+
+        #[test]
+        fn ffi_proposal_matches_below_min_rate_vector() {
+            let advertised_provider_policy_snapshot =
+                StreamProviderPolicy::new(20, 500, 1_000, 65_536);
+            let payer_proposal_terms = StreamParams::new(10, 600, 200, vec![]);
+            let mut reject_slot = PaymentStreamsFfiPolicyRejectReason::RateBelowPolicyMin;
+            let holding_balance_halves = balance_pair(10_000);
+            let total_allocated_halves = balance_pair(100);
+            let proposal_check_bundle = PaymentStreamsFfiProposalCheckInputs {
+                params: ffi_stream_params_fixture(&payer_proposal_terms),
+                policy: ffi_provider_policy_fixture(&advertised_provider_policy_snapshot),
+                vault_holding_balance_lo: holding_balance_halves.0,
+                vault_holding_balance_hi: holding_balance_halves.1,
+                vault_total_allocated_lo: total_allocated_halves.0,
+                vault_total_allocated_hi: total_allocated_halves.1,
+                now: 100,
+            };
+
+            assert_eq!(
+                unsafe {
+                    payment_streams_ffi_proposal_satisfies_policy(
+                        &proposal_check_bundle,
+                        &mut reject_slot as *mut _,
+                    )
+                },
+                PaymentStreamsFfiStatus::PolicyRejected,
+            );
+
+            assert_eq!(
+                reject_slot,
+                PaymentStreamsFfiPolicyRejectReason::RateBelowPolicyMin
+            );
+        }
+
+        #[test]
+        fn ffi_deadline_predicate_matches_overflow_pinned_curve() {
+            let mut deadline_reject_scratch =
+                PaymentStreamsFfiPolicyRejectReason::RateBelowPolicyMin;
+
+            assert_eq!(
+                unsafe {
+                    payment_streams_ffi_create_stream_deadline_satisfies_policy_as_of(
+                        Timestamp::MAX - 1,
+                        Timestamp::MAX,
+                        100,
+                        &mut deadline_reject_scratch as *mut _,
+                    )
+                },
+                PaymentStreamsFfiStatus::Success,
+            );
+
+            assert_eq!(
+                unsafe {
+                    payment_streams_ffi_create_stream_deadline_satisfies_policy_as_of(
+                        /* not strictly in the future */ 100,
+                        10,
+                        100,
+                        &mut deadline_reject_scratch as *mut _,
+                    )
+                },
+                PaymentStreamsFfiStatus::PolicyRejected,
+            );
+
+            assert_eq!(
+                deadline_reject_scratch,
+                PaymentStreamsFfiPolicyRejectReason::CreateStreamDeadlineInvalid,
+            );
+        }
+
+        #[test]
+        fn ffi_stream_policy_matches_paused_rejection_vector() {
+            let provider_payee_binding = marker_account(12);
+            let accepted_params_snapshot = StreamParams::new(5, 100, 0, vec![]);
+            let accepted_policy_snapshot = StreamProviderPolicy::new(1, 1, 1_000, 65_536);
+            let accepted_terms_host_view = AcceptedStreamTerms {
+                params: accepted_params_snapshot.clone(),
+                provider_id: provider_payee_binding,
+                policy_at_acceptance: accepted_policy_snapshot.clone(),
+            };
+
+            let accepted_terms_bundle = PaymentStreamsFfiAcceptedStreamTerms {
+                params: ffi_stream_params_fixture(&accepted_terms_host_view.params),
+                provider_id: *accepted_terms_host_view.provider_id.value(),
+                policy_at_acceptance: ffi_provider_policy_fixture(
+                    &accepted_terms_host_view.policy_at_acceptance,
+                ),
+            };
+
+            let folded_paused_stream_snapshot = stream_fixture_row(
+                100,
+                100,
+                10,
+                10,
+                StreamState::Paused,
+                provider_payee_binding,
+            );
+            let decoded_paused_fold = decoded_stream_fixture_row(&folded_paused_stream_snapshot);
+            let mut reject_slot = PaymentStreamsFfiPolicyRejectReason::RateBelowPolicyMin;
+
+            assert_eq!(
+                unsafe {
+                    payment_streams_ffi_stream_satisfies_policy(
+                        &decoded_paused_fold,
+                        &accepted_terms_bundle,
+                        &mut reject_slot as *mut _,
+                    )
+                },
+                PaymentStreamsFfiStatus::PolicyRejected,
+            );
+
+            assert_eq!(
+                reject_slot,
+                PaymentStreamsFfiPolicyRejectReason::StreamNotActive
+            );
+        }
+
+        #[test]
+        fn ffi_response_predicate_matches_demo_cap_vector() {
+            let capped_policy_snapshot = StreamProviderPolicy::new(1, 1, 1, 128);
+            let ffi_policy_row = ffi_provider_policy_fixture(&capped_policy_snapshot);
+            let mut reject_slot = PaymentStreamsFfiPolicyRejectReason::RateBelowPolicyMin;
+
+            assert_eq!(
+                unsafe {
+                    payment_streams_ffi_response_within_policy(
+                        129,
+                        &ffi_policy_row,
+                        &mut reject_slot as *mut _,
+                    )
+                },
+                PaymentStreamsFfiStatus::PolicyRejected,
+            );
+
+            assert_eq!(
+                reject_slot,
+                PaymentStreamsFfiPolicyRejectReason::ResponseTooLarge
+            );
+        }
+
+        #[test]
+        fn ffi_new_stream_predicate_matches_below_allocation_vector() {
+            let beneficiary_provider_binding = marker_account(4);
+            let accepted_params_snapshot = StreamParams::new(50, 200, 0, vec![]);
+            let weakened_chain_snapshot = stream_fixture_row(
+                0,
+                199,
+                50,
+                0,
+                StreamState::Active,
+                beneficiary_provider_binding,
+            );
+            let decoded_chain_snapshot = decoded_stream_fixture_row(&weakened_chain_snapshot);
+
+            let mut reject_slot = PaymentStreamsFfiPolicyRejectReason::RateBelowPolicyMin;
+            assert_eq!(
+                unsafe {
+                    payment_streams_ffi_new_stream_satisfies_proposal(
+                        &decoded_chain_snapshot,
+                        &ffi_stream_params_fixture(&accepted_params_snapshot),
+                        beneficiary_provider_binding.value().as_ptr(),
+                        &mut reject_slot as *mut _,
+                    )
+                },
+                PaymentStreamsFfiStatus::PolicyRejected,
+            );
+
+            assert_eq!(
+                reject_slot,
+                PaymentStreamsFfiPolicyRejectReason::AllocationBelowAcceptedParams,
+            );
+        }
     }
 }

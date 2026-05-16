@@ -115,7 +115,7 @@ impl StreamConfig {
         let mut stream_after_accrual = self.clone();
         stream_after_accrual.accrued = new_accrued;
 
-        if stream_after_accrual.unaccrued() == (0 as Balance) {
+        if stream_after_accrual.unaccrued() == 0 {
             stream_after_accrual.state = StreamState::Paused;
             let unaccrued_before_accrual_interval = self.unaccrued();
             // Ceiling division: the stream depleted partway through the last second.
@@ -167,7 +167,7 @@ impl StreamConfig {
         if self.state != StreamState::Paused {
             return Err(ErrorCode::StreamNotPaused);
         }
-        if self.unaccrued() == (0 as Balance) {
+        if self.unaccrued() == 0 {
             return Err(ErrorCode::ResumeZeroUnaccrued);
         }
         let mut stream_after_resume = self;
@@ -211,7 +211,7 @@ impl StreamConfig {
     pub fn claim_at_time(self, now: Timestamp) -> Result<(Balance, Self), ErrorCode> {
         let stream_config_now = self.at_time(now)?;
         let payout = stream_config_now.accrued;
-        if payout == (0 as Balance) {
+        if payout == 0 {
             return Err(ErrorCode::ZeroClaimAmount);
         }
         let mut stream_after_claim = stream_config_now;

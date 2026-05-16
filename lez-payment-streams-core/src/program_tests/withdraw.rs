@@ -993,11 +993,7 @@ mod pp_program_tests {
             vec![],
             vec![
                 (setup.owner_npk, owner_vpk(), owner_epk),
-                (
-                    recipient_npk_val,
-                    pp3_recipient_vpk(),
-                    recipient_epk,
-                ),
+                (recipient_npk_val, pp3_recipient_vpk(), recipient_epk),
             ],
             output,
         )

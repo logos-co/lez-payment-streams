@@ -11,7 +11,8 @@ use crate::{
     error_codes::ErrorCode,
     test_helpers::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
-        derive_vault_pdas, force_clock_account_unchecked, harness_clock_provider, patch_vault_config,
+        derive_vault_pdas, force_clock_account_unchecked, harness_clock_provider,
+        patch_vault_config,
     },
     StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId,
 };
@@ -472,8 +473,8 @@ mod pp_program_tests {
         PP3_OWNER_FUND_AMOUNT, PP3_SIGNER_EPK_SCALAR, PP3_STREAM_ALLOCATION, PP3_STREAM_RATE,
         PP3_T0, PP3_T1,
     };
-    use crate::CLOCK_01_PROGRAM_ACCOUNT_ID;
     use crate::test_helpers::{force_clock_account_monotonic, load_guest_program};
+    use crate::CLOCK_01_PROGRAM_ACCOUNT_ID;
     use nssa::{
         execute_and_prove,
         privacy_preserving_transaction::{

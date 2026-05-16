@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+
+
 /**
  * Outcome codes returned from `payment_streams_*` FFI functions (`Success` plus failures; stable
  * `repr(u32)` enumerators in `lez_payment_streams_ffi.h` from cbindgen).
@@ -21,6 +23,14 @@ enum PaymentStreamsFfiPaymentStreamsFfiStatus {
    */
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_MALFORMED = 2,
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_BAD_VERSION = 3,
+  /**
+   * Policy predicates rejected cleanly; inspect [`PaymentStreamsFfiPolicyRejectReason`] out-parameters.
+   */
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_POLICY_REJECTED = 4,
+  /**
+   * [`fold_stream`] could not evaluate (non-policy guest failure); inspect optional `guest_error_out`.
+   */
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_STREAM_FOLD_FAILED = 5,
 };
 typedef uint32_t PaymentStreamsFfiPaymentStreamsFfiStatus;
 
@@ -30,6 +40,34 @@ enum PaymentStreamsFfiClockAccountChoice {
   PAYMENT_STREAMS_FFI_CLOCK_ACCOUNT_CHOICE_CLOCK50 = 2,
 };
 typedef uint32_t PaymentStreamsFfiClockAccountChoice;
+
+/**
+ * Stable policy rejection codes for FFI consumers.
+ *
+ * Values `0..=8` mirror [`lez_payment_streams_core::PolicyRejectReason`] today (`repr(u32)`).
+ * `Unknown` (`9`) is reserved for forward compatibility when core adds `#[non_exhaustive]` variants
+ * before this FFI crate’s rejection mapping catches up.
+ *
+ * Hosts map these to Store-style eligibility buckets (see payment streams integration docs / LIP‑155):
+ * most predicate outcomes map to `PARAMS_REJECTED`, `StreamNotActive` maps to `STREAM_NOT_ACTIVE`,
+ * and proof-layer failures use `PROOF_INVALID`. Until a host defines finer rules, treat `Unknown` like `PARAMS_REJECTED`.
+ */
+enum PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason {
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_RATE_BELOW_POLICY_MIN = 0,
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_ALLOCATION_BELOW_POLICY_MIN = 1,
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_CREATE_STREAM_DEADLINE_INVALID = 2,
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_UNALLOCATED_INSUFFICIENT = 3,
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_RATE_BELOW_ACCEPTED_PARAMS = 4,
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_ALLOCATION_BELOW_ACCEPTED_PARAMS = 5,
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_PROVIDER_MISMATCH = 6,
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_STREAM_NOT_ACTIVE = 7,
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_RESPONSE_TOO_LARGE = 8,
+  /**
+   * Core [`PolicyRejectReason`] variant not yet surfaced by this FFI layer.
+   */
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_UNKNOWN = 9,
+};
+typedef uint32_t PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason;
 
 /**
  * Decoded `VaultConfig` fields exposed across the C ABI boundary.
@@ -82,14 +120,71 @@ typedef struct PaymentStreamsFfiPaymentStreamsFfiDecodedClock {
 } PaymentStreamsFfiPaymentStreamsFfiDecodedClock;
 
 /**
- * Placeholder linkage smoke exported in Step 1 (can be removed in later steps).
+ * [`lez_payment_streams_core::StreamFoldedAtTime`] mirrored for C callers.
+ *
+ * Numeric fields split LEZ balances into deterministic little-endian `lo` / `hi` halves.
+ */
+typedef struct PaymentStreamsFfiPaymentStreamsFfiStreamFoldAtTime {
+  struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamConfig folded_stream;
+  uint64_t accrued_lo;
+  uint64_t accrued_hi;
+  uint64_t unaccrued_lo;
+  uint64_t unaccrued_hi;
+  uint64_t as_of;
+} PaymentStreamsFfiPaymentStreamsFfiStreamFoldAtTime;
+
+/**
+ * Accepted / proposed [`StreamParams`] fields without heap indirection (`service_id` prefix + fixed buffer tail).
+ */
+typedef struct PaymentStreamsFfiPaymentStreamsFfiStreamParams {
+  uint64_t rate;
+  uint64_t allocation_lo;
+  uint64_t allocation_hi;
+  uint64_t create_stream_deadline;
+  uint32_t service_id_len;
+  uint32_t _padding;
+  uint8_t service_id_bytes[128];
+} PaymentStreamsFfiPaymentStreamsFfiStreamParams;
+
+/**
+ * [`StreamProviderPolicy`] snapshot crossing the FFI (wide balances split as `lo` / `hi` `u64` halves).
+ */
+typedef struct PaymentStreamsFfiPaymentStreamsFfiStreamProviderPolicy {
+  uint64_t min_rate;
+  uint64_t min_allocation_lo;
+  uint64_t min_allocation_hi;
+  uint64_t max_create_stream_deadline_delay;
+  uint64_t vault_proof_max_response_bytes;
+} PaymentStreamsFfiPaymentStreamsFfiStreamProviderPolicy;
+
+typedef struct PaymentStreamsFfiPaymentStreamsFfiProposalCheckInputs {
+  struct PaymentStreamsFfiPaymentStreamsFfiStreamParams params;
+  struct PaymentStreamsFfiPaymentStreamsFfiStreamProviderPolicy policy;
+  uint64_t vault_holding_balance_lo;
+  uint64_t vault_holding_balance_hi;
+  uint64_t vault_total_allocated_lo;
+  uint64_t vault_total_allocated_hi;
+  uint64_t now;
+} PaymentStreamsFfiPaymentStreamsFfiProposalCheckInputs;
+
+/**
+ * Pinned session terms surfaced on the wire as [`lez_payment_streams_core::AcceptedStreamTerms`].
+ */
+typedef struct PaymentStreamsFfiPaymentStreamsFfiAcceptedStreamTerms {
+  struct PaymentStreamsFfiPaymentStreamsFfiStreamParams params;
+  uint8_t provider_id[32];
+  struct PaymentStreamsFfiPaymentStreamsFfiStreamProviderPolicy policy_at_acceptance;
+} PaymentStreamsFfiPaymentStreamsFfiAcceptedStreamTerms;
+
+/**
+ * Placeholder linkage smoke (may be removed once the FFI surface is fully wired).
  */
 PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_ping(void);
 
 /**
  * Decode serialized `VaultConfig` bytes copied from sequencer account payload.
  *
- * `vault_cfg_decoded` is Borsh + version-checked core state; writes the flattened FFI view via
+ * `vault_cfg_decoded` is Borsh + version-checked core state; writes the flattened `repr(C)` struct via
  * `ffi_out_decoded` / `ffi_out_decoded_mut`.
  *
  * # Safety
@@ -198,5 +293,94 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_derive_stream_confi
                                                                                              const uint8_t *vault_config_account_id_bytes,
                                                                                              uint64_t stream_id,
                                                                                              uint8_t *out_stream_config_account_id_bytes);
+
+/**
+ * Fold lazy accrual from decoded `StreamConfig` data carried as [`PaymentStreamsFfiDecodedStreamConfig`]
+ * (the struct produced by [`payment_streams_ffi_decode_stream_config_bytes`]).
+ *
+ * On [`PaymentStreamsFfiStatus::StreamFoldFailed`], writes optional precise context to
+ * `guest_error_out` when non-null using stable [`lez_payment_streams_core::ErrorCode`] `repr(u32)` values (`6001+`).
+ *
+ * # Safety
+ *
+ * - `ffi_decoded_stream`: non-null, aligned pointer valid for immutable reads spanning one [`PaymentStreamsFfiDecodedStreamConfig`].
+ * - `ffi_out_fold`: non-null, aligned pointer valid for writable access spanning one [`PaymentStreamsFfiStreamFoldAtTime`].
+ * - `guest_error_out`: either null or a non-null, aligned pointer writable for exactly one `uint32_t`.
+ * - Required null pointers return [`PaymentStreamsFfiStatus::NullPointer`] instead of touching outputs.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_fold_stream(const struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamConfig *ffi_decoded_stream,
+                                                                         uint64_t as_of,
+                                                                         struct PaymentStreamsFfiPaymentStreamsFfiStreamFoldAtTime *ffi_out_fold,
+                                                                         uint32_t *guest_error_out);
+
+/**
+ * Proposal-phase policy gate (runs on payer + provider before signing).
+ *
+ * On [`PaymentStreamsFfiStatus::PolicyRejected`], `ffi_out_policy_reject` carries a
+ * [`crate::PaymentStreamsFfiPolicyRejectReason`] code (`0..=8` mirrors core; `Unknown` covers
+ * future [`lez_payment_streams_core::PolicyRejectReason`] variants not yet mapped explicitly).
+ *
+ * # Safety
+ *
+ * - `ffi_inputs`: non-null, aligned pointer valid for immutable reads spanning one [`PaymentStreamsFfiProposalCheckInputs`].
+ * - `ffi_out_policy_reject`: non-null, aligned pointer writable for exactly one [`PaymentStreamsFfiPolicyRejectReason`].
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_proposal_satisfies_policy(const struct PaymentStreamsFfiPaymentStreamsFfiProposalCheckInputs *ffi_inputs,
+                                                                                       PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason *ffi_out_policy_reject);
+
+/**
+ * Deadline-only predicate extracted from proposal checks (`create_stream_deadline` clock band).
+ *
+ * # Safety
+ *
+ * - `ffi_out_policy_reject`: non-null, aligned pointer writable for exactly one [`PaymentStreamsFfiPolicyRejectReason`].
+ * - A null `ffi_out_policy_reject` returns [`PaymentStreamsFfiStatus::NullPointer`] instead of touching the slot.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_create_stream_deadline_satisfies_policy_as_of(uint64_t params_create_stream_deadline,
+                                                                                                           uint64_t policy_max_create_stream_deadline_delay,
+                                                                                                           uint64_t check_time,
+                                                                                                           PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason *ffi_out_policy_reject);
+
+/**
+ * First service proof binds folded on-chain state to accepted negotiation terms.
+ *
+ * # Safety
+ *
+ * - `ffi_decoded_stream`: non-null, aligned pointer valid for immutable reads spanning one [`PaymentStreamsFfiDecodedStreamConfig`].
+ * - `ffi_accepted_params`: non-null, aligned pointer valid for immutable reads spanning one [`PaymentStreamsFfiStreamParams`].
+ * - `proposal_provider_id_bytes`: non-null, aligned pointer valid for immutable reads spanning 32 bytes.
+ * - `ffi_out_policy_reject`: non-null, aligned pointer writable for exactly one [`PaymentStreamsFfiPolicyRejectReason`].
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_new_stream_satisfies_proposal(const struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamConfig *ffi_decoded_stream,
+                                                                                           const struct PaymentStreamsFfiPaymentStreamsFfiStreamParams *ffi_accepted_params,
+                                                                                           const uint8_t *proposal_provider_id_bytes,
+                                                                                           PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason *ffi_out_policy_reject);
+
+/**
+ * Ongoing proofs must respect the pinned policy snapshot + active stream state.
+ *
+ * # Safety
+ *
+ * - `ffi_decoded_stream`: non-null, aligned pointer valid for immutable reads spanning one [`PaymentStreamsFfiDecodedStreamConfig`].
+ * - `ffi_accepted_terms_snapshot`: non-null, aligned pointer valid for immutable reads spanning one [`PaymentStreamsFfiAcceptedStreamTerms`].
+ * - `ffi_out_policy_reject`: non-null, aligned pointer writable for exactly one [`PaymentStreamsFfiPolicyRejectReason`].
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_stream_satisfies_policy(const struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamConfig *ffi_decoded_stream,
+                                                                                     const struct PaymentStreamsFfiPaymentStreamsFfiAcceptedStreamTerms *ffi_accepted_terms_snapshot,
+                                                                                     PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason *ffi_out_policy_reject);
+
+/**
+ * Outbound vault proof payload sizing guard enforced by MVP providers (`response_within_policy`).
+ *
+ * Argument order mirrors core: serialized response byte length first, then policy snapshot.
+ *
+ * # Safety
+ *
+ * - `ffi_policy_snapshot`: non-null, aligned pointer valid for immutable reads spanning one [`PaymentStreamsFfiStreamProviderPolicy`].
+ * - `ffi_out_policy_reject`: non-null, aligned pointer writable for exactly one [`PaymentStreamsFfiPolicyRejectReason`].
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_response_within_policy(uint64_t response_payload_byte_len,
+                                                                                    const struct PaymentStreamsFfiPaymentStreamsFfiStreamProviderPolicy *ffi_policy_snapshot,
+                                                                                    PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason *ffi_out_policy_reject);
 
 #endif  /* LEZ_PAYMENT_STREAMS_FFI_H */

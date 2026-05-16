@@ -55,9 +55,8 @@ pub(crate) fn read_guest_program_bytecode() -> Option<Vec<u8>> {
 
 #[cfg(feature = "pp-program-tests")]
 fn expect_guest_program_bytecode() -> Vec<u8> {
-    read_guest_program_bytecode().expect(
-        "guest binary missing; run `cargo build -p lez_payment_streams-methods`",
-    )
+    read_guest_program_bytecode()
+        .expect("guest binary missing; run `cargo build -p lez_payment_streams-methods`")
 }
 
 /// Load the payment-streams guest [`Program`] for PP `execute_and_prove` (same blob as deployment).

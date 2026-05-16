@@ -12,8 +12,7 @@ use crate::{
     test_helpers::{
         assert_vault_state_unchanged, build_signed_public_tx, create_keypair,
         create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
-        harness_clock_provider, patch_vault_config,
-        state_with_initialized_vault,
+        harness_clock_provider, patch_vault_config, state_with_initialized_vault,
     },
     TokensPerSecond, VaultConfig, VaultHolding, VaultId, VersionId,
 };
@@ -597,8 +596,8 @@ mod pp_program_tests {
         vault_fixture_public_tier_funded_via_deposit, OWNER_FUND_EPK_SCALAR, OWNER_NSK,
         PP_DEPOSIT_AMOUNT, PP_DEPOSIT_EPK_SCALAR, PP_OWNER_FUND_AMOUNT,
     };
-    use nssa::program::Program;
     use crate::VaultPrivacyTier;
+    use nssa::program::Program;
     use nssa::{
         execute_and_prove,
         privacy_preserving_transaction::{
