@@ -14,6 +14,7 @@ mod program_tests;
 
 mod error_codes;
 mod instruction;
+mod off_chain;
 mod pda;
 mod policy;
 mod stream_config;
@@ -26,6 +27,7 @@ pub use clock_core::{
 };
 pub use error_codes::*;
 pub use instruction::Instruction;
+pub use off_chain::*;
 pub use pda::{derive_stream_config_account_id, derive_vault_account_ids};
 pub use policy::{
     create_stream_deadline_satisfies_policy_as_of, fold_stream, new_stream_satisfies_proposal,

@@ -353,7 +353,8 @@ but any co-hosted module can already submit arbitrary transactions
 via `send_public_transaction`, which is strictly more powerful.
 Domain separation would not reduce the attack surface
 in the current trust model.
-The payment-streams FFI already applies its own domain-separated prehashing
+The payment-streams FFI already builds a domain-prefixed `canonical_payload`
+and hashes it to a 32-byte `canonical_payload_digest` for signing
 (see N8).
 If the ecosystem later introduces a module permission model,
 domain separation on signing should be revisited.
@@ -361,7 +362,8 @@ domain separation on signing should be revisited.
 Payment-stream proofs use NSSA's existing transparent signature contract:
 32-byte x-only secp256k1 public keys,
 64-byte Schnorr signatures,
-and signatures over a 32-byte domain-separated SHA-256 prehash.
+and signatures over a 32-byte `canonical_payload_digest`
+(SHA-256 of that `canonical_payload`).
 This matches the `nssa::PublicKey` and `nssa::Signature` types
 already used for public and privacy-preserving LEZ transactions.
 
@@ -440,17 +442,13 @@ The MVP assumes low concurrency; production would need key pooling or async queu
 
 ### N8, Canonical Store request bytes format
 
-The canonical Store request bytes are the payload
-signed by `StreamProof.signature` and verified by `payment_streams_module`.
+The Store eligibility `canonical_payload` is the concatenation
+of the domain `PREFIX` and Borsh(`CanonicalStoreRequest`) (see below).
+`StreamProof.signature` signs `canonical_payload_digest = SHA-256(canonical_payload)`;
+`payment_streams_module` recomputes that digest when verifying.
 They are produced by `liblogosdelivery` (Nim, Step 12)
 and consumed by `lez-payment-streams-ffi` (Rust, Step 4).
-Both sides must produce identical bytes for the same input.
-
-The format follows the NSSA precedent
-from `nssa/src/public_transaction/message.rs`:
-Borsh-serialize a struct,
-prepend a fixed 32-byte domain prefix,
-SHA-256 the concatenation to produce a 32-byte prehash.
+Both sides must produce identical `canonical_payload` for the same input.
 
 #### Domain prefix
 
@@ -494,13 +492,14 @@ Optional fields use a presence byte:
 `0x00` means absent (field bytes omitted),
 `0x01` means present (field bytes follow immediately).
 
-#### Prehash computation
+#### Canonical payload digest
 
 ```
-prehash = SHA-256(PREFIX || borsh(CanonicalStoreRequest))
+canonical_payload = PREFIX || borsh(CanonicalStoreRequest)
+canonical_payload_digest = SHA-256(canonical_payload)
 ```
 
-This 32-byte prehash is what `StreamProof.signature` signs.
+This 32-byte `canonical_payload_digest` is what `StreamProof.signature` signs.
 
 #### Cross-language test vector
 
@@ -746,14 +745,14 @@ Expose canonicalization for the bytes signed by `VaultProof.owner_signature`
 and the bytes signed by `StreamProof.signature` over a Store request payload.
 Expose sign and verify primitives keyed by 32-byte NSSA public-key bytes
 using NSSA Schnorr signatures.
-Expose domain-separated canonicalization and prehashing through `extern "C"` in `lez-payment-streams-ffi`,
+Expose domain-separated `canonical_payload` and `canonical_payload_digest` helpers through `extern "C"` in `lez-payment-streams-ffi`,
 but implement layouts and hashing in `lez-payment-streams-core` (unit-tested Rust, same layering as Step 3a/3b).
 Keep the workspace `borsh` crate line aligned with core so `CanonicalStoreRequest` matches N8 exactly across crates.
 
 The canonicalization format follows the NSSA precedent
 established in `nssa/src/public_transaction/message.rs`:
 Borsh-serialize a struct, prepend a fixed 32-byte domain prefix,
-SHA-256 the result to produce the 32-byte prehash that is signed.
+SHA-256 the result to produce the 32-byte `canonical_payload_digest` that is signed.
 See N8 for the full specification of this format
 and the canonical Store request bytes structure
 that is shared between the Rust FFI (this step) and Nim (Step 12).
@@ -782,6 +781,23 @@ of PDA and signer hex strings each instruction needs.
 The encoders take typed arguments and return raw bytes;
 the planner returns hex strings ready for the
 `send_public_transaction` JSON shape used by `logos-rln-module`.
+
+Implementor notes (Steps 3b–4 carryover):
+
+- Step 5 serializes on-chain `Instruction` Borsh from `lez-payment-streams-core`
+  (guest program types and PDAs). Do not route this through Step 4’s protobuf stack
+  or N8 Store canonicalization; those layers stay separate.
+- Keep encoders, decoders for tests, and account-list derivation in core; add only
+  thin `extern "C"` shims in `lez-payment-streams-ffi` (same layering as `policy_abi`
+  / `proof_abi`) and regenerate `lez_payment_streams_ffi.h` with `cbindgen`.
+- Wide values use the existing `_lo` / `_hi` pattern and helpers (`balance_pair`, …);
+  do not introduce another wide-integer ABI convention for this step.
+- Treat encoding and planning mistakes (unsupported variant, bad sizes, impossible
+  account lists) like Step 3b input faults: map to `PaymentStreamsFfiStatus`
+  `Malformed` / null-pointer family — not `PolicyRejected` or `ProofInvalid`.
+- The harness builders in `lez-payment-streams-core/src/test_helpers.rs` are the
+  normative account ordering oracle; match them exactly rather than re-deriving
+  ordering from narrative spec text alone.
 
 Components required to run: none.
 
@@ -906,9 +922,9 @@ on `lez_wallet_module`,
 matching the JSON shape already produced by `logos-rln-module`
 (`program_id`, `accounts`, `instruction` hex, `signer_account`).
 The method delegates to the underlying `wallet_ffi` signing-and-submit path.
-Add `sign_public_payload(accountId, prehashHex) -> QString`
+Add `sign_public_payload(accountId, canonical_payload_digest_hex) -> QString`
 on the same branch,
-returning a 64-byte NSSA Schnorr signature for a 32-byte prehash
+returning a 64-byte NSSA Schnorr signature for a 32-byte `canonical_payload_digest`
 with the public account's signing key.
 No domain parameter; see N1 for rationale.
 
@@ -1252,11 +1268,12 @@ On the provider side,
 `liblogosdelivery` recomputes the same bytes
 from the decoded inbound request
 after extracting and clearing `eligibility_proof`.
-These bytes are the payload signed by `StreamProof.signature`
-and verified by `payment_streams_module`.
+These bytes are the Store eligibility `canonical_payload`;
+`StreamProof.signature` signs `canonical_payload_digest`,
+which `payment_streams_module` verifies.
 
 The struct layout, domain prefix, serialization rules,
-and prehash computation are defined in N8.
+and `canonical_payload` / `canonical_payload_digest` computation are defined in N8.
 The Nim serializer in this step must produce bytes
 identical to the Rust serializer in Step 4.
 

@@ -11,11 +11,9 @@ pp-program-tests = []
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 borsh = "1.5"
+nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["test-utils"] }
 nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["host"] }
 clock_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3" }
+sha2 = "0.10"
 spel-framework-macros = { git = "https://github.com/logos-co/spel.git", rev = "767826d2b32943c1e43c7c983c02225fb7a68075" }
 spel-framework-core = { git = "https://github.com/logos-co/spel.git", rev = "767826d2b32943c1e43c7c983c02225fb7a68075" }
-
-[dev-dependencies]
-nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["test-utils"] }
-sha2 = "0.10"

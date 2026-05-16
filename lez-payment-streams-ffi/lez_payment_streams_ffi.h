@@ -19,18 +19,25 @@ enum PaymentStreamsFfiPaymentStreamsFfiStatus {
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_SUCCESS = 0,
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_NULL_POINTER = 1,
   /**
-   * Malformed/unusable inputs (truncated payloads, unexpected wire shape, invalid fixed sizes).
+   * Malformed or unusable inputs (truncated payloads, unexpected protobuf shape, invalid fixed
+   * sizes, invalid public key bytes, etc.).
    */
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_MALFORMED = 2,
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_BAD_VERSION = 3,
   /**
-   * Policy predicates rejected cleanly; inspect [`PaymentStreamsFfiPolicyRejectReason`] out-parameters.
+   * Step 3b policy predicates rejected; inspect [`PaymentStreamsFfiPolicyRejectReason`] out-parameters.
    */
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_POLICY_REJECTED = 4,
   /**
    * [`fold_stream`] could not evaluate (non-policy guest failure); inspect optional `guest_error_out`.
    */
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_STREAM_FOLD_FAILED = 5,
+  /**
+   * Step 4 off-chain proof failed (owner binding or Schnorr). There is no secondary out-reason enum;
+   * distinction between owner mismatch and bad signature is only available through core Rust APIs or
+   * by decomposing checks (verify digest vs verify full proposal).
+   */
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_PROOF_INVALID = 6,
 };
 typedef uint32_t PaymentStreamsFfiPaymentStreamsFfiStatus;
 
@@ -175,6 +182,68 @@ typedef struct PaymentStreamsFfiPaymentStreamsFfiAcceptedStreamTerms {
   uint8_t provider_id[32];
   struct PaymentStreamsFfiPaymentStreamsFfiStreamProviderPolicy policy_at_acceptance;
 } PaymentStreamsFfiPaymentStreamsFfiAcceptedStreamTerms;
+
+/**
+ * Decoded `VaultProof` fields (`owner_signature` included for verification helpers).
+ */
+typedef struct PaymentStreamsFfiPaymentStreamsFfiDecodedVaultProof {
+  uint64_t vault_id;
+  uint8_t provider_id[32];
+  uint8_t owner_public_key[32];
+  uint8_t owner_signature[64];
+} PaymentStreamsFfiPaymentStreamsFfiDecodedVaultProof;
+
+/**
+ * Decoded protobuf `StreamProposal` mirrored for C hosts.
+ */
+typedef struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamProposal {
+  struct PaymentStreamsFfiPaymentStreamsFfiDecodedVaultProof vault_proof;
+  struct PaymentStreamsFfiPaymentStreamsFfiStreamParams params;
+  uint8_t session_public_key[32];
+} PaymentStreamsFfiPaymentStreamsFfiDecodedStreamProposal;
+
+/**
+ * Decoded protobuf `StreamProof`.
+ */
+typedef struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamProof {
+  uint64_t stream_id;
+  uint8_t signature[64];
+} PaymentStreamsFfiPaymentStreamsFfiDecodedStreamProof;
+
+/**
+ * Borrowed byte range supplied by the host (interpreted as UTF-8 for string fields).
+ *
+ * Safety contract (matches [`borrow_input`]):
+ * - When `len > 0`, `ptr` must reference `len` contiguous readable bytes for the duration of the call.
+ * - When `len == 0`, `ptr` may be null or dangling (empty slice).
+ */
+typedef struct PaymentStreamsFfiPaymentStreamsFfiByteSpan {
+  const uint8_t *ptr;
+  uintptr_t len;
+} PaymentStreamsFfiPaymentStreamsFfiByteSpan;
+
+/**
+ * Store query inputs used to build the canonical eligibility payload (integration plan N8).
+ */
+typedef struct PaymentStreamsFfiPaymentStreamsFfiCanonicalStoreQuery {
+  struct PaymentStreamsFfiPaymentStreamsFfiByteSpan request_id;
+  uint8_t include_data;
+  uint8_t has_pubsub_topic;
+  struct PaymentStreamsFfiPaymentStreamsFfiByteSpan pubsub_topic;
+  const struct PaymentStreamsFfiPaymentStreamsFfiByteSpan *content_topics;
+  uint32_t content_topics_len;
+  uint8_t has_start_time;
+  int64_t start_time;
+  uint8_t has_end_time;
+  int64_t end_time;
+  const uint8_t *message_hashes;
+  uint32_t message_hashes_len;
+  uint8_t has_pagination_cursor;
+  uint8_t pagination_cursor[32];
+  uint8_t pagination_forward;
+  uint8_t has_pagination_limit;
+  uint64_t pagination_limit;
+} PaymentStreamsFfiPaymentStreamsFfiCanonicalStoreQuery;
 
 /**
  * Placeholder linkage smoke (may be removed once the FFI surface is fully wired).
@@ -382,5 +451,99 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_stream_satisfies_po
 PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_response_within_policy(uint64_t response_payload_byte_len,
                                                                                     const struct PaymentStreamsFfiPaymentStreamsFfiStreamProviderPolicy *ffi_policy_snapshot,
                                                                                     PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason *ffi_out_policy_reject);
+
+/**
+ * Deserialize a protobuf `StreamProposal` into the flattened FFI view (LEZ width limits enforced).
+ *
+ * # Safety
+ *
+ * `(data_ptr, data_len)` must be a readable range; `ffi_out_proposal` must be non-null.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_parse_stream_proposal_bytes(const uint8_t *data_ptr,
+                                                                                         uintptr_t data_len,
+                                                                                         struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamProposal *ffi_out_proposal);
+
+/**
+ * Serialize a `StreamProposal` protobuf frame from the flattened FFI view.
+ *
+ * When `out_ptr` is null this returns [`PaymentStreamsFfiStatus::Success`] after writing the required
+ * buffer size to `out_len` (sizing pass).
+ *
+ * # Safety
+ *
+ * `ffi_proposal` must be non-null. When `out_ptr` is non-null it must address `out_cap` writable bytes.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_stream_proposal_bytes(const struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamProposal *ffi_proposal,
+                                                                                             uint8_t *out_ptr,
+                                                                                             uintptr_t out_cap,
+                                                                                             uintptr_t *out_len);
+
+/**
+ * Deserialize a protobuf `StreamProof`.
+ *
+ * # Safety
+ *
+ * `(data_ptr, data_len)` must be readable; `ffi_out_proof` must be non-null.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_parse_stream_proof_bytes(const uint8_t *data_ptr,
+                                                                                      uintptr_t data_len,
+                                                                                      struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamProof *ffi_out_proof);
+
+/**
+ * Serialize a protobuf `StreamProof`.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_stream_proof_bytes(const struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamProof *ffi_proof,
+                                                                                          uint8_t *out_ptr,
+                                                                                          uintptr_t out_cap,
+                                                                                          uintptr_t *out_len);
+
+/**
+ * Write the 32-byte vault-owner canonical payload digest for a decoded proposal (`VaultProof.owner_signature` signs it).
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_vault_owner_auth_canonical_payload_digest_from_decoded_proposal(const struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamProposal *ffi_proposal,
+                                                                                                                             uint8_t *out_canonical_payload_digest);
+
+/**
+ * Verify `VaultProof.owner_signature` + derived owner binding against `VaultConfig.owner`.
+ *
+ * # Safety
+ *
+ * Inputs must follow [`borrow_input`] rules; `vault_owner_id` must address 32 readable bytes.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_verify_stream_proposal_vault_proof_bytes(const uint8_t *proposal_ptr,
+                                                                                                      uintptr_t proposal_len,
+                                                                                                      const uint8_t *vault_owner_id);
+
+/**
+ * Write the 32-byte Store eligibility `canonical_payload_digest` described in integration plan N8.
+ *
+ * # Safety
+ *
+ * `query` must be non-null and all nested spans must satisfy [`borrow_input`] rules.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_store_eligibility_canonical_payload_digest(const struct PaymentStreamsFfiPaymentStreamsFfiCanonicalStoreQuery *query,
+                                                                                                        uint8_t *out_canonical_payload_digest);
+
+/**
+ * Verify `StreamProof.signature` over the canonical Store query described by `query`.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_verify_stream_proof_for_store_query(const uint8_t *proof_ptr,
+                                                                                                 uintptr_t proof_len,
+                                                                                                 const uint8_t *session_public_key,
+                                                                                                 const struct PaymentStreamsFfiPaymentStreamsFfiCanonicalStoreQuery *query);
+
+/**
+ * Sign a 32-byte `canonical_payload_digest` with a 32-byte NSSA private key (Schnorr signature writes 64 bytes).
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_sign_canonical_payload_digest(const uint8_t *secret_key,
+                                                                                           const uint8_t *canonical_payload_digest,
+                                                                                           uint8_t *out_signature);
+
+/**
+ * Verify a 32-byte `canonical_payload_digest` against a 64-byte Schnorr signature and 32-byte public key.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_verify_canonical_payload_digest(const uint8_t *public_key,
+                                                                                             const uint8_t *canonical_payload_digest,
+                                                                                             const uint8_t *signature);
 
 #endif  /* LEZ_PAYMENT_STREAMS_FFI_H */

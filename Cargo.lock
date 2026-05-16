@@ -2920,6 +2920,7 @@ dependencies = [
  "cbindgen",
  "hex",
  "lez-payment-streams-core",
+ "nssa",
  "nssa_core",
 ]
 

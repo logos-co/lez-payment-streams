@@ -2,6 +2,7 @@
 
 mod decode;
 mod policy_abi;
+mod proof_abi;
 
 pub use lez_payment_streams_core::{
     derive_stream_config_account_id, derive_vault_account_ids, VaultConfig,
@@ -10,6 +11,7 @@ pub use lez_payment_streams_core::{
 pub use nssa_core::account::AccountId;
 pub use nssa_core::program::ProgramId;
 pub use policy_abi::*;
+pub use proof_abi::*;
 
 use core::slice;
 
@@ -27,13 +29,18 @@ use nssa_core::account::Balance;
 pub enum PaymentStreamsFfiStatus {
     Success = 0,
     NullPointer = 1,
-    /// Malformed/unusable inputs (truncated payloads, unexpected wire shape, invalid fixed sizes).
+    /// Malformed or unusable inputs (truncated payloads, unexpected protobuf shape, invalid fixed
+    /// sizes, invalid public key bytes, etc.).
     Malformed = 2,
     BadVersion = 3,
-    /// Policy predicates rejected cleanly; inspect [`PaymentStreamsFfiPolicyRejectReason`] out-parameters.
+    /// Step 3b policy predicates rejected; inspect [`PaymentStreamsFfiPolicyRejectReason`] out-parameters.
     PolicyRejected = 4,
     /// [`fold_stream`] could not evaluate (non-policy guest failure); inspect optional `guest_error_out`.
     StreamFoldFailed = 5,
+    /// Step 4 off-chain proof failed (owner binding or Schnorr). There is no secondary out-reason enum;
+    /// distinction between owner mismatch and bad signature is only available through core Rust APIs or
+    /// by decomposing checks (verify digest vs verify full proposal).
+    ProofInvalid = 6,
 }
 
 #[repr(u32)]
@@ -124,6 +131,68 @@ pub struct PaymentStreamsFfiStreamParams {
     pub service_id_len: u32,
     pub _padding: u32,
     pub service_id_bytes: [u8; 128],
+}
+
+/// Borrowed byte range supplied by the host (interpreted as UTF-8 for string fields).
+///
+/// Safety contract (matches [`borrow_input`]):
+/// - When `len > 0`, `ptr` must reference `len` contiguous readable bytes for the duration of the call.
+/// - When `len == 0`, `ptr` may be null or dangling (empty slice).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct PaymentStreamsFfiByteSpan {
+    pub ptr: *const u8,
+    pub len: usize,
+}
+
+/// Decoded `VaultProof` fields (`owner_signature` included for verification helpers).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct PaymentStreamsFfiDecodedVaultProof {
+    pub vault_id: u64,
+    pub provider_id: [u8; 32],
+    pub owner_public_key: [u8; 32],
+    pub owner_signature: [u8; 64],
+}
+
+/// Decoded protobuf `StreamProposal` mirrored for C hosts.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct PaymentStreamsFfiDecodedStreamProposal {
+    pub vault_proof: PaymentStreamsFfiDecodedVaultProof,
+    pub params: PaymentStreamsFfiStreamParams,
+    pub session_public_key: [u8; 32],
+}
+
+/// Decoded protobuf `StreamProof`.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct PaymentStreamsFfiDecodedStreamProof {
+    pub stream_id: u64,
+    pub signature: [u8; 64],
+}
+
+/// Store query inputs used to build the canonical eligibility payload (integration plan N8).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct PaymentStreamsFfiCanonicalStoreQuery {
+    pub request_id: PaymentStreamsFfiByteSpan,
+    pub include_data: u8,
+    pub has_pubsub_topic: u8,
+    pub pubsub_topic: PaymentStreamsFfiByteSpan,
+    pub content_topics: *const PaymentStreamsFfiByteSpan,
+    pub content_topics_len: u32,
+    pub has_start_time: u8,
+    pub start_time: i64,
+    pub has_end_time: u8,
+    pub end_time: i64,
+    pub message_hashes: *const u8,
+    pub message_hashes_len: u32,
+    pub has_pagination_cursor: u8,
+    pub pagination_cursor: [u8; 32],
+    pub pagination_forward: u8,
+    pub has_pagination_limit: u8,
+    pub pagination_limit: u64,
 }
 
 #[repr(C)]

@@ -1641,8 +1641,10 @@ version = "0.1.0"
 dependencies = [
  "borsh",
  "clock_core",
+ "nssa",
  "nssa_core",
  "serde",
+ "sha2",
  "spel-framework-core",
  "spel-framework-macros",
 ]
@@ -1773,6 +1775,28 @@ name = "no_std_strings"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a5b0c77c1b780822bc749a33e39aeb2c07584ab93332303babeabb645298a76e"
+
+[[package]]
+name = "nssa"
+version = "0.1.0"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc3#cf3639d8252040d13b3d4e933feb19b42c76e14a"
+dependencies = [
+ "anyhow",
+ "borsh",
+ "clock_core",
+ "hex",
+ "k256",
+ "log",
+ "nssa_core",
+ "rand 0.8.5",
+ "risc0-binfmt",
+ "risc0-build",
+ "risc0-zkvm",
+ "serde",
+ "serde_with",
+ "sha2",
+ "thiserror 2.0.18",
+]
 
 [[package]]
 name = "nssa_core"
@@ -2138,6 +2162,7 @@ version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
 dependencies = [
+ "libc",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
 ]

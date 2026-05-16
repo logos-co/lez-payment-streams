@@ -1,0 +1,29 @@
+//! LIP‑155 off-chain wire helpers (protobuf framing + canonical payloads / digests + Schnorr).
+
+mod canonical;
+mod constants;
+mod proofs;
+mod protobuf;
+mod wire_error;
+
+pub use canonical::{
+    store_eligibility_canonical_payload, store_eligibility_canonical_payload_digest,
+    vault_owner_auth_canonical_payload, vault_owner_auth_canonical_payload_digest,
+    CanonicalStoreQueryParts, VaultOwnerAuthCanonicalError,
+};
+pub use constants::{
+    LEZ_ACCOUNT_RAW_LEN, LEZ_SCHNORR_SIGNATURE_LEN, LEZ_STREAM_ID_WIRE_LEN, LEZ_VAULT_ID_WIRE_LEN,
+    STORE_ELIGIBILITY_DOMAIN_PREFIX, VAULT_OWNER_AUTH_DOMAIN_PREFIX,
+};
+pub use proofs::{
+    owner_public_key_matches_vault_owner, sign_canonical_payload_digest,
+    sign_stream_proof_for_store_query, sign_stream_proposal_vault_proof,
+    verify_canonical_payload_digest, verify_stream_proof_for_store_query,
+    verify_stream_proposal_vault_proof, verify_stream_proposal_vault_signature,
+};
+pub use protobuf::{
+    parse_stream_params, parse_stream_proof, parse_stream_proposal, parse_vault_proof,
+    serialize_stream_params, serialize_stream_proof, serialize_stream_proposal, StreamProofWire,
+    StreamProposalWire, VaultProofWire,
+};
+pub use wire_error::{OffChainError, WireError};

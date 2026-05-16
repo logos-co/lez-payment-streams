@@ -20,7 +20,7 @@ use crate::{
 
 /// Recombine a NSSA [`Balance`] (`u128`) from its little-endian `lo` / `hi` `u64` halves.
 #[must_use]
-fn balance_from_lo_hi(lo: u64, hi: u64) -> Balance {
+pub(crate) fn balance_from_lo_hi(lo: u64, hi: u64) -> Balance {
     Balance::from(lo) | (Balance::from(hi) << 64)
 }
 
@@ -75,7 +75,7 @@ fn stream_provider_policy_from_ffi(
 }
 
 #[must_use]
-fn stream_params_from_ffi(
+pub(crate) fn stream_params_from_ffi(
     params: &PaymentStreamsFfiStreamParams,
 ) -> Result<StreamParams, PaymentStreamsFfiStatus> {
     let sid_len_usize = params.service_id_len as usize;
