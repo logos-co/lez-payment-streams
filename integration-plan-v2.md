@@ -83,15 +83,15 @@ see `logos-architecture-overview.md` in this directory.
 
 `lez-payment-streams`
 is the existing on-chain SPEL program plus the `lez-payment-streams-core` package
-(importable in Rust under `lez_payment_streams_core`).
-This work extends `lez-payment-streams-core` with stream folding helpers,
-`StreamProviderPolicy`, and pure policy predicates (Step 3a),
-then adds a sibling `lez-payment-streams-ffi` crate
-that exposes PDA derivation,
-account decoders,
-stream folding and policy across the C ABI (Step 3b),
-off-chain proof construction and verification,
-and Borsh instruction builders through `extern "C"`.
+(importable in Rust under `lez_payment_streams_core`),
+with a sibling `lez-payment-streams-ffi` crate listed in the workspace `Cargo.toml`.
+Core already ships Step 3a pieces (`fold_stream`, policy predicates, `StreamProviderPolicy`,
+`StreamParams` with `rate` / `allocation` matching on-chain `StreamConfig`, and `PolicyRejectReason`).
+The remaining Rust work extends `lez-payment-streams-ffi`:
+PDA derivation and account decoders (Step 2),
+exposing folding and policy across the C ABI (Step 3b),
+then off-chain proof construction and verification,
+and Borsh instruction builders through `extern "C"` (Steps 4–5).
 The shape mirrors `lez-rln-ffi` in `logos-lez-rln`.
 
 `payment_streams_module`
@@ -260,6 +260,9 @@ skipping the database query.
 The detailed eligibility verdict
 (`OK`, `PARAMS_REJECTED`, `PROOF_INVALID`, `STREAM_NOT_ACTIVE`)
 lives only inside the `eligibility_status` object at tag `30`.
+Those four codes are the Store-visible vocabulary; multiple distinct
+`PolicyRejectReason` / FFI discriminant failures may map into `PARAMS_REJECTED`
+on the wire (see Step 3a mapping table).
 Store never interprets these values;
 the payment-streams module on each side
 reads and acts on the structured `eligibility_status` payload.
@@ -522,19 +525,18 @@ so policy and fold logic ship with tests before the C ABI wraps it.
 Architectural context:
 Steps 1 through 5 build the Rust artifacts for `payment_streams_module`:
 `lez-payment-streams-ffi` (Steps 1–2 and 3b–5)
-and `lez-payment-streams-core` extensions for folding and policy (Step 3a),
-which Step 3b exposes across the C ABI.
+and `lez-payment-streams-core` (Step 3a is implemented in core before Step 3b wraps it).
 No Qt plugin shell, no Logos host, no chain are involved yet —
 this is pure Rust crate work that will later be linked into the module.
 
-Create `lez-payment-streams-ffi` as a sibling crate to `lez-payment-streams-core`,
-mirroring the `lez-rln-ffi` shape
+The repo already has `lez-payment-streams-ffi` as a sibling crate to `lez-payment-streams-core`
+and both are workspace members in the root `Cargo.toml`.
+Bootstrap or extend that crate to mirror the `lez-rln-ffi` shape
 (`crate-type = ["rlib", "cdylib", "staticlib"]`,
 `cbindgen` build script,
 generated `lez_payment_streams_ffi.h`).
-Add the new crate to the `workspace.members` array in the root `Cargo.toml`.
-Start with a stub function and an error enum
-so the build pipeline is wired before functionality lands.
+Keep a stub function and an error enum in place if the pipeline is still being wired;
+replace stubs as later steps land.
 
 Components required to run: none.
 Cargo plus a working Rust toolchain.
@@ -577,34 +579,39 @@ See also `docs/step3-stream-provider-policy.md` and
 
 #### Fold
 
-Add or reuse stream-state folding driven by `StreamConfig::at_time`,
-surfacing effective state, accrued amount, and remaining allocation
-(unaccrued) for a given sequencer time.
+`fold_stream` applies `StreamConfig::at_time` for a caller-supplied `as_of` timestamp
+and returns `StreamFoldedAtTime`: folded config, `accrued`, `unaccrued`, and `as_of`.
+`unaccrued` is remaining principal not yet accrued at that time (not vault unallocated balance).
 
 #### StreamProviderPolicy
 
-Rust struct mirroring LIP-155:
+Rust struct mirroring LIP-155 (`lez_payment_streams_core::StreamProviderPolicy`):
 
-- `min_stream_rate`, `min_stream_allocation`
+- `min_rate`, `min_allocation`
 - `max_create_stream_deadline_delay`
 - `vault_proof_max_response_bytes`
 
-Proposal-phase solvency: read on-chain unallocated for `vault_id` and
-require `unallocated ≥ stream_allocation`.
+Proposal-phase solvency in core does not read accounts by itself: callers build
+`ProposalCheckInputs` (see `lez-payment-streams-core/src/stream_provider_policy.rs`) with
+`vault_holding_balance` and `vault_total_allocated` from decoded accounts
+(`VaultHolding` balance and `VaultConfig::total_allocated`, or equivalent RPC snapshots).
+Core computes `unallocated_balance(holding, total_allocated)` (saturating subtract) and requires
+`params.allocation <= unallocated`, equivalent to the LIP-155 unallocated check.
+`StreamParams::allocation` uses the same name and scale as on-chain `StreamConfig::allocation`
+after `create_stream`.
 `VaultProof` wire fields per LIP-155 [LEZ off-chain integration](rfc-index/docs/ift-ts/raw/payment-streams.md#lez-off-chain-integration).
 
 #### Policy predicates
 
-Implement pure functions in `lez-payment-streams-core` using the same
-names as LIP-155.
+These pure functions live in `lez_payment_streams_core::policy` (same public names as LIP-155).
 Each returns `Result<(), PolicyRejectReason>` (Rust enum; map to FFI in 3b).
 Document test vectors for each:
 
 | Function | Phase | Inputs (summary) |
 | --- | --- | --- |
-| `proposal_satisfies_policy` | Proposal | Policy mins; `create_stream_deadline` vs `now` and `max_create_stream_deadline_delay` (LEZ: clock account timestamp); `vault_holding_balance` and `vault_config.total_allocated` or `unallocated ≥ stream_allocation` |
-| `new_stream_satisfies_proposal` | Service (first `StreamProof` per service session) | Folded `StreamConfig` at `now`; stored `allocation` and `rate` ≥ accepted `StreamParams`; `StreamConfig.provider` vs `VaultProof.provider_id` (LEZ: 32-byte equality). Later proofs need not run it (MAY re-run). |
-| `stream_satisfies_policy` | Service (every `StreamProof`) | Folded stream `ACTIVE`; rate ≥ `min_stream_rate`; provider binding; policy vs session commitment; `now` |
+| `proposal_satisfies_policy` | Proposal | `ProposalCheckInputs` (`stream_provider_policy.rs`): minima on `params.rate` / `params.allocation`; deadline band via `create_stream_deadline_satisfies_policy_as_of` using `now` (LEZ: clock-account timestamp); solvency `params.allocation <= unallocated_balance(vault_holding_balance, vault_total_allocated)` |
+| `new_stream_satisfies_proposal` | Service (first `StreamProof` per service session) | Folded `StreamConfig` at verification time; on-chain `allocation` and `rate` ≥ accepted `StreamParams`; `StreamConfig.provider` vs `VaultProof.provider_id` (LEZ: 32-byte equality). Later proofs need not run it (MAY re-run). |
+| `stream_satisfies_policy` | Service (every `StreamProof`) | Folded `StreamConfig` already evaluated at the verifier's clock; state `ACTIVE`; provider binding; `folded_stream.rate` ≥ `accepted_terms.policy_at_acceptance.min_rate` and ≥ `accepted_terms.params.rate`. Does not re-check `allocation` on every proof — use `new_stream_satisfies_proposal` on the first proof for the allocation cap. |
 | `response_within_policy` | Provider outbound | `response_len ≤ vault_proof_max_response_bytes` (MVP: enforce on first vault-proof `OK`; reject or trim) |
 
 The provider learns `stream_id` from the first `StreamProof`.
@@ -632,8 +639,8 @@ discriminants, not the Rust enum’s memory layout treated as `repr(C)`.
 
 | PolicyRejectReason (examples) | Eligibility status |
 | --- | --- |
-| Rate / allocation below policy or proposal | `PARAMS_REJECTED` |
-| Deadline / unallocated | `PARAMS_REJECTED` |
+| Rate / allocation below policy or accepted proposal; deadline / unallocated | `PARAMS_REJECTED` |
+| `ProviderMismatch`; `ResponseTooLarge` | `PARAMS_REJECTED` (same D1 bucket; finer split is optional) |
 | Signature / wire format | `PROOF_INVALID` (Step 4) |
 | Stream not `ACTIVE` | `STREAM_NOT_ACTIVE` |
 
@@ -645,7 +652,7 @@ discriminants, not the Rust enum’s memory layout treated as `repr(C)`.
 
 #### Implementor clarifications
 
-- Units: `stream_rate` and `stream_allocation` in proposals use the same
+- Units: `rate` and `allocation` in `StreamParams` use the same
   integer scales as on-chain `TokensPerSecond` and `Balance` (native token).
 
 - Response cap: demo default 65536; LIP-155 SHOULD, demo provider MUST
@@ -659,6 +666,7 @@ Components required to run: none.
 `cargo test` on `lez-payment-streams-core` only.
 
 Definition of done:
+`cargo test -p lez-payment-streams-core` passes;
 folding outputs match `StreamConfig::at_time` on a documented vector set;
 each predicate (including `response_within_policy`) is deterministic with
 documented pass/fail inputs;
@@ -687,6 +695,22 @@ Implementor notes (Step 3a as-shipped in `lez-payment-streams-core`):
   core does not reject overlong `Vec<u8>` — enforce length in the module
   before signing (Step 4 owns wire validation).
 - `AcceptedStreamTerms.provider_id` is `AccountId` in Rust (32-byte id).
+
+- Policy verdicts vs FFI status: keep decode/null-pointer/version problems in
+  `PaymentStreamsFfiStatus`. Surface `PolicyRejectReason` as its own stable `u32`
+  discriminant on the failure path (or an out-parameter / small `repr(C)` result
+  struct). Do not encode `RateBelowPolicyMin`, `UnallocatedInsufficient`, etc. as
+  extra `PaymentStreamsFfiStatus` variants, or call sites lose the distinction
+  between malformed inputs and an honest policy rejection.
+
+- `repr(C)` mirrors of `StreamProviderPolicy` and `StreamParams` should match
+  core field names and scales (`min_rate`, `min_allocation`, `rate`, `allocation`,
+  `create_stream_deadline`, …) so generated headers stay searchable next to Rust.
+
+- `ProposalCheckInputs` carries `vault_holding_balance` and `vault_total_allocated`
+  as LEZ `Balance` (`u128`). Split them with the same `_lo` / `_hi` convention as
+  `total_allocated` in `PaymentStreamsFfiDecodedVaultConfig`, not a different
+  wide-integer representation.
 
 Expose `extern "C"` entry points for stream folding and policy verdicts,
 using stable `repr(C)` structs and enums alongside the existing
@@ -1098,9 +1122,10 @@ and never surface as Store status codes.
   proof is valid, chain state confirms eligibility, request is served.
 - `PARAMS_REJECTED`:
   stream parameters do not match `StreamProviderPolicy`
-  (rate below `min_stream_rate`, allocation below `min_stream_allocation`,
+  (rate below `min_rate`, allocation below `min_allocation`,
   `create_stream_deadline` outside `max_create_stream_deadline_delay`),
-  or vault unallocated balance is below proposed `stream_allocation`,
+  or vault unallocated balance is below the proposed `allocation`
+  (`StreamParams`, same semantics as on-chain `StreamConfig::allocation` after `create_stream`),
   or the proposal's `create_stream_deadline` has already passed.
   The `VaultProof` is not marked as spent;
   the user may retry with adjusted parameters.

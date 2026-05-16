@@ -33,7 +33,7 @@ Avoid coupling predicates to Step 4 wire types.
 | Struct | Role |
 | --- | --- |
 | `StreamProviderPolicy` | Advertised / pinned policy fields |
-| `StreamParams` | Proposed or accepted stream terms (`stream_rate`, `stream_allocation`, `create_stream_deadline`, `service_id` bytes) |
+| `StreamParams` | Proposed or accepted stream terms (`rate`, `allocation`, `create_stream_deadline`, `service_id` bytes); field names match on-chain [`StreamConfig`] |
 | `ProposalCheckInputs` | `params`, `policy`, `vault_holding_balance`, `vault_total_allocated`, `now` |
 | `AcceptedStreamTerms` | `params`, `provider_id` (`AccountId`), `policy_at_acceptance` |
 | (API shape) | First proof vs stream: `new_stream_satisfies_proposal(folded_stream, proposal_params, proposal_provider_id)` |
@@ -68,21 +68,21 @@ Signature and malformed wire → `PROOF_INVALID` in Step 4, not these variants.
 - Require `t < create_stream_deadline` and
   `create_stream_deadline <= t + max_create_stream_deadline_delay`.
 - Solvency: `vault_holding_balance.saturating_sub(vault_total_allocated)
-  >= stream_allocation` (or equivalent explicit `unallocated` input).
+  >= allocation` for the proposed `StreamParams` (or equivalent explicit `unallocated` input).
 
 ### `new_stream_satisfies_proposal`
 
 - Run on folded `StreamConfig` at verification `now`.
 - Compare **stored `allocation` field** and `rate` to accepted `StreamParams`
   (>= semantics).
-- Do **not** compare unaccrued to `stream_allocation`.
+- Do **not** compare unaccrued to `StreamParams::allocation`.
   Accrual lowers unaccrued without reducing `allocation` until a claim.
 - LEZ: `StreamConfig.provider` octets equal `provider_id` from acceptance.
 
 ### `stream_satisfies_policy`
 
 - Input folded stream must be `ACTIVE`.
-- On-chain `rate` >= `policy_at_acceptance.min_stream_rate` (and >= accepted
+- On-chain `rate` >= `policy_at_acceptance.min_rate` (and >= accepted
   params if you also enforce proposal floors on every request).
 - Provider binding: same 32-byte payee check as establishment.
 - Use **policy pinned at acceptance**, not the provider's latest

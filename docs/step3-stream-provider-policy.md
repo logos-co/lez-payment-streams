@@ -24,11 +24,11 @@ Service session and pending proposals: LIP-155 Assumptions and Protocol Flow.
 
 | Field | Used by |
 | --- | --- |
-| `min_stream_rate`, `min_stream_allocation` | `proposal_satisfies_policy`, `stream_satisfies_policy` |
+| `min_rate`, `min_allocation` | `proposal_satisfies_policy`, `stream_satisfies_policy` |
 | `max_create_stream_deadline_delay` | `proposal_satisfies_policy` (with `create_stream_deadline`) |
 | `vault_proof_max_response_bytes` | `response_within_policy` (provider outbound only) |
 
-Proposal solvency: `vault_holding_balance - total_allocated ≥ stream_allocation`
+Proposal solvency: `vault_holding_balance - total_allocated ≥` proposed `allocation` (`StreamParams`, same semantics as on-chain stream `allocation` after `create_stream`)
 (read vault after resolving `vault_id` + owner).
 
 ## Core functions (Step 3a)
