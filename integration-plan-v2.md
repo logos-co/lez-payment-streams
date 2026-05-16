@@ -857,6 +857,26 @@ and `include` listing all platform variants of the FFI shared library:
 and `src/payment_streams_module_plugin.{h,cpp}` plus `src/i_payment_streams_module.h`.
 The plugin implements `PluginInterface` and exposes only `initLogos` and `name` for now.
 
+Implementor hints (FFI from Step 5, no extra Qt surface yet):
+
+- Link the same `liblez_payment_streams_ffi` artifact the metadata `include` list names, and
+  vendor [`lez_payment_streams_ffi.h`](lez-payment-streams-ffi/lez_payment_streams_ffi.h) the same
+  way `logos-rln-module` pulls in `rln_ffi`/headers from its external lib (CMake + flake inputs).
+  Step 6 is load/plumbing only; you do not need to call the instruction entrypoints from C++ until
+  chain writes land.
+- On-chain instruction bytes and account-list planning live in
+  [`lez-payment-streams-ffi/src/instruction_abi.rs`](lez-payment-streams-ffi/src/instruction_abi.rs).
+  The file-level doc is the contract for two-phase output sizing and for the fixed 64-byte
+  lowercase hex stride per account (`send_public_transaction` / RLN-style JSON later). Skim it before
+  wrapping these functions so buffer sizing does not become guesswork.
+- Instruction payloads for public txs follow NSSA/Risc0 serialization then LE byte expansion
+  ([`lez-payment-streams-core/src/instruction_wire.rs`](lez-payment-streams-core/src/instruction_wire.rs)),
+  not the Step 4 protobuf/N8 path; keep those includes and call sites separate when the module starts
+  composing bytes.
+- For deposit, the FFI exposes
+  `payment_streams_ffi_authenticated_transfer_program_id_bytes` so callers can fill the standard
+  authenticated-transfer program id wire form without re-deriving it in C++.
+
 Components required to run:
 `logoscore` daemon as the host
 (new prerequisite — first step that needs a running Logos host).

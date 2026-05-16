@@ -9,6 +9,15 @@
 
 
 /**
+ * Byte length of one account entry in `plan_*_instruction_accounts` output.
+ *
+ * Each account is encoded as **64** lowercase ASCII hex nibbles for the **32** raw id bytes
+ * (`[0-9a-f]`, no `0x`, no separators), suitable for `send_public_transaction` JSON `accounts`
+ * entries alongside `logos-rln-module`.
+ */
+#define PaymentStreamsFfiPAYMENT_STREAMS_FFI_ACCOUNT_ID_HEX_LEN 64
+
+/**
  * Outcome codes returned from `payment_streams_*` FFI functions (`Success` plus failures; stable
  * `repr(u32)` enumerators in `lez_payment_streams_ffi.h` from cbindgen).
  *
@@ -362,6 +371,293 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_derive_stream_confi
                                                                                              const uint8_t *vault_config_account_id_bytes,
                                                                                              uint64_t stream_id,
                                                                                              uint8_t *out_stream_config_account_id_bytes);
+
+/**
+ * Writes the system authenticated-transfer [`ProgramId`] as **32** little-endian bytes (NSSA wire
+ * layout: eight `u32` words), suitable for [`payment_streams_ffi_serialize_deposit_instruction`]'s
+ * `authenticated_transfer_program_id_bytes` argument.
+ *
+ * Equivalent to reading `nssa::program::Program::authenticated_transfer_program().id()` on the Rust
+ * side and flattening with `u32::to_le_bytes` in program-id order.
+ *
+ * # Safety
+ *
+ * `out_bytes` must be non-null and address **32** writable bytes.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_authenticated_transfer_program_id_bytes(uint8_t *out_bytes);
+
+/**
+ * Serializes an `initialize_vault` instruction for wallet JSON `instruction` (LE instruction bytes).
+ *
+ * `privacy_tier`: `0` = [`VaultPrivacyTier::Public`], `1` = [`VaultPrivacyTier::PseudonymousFunder`].
+ * Any other value yields [`PaymentStreamsFfiStatus::Malformed`].
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts (`out_ptr`, `out_cap`, `out_len`, two-phase sizing).
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_initialize_vault_instruction(uint64_t vault_id,
+                                                                                                    uint8_t privacy_tier,
+                                                                                                    uint8_t *out_ptr,
+                                                                                                    uintptr_t out_cap,
+                                                                                                    uintptr_t *out_len);
+
+/**
+ * Plans ordered account ids for `initialize_vault` (hex layout per module docs).
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts (`program_id_bytes`, `owner_account_id_bytes`, account hex output).
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_initialize_vault_instruction_accounts(const uint8_t *program_id_bytes,
+                                                                                                        const uint8_t *owner_account_id_bytes,
+                                                                                                        uint64_t vault_id,
+                                                                                                        uint8_t *accounts_hex_out,
+                                                                                                        uintptr_t accounts_hex_out_cap,
+                                                                                                        uintptr_t *accounts_hex_out_len);
+
+/**
+ * Serializes a `deposit` instruction. `amount_lo` / `amount_hi` form LEZ `Balance` (`u128`).
+ *
+ * `authenticated_transfer_program_id_bytes`: NSSA wire `ProgramId` (**32** bytes). Hosts may fill this
+ * with [`payment_streams_ffi_authenticated_transfer_program_id_bytes`] for standard deposits.
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts (`authenticated_transfer_program_id_bytes`, `out_ptr`, `out_len`, two-phase sizing).
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_deposit_instruction(uint64_t vault_id,
+                                                                                           uint64_t amount_lo,
+                                                                                           uint64_t amount_hi,
+                                                                                           const uint8_t *authenticated_transfer_program_id_bytes,
+                                                                                           uint8_t *out_ptr,
+                                                                                           uintptr_t out_cap,
+                                                                                           uintptr_t *out_len);
+
+/**
+ * Plans ordered account ids for `deposit`.
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_deposit_instruction_accounts(const uint8_t *program_id_bytes,
+                                                                                               const uint8_t *owner_account_id_bytes,
+                                                                                               uint64_t vault_id,
+                                                                                               uint8_t *accounts_hex_out,
+                                                                                               uintptr_t accounts_hex_out_cap,
+                                                                                               uintptr_t *accounts_hex_out_len);
+
+/**
+ * Serializes a `withdraw` instruction (`amount_lo` / `amount_hi` → `Balance`).
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_withdraw_instruction(uint64_t vault_id,
+                                                                                            uint64_t amount_lo,
+                                                                                            uint64_t amount_hi,
+                                                                                            uint8_t *out_ptr,
+                                                                                            uintptr_t out_cap,
+                                                                                            uintptr_t *out_len);
+
+/**
+ * Plans ordered account ids for `withdraw` (includes `withdraw_to_account_id_bytes`).
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_withdraw_instruction_accounts(const uint8_t *program_id_bytes,
+                                                                                                const uint8_t *owner_account_id_bytes,
+                                                                                                uint64_t vault_id,
+                                                                                                const uint8_t *withdraw_to_account_id_bytes,
+                                                                                                uint8_t *accounts_hex_out,
+                                                                                                uintptr_t accounts_hex_out_cap,
+                                                                                                uintptr_t *accounts_hex_out_len);
+
+/**
+ * Serializes `create_stream` (`allocation_lo` / `allocation_hi` → `Balance`).
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts (`provider_account_id_bytes`, output buffers).
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_create_stream_instruction(uint64_t vault_id,
+                                                                                                 uint64_t stream_id,
+                                                                                                 const uint8_t *provider_account_id_bytes,
+                                                                                                 uint64_t rate,
+                                                                                                 uint64_t allocation_lo,
+                                                                                                 uint64_t allocation_hi,
+                                                                                                 uint8_t *out_ptr,
+                                                                                                 uintptr_t out_cap,
+                                                                                                 uintptr_t *out_len);
+
+/**
+ * Plans ordered account ids for `create_stream` (vault owner stream layout + clock).
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_create_stream_instruction_accounts(const uint8_t *program_id_bytes,
+                                                                                                     const uint8_t *owner_account_id_bytes,
+                                                                                                     uint64_t vault_id,
+                                                                                                     uint64_t stream_id,
+                                                                                                     const uint8_t *clock_account_id_bytes,
+                                                                                                     uint8_t *accounts_hex_out,
+                                                                                                     uintptr_t accounts_hex_out_cap,
+                                                                                                     uintptr_t *accounts_hex_out_len);
+
+/**
+ * Serializes `pause_stream`.
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_pause_stream_instruction(uint64_t vault_id,
+                                                                                                uint64_t stream_id,
+                                                                                                uint8_t *out_ptr,
+                                                                                                uintptr_t out_cap,
+                                                                                                uintptr_t *out_len);
+
+/**
+ * Plans ordered account ids for `pause_stream`.
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_pause_stream_instruction_accounts(const uint8_t *program_id_bytes,
+                                                                                                    const uint8_t *owner_account_id_bytes,
+                                                                                                    uint64_t vault_id,
+                                                                                                    uint64_t stream_id,
+                                                                                                    const uint8_t *clock_account_id_bytes,
+                                                                                                    uint8_t *accounts_hex_out,
+                                                                                                    uintptr_t accounts_hex_out_cap,
+                                                                                                    uintptr_t *accounts_hex_out_len);
+
+/**
+ * Serializes `resume_stream`.
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_resume_stream_instruction(uint64_t vault_id,
+                                                                                                 uint64_t stream_id,
+                                                                                                 uint8_t *out_ptr,
+                                                                                                 uintptr_t out_cap,
+                                                                                                 uintptr_t *out_len);
+
+/**
+ * Plans ordered account ids for `resume_stream`.
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_resume_stream_instruction_accounts(const uint8_t *program_id_bytes,
+                                                                                                     const uint8_t *owner_account_id_bytes,
+                                                                                                     uint64_t vault_id,
+                                                                                                     uint64_t stream_id,
+                                                                                                     const uint8_t *clock_account_id_bytes,
+                                                                                                     uint8_t *accounts_hex_out,
+                                                                                                     uintptr_t accounts_hex_out_cap,
+                                                                                                     uintptr_t *accounts_hex_out_len);
+
+/**
+ * Serializes `top_up_stream` (`vault_total_allocated_increase_*` → `Balance`).
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_top_up_stream_instruction(uint64_t vault_id,
+                                                                                                 uint64_t stream_id,
+                                                                                                 uint64_t vault_total_allocated_increase_lo,
+                                                                                                 uint64_t vault_total_allocated_increase_hi,
+                                                                                                 uint8_t *out_ptr,
+                                                                                                 uintptr_t out_cap,
+                                                                                                 uintptr_t *out_len);
+
+/**
+ * Plans ordered account ids for `top_up_stream`.
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_top_up_stream_instruction_accounts(const uint8_t *program_id_bytes,
+                                                                                                     const uint8_t *owner_account_id_bytes,
+                                                                                                     uint64_t vault_id,
+                                                                                                     uint64_t stream_id,
+                                                                                                     const uint8_t *clock_account_id_bytes,
+                                                                                                     uint8_t *accounts_hex_out,
+                                                                                                     uintptr_t accounts_hex_out_cap,
+                                                                                                     uintptr_t *accounts_hex_out_len);
+
+/**
+ * Serializes `close_stream`.
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_close_stream_instruction(uint64_t vault_id,
+                                                                                                uint64_t stream_id,
+                                                                                                uint8_t *out_ptr,
+                                                                                                uintptr_t out_cap,
+                                                                                                uintptr_t *out_len);
+
+/**
+ * Plans ordered account ids for `close_stream` (`authority_account_id_bytes` signs).
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_close_stream_instruction_accounts(const uint8_t *program_id_bytes,
+                                                                                                    const uint8_t *owner_account_id_bytes,
+                                                                                                    uint64_t vault_id,
+                                                                                                    uint64_t stream_id,
+                                                                                                    const uint8_t *authority_account_id_bytes,
+                                                                                                    const uint8_t *clock_account_id_bytes,
+                                                                                                    uint8_t *accounts_hex_out,
+                                                                                                    uintptr_t accounts_hex_out_cap,
+                                                                                                    uintptr_t *accounts_hex_out_len);
+
+/**
+ * Serializes `claim`.
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_claim_instruction(uint64_t vault_id,
+                                                                                         uint64_t stream_id,
+                                                                                         uint8_t *out_ptr,
+                                                                                         uintptr_t out_cap,
+                                                                                         uintptr_t *out_len);
+
+/**
+ * Plans ordered account ids for `claim` (`provider_account_id_bytes` signs).
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_claim_instruction_accounts(const uint8_t *program_id_bytes,
+                                                                                             const uint8_t *owner_account_id_bytes,
+                                                                                             uint64_t vault_id,
+                                                                                             uint64_t stream_id,
+                                                                                             const uint8_t *provider_account_id_bytes,
+                                                                                             const uint8_t *clock_account_id_bytes,
+                                                                                             uint8_t *accounts_hex_out,
+                                                                                             uintptr_t accounts_hex_out_cap,
+                                                                                             uintptr_t *accounts_hex_out_len);
 
 /**
  * Fold lazy accrual from decoded `StreamConfig` data carried as [`PaymentStreamsFfiDecodedStreamConfig`]

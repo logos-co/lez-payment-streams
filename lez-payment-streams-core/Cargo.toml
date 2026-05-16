@@ -11,6 +11,7 @@ pp-program-tests = []
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 borsh = "1.5"
+risc0-zkvm = { version = "=3.0.5", features = ["std"] }
 nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["test-utils"] }
 nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["host"] }
 clock_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3" }

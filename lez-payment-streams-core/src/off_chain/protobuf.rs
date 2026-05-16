@@ -8,7 +8,7 @@
 use nssa_core::account::Balance;
 
 use crate::stream_provider_policy::{StreamParams, MAX_SERVICE_ID_LEN};
-use crate::{TokensPerSecond, Timestamp};
+use crate::{Timestamp, TokensPerSecond};
 
 use super::constants::{
     LEZ_ACCOUNT_RAW_LEN, LEZ_SCHNORR_SIGNATURE_LEN, LEZ_STREAM_ID_WIRE_LEN, LEZ_VAULT_ID_WIRE_LEN,
@@ -79,11 +79,7 @@ fn read_byte(cursor: &mut usize, bytes: &[u8]) -> Result<u8, WireError> {
     Ok(out)
 }
 
-fn read_exact<'a>(
-    cursor: &mut usize,
-    bytes: &'a [u8],
-    len: usize,
-) -> Result<&'a [u8], WireError> {
+fn read_exact<'a>(cursor: &mut usize, bytes: &'a [u8], len: usize) -> Result<&'a [u8], WireError> {
     let start = *cursor;
     let end = start.checked_add(len).ok_or(WireError::InvalidWireFrame)?;
     if end > bytes.len() {
@@ -157,8 +153,8 @@ fn write_varint(out: &mut Vec<u8>, mut value: u64) {
             break;
         }
         out.push(
-            ((value & u64::from(PROTOBUF_VARINT_PAYLOAD_MASK)) | u64::from(PROTOBUF_VARINT_CONTINUATION))
-                as u8,
+            ((value & u64::from(PROTOBUF_VARINT_PAYLOAD_MASK))
+                | u64::from(PROTOBUF_VARINT_CONTINUATION)) as u8,
         );
         value >>= PROTOBUF_VARINT_PAYLOAD_BITS;
     }
@@ -192,9 +188,7 @@ fn verify_fixed_bytes(label: &[u8], expected: usize) -> Result<(), WireError> {
 fn vault_id_from_bytes(label: &[u8]) -> Result<u64, WireError> {
     verify_fixed_bytes(label, LEZ_VAULT_ID_WIRE_LEN)?;
     Ok(u64::from_le_bytes(
-        label
-            .try_into()
-            .map_err(|_| WireError::InvalidWireFrame)?,
+        label.try_into().map_err(|_| WireError::InvalidWireFrame)?,
     ))
 }
 
@@ -246,10 +240,14 @@ pub fn parse_stream_params(bytes: &[u8]) -> Result<StreamParams, WireError> {
 
 pub fn serialize_stream_params(params: &StreamParams) -> Result<Vec<u8>, WireError> {
     let mut out = Vec::new();
-    write_len_delim_bytes(&mut out, field_numbers::STREAM_PARAMS_SERVICE_ID, &params.service_id);
+    write_len_delim_bytes(
+        &mut out,
+        field_numbers::STREAM_PARAMS_SERVICE_ID,
+        &params.service_id,
+    );
     write_varint_field(&mut out, field_numbers::STREAM_PARAMS_RATE, params.rate);
-    let allocation_u64 = u64::try_from(params.allocation)
-        .map_err(|_| WireError::AllocationExceedsProtobufUint64)?;
+    let allocation_u64 =
+        u64::try_from(params.allocation).map_err(|_| WireError::AllocationExceedsProtobufUint64)?;
     write_varint_field(
         &mut out,
         field_numbers::STREAM_PARAMS_ALLOCATION,
@@ -373,7 +371,9 @@ pub fn parse_stream_proof(bytes: &[u8]) -> Result<StreamProofWire, WireError> {
                 .try_into()
                 .map_err(|_| WireError::InvalidWireFrame)?,
         ),
-        signature: signature.try_into().map_err(|_| WireError::InvalidWireFrame)?,
+        signature: signature
+            .try_into()
+            .map_err(|_| WireError::InvalidWireFrame)?,
     })
 }
 
@@ -454,12 +454,7 @@ mod tests {
 
     #[test]
     fn stream_params_allocation_above_uint64_fails_serialize() {
-        let params = StreamParams::new(
-            1,
-            Balance::from(u128::from(u64::MAX) + 1),
-            1,
-            vec![],
-        );
+        let params = StreamParams::new(1, Balance::from(u128::from(u64::MAX) + 1), 1, vec![]);
         let err = serialize_stream_params(&params).expect_err("allocation must not fit uint64");
         assert_eq!(err, WireError::AllocationExceedsProtobufUint64);
     }

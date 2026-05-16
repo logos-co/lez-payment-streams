@@ -16,8 +16,8 @@ use nssa_core::account::AccountId;
 use crate::policy_abi::stream_params_from_ffi;
 use crate::{
     balance_pair, borrow_input, PaymentStreamsFfiByteSpan, PaymentStreamsFfiCanonicalStoreQuery,
-    PaymentStreamsFfiDecodedStreamProposal, PaymentStreamsFfiDecodedStreamProof, PaymentStreamsFfiStatus,
-    PAYMENT_STREAMS_FFI_MAX_SERVICE_ID_LEN,
+    PaymentStreamsFfiDecodedStreamProof, PaymentStreamsFfiDecodedStreamProposal,
+    PaymentStreamsFfiStatus, PAYMENT_STREAMS_FFI_MAX_SERVICE_ID_LEN,
 };
 
 /// Maps [`OffChainError`] from `lez-payment-streams-core` (Step 4) to FFI status codes.
@@ -35,7 +35,9 @@ use crate::{
 /// detail should use the appropriate verify helper sequence or the Rust `OffChainError` API.
 fn map_off_chain_err(err: OffChainError) -> PaymentStreamsFfiStatus {
     match err {
-        OffChainError::Wire(_) | OffChainError::InvalidPublicKey => PaymentStreamsFfiStatus::Malformed,
+        OffChainError::Wire(_) | OffChainError::InvalidPublicKey => {
+            PaymentStreamsFfiStatus::Malformed
+        }
         OffChainError::OwnerKeyMismatch | OffChainError::BadSignature => {
             PaymentStreamsFfiStatus::ProofInvalid
         }
@@ -46,11 +48,16 @@ fn map_wire_err(err: WireError) -> PaymentStreamsFfiStatus {
     map_off_chain_err(OffChainError::Wire(err))
 }
 
-unsafe fn read_span<'a>(span: PaymentStreamsFfiByteSpan) -> Result<&'a [u8], PaymentStreamsFfiStatus> {
+unsafe fn read_span<'a>(
+    span: PaymentStreamsFfiByteSpan,
+) -> Result<&'a [u8], PaymentStreamsFfiStatus> {
     borrow_input(span.ptr, span.len)
 }
 
-fn proposal_wire_to_ffi(out: &mut PaymentStreamsFfiDecodedStreamProposal, wire: &StreamProposalWire) {
+fn proposal_wire_to_ffi(
+    out: &mut PaymentStreamsFfiDecodedStreamProposal,
+    wire: &StreamProposalWire,
+) {
     let allocation_halves = balance_pair(wire.params.allocation);
     let mut service_id_scratch = [0_u8; PAYMENT_STREAMS_FFI_MAX_SERVICE_ID_LEN];
     let sid_len = wire.params.service_id.len();
@@ -108,14 +115,19 @@ struct ParsedStoreQuery {
 
 impl ParsedStoreQuery {
     /// Reads UTF-8 spans and fixed fields from the FFI descriptor into owned buffers.
-    unsafe fn parse(query: &PaymentStreamsFfiCanonicalStoreQuery) -> Result<Self, PaymentStreamsFfiStatus> {
+    unsafe fn parse(
+        query: &PaymentStreamsFfiCanonicalStoreQuery,
+    ) -> Result<Self, PaymentStreamsFfiStatus> {
         let rid_bytes = read_span(query.request_id)?;
-        let request_id =
-            String::from_utf8(rid_bytes.to_vec()).map_err(|_| PaymentStreamsFfiStatus::Malformed)?;
+        let request_id = String::from_utf8(rid_bytes.to_vec())
+            .map_err(|_| PaymentStreamsFfiStatus::Malformed)?;
 
         let pubsub_topic = if query.has_pubsub_topic != 0 {
             let bytes = read_span(query.pubsub_topic)?;
-            Some(String::from_utf8(bytes.to_vec()).map_err(|_| PaymentStreamsFfiStatus::Malformed)?)
+            Some(
+                String::from_utf8(bytes.to_vec())
+                    .map_err(|_| PaymentStreamsFfiStatus::Malformed)?,
+            )
         } else {
             None
         };
@@ -130,7 +142,8 @@ impl ParsedStoreQuery {
             for span in spans {
                 let bytes = read_span(*span)?;
                 content_topics.push(
-                    String::from_utf8(bytes.to_vec()).map_err(|_| PaymentStreamsFfiStatus::Malformed)?,
+                    String::from_utf8(bytes.to_vec())
+                        .map_err(|_| PaymentStreamsFfiStatus::Malformed)?,
                 );
             }
         }
@@ -141,11 +154,15 @@ impl ParsedStoreQuery {
                 .message_hashes_len
                 .checked_mul(32)
                 .ok_or(PaymentStreamsFfiStatus::Malformed)?;
-            let total_bytes = usize::try_from(total_bytes_u64)
-                .map_err(|_| PaymentStreamsFfiStatus::Malformed)?;
+            let total_bytes =
+                usize::try_from(total_bytes_u64).map_err(|_| PaymentStreamsFfiStatus::Malformed)?;
             let bytes = borrow_input(query.message_hashes, total_bytes)?;
             for chunk in bytes.chunks_exact(32) {
-                message_hashes.push(chunk.try_into().map_err(|_| PaymentStreamsFfiStatus::Malformed)?);
+                message_hashes.push(
+                    chunk
+                        .try_into()
+                        .map_err(|_| PaymentStreamsFfiStatus::Malformed)?,
+                );
             }
         }
 
@@ -195,7 +212,9 @@ impl ParsedStoreQuery {
     }
 
     fn store_eligibility_canonical_payload_digest(&self) -> [u8; 32] {
-        lez_payment_streams_core::store_eligibility_canonical_payload_digest(&self.canonical_parts())
+        lez_payment_streams_core::store_eligibility_canonical_payload_digest(
+            &self.canonical_parts(),
+        )
     }
 }
 
@@ -476,7 +495,8 @@ pub unsafe extern "C" fn payment_streams_ffi_verify_stream_proof_for_store_query
         Ok(value) => value,
     };
 
-    match verify_stream_proof_for_store_query(&proof_wire, &session_arr, &parsed.canonical_parts()) {
+    match verify_stream_proof_for_store_query(&proof_wire, &session_arr, &parsed.canonical_parts())
+    {
         Ok(()) => PaymentStreamsFfiStatus::Success,
         Err(err) => map_off_chain_err(err),
     }
@@ -570,7 +590,8 @@ pub unsafe extern "C" fn payment_streams_ffi_verify_canonical_payload_digest(
 mod tests {
     use super::*;
     use lez_payment_streams_core::{
-        sign_stream_proof_for_store_query, sign_stream_proposal_vault_proof, StreamParams, VaultProofWire,
+        sign_stream_proof_for_store_query, sign_stream_proposal_vault_proof, StreamParams,
+        VaultProofWire,
     };
     use nssa::PublicKey;
 
@@ -592,7 +613,8 @@ mod tests {
 
         let signed = sign_stream_proposal_vault_proof(proposal_core, &owner_key).expect("signs");
         let bytes = serialize_stream_proposal(&signed).expect("serializes");
-        let mut ffi_decoded: PaymentStreamsFfiDecodedStreamProposal = unsafe { core::mem::zeroed() };
+        let mut ffi_decoded: PaymentStreamsFfiDecodedStreamProposal =
+            unsafe { core::mem::zeroed() };
 
         assert_eq!(
             unsafe {

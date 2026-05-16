@@ -2906,6 +2906,7 @@ dependencies = [
  "clock_core",
  "nssa",
  "nssa_core",
+ "risc0-zkvm",
  "serde",
  "sha2",
  "spel-framework-core",

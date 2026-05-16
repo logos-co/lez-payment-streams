@@ -7,7 +7,7 @@ use nssa_core::program::ProgramId;
 
 use crate::{StreamId, TokensPerSecond, VaultId, VaultPrivacyTier};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Instruction {
     InitializeVault {
         vault_id: VaultId,

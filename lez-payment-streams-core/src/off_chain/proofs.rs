@@ -48,7 +48,9 @@ pub fn owner_public_key_matches_vault_owner(
 }
 
 /// Verifies `VaultProof.owner_signature` over the canonical vault-owner payload digest.
-pub fn verify_stream_proposal_vault_signature(proposal: &StreamProposalWire) -> Result<(), OffChainError> {
+pub fn verify_stream_proposal_vault_signature(
+    proposal: &StreamProposalWire,
+) -> Result<(), OffChainError> {
     let canonical_payload_digest = vault_owner_auth_canonical_payload_digest(
         proposal.vault.vault_id,
         &proposal.vault.provider_id,

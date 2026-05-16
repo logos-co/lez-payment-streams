@@ -1,7 +1,8 @@
 //! LEZ payment streams.
 //!
-//! Vault PDAs, stream accrual, [`Instruction`] types for the guest and tests, and the [`policy`]
-//! module (Step 3a: `fold_stream`, `proposal_satisfies_policy`, `stream_satisfies_policy`, ...).
+//! Vault PDAs, stream accrual, [`Instruction`] types for the guest and tests, the [`policy`]
+//! module (Step 3a: `fold_stream`, `proposal_satisfies_policy`, `stream_satisfies_policy`, ...),
+//! plus public-transaction helpers ([`instruction_wire`], [`instruction_accounts`]; Step 5).
 
 #[cfg(test)]
 mod harness_seeds;
@@ -14,6 +15,8 @@ mod program_tests;
 
 mod error_codes;
 mod instruction;
+mod instruction_accounts;
+mod instruction_wire;
 mod off_chain;
 mod pda;
 mod policy;
@@ -27,6 +30,20 @@ pub use clock_core::{
 };
 pub use error_codes::*;
 pub use instruction::Instruction;
+pub use instruction_accounts::{
+    claim_instruction_accounts, close_stream_instruction_accounts,
+    create_stream_instruction_accounts, deposit_instruction_accounts,
+    initialize_vault_instruction_accounts, pause_stream_instruction_accounts,
+    resume_stream_instruction_accounts, top_up_stream_instruction_accounts,
+    withdraw_instruction_accounts, ClaimStreamInstructionAccounts, DepositInstructionAccounts,
+    InitializeVaultInstructionAccounts, StreamAuthorityInstructionAccounts,
+    StreamOwnerInstructionAccounts, WithdrawInstructionAccounts,
+};
+pub use instruction_wire::{
+    instruction_bytes_for_public_transaction, instruction_bytes_le_from_words,
+    instruction_try_from_instruction_words, instruction_words_for_public_transaction,
+    instruction_words_from_bytes_le,
+};
 pub use off_chain::*;
 pub use pda::{derive_stream_config_account_id, derive_vault_account_ids};
 pub use policy::{

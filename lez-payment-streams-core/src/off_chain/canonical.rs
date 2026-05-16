@@ -5,9 +5,7 @@ use sha2::{Digest as _, Sha256};
 
 use crate::stream_provider_policy::StreamParams;
 
-use super::constants::{
-    STORE_ELIGIBILITY_DOMAIN_PREFIX, VAULT_OWNER_AUTH_DOMAIN_PREFIX,
-};
+use super::constants::{STORE_ELIGIBILITY_DOMAIN_PREFIX, VAULT_OWNER_AUTH_DOMAIN_PREFIX};
 
 /// Failed to serialize vault-owner authorization payload (Borsh over LIP‑155 fields).
 #[derive(Debug)]
@@ -119,7 +117,9 @@ pub fn store_eligibility_canonical_payload(parts: &CanonicalStoreQueryParts<'_>)
 }
 
 /// 32-byte canonical payload digest signed by `StreamProof.signature` for Store eligibility.
-pub fn store_eligibility_canonical_payload_digest(parts: &CanonicalStoreQueryParts<'_>) -> [u8; 32] {
+pub fn store_eligibility_canonical_payload_digest(
+    parts: &CanonicalStoreQueryParts<'_>,
+) -> [u8; 32] {
     let canonical_payload = store_eligibility_canonical_payload(parts);
     lez_canonical_payload_digest(&STORE_ELIGIBILITY_DOMAIN_PREFIX, &canonical_payload)
 }
@@ -132,9 +132,8 @@ pub fn vault_owner_auth_canonical_payload(
     params: &StreamParams,
     session_public_key: &[u8; 32],
 ) -> Result<Vec<u8>, VaultOwnerAuthCanonicalError> {
-    let service_id = String::from_utf8(params.service_id.clone()).map_err(|_| {
-        VaultOwnerAuthCanonicalError::InvalidServiceIdUtf8
-    })?;
+    let service_id = String::from_utf8(params.service_id.clone())
+        .map_err(|_| VaultOwnerAuthCanonicalError::InvalidServiceIdUtf8)?;
 
     let body = VaultOwnerAuthBorshBody {
         vault_id,
@@ -210,9 +209,13 @@ mod tests {
     #[test]
     fn vault_owner_payload_rejects_non_utf8_service_id() {
         let params = StreamParams::new(1, 2, 3, vec![0xFF, 0xFE, 0xFD]);
-        let err = vault_owner_auth_canonical_payload(9, &[7_u8; 32], &[8_u8; 32], &params, &[3_u8; 32])
-            .expect_err("invalid utf-8 service id must fail");
-        assert!(matches!(err, VaultOwnerAuthCanonicalError::InvalidServiceIdUtf8));
+        let err =
+            vault_owner_auth_canonical_payload(9, &[7_u8; 32], &[8_u8; 32], &params, &[3_u8; 32])
+                .expect_err("invalid utf-8 service id must fail");
+        assert!(matches!(
+            err,
+            VaultOwnerAuthCanonicalError::InvalidServiceIdUtf8
+        ));
     }
 
     #[test]
@@ -237,10 +240,9 @@ mod tests {
         assert_eq!(
             digest,
             [
-                53, 238, 26, 182, 83, 10, 132, 140, 241, 208, 236, 55, 89, 13, 57, 202, 251, 119, 44,
-                172, 99, 161, 112, 250, 114, 37, 177, 149, 230, 133, 233, 166,
+                53, 238, 26, 182, 83, 10, 132, 140, 241, 208, 236, 55, 89, 13, 57, 202, 251, 119,
+                44, 172, 99, 161, 112, 250, 114, 37, 177, 149, 230, 133, 233, 166,
             ]
         );
     }
 }
-

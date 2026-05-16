@@ -6,7 +6,7 @@
 
 mod claim;
 mod close_stream;
-mod common;
+pub(crate) mod common;
 mod create_stream;
 mod deposit;
 mod initialize;

@@ -1,9 +1,11 @@
 //! C ABI for LEZ payment streams (LIP-155).
 
 mod decode;
+mod instruction_abi;
 mod policy_abi;
 mod proof_abi;
 
+pub use instruction_abi::*;
 pub use lez_payment_streams_core::{
     derive_stream_config_account_id, derive_vault_account_ids, VaultConfig,
     CLOCK_01_PROGRAM_ACCOUNT_ID, CLOCK_10_PROGRAM_ACCOUNT_ID, CLOCK_50_PROGRAM_ACCOUNT_ID,
