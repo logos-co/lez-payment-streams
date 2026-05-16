@@ -12,7 +12,7 @@ use crate::{
     test_helpers::{
         assert_vault_state_unchanged, build_signed_public_tx, create_keypair,
         create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
-        harness_clock_01_and_provider_account_ids, patch_vault_config,
+        harness_clock_provider, patch_vault_config,
         state_with_initialized_vault,
     },
     TokensPerSecond, VaultConfig, VaultHolding, VaultId, VersionId,
@@ -20,7 +20,7 @@ use crate::{
 
 use super::common::{
     assert_execution_failed_with_code, state_deposited_with_clock, DEFAULT_CLOCK_INITIAL_TS,
-    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT, TEST_PUBLIC_TX_TIMESTAMP,
+    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER};
 
@@ -113,7 +113,9 @@ fn test_deposit_after_create_stream_succeeds() {
     let second_deposit = 50 as Balance;
     let allocation = 200 as Balance;
     let rate = 10 as TokensPerSecond;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         owner_balance_start,
@@ -589,11 +591,13 @@ fn test_deposit_vault_holding_version_mismatch_fails() {
 mod pp_program_tests {
     use super::*;
 
+    use crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP;
     use crate::program_tests::pp_common::{
         account_meta, load_payment_streams_with_auth_transfer, owner_npk, owner_vpk,
         vault_fixture_public_tier_funded_via_deposit, OWNER_FUND_EPK_SCALAR, OWNER_NSK,
         PP_DEPOSIT_AMOUNT, PP_DEPOSIT_EPK_SCALAR, PP_OWNER_FUND_AMOUNT,
     };
+    use nssa::program::Program;
     use crate::VaultPrivacyTier;
     use nssa::{
         execute_and_prove,
@@ -636,7 +640,7 @@ mod pp_program_tests {
             Program::serialize_instruction(PP_OWNER_FUND_AMOUNT)
                 .expect("serialize auth_transfer amount"),
             vec![0u8, 2],
-            vec![(owner_npk.clone(), owner_fund_shared_secret)],
+            vec![(owner_npk, owner_fund_shared_secret)],
             vec![],
             vec![None::<MembershipProof>],
             &ProgramWithDependencies::from(auth_transfer_program),
@@ -646,7 +650,7 @@ mod pp_program_tests {
         let fund_message = Message::try_from_circuit_output(
             vec![fx_a.owner_account_id],
             vec![fx_a_sender_before.nonce],
-            vec![(owner_npk.clone(), owner_vpk(), owner_fund_epk)],
+            vec![(owner_npk, owner_vpk(), owner_fund_epk)],
             fund_output,
         )
         .expect("try_from_circuit_output: fund owner");
@@ -733,7 +737,7 @@ mod pp_program_tests {
             })
             .expect("deposit instruction serializes"),
             vec![0u8, 0, 1],
-            vec![(owner_npk.clone(), deposit_shared_secret)],
+            vec![(owner_npk, deposit_shared_secret)],
             vec![OWNER_NSK],
             vec![Some(membership_proof)],
             &load_payment_streams_with_auth_transfer(),

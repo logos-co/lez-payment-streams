@@ -16,7 +16,6 @@ use super::common::{
     assert_execution_failed_with_code, force_stream_state_closed, signed_close_stream,
     signed_create_stream, state_deposited_with_clock, transition_ok, CloseStreamIxAccounts,
     DEFAULT_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
-    TEST_PUBLIC_TX_TIMESTAMP,
 };
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_PROVIDER};
 
@@ -269,6 +268,7 @@ fn test_close_already_closed_fails() {
 mod pp_program_tests {
     use super::*;
 
+    use crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP;
     use crate::program_tests::pp_common::{
         account_meta, pp_claim_close_setup, recipient_npk, recipient_vpk, PpClaimCloseSetup,
         EPK_SCALAR, PP_STREAM_ALLOCATION, PP_STREAM_RATE, PP_T0, PP_T1, PP_WITHDRAW_AMOUNT,
@@ -344,7 +344,7 @@ mod pp_program_tests {
             })
             .expect("close_stream instruction serializes"),
             vec![0u8, 0, 0, 0, 1, 0],
-            vec![(authority_npk.clone(), authority_shared_secret)],
+            vec![(authority_npk, authority_shared_secret)],
             vec![RECIPIENT_NSK],
             vec![Some(membership_proof)],
             &ProgramWithDependencies::from(guest_program),

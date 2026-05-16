@@ -13,7 +13,7 @@ use crate::{
 use super::common::{
     assert_execution_failed_with_code, claim_stream_prelude_at_t1, signed_claim_stream,
     signed_close_stream, transition_ok, ClaimStreamIxAccounts, CloseStreamIxAccounts,
-    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT, TEST_PUBLIC_TX_TIMESTAMP,
+    DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_PROVIDER};
 
@@ -262,6 +262,7 @@ fn test_claim_after_close_succeeds() {
 mod pp_program_tests {
     use super::*;
 
+    use crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP;
     use crate::program_tests::pp_common::{
         account_meta, pp_claim_close_setup, recipient_npk, recipient_vpk, PpClaimCloseSetup,
         EPK_SCALAR, PP_CLAIM_PAYOUT, PP_STREAM_ALLOCATION, PP_T1, PP_WITHDRAW_AMOUNT,
@@ -331,7 +332,7 @@ mod pp_program_tests {
             })
             .expect("claim instruction serializes"),
             vec![0u8, 0, 0, 0, 1, 0],
-            vec![(provider_npk.clone(), provider_shared_secret)],
+            vec![(provider_npk, provider_shared_secret)],
             vec![RECIPIENT_NSK],
             vec![Some(membership_proof)],
             &ProgramWithDependencies::from(guest_program),

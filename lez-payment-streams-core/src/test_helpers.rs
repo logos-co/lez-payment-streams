@@ -5,8 +5,12 @@
 //! see [`crate::program_tests::common`] for deposit fixtures,
 //! [`Instruction`] builders, and helpers like `transition_ok`.
 //!
-//! Clock overrides: prefer [`force_clock_account_monotonic`] for forward-only time; use
-//! [`force_clock_account_unchecked`] when the clock must move backward or repeat the same
+//! Clock and provider identities: [`harness_clock_provider`] groups `CLOCK_01` plus the seeded
+//! stream provider [`AccountId`]; [`HarnessClockProvider::touch_monotonic`] is the usual prelude
+//! to [`force_clock_account_monotonic`] on that harness clock account.
+//!
+//! Clock overrides otherwise: prefer [`force_clock_account_monotonic`] for forward-only time;
+//! use [`force_clock_account_unchecked`] when the clock must move backward or repeat the same
 //! `(timestamp, block_id)` (for example time-regression failure tests).
 
 use std::fs;
@@ -37,19 +41,29 @@ fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
-/// Load the payment-streams guest [`Program`] for PP `execute_and_prove` (same blob as deployment).
-pub(crate) fn load_guest_program() -> Program {
-    let guest_bytecode = fs::read(guest_binary_path())
-        .expect("guest binary missing; run `cargo build -p lez_payment_streams-methods`");
-    Program::new(guest_bytecode).expect("guest bytecode should be a valid Program")
-}
-
 fn guest_binary_path() -> PathBuf {
     // `Program::new` expects the risc0 `ProgramBinary` blob (`*.bin`), not the raw ELF.
     // Produced by `cargo build -p lez_payment_streams-methods` (`risc0_build::embed_methods`).
     workspace_root().join(
         "target/riscv-guest/lez_payment_streams-methods/lez_payment_streams-guest/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin",
     )
+}
+
+pub(crate) fn read_guest_program_bytecode() -> Option<Vec<u8>> {
+    fs::read(guest_binary_path()).ok()
+}
+
+#[cfg(feature = "pp-program-tests")]
+fn expect_guest_program_bytecode() -> Vec<u8> {
+    read_guest_program_bytecode().expect(
+        "guest binary missing; run `cargo build -p lez_payment_streams-methods`",
+    )
+}
+
+/// Load the payment-streams guest [`Program`] for PP `execute_and_prove` (same blob as deployment).
+#[cfg(feature = "pp-program-tests")]
+pub(crate) fn load_guest_program() -> Program {
+    Program::new(expect_guest_program_bytecode()).expect("guest bytecode should be a valid Program")
 }
 
 pub(crate) fn create_keypair(seed: u8) -> (PrivateKey, AccountId) {
@@ -61,16 +75,25 @@ pub(crate) fn create_keypair(seed: u8) -> (PrivateKey, AccountId) {
     (private_key, account_id)
 }
 
-/// System `CLOCK_01` account id (genesis) and stream provider [`AccountId`] from [`crate::harness_seeds`].
-pub(crate) fn harness_clock_01_and_provider_account_ids() -> (AccountId, AccountId) {
-    let provider_account_id = create_keypair(SEED_PROVIDER).1;
-    (CLOCK_01_PROGRAM_ACCOUNT_ID, provider_account_id)
+/// Harness clock account (`CLOCK_01`) and deterministic stream provider derived from [`SEED_PROVIDER`].
+pub(crate) struct HarnessClockProvider {
+    pub clock_id: AccountId,
+    pub provider_account_id: AccountId,
+}
+
+/// [`HarnessClockProvider`] for `CLOCK_01` and the seeded stream provider.
+#[inline]
+pub(crate) fn harness_clock_provider() -> HarnessClockProvider {
+    HarnessClockProvider {
+        clock_id: CLOCK_01_PROGRAM_ACCOUNT_ID,
+        provider_account_id: create_keypair(SEED_PROVIDER).1,
+    }
 }
 
 pub(crate) fn create_state_with_guest_program(
     initial_accounts_data: &[(AccountId, Balance)],
 ) -> Option<(V03State, Program)> {
-    let guest_bytecode = fs::read(guest_binary_path()).ok()?;
+    let guest_bytecode = read_guest_program_bytecode()?;
     let guest_program = Program::new(guest_bytecode.clone()).ok()?;
     let mut state = V03State::new_with_genesis_accounts(initial_accounts_data, vec![], 0u64);
 
@@ -185,6 +208,18 @@ pub(crate) fn force_clock_account_monotonic(
         );
     }
     force_clock_account_unchecked(state, clock_account_id, block_id, timestamp);
+}
+
+impl HarnessClockProvider {
+    /// Convenience for [`force_clock_account_monotonic`] on this harness [`Self::clock_id`].
+    pub(crate) fn touch_monotonic(
+        &self,
+        state: &mut V03State,
+        block_id: u64,
+        timestamp: nssa_core::Timestamp,
+    ) {
+        force_clock_account_monotonic(state, self.clock_id, block_id, timestamp);
+    }
 }
 
 /// Rewrite `VaultConfig` account data in the test harness (bypasses normal transitions).

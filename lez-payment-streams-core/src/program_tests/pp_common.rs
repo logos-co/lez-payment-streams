@@ -167,7 +167,7 @@ pub(crate) fn fund_private_account_via_pp_withdraw(
         pre_states,
         withdraw_instruction_data(fx.vault_id, withdraw_amount),
         vec![0u8, 0, 0, 2],
-        vec![(recipient_npk.clone(), shared_secret)],
+        vec![(*recipient_npk, shared_secret)],
         vec![],
         vec![None::<MembershipProof>],
         &ProgramWithDependencies::from(guest_program),
@@ -182,7 +182,7 @@ pub(crate) fn fund_private_account_via_pp_withdraw(
             fx.owner_account_id,
         ],
         vec![owner_before.nonce],
-        vec![(recipient_npk.clone(), recipient_vpk, epk)],
+        vec![(*recipient_npk, recipient_vpk, epk)],
         output,
     )
     .expect("try_from_circuit_output: fund via PP withdraw");

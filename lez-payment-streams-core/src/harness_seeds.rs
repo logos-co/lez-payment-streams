@@ -4,6 +4,7 @@
 //!
 //! - `0x01`–`0x0F`: owner and alternate signer.
 //! - `0x10`–`0x1F`: stream providers A and B, withdraw recipient.
+//!
 //! Reuse across tests. Each test run gets a new [`nssa::V03State`], so one value per role is enough.
 //!
 //! System clock account ids are fixed by genesis ([`clock_core::CLOCK_*_PROGRAM_ACCOUNT_ID`]),

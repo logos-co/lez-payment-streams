@@ -8,8 +8,7 @@ use nssa_core::{
 use crate::{
     error_codes::ErrorCode,
     test_helpers::{
-        force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
-        patch_vault_config,
+        harness_clock_provider, patch_vault_config,
     },
     StreamConfig, StreamState, Timestamp, TokensPerSecond,
 };
@@ -25,7 +24,9 @@ use super::common::{
 fn test_topup_paused_depleted_stream_succeeds() {
     let t0: Timestamp = 0;
     let t2: Timestamp = 250;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -69,7 +70,7 @@ fn test_topup_paused_depleted_stream_succeeds() {
         "deposit failed",
     );
 
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t2);
+    harness.touch_monotonic(&mut dep.vault.state, 0, t2);
 
     // top_up folds at_time(t2) internally: stream was depleted at t=10 (rate=10, alloc=100),
     // so fold gives Paused/accrued=100. top_up then adds 200 and activates at t2.
@@ -101,7 +102,9 @@ fn test_topup_paused_depleted_stream_succeeds() {
 fn test_topup_active_stream_increases_allocation_succeeds() {
     let t0: Timestamp = 10;
     let t1: Timestamp = 20;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -129,7 +132,7 @@ fn test_topup_active_stream_increases_allocation_succeeds() {
         "create_stream failed",
     );
 
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
+    harness.touch_monotonic(&mut dep.vault.state, 0, t1);
 
     transition_ok(
         &mut dep.vault.state,
@@ -157,7 +160,9 @@ fn test_topup_active_stream_increases_allocation_succeeds() {
 fn test_topup_manual_pause_then_active_succeeds() {
     let t0: Timestamp = 5;
     let t1: Timestamp = 15;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -199,7 +204,7 @@ fn test_topup_manual_pause_then_active_succeeds() {
         "pause_stream failed",
     );
 
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
+    harness.touch_monotonic(&mut dep.vault.state, 0, t1);
 
     transition_ok(
         &mut dep.vault.state,
@@ -227,7 +232,9 @@ fn test_topup_manual_pause_then_active_succeeds() {
 #[test]
 fn test_topup_zero_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -274,7 +281,9 @@ fn test_topup_zero_fails() {
 #[test]
 fn test_topup_closed_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -323,7 +332,9 @@ fn test_topup_closed_fails() {
 #[test]
 fn test_topup_exceeds_unallocated_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -370,7 +381,9 @@ fn test_topup_exceeds_unallocated_fails() {
 #[test]
 fn test_topup_allocation_overflow_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -430,7 +443,9 @@ fn test_topup_allocation_overflow_fails() {
 #[test]
 fn test_top_up_stream_owner_mismatch_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -583,7 +598,7 @@ mod pp_program_tests {
             })
             .expect("top_up_stream instruction serializes"),
             vec![0u8, 0, 0, 1, 0],
-            vec![(owner_npk.clone(), owner_shared_secret)],
+            vec![(owner_npk, owner_shared_secret)],
             vec![OWNER_NSK],
             vec![Some(membership_proof)],
             &ProgramWithDependencies::from(load_guest_program()),
@@ -593,7 +608,7 @@ mod pp_program_tests {
         let message = Message::try_from_circuit_output(
             vec![vault_config_b_id, vault_holding_b_id, stream_pda, clock_id],
             vec![],
-            vec![(owner_npk.clone(), owner_vpk(), owner_epk)],
+            vec![(owner_npk, owner_vpk(), owner_epk)],
             output,
         )
         .expect("try_from_circuit_output: top_up_stream");

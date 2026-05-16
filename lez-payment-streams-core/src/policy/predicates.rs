@@ -63,7 +63,6 @@ pub fn unallocated_balance(
 /// When `check_time + policy_max_create_stream_deadline_delay` overflows `u64`, the inclusive upper
 /// bound is pinned to [`Timestamp::MAX`]. Any finite deadline is then below that ceiling, so the
 /// check stays well-defined without wrapping.
-#[must_use]
 pub fn create_stream_deadline_satisfies_policy_as_of(
     params_create_stream_deadline: Timestamp,
     policy_max_create_stream_deadline_delay: Timestamp,
@@ -179,7 +178,6 @@ pub fn stream_satisfies_policy(
 }
 
 /// Prevent oversized vault proofs on the outbound path (demo MUST enforce once per session).
-#[must_use]
 pub fn response_within_policy(
     response_payload_byte_len: u64,
     policy: &StreamProviderPolicy,

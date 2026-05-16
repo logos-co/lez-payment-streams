@@ -252,7 +252,7 @@ mod pp_program_tests {
             ))
             .expect("initialize_vault instruction serializes"),
             vec![0u8, 0, 1],
-            vec![(owner_npk.clone(), init_shared_secret)],
+            vec![(owner_npk, init_shared_secret)],
             vec![OWNER_NSK],
             vec![Some(membership_proof)],
             &ProgramWithDependencies::from(load_guest_program()),

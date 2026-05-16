@@ -11,15 +11,15 @@ use super::common::{
     DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
 use crate::harness_seeds::SEED_PROVIDER;
-use crate::test_helpers::{
-    create_keypair, force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
-};
+use crate::test_helpers::{create_keypair, harness_clock_provider};
 
 /// After two streams exist and are paused (which folds accrual), holding covers `total_allocated`
 /// and `total_allocated` equals the sum of stream `allocation` fields.
 #[test]
 fn test_solvency_two_streams_after_pause_fold_succeeds() {
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
     let t0: Timestamp = 10;
     let t1: Timestamp = 20;
 
@@ -74,7 +74,7 @@ fn test_solvency_two_streams_after_pause_fold_succeeds() {
         "create_stream 1",
     );
 
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
+    harness.touch_monotonic(&mut dep.vault.state, 0, t1);
 
     let accounts_s0 = [
         dep.vault.vault_config_account_id,
@@ -126,7 +126,8 @@ fn test_solvency_two_streams_after_pause_fold_succeeds() {
 /// conservation still hold.
 #[test]
 fn test_solvency_after_full_accrued_claim_succeeds() {
-    let (clock_id, _) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
     let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
     let t0: Timestamp = 12_345;
     let t1: Timestamp = t0 + 5;
@@ -159,7 +160,7 @@ fn test_solvency_after_full_accrued_claim_succeeds() {
         "create_stream",
     );
 
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
+    harness.touch_monotonic(&mut dep.vault.state, 0, t1);
 
     let claim_accounts: ClaimStreamIxAccounts = [
         dep.vault.vault_config_account_id,
@@ -190,7 +191,9 @@ fn test_solvency_after_full_accrued_claim_succeeds() {
 /// holding balance throughout.
 #[test]
 fn test_solvency_after_pause_and_resume_succeeds() {
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
     let t0: Timestamp = 100;
     let t1: Timestamp = 105;
 
@@ -237,7 +240,7 @@ fn test_solvency_after_pause_and_resume_succeeds() {
 
     assert_vault_conservation_invariants(&dep.vault.state, dep.vault.program_id, &dep.vault);
 
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
+    harness.touch_monotonic(&mut dep.vault.state, 0, t1);
     transition_ok(
         &mut dep.vault.state,
         &signed_resume_stream(

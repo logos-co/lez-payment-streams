@@ -10,9 +10,7 @@ use crate::{
     error_codes::ErrorCode,
     test_helpers::{
         build_signed_public_tx, create_keypair, create_state_with_guest_program, derive_stream_pda,
-        derive_vault_pdas, force_clock_account_monotonic,
-        harness_clock_01_and_provider_account_ids, patch_vault_config,
-        state_with_initialized_vault,
+        derive_vault_pdas, harness_clock_provider, patch_vault_config, state_with_initialized_vault,
     },
     StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig, VaultId,
     DEFAULT_VERSION,
@@ -66,7 +64,9 @@ fn test_create_stream_succeeds() {
     let nonce_deposit = Nonce(1);
     let nonce_stream = Nonce(2);
 
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut v = state_with_initialized_vault(owner_balance_start);
 
@@ -87,7 +87,7 @@ fn test_create_stream_succeeds() {
     );
 
     let initial_ts: Timestamp = 12_345;
-    force_clock_account_monotonic(&mut v.state, clock_id, 0, initial_ts);
+    harness.touch_monotonic(&mut v.state, 0, initial_ts);
 
     let stream_id = StreamId::MIN;
     let stream_pda = derive_stream_pda(v.program_id, v.vault_config_account_id, stream_id);
@@ -158,7 +158,9 @@ fn test_create_stream_exceeds_unallocated_fails() {
     let nonce_deposit = Nonce(1);
     let nonce_stream = Nonce(2);
 
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut v = state_with_initialized_vault(owner_balance_start);
 
@@ -238,7 +240,9 @@ fn test_create_stream_zero_rate_fails() {
     let clock_initial_ts = DEFAULT_CLOCK_INITIAL_TS;
     let allocation = 1 as Balance;
     let rate = 0 as TokensPerSecond;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
     let mut dep = state_deposited_with_clock(
         owner_balance_start,
         deposit_amount,
@@ -279,7 +283,9 @@ fn test_create_stream_zero_allocation_fails() {
     let clock_initial_ts = DEFAULT_CLOCK_INITIAL_TS;
     let allocation = 0 as Balance;
     let rate = 1 as TokensPerSecond;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
     let mut dep = state_deposited_with_clock(
         owner_balance_start,
         deposit_amount,
@@ -320,7 +326,9 @@ fn test_create_stream_stream_id_mismatch_fails() {
     let clock_initial_ts = DEFAULT_CLOCK_INITIAL_TS;
     let allocation = 1 as Balance;
     let rate = 1 as TokensPerSecond;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
     let mut dep = state_deposited_with_clock(
         owner_balance_start,
         deposit_amount,
@@ -363,7 +371,9 @@ fn test_create_stream_mismatched_stream_pda_fails() {
     let clock_initial_ts = DEFAULT_CLOCK_INITIAL_TS;
     let allocation = 1 as Balance;
     let rate = 1 as TokensPerSecond;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
     let mut dep = state_deposited_with_clock(
         owner_balance_start,
         deposit_amount,
@@ -410,7 +420,9 @@ fn test_create_stream_wrong_vault_id_fails() {
     let clock_initial_ts = DEFAULT_CLOCK_INITIAL_TS;
     let allocation = 1 as Balance;
     let rate = 1 as TokensPerSecond;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
     let mut dep = state_deposited_with_clock(
         owner_balance_start,
         deposit_amount,
@@ -464,7 +476,9 @@ fn test_create_stream_owner_mismatch_fails() {
 
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
     let (_, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let initial_accounts_data = vec![
         (owner_account_id, signer_account_balance),
@@ -513,7 +527,7 @@ fn test_create_stream_owner_mismatch_fails() {
     );
 
     let clock_ts_after_deposit = DEFAULT_CLOCK_INITIAL_TS;
-    force_clock_account_monotonic(&mut state, clock_id, 0, clock_ts_after_deposit);
+    harness.touch_monotonic(&mut state, 0, clock_ts_after_deposit);
 
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
     let allocation = 1 as Balance;
@@ -563,7 +577,9 @@ fn test_create_stream_invalid_clock_account_fails() {
     let clock_initial_ts = DEFAULT_CLOCK_INITIAL_TS;
     let allocation = 1 as Balance;
     let rate = 1 as TokensPerSecond;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
     let mut dep = state_deposited_with_clock(
         owner_balance_start,
         deposit_amount,
@@ -614,7 +630,9 @@ fn test_create_stream_allocation_equals_unallocated_succeeds() {
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
     let clock_initial_ts = 99 as Timestamp;
     let rate = 1 as TokensPerSecond;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
     let mut dep = state_deposited_with_clock(
         owner_balance_start,
         deposit_amount,
@@ -671,7 +689,9 @@ fn test_create_stream_second_stream_succeeds() {
     let expected_total_allocated = first_stream_allocation + second_stream_allocation;
     let first_stream_rate = 2 as TokensPerSecond;
     let second_stream_rate = 3 as TokensPerSecond;
-    let (clock_id, provider_a) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_a = harness.provider_account_id;
     let (_, provider_b) = create_keypair(SEED_PROVIDER_B);
     let mut dep = state_deposited_with_clock(
         owner_balance_start,
@@ -759,7 +779,9 @@ fn test_create_stream_next_stream_id_overflow_fails() {
     let clock_initial_ts = DEFAULT_CLOCK_INITIAL_TS;
     let allocation = 1 as Balance;
     let rate = 1 as TokensPerSecond;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
     let mut dep = state_deposited_with_clock(
         owner_balance_start,
         deposit_amount,
@@ -891,7 +913,7 @@ mod pp_program_tests {
             })
             .expect("create_stream instruction serializes"),
             vec![0u8, 0, 0, 1, 0],
-            vec![(owner_npk.clone(), owner_shared_secret)],
+            vec![(owner_npk, owner_shared_secret)],
             vec![OWNER_NSK],
             vec![Some(membership_proof)],
             &ProgramWithDependencies::from(load_guest_program()),
@@ -901,7 +923,7 @@ mod pp_program_tests {
         let message = Message::try_from_circuit_output(
             vec![vault_config_b_id, vault_holding_b_id, stream_pda, clock_id],
             vec![],
-            vec![(owner_npk.clone(), owner_vpk(), owner_epk)],
+            vec![(owner_npk, owner_vpk(), owner_epk)],
             output,
         )
         .expect("try_from_circuit_output: create_stream");

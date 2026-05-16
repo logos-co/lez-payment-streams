@@ -11,8 +11,7 @@ use crate::{
     error_codes::ErrorCode,
     test_helpers::{
         create_keypair, create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
-        force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
-        patch_vault_config,
+        harness_clock_provider, patch_vault_config,
     },
     StreamConfig, StreamState, Timestamp, TokensPerSecond, VaultId,
 };
@@ -30,7 +29,9 @@ use crate::test_helpers::build_signed_public_tx;
 fn test_resume_succeeds() {
     let t0: Timestamp = 100;
     let t1: Timestamp = 200;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -72,7 +73,7 @@ fn test_resume_succeeds() {
         "pause_stream failed",
     );
 
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
+    harness.touch_monotonic(&mut dep.vault.state, 0, t1);
 
     transition_ok(
         &mut dep.vault.state,
@@ -99,7 +100,9 @@ fn test_resume_succeeds() {
 #[test]
 fn test_resume_active_fails() {
     let t0: Timestamp = 50;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -146,7 +149,9 @@ fn test_resume_active_fails() {
 fn test_resume_zero_remaining_fails() {
     let t0: Timestamp = 0;
     let t1: Timestamp = 100;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -174,7 +179,7 @@ fn test_resume_zero_remaining_fails() {
         "create_stream failed",
     );
 
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
+    harness.touch_monotonic(&mut dep.vault.state, 0, t1);
 
     let r = dep.vault.state.transition_from_public_transaction(
         &signed_resume_stream(
@@ -195,7 +200,9 @@ fn test_resume_zero_remaining_fails() {
 fn test_resume_twice_fails() {
     let t0: Timestamp = 10;
     let t1: Timestamp = 20;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -237,7 +244,7 @@ fn test_resume_twice_fails() {
         "pause_stream failed",
     );
 
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
+    harness.touch_monotonic(&mut dep.vault.state, 0, t1);
 
     transition_ok(
         &mut dep.vault.state,
@@ -271,7 +278,9 @@ fn test_resume_twice_fails() {
 #[test]
 fn test_resume_closed_fails() {
     let t0: Timestamp = 8;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -321,7 +330,9 @@ fn test_resume_then_accrual_ignores_paused_gap_succeeds() {
     let t0: Timestamp = 100;
     let t1: Timestamp = 105;
     let t_gap: Timestamp = 200;
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut dep = state_deposited_with_clock(
         DEFAULT_OWNER_GENESIS_BALANCE,
@@ -351,7 +362,7 @@ fn test_resume_then_accrual_ignores_paused_gap_succeeds() {
         "create_stream failed",
     );
 
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t1);
+    harness.touch_monotonic(&mut dep.vault.state, 0, t1);
 
     transition_ok(
         &mut dep.vault.state,
@@ -367,7 +378,7 @@ fn test_resume_then_accrual_ignores_paused_gap_succeeds() {
         "pause_stream failed",
     );
 
-    force_clock_account_monotonic(&mut dep.vault.state, clock_id, 0, t_gap);
+    harness.touch_monotonic(&mut dep.vault.state, 0, t_gap);
     transition_ok(
         &mut dep.vault.state,
         &signed_resume_stream(
@@ -410,7 +421,9 @@ fn test_resume_stream_owner_mismatch_fails() {
 
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
     let (_, alt_signer_account_id) = create_keypair(SEED_ALT_SIGNER);
-    let (clock_account_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_account_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let initial_accounts_data = vec![
         (owner_account_id, signer_account_balance),
@@ -461,7 +474,7 @@ fn test_resume_stream_owner_mismatch_fails() {
         "deposit failed",
     );
 
-    force_clock_account_monotonic(&mut state, clock_account_id, 0, DEFAULT_CLOCK_INITIAL_TS);
+    harness.touch_monotonic(&mut state, 0, DEFAULT_CLOCK_INITIAL_TS);
 
     let stream_pda = derive_stream_pda(program_id, vault_config_account_id, 0);
     transition_ok(
@@ -623,7 +636,7 @@ mod pp_program_tests {
             })
             .expect("resume_stream instruction serializes"),
             vec![0u8, 0, 0, 1, 0],
-            vec![(owner_npk.clone(), owner_shared_secret)],
+            vec![(owner_npk, owner_shared_secret)],
             vec![OWNER_NSK],
             vec![Some(membership_proof)],
             &ProgramWithDependencies::from(load_guest_program()),
@@ -633,7 +646,7 @@ mod pp_program_tests {
         let message = Message::try_from_circuit_output(
             vec![vault_config_b_id, vault_holding_b_id, stream_pda, clock_id],
             vec![],
-            vec![(owner_npk.clone(), owner_vpk(), owner_epk)],
+            vec![(owner_npk, owner_vpk(), owner_epk)],
             output,
         )
         .expect("try_from_circuit_output: resume_stream");

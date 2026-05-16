@@ -1,30 +1,20 @@
 //! `withdraw` to third-party recipients, including public and privacy-preserving recipient flows.
 
-use nssa::{
-    execute_and_prove,
-    privacy_preserving_transaction::{
-        circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
-        PrivacyPreservingTransaction,
-    },
-    program::Program,
-};
+use nssa::program::Program;
 use nssa_core::{
-    account::{Account, AccountId, AccountWithMetadata, Balance, Nonce},
-    encryption::EphemeralPublicKey,
-    BlockId, Commitment, EncryptionScheme, SharedSecretKey,
+    account::{Balance, Nonce},
+    BlockId,
 };
 
-use crate::test_helpers::load_guest_program;
 use crate::Instruction;
 use crate::{
     error_codes::ErrorCode,
     test_helpers::{
         assert_vault_state_unchanged_with_recipient, build_signed_public_tx, create_keypair,
         create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
-        force_clock_account_monotonic, harness_clock_01_and_provider_account_ids,
-        patch_vault_config, state_with_initialized_vault_with_recipient,
+        harness_clock_provider, patch_vault_config, state_with_initialized_vault_with_recipient,
     },
-    TokensPerSecond, VaultConfig, VaultId, VaultPrivacyTier,
+    TokensPerSecond, VaultConfig, VaultId,
 };
 
 use super::common::{
@@ -427,11 +417,13 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
     let nonce_stream = Nonce(2);
     let nonce_withdraw = Nonce(3);
 
-    let (clock_id, provider_account_id) = harness_clock_01_and_provider_account_ids();
+    let harness = harness_clock_provider();
+    let clock_id = harness.clock_id;
+    let provider_account_id = harness.provider_account_id;
 
     let mut wr = state_with_initialized_vault_with_recipient(owner_balance_start);
 
-    force_clock_account_monotonic(&mut wr.vault.state, clock_id, 0, DEFAULT_CLOCK_INITIAL_TS);
+    harness.touch_monotonic(&mut wr.vault.state, 0, DEFAULT_CLOCK_INITIAL_TS);
 
     let account_ids_deposit = [
         wr.vault.vault_config_account_id,
@@ -830,12 +822,27 @@ fn test_withdraw_recipient_not_present_in_state_fails() {
 mod pp_program_tests {
     use super::*;
 
+    use crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP;
     use crate::program_tests::pp_common::{
         account_meta, owner_vpk, pp3_recipient_npk, pp3_recipient_vpk, pp_owner_setup,
         run_pp_withdraw_to_private_recipient,
         vault_fixture_pseudonymous_funder_funded_via_native_transfer,
         vault_fixture_public_tier_funded_via_deposit, OWNER_NSK, PP3_OWNER_FUND_AMOUNT,
         PP3_RECIPIENT_EPK_SCALAR, PP3_SIGNER_EPK_SCALAR, PP3_WITHDRAW_AMOUNT,
+    };
+    use crate::test_helpers::load_guest_program;
+    use crate::VaultPrivacyTier;
+    use nssa::{
+        execute_and_prove,
+        privacy_preserving_transaction::{
+            circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
+            PrivacyPreservingTransaction,
+        },
+    };
+    use nssa_core::{
+        account::{Account, AccountId, AccountWithMetadata},
+        encryption::EphemeralPublicKey,
+        Commitment, EncryptionScheme, SharedSecretKey,
     };
 
     #[test]
@@ -972,8 +979,8 @@ mod pp_program_tests {
             .expect("withdraw instruction serializes"),
             vec![0u8, 0, 1, 2],
             vec![
-                (setup.owner_npk.clone(), owner_shared_secret),
-                (recipient_npk_val.clone(), recipient_shared_secret),
+                (setup.owner_npk, owner_shared_secret),
+                (recipient_npk_val, recipient_shared_secret),
             ],
             vec![OWNER_NSK],
             vec![Some(membership_proof), None],
@@ -985,9 +992,9 @@ mod pp_program_tests {
             vec![setup.vault_config_b_id, setup.vault_holding_b_id],
             vec![],
             vec![
-                (setup.owner_npk.clone(), owner_vpk(), owner_epk),
+                (setup.owner_npk, owner_vpk(), owner_epk),
                 (
-                    recipient_npk_val.clone(),
+                    recipient_npk_val,
                     pp3_recipient_vpk(),
                     recipient_epk,
                 ),
@@ -1005,7 +1012,7 @@ mod pp_program_tests {
             .transition_from_privacy_preserving_transaction(
                 &tx,
                 5 as BlockId,
-                crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+                TEST_PUBLIC_TX_TIMESTAMP,
             )
             .expect("withdraw private owner PP transition");
 
