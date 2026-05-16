@@ -92,7 +92,7 @@ pub fn create_stream_deadline_satisfies_policy_as_of(
 /// Unallocated-balance invariant (see also [`crate::checked_total_allocated_after_add`]):
 ///
 /// holding balance -
-/// vault total_allocated >= proposed stream_allocation
+/// vault total_allocated >= proposed [`crate::StreamParams::allocation`]
 pub fn proposal_satisfies_policy(
     ProposalCheckInputs {
         params,
@@ -102,10 +102,10 @@ pub fn proposal_satisfies_policy(
         now,
     }: &ProposalCheckInputs<'_>,
 ) -> Result<(), PolicyRejectReason> {
-    if params.stream_rate < policy.min_stream_rate {
+    if params.rate < policy.min_rate {
         return Err(PolicyRejectReason::RateBelowPolicyMin);
     }
-    if params.stream_allocation < policy.min_stream_allocation {
+    if params.allocation < policy.min_allocation {
         return Err(PolicyRejectReason::AllocationBelowPolicyMin);
     }
 
@@ -116,7 +116,7 @@ pub fn proposal_satisfies_policy(
     )?;
 
     let unallocated = unallocated_balance(*vault_holding_balance, *vault_total_allocated);
-    if params.stream_allocation > unallocated {
+    if params.allocation > unallocated {
         return Err(PolicyRejectReason::UnallocatedInsufficient);
     }
     Ok(())
@@ -136,12 +136,12 @@ pub fn new_stream_satisfies_proposal(
 ) -> Result<(), PolicyRejectReason> {
     stream_provider_binding_satisfies_expected_payee(folded_stream, proposal_provider_id)?;
 
-    if folded_stream.rate < proposal_params.stream_rate {
+    if folded_stream.rate < proposal_params.rate {
         return Err(PolicyRejectReason::RateBelowAcceptedParams);
     }
 
     // Compare stored principal cap, ignoring accrual drawdown tracked in `unaccrued()`.
-    if folded_stream.allocation < proposal_params.stream_allocation {
+    if folded_stream.allocation < proposal_params.allocation {
         return Err(PolicyRejectReason::AllocationBelowAcceptedParams);
     }
     Ok(())
@@ -154,8 +154,11 @@ pub fn new_stream_satisfies_proposal(
 /// - Stream must remain [`StreamState::Active`].
 /// - Payee pubkey must remain the accepted provider binding.
 /// - On-chain [`StreamConfig::rate`] must be greater than or equal to the accepted proposal rate
-///   and remain at or above pinned policy minima. This is checked on every service proof (not only at
-///   `create_stream`) so a payer cannot downgrade an active stream below floors negotiated at acceptance.
+///   and remain at or above pinned policy minima. The payment-streams spec requires this on every
+///   `StreamProof`, not only when reconciling the first proof with [`new_stream_satisfies_proposal`],
+///   so the provider rejects service if folded on-chain state violates those floors. This LEZ guest
+///   sets `rate` only at `create_stream`; it does not later lower `rate` (for example
+///   [`Instruction::TopUpStream`] only increases allocation).
 ///
 /// `service_id` is intentionally untouched here (module compares against `/vac/waku/store-query/3.0.0`).
 pub fn stream_satisfies_policy(
@@ -168,10 +171,10 @@ pub fn stream_satisfies_policy(
 
     stream_provider_binding_satisfies_expected_payee(folded_stream, accepted_terms.provider_id)?;
 
-    if folded_stream.rate < accepted_terms.policy_at_acceptance.min_stream_rate {
+    if folded_stream.rate < accepted_terms.policy_at_acceptance.min_rate {
         return Err(PolicyRejectReason::RateBelowPolicyMin);
     }
-    if folded_stream.rate < accepted_terms.params.stream_rate {
+    if folded_stream.rate < accepted_terms.params.rate {
         return Err(PolicyRejectReason::RateBelowAcceptedParams);
     }
     Ok(())
@@ -322,7 +325,7 @@ mod predicates_unit_tests {
     #[test]
     fn proposal_rejects_when_rate_or_allocation_below_advertised_floors() {
         let policy = StreamProviderPolicy::new(
-            /* min_stream_rate */ 20, /* min_stream_allocation */ 500,
+            /* min_rate */ 20, /* min_allocation */ 500,
             /* max_deadline_delay */ 1_000, /* vault response cap */ 65_536,
         );
 
@@ -506,7 +509,7 @@ mod predicates_unit_tests {
     fn stream_policy_accepts_when_active_rates_meet_pins() {
         let provider = account_marker(11);
         let policy = StreamProviderPolicy::new(
-            /* min_stream_rate */ 10, /* min_stream_allocation */ 1, 1_000, 65_536,
+            /* min_rate */ 10, /* min_allocation */ 1, 1_000, 65_536,
         );
         let params = StreamParams::new(12, 500, 0, vec![]);
         let terms = accepted_terms_fixture(params, policy, provider);

@@ -18,10 +18,10 @@ pub const MAX_SERVICE_ID_LEN: usize = 128;
 /// Rules a provider advertises and that clients and on-chain terms must satisfy.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamProviderPolicy {
-    /// Minimum accepted stream rate (`TokensPerSecond` scale).
-    pub min_stream_rate: TokensPerSecond,
-    /// Minimum accepted stream allocation (`Balance` scale).
-    pub min_stream_allocation: Balance,
+    /// Minimum accepted rate (`TokensPerSecond` scale).
+    pub min_rate: TokensPerSecond,
+    /// Minimum accepted allocation (`Balance` scale).
+    pub min_allocation: Balance,
     /// Upper bound on how far in the future `create_stream_deadline` may be
     /// relative to the LEZ clock-account timestamp `now` at proposal verification.
     pub max_create_stream_deadline_delay: Timestamp,
@@ -33,14 +33,14 @@ impl StreamProviderPolicy {
     /// Convenience constructor used in tests (not an on-chain discriminator).
     #[must_use]
     pub const fn new(
-        min_stream_rate: TokensPerSecond,
-        min_stream_allocation: Balance,
+        min_rate: TokensPerSecond,
+        min_allocation: Balance,
         max_create_stream_deadline_delay: Timestamp,
         vault_proof_max_response_bytes: u64,
     ) -> Self {
         Self {
-            min_stream_rate,
-            min_stream_allocation,
+            min_rate,
+            min_allocation,
             max_create_stream_deadline_delay,
             vault_proof_max_response_bytes,
         }
@@ -53,8 +53,10 @@ impl StreamProviderPolicy {
 /// predicates in this crate deliberately do NOT inspect it (`stream_satisfies_policy` excludes it).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamParams {
-    pub stream_rate: TokensPerSecond,
-    pub stream_allocation: Balance,
+    /// Proposed accrual rate; same scale as on-chain [`crate::StreamConfig::rate`].
+    pub rate: TokensPerSecond,
+    /// Proposed allocation cap; same scale as on-chain [`crate::StreamConfig::allocation`].
+    pub allocation: Balance,
     /// Latest ledger time by which the payer must land `create_stream` on-chain (signed proposal field).
     pub create_stream_deadline: Timestamp,
     /// Opaque service identifier; length SHOULD be at most [`MAX_SERVICE_ID_LEN`].
@@ -64,14 +66,14 @@ pub struct StreamParams {
 impl StreamParams {
     #[must_use]
     pub fn new(
-        stream_rate: TokensPerSecond,
-        stream_allocation: Balance,
+        rate: TokensPerSecond,
+        allocation: Balance,
         create_stream_deadline: Timestamp,
         service_id: Vec<u8>,
     ) -> Self {
         Self {
-            stream_rate,
-            stream_allocation,
+            rate,
+            allocation,
             create_stream_deadline,
             service_id,
         }
@@ -137,7 +139,7 @@ pub enum PolicyRejectReason {
     /// [`StreamParams::create_stream_deadline`] is invalid for the proposal-clock `now`:
     /// not strictly in the future, or later than `now + StreamProviderPolicy::max_create_stream_deadline_delay`.
     CreateStreamDeadlineInvalid = 2,
-    /// `vault_total_allocated + stream_allocation` would exceed holdings (unallocated holding balance).
+    /// `vault_total_allocated +` [`StreamParams::allocation`] would exceed holdings (unallocated holding balance).
     UnallocatedInsufficient = 3,
     /// Established on-chain rate is weaker than accepted proposal terms.
     RateBelowAcceptedParams = 4,
