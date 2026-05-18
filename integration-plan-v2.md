@@ -36,7 +36,7 @@ and any new wire format for protocols other than Store.
 ### Recommended reading order
 
 1. This file (`integration-plan-v2.md`).
-   The 15-step plan (Step 3 is split into 3a core and 3b FFI),
+   The 16-step plan (Step 3 is split into 3a core and 3b FFI, Step 6 is split into 6a upstream PR and 6b module bootstrap),
    definitions of done,
    resolved decisions (D1–D5),
    and non-blocking notes (N1–N8).
@@ -116,7 +116,7 @@ Reads of vault, stream, and clock accounts go through `get_account_public`.
 Writes go through `send_public_transaction`
 (JSON request shape `program_id` / `accounts` / `instruction` / `signer_account`),
 which is already exercised by `logos-rln-module`
-and is implemented in an open PR on the wallet module (see D3).
+and is implemented in an open PR on the wallet module (see [D3](#d3-wallet-write-path)).
 
 `logos-delivery` and `liblogosdelivery`
 host the Store protocol implementation in Nim and its C FFI surface.
@@ -137,7 +137,7 @@ This work adds two thin routing methods on its interface,
 `setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`,
 that bridge the new `liblogosdelivery` hooks to a named Logos module
 via `LogosAPI` / `LogosAPIClient`.
-It also exposes `storeQuery(jsonQuery, peerAddr, timeoutMs)`
+It also exposes `queryStore(jsonQuery, peerAddr, timeoutMs)`
 so modules and apps can issue Store queries through `delivery_module`.
 At registration time the bridge uses each module's auto-generated
 `getPluginMethods` surface to confirm that the named module exposes
@@ -281,7 +281,7 @@ that takes a verifier callback (called for inbound Store requests carrying an `e
 and a path for attaching opaque eligibility-proof bytes to outbound Store queries.
 `logos-delivery-module` (our branch) gains
 `setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`,
-`storeQuery(jsonQuery, peerAddr, timeoutMs)`,
+`queryStore(jsonQuery, peerAddr, timeoutMs)`,
 plus a `paidStoreMode` configuration toggle.
 The bridge validates the named module's surface at registration time
 via the auto-generated `getPluginMethods` introspection.
@@ -298,12 +298,31 @@ We ship this on our branches and do not negotiate spec changes.
 ### D3, Wallet write path
 
 `payment_streams_module` writes go through `lez_wallet_module.send_public_transaction`,
-matching the JSON request shape `logos-rln-module` already uses
-(`program_id`, `accounts`, `instruction`, `signer_account`).
-That method is implemented in an open PR on `logos-execution-zone-module`.
-If the PR is merged before we reach Step 8, we use mainline;
-otherwise we use the feature branch where it is implemented.
-No subprocess fallback is needed.
+matching the JSON shape defined in this decision.
+That method is implemented in open PRs:
+- `logos-execution-zone` PR #429 adds `wallet_ffi_send_public_transaction` to the Rust FFI
+- `logos-execution-zone-module` PR #16 exposes it as `send_public_transaction` in the Qt plugin
+
+As of 2026-05-18, these PRs are not merged. We use the feature branches:
+- `feat/wallet-ffi-send-public-transaction` for `logos-execution-zone`
+- `feat/send-public-transaction` for `logos-execution-zone-module`
+
+Pin these branches in `payment_streams_module`'s `flake.nix` inputs.
+If the PRs merge before we reach Step 8, switch to mainline; see Step 8a.
+
+#### JSON request shape
+
+The canonical JSON shape for `send_public_transaction`:
+```json
+{
+  "program_id": "hex",
+  "accounts": ["hex", "hex", ...],
+  "instruction": "hex",
+  "signer_account": "hex"
+}
+```
+This shape is used by `logos-rln-module` and adopted here per D3.
+All hex strings are lowercase, no `0x` prefix.
 
 ### D4, Wallet module dependency name
 
@@ -355,7 +374,7 @@ Domain separation would not reduce the attack surface
 in the current trust model.
 The payment-streams FFI already builds a domain-prefixed `canonical_payload`
 and hashes it to a 32-byte `canonical_payload_digest` for signing
-(see N8).
+(see [N8](#n8-canonical-store-request-bytes-format)).
 If the ecosystem later introduces a module permission model,
 domain separation on signing should be revisited.
 
@@ -428,7 +447,7 @@ The lower-level `logos-delivery` C ABI already exposes Store queries,
 but the current `logos-delivery-module` Qt surface does not.
 We ask the Delivery team to expose the existing Store query functionality
 through the module surface as
-`storeQuery(jsonQuery, peerAddr, timeoutMs)`.
+`queryStore(jsonQuery, peerAddr, timeoutMs)`.
 This is exposing already-implemented functionality, not a spec change;
 no Store protocol semantics are modified.
 If the upstream change does not land in time for the demo,
@@ -806,7 +825,60 @@ encoded payloads round-trip through `lez-payment-streams-core` Borsh decoders,
 and account-list planners agree with the harness builders in
 `lez-payment-streams-core/src/test_helpers.rs`.
 
-### Step 6, Bootstrap the Logos Core module
+### Step 6a, Submit upstream PR for Store query exposure
+  
+Architectural context:
+`logos-delivery-module` does not currently expose Store query functionality,
+even though the underlying `liblogosdelivery` implements `waku_store_query`.
+Per N6, we submit `queryStore(jsonQuery, peerAddr, timeoutMs)` upstream first,
+then branch from the updated master for eligibility hook work in Step 13.
+
+This step is independent from `payment_streams_module` development.
+It is tracked here because Store retrieval through `delivery_module`
+(Step 13 and Step 14) requires `queryStore` to be available there.
+Earlier steps in this repo (including Step 6b) do not call `queryStore` and can proceed while upstream review finishes.
+
+Components required to run:
+Access to `logos-delivery-module` repository and CI.
+
+Definition of done:
+1. PR opened against `logos-messaging/logos-delivery` adding `logosdelivery_query_store`
+   to liblogosdelivery, and PR opened against `logos-co/logos-delivery-module` adding
+   the `queryStore` method
+2. PR descriptions explain the module method exposes existing liblogosdelivery Store functionality
+3. No protocol changes or version bumps required (D1)
+4. CI passes on the PR:
+   - `nix build` succeeds on Ubuntu and macOS
+   - `nix build .#unit-tests` passes (unit tests with mocked liblogosdelivery)
+   - Integration tests build if liblogosdelivery is present
+5. Code review approval from maintainers
+6. If PR merges before demo completion, Step 13 branches from updated master
+7. If PR is pending, Step 13 branches from v0.1.1 and includes `queryStore` locally
+
+Pre-flight verification (before opening PR):
+- Run `nix build -L` locally to verify the module builds
+- Run `nix build .#unit-tests -L` to verify tests pass
+- Check that the new `queryStore` method follows the pattern of existing methods (`send`, `subscribe`, etc.)
+- Verify the method signature matches the planned usage in Step 14: `queryStore(jsonQuery, peerAddr, timeoutMs)`
+
+Status — done, awaiting review.
+
+Upstream PRs are open for `logos-messaging/logos-delivery` (liblogosdelivery FFI:
+`logosdelivery_query_store`) and `logos-co/logos-delivery-module` (module method:
+`queryStore`). Merge and CI approval are pending.
+
+Concurrent progress.
+
+Work in this repo can continue on steps that do not invoke `delivery_module.queryStore`
+(for example Steps 1–6b, chain reads and writes through `lez_wallet_module`,
+and Rust FFI work through Step 5).
+
+Steps that issue Store queries via `delivery_module` (Step 13 eligibility routing,
+Step 14 demo) still need the landed upstream changes, or the fallback called out
+above (branch from updated master once merged, else patch locally / bump
+`flake.lock` / use `nix` `--override-input logos-delivery …` during development).
+
+### Step 6b, Bootstrap the Logos Core module
 
 Architectural context:
 this step lays down the C++ Qt-plugin shell of `payment_streams_module`.
@@ -814,29 +886,18 @@ The shell is a Qt plugin (`type: core`)
 that will host the Rust FFI crate (from Steps 1–5)
 and expose LogosAPI methods to other modules in later steps.
 
-Pattern decision point:
-the plan is written assuming the legacy `PluginInterface` pattern
-(manual `Q_INVOKABLE`, `QString` types) to match `logos-rln-module`.
-Before implementing Step 6, verify the current state of `delivery_module`
-and `lez_wallet_module` — if they have adopted the universal pattern
-(`"interface": "universal"`, pure C++ + code generation from `logos-dev-boost`),
-the new approach is preferable and future-proof.
-If they remain on legacy, stick with legacy to avoid runtime compatibility risk.
-The ecosystem direction should be checked at this step; do not proceed
-with either pattern until the partner module status is confirmed.
+Pattern decision point (2026-05-18):
+Both `lez_wallet_module` and `delivery_module` use the legacy `PluginInterface` pattern.
+Additionally, the `LogosModules` typed wrapper generated by `logos-cpp-generator`
+crashes in core module sidecars (see `logos-delivery-module` [Issue #31](https://github.com/logos-co/logos-delivery-module/issues/31)).
 
-Before implementing Step 6, check the current state of
-`lez_wallet_module` and `delivery_module`.
-If they have adopted the universal pattern
-(`"interface": "universal"` in `metadata.json`,
-code generation via `logos-cpp-generator`),
-use the new pattern for `payment_streams_module`.
-If they remain on the legacy pattern
-(manual `Q_INVOKABLE`, `PluginInterface`),
-stay with legacy to avoid runtime compatibility risk.
+Use the legacy `PluginInterface` pattern for `payment_streams_module`.
 
-Confirm the partner modules' status before proceeding,
-and refer to the "Module Implementation Patterns" section in `logos-architecture-overview.md` for details.
+See [`docs/step6b-implementation-guidance.md`](docs/step6b-implementation-guidance.md) for:
+- Confirmed component selections
+- Components to use and avoid
+- Safe cross-module call patterns
+- Implementation verification checklist
 
 Scaffold the module from the `logos-module-builder`
 `with-external-lib` template, modeled on `logos-rln-module`
@@ -862,7 +923,7 @@ Implementor hints (FFI from Step 5, no extra Qt surface yet):
 - Link the same `liblez_payment_streams_ffi` artifact the metadata `include` list names, and
   vendor [`lez_payment_streams_ffi.h`](lez-payment-streams-ffi/lez_payment_streams_ffi.h) the same
   way `logos-rln-module` pulls in `rln_ffi`/headers from its external lib (CMake + flake inputs).
-  Step 6 is load/plumbing only; you do not need to call the instruction entrypoints from C++ until
+  Step 6b is load/plumbing only; you do not need to call the instruction entrypoints from C++ until
   chain writes land.
 - On-chain instruction bytes and account-list planning live in
   [`lez-payment-streams-ffi/src/instruction_abi.rs`](lez-payment-streams-ffi/src/instruction_abi.rs).
@@ -883,10 +944,11 @@ Components required to run:
 No chain, no messaging network, no UI host.
 
 Definition of done:
-`nix build` produces an `.lgx`,
-`lgpm install` lays it out alongside `lez_wallet_module`,
-`logoscore` loads it without errors,
-and `lm methods` reports the empty plugin surface as expected.
+1. `nix build` produces a valid `.lgx` file
+2. `lgpm install` places the module alongside `lez_wallet_module`
+3. `logoscore` loads the module without errors
+4. `lm methods` shows the expected plugin surface
+5. A test call to `lez_wallet_module` using `invokeRemoteMethod` succeeds
 
 ### Step 7, Wire chain reads from the module
 
@@ -903,8 +965,9 @@ plus a higher-level helper that reads the configured clock account
 and returns the current sequencer time.
 These helpers are pure read paths and do not touch any payment-streams logic.
 Use `LogosAPIClient::invokeRemoteMethod` directly,
-mirroring `logos-rln-module/src/logos_rln_module.cpp`,
-until the generated typed wrapper for `lez_wallet_module` lands here.
+following the safe pattern documented in
+[`docs/step6b-implementation-guidance.md`](docs/step6b-implementation-guidance.md).
+Do not use the `LogosModules` typed wrapper as it crashes in core module sidecars.
 
 Components required to run:
 `logoscore` daemon hosting both `lez_wallet_module` and `payment_streams_module`,
@@ -935,18 +998,17 @@ Instruction bytes and account lists are built through
 Two sub-steps that ship together:
 
 Sub-step 8a:
-on our branch of `logos-execution-zone-module`
-(or mainline if the open PR has merged; see D3),
+on the feature branch of `logos-execution-zone-module`
+(`feat/send-public-transaction`, see [D3](#d3-wallet-write-path)),
 add `send_public_transaction(QString jsonRequest) -> QString`
-on `lez_wallet_module`,
-matching the JSON shape already produced by `logos-rln-module`
-(`program_id`, `accounts`, `instruction` hex, `signer_account`).
-The method delegates to the underlying `wallet_ffi` signing-and-submit path.
+on `lez_wallet_module`.
+The method accepts the JSON shape defined in D3.
+It delegates to the underlying `wallet_ffi` signing-and-submit path.
 Add `sign_public_payload(accountId, canonical_payload_digest_hex) -> QString`
 on the same branch,
 returning a 64-byte NSSA Schnorr signature for a 32-byte `canonical_payload_digest`
 with the public account's signing key.
-No domain parameter; see N1 for rationale.
+No domain parameter; see [N1](#n1-off-chain-canonical-payload-signing) for rationale.
 
 Sub-step 8b:
 add a private helper inside `payment_streams_module`
@@ -961,7 +1023,7 @@ for the nine payment-stream operations:
 initialize vault, deposit, withdraw, create stream, top up,
 pause, resume, close, claim.
 
-Expose user-facing `Q_INVOKABLE` read methods:
+Expose user-facing `Q_INVOKABLE` status helper methods:
 `getVaultStatus(vaultConfigAccountId) -> QString`
 reads the vault config and vault holding accounts via `get_account_public`,
 decodes both through the FFI,
@@ -1000,6 +1062,15 @@ once registered as the outbound eligibility provider in Step 13.
 It does not, by itself, initiate any Store traffic;
 it just produces opaque bytes when asked.
 
+#### Quick reference
+
+| Method | Purpose | Called by |
+|--------|---------|-----------|
+| `prepareEligibilityForStoreQuery` | Returns `StreamProposal` or `StreamProof` | `delivery_module` (auto) |
+| `registerProviderMapping` | Maps `PeerId` to `providerId` | Host application |
+| `listMyStreams` | Lists streams for a vault | Host application |
+| `rediscoverStreams` | Re-enumerates streams from chain | Host application (recovery) |
+
 #### User-side flow
 
 The intended sequence for a new provider relationship is:
@@ -1026,7 +1097,7 @@ The intended sequence for a new provider relationship is:
 #### Session and stream state management
 
 Add session-keypair management inside `payment_streams_module`,
-backed by atomic JSON in `instancePersistencePath` (see N4).
+backed by atomic JSON in `instancePersistencePath` (see [N4](#n4-persistence-policy)).
 The persisted state per `(vault_id, provider_id)` includes:
 the `stream_id` (allocated locally, used as the PDA seed on-chain),
 the session keypair,
@@ -1055,7 +1126,7 @@ to produce `VaultProof.owner_signature` with the vault owner's LEZ key.
 Later `StreamProof`s are signed with the persisted session key.
 
 `registerProviderMapping(providerPeerId, providerId, providerAccountId) -> LogosResult`
-lets the host configure the identity mapping (see N5).
+lets the host configure the identity mapping (see [N5](#n5-provider-identity-mapping)).
 
 `listMyStreams(vaultId) -> QString`
 returns a JSON array of stream statuses
@@ -1312,7 +1383,7 @@ A cross-language test vector confirms
 that the Nim canonical-bytes serializer
 produces output identical to the Rust serializer
 for a fixed `StoreQueryRequest` with known field values
-(see N8 for the test vector specification).
+(see [N8](#n8-canonical-store-request-bytes-format) for the test vector specification).
 
 ### Step 13, Generic eligibility routing in `logos-delivery-module`
 
@@ -1328,7 +1399,7 @@ introspection surface every Logos module already exposes.
 On our branch of `logos-delivery-module`,
 extend the `delivery_module` interface with
 `setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`
-plus `storeQuery(jsonQuery, peerAddr, timeoutMs)`,
+plus `queryStore(jsonQuery, peerAddr, timeoutMs)`,
 and add a `paidStoreMode` configuration toggle to `createNode`.
 Implement the bridge that translates the new `liblogosdelivery` callbacks
 into `LogosAPIClient` calls on the named module
@@ -1439,6 +1510,10 @@ modeled on `logos-delivery-demo`.
 It depends on `payment_streams_module` and `delivery_module`,
 constructs `LogosModules` in `initLogos`,
 and calls both modules through the generated typed wrappers.
+
+Note: `LogosModules` is used here because UI modules run in-process with the host,
+not in a `logos_host` sidecar. The crash documented in Issue #31 affects core modules only.
+
 The plugin surfaces vault state, stream state,
 the current pending-proposal slot,
 and the result of the most recent Store query.
