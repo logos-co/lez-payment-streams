@@ -41,6 +41,11 @@ Operator setup (`lgpm`, `logoscore`, wallet `.lgx` bundling, shared `modules/` d
 is summarized in [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md)
 (integration plan Step 6c).
 
+Logos stack integration (LIP-155 demo, Store eligibility, module wiring) is planned in
+[`integration-plan-v2.md`](integration-plan-v2.md) with context in [`handoff.md`](handoff.md).
+Store queries through `delivery_module` are blocked on upstream `queryStore` landing on
+`master`; this repo does not ship or pin our own `queryStore` FFI PR branch.
+
 
 ## Running Tests
 

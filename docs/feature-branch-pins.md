@@ -1,26 +1,28 @@
-# Feature branch pins for delivery and wallet integration
+# Feature branch pins for wallet integration
 
 This document describes why we pin certain flake inputs to feature branches
 and what changed in each repo to make that pin reproducible with Nix.
 
-The overarching goal is to run the payment-streams demo stack against APIs
+The overarching goal is to run the payment-streams demo stack against wallet APIs
 that are not yet on upstream default branches.
 
-We need Store querying (`logosdelivery_query_store`),
-wallet FFI for arbitrary public transactions (`wallet_ffi_send_public_transaction`)
-and the corresponding wallet module surface (`send_public_transaction`),
-without waiting for those PRs to merge.
+Store querying through `delivery_module` is not pinned here.
+Upstream is implementing Store access on their roadmap with a different design
+than our earlier `logosdelivery_query_store` / `queryStore` PRs.
+Integration work waits for that functionality on `logos-delivery-module` `master`
+and does not use branch `feat/liblogosdelivery-query-store` or local forks of those PRs.
 
-Until merges happen,
+We still pin wallet FFI for arbitrary public transactions
+(`wallet_ffi_send_public_transaction`)
+and the corresponding wallet module surface (`send_public_transaction`)
+until those PRs merge.
+
+Until wallet merges happen,
 flakes pin Git refs that correspond to open PRs
 (or equivalently named branches that carry the same commits).
 
 Links used when pinning:
 
-- Delivery FFI branch ("query Store over FFI") —
-  [`logos-messaging/logos-delivery`](https://github.com/logos-messaging/logos-delivery),
-  branch `feat/liblogosdelivery-query-store`
-  (module consumed via `logos-delivery-module`).
 - Universal public transaction signing (execution zone) —
   [`logos-blockchain/logos-execution-zone` PR 429](https://github.com/logos-blockchain/logos-execution-zone/pull/429).
   The flake input used by sibling repos may appear as `logos-blockchain/lssa`
@@ -29,27 +31,15 @@ Links used when pinning:
 - Companion wallet module changes —
   [`logos-blockchain/logos-execution-zone-module` PR 16](https://github.com/logos-blockchain/logos-execution-zone-module/pull/16).
 
-## Logos Delivery module (`logos-delivery-module`)
+## Logos Delivery module (Store query — not used)
 
-Goal.
+Earlier experiments opened PRs to expose `logosdelivery_query_store` and
+`delivery_module.queryStore`. That path is retired for this integration:
+do not point `logos-delivery-module` flakes at `feat/liblogosdelivery-query-store`
+or maintain a parallel `queryStore` in our forks.
 
-Build `logos-delivery-module` against `liblogosdelivery`
-that exposes `logosdelivery_query_store`,
-so `delivery_module_plugin.cpp` compiles and `nix build .#lgx` succeeds.
-
-What we changed.
-
-- `flake.nix` —
-  `logos-delivery` input points at
-  `git+https://github.com/logos-messaging/logos-delivery?submodules=1&ref=feat/liblogosdelivery-query-store`.
-- `flake.lock` —
-  updated via `nix flake lock` so `logos-delivery` resolves to that branch revision.
-
-Notes.
-
-- The pinned branch carries `logosdelivery_query_store`
-  in `liblogosdelivery/liblogosdelivery.h` and Nim FFI bindings.
-  Older lockfile revisions pointed at `master` and broke compilation at `query_store`.
+When upstream merges Store query support on `master`, update
+`integration-plan-v2.md` Step 6a status and consume the released API only.
 
 ## Payment streams workspace (`lez-payment-streams`)
 
@@ -150,9 +140,6 @@ The repo root flake only exposes `payment-streams-ffi`.
 The Logos Qt module (`lgx`) is built from `logos-payment-streams-module/` (that flake inputs `path:..`, so the root flake cannot forward `#lgx` without a circular lock).
 
 ```bash
-# Delivery module (from logos-delivery-module checkout)
-nix build .#lgx
-
 # Payment-streams FFI (from lez-payment-streams repo root)
 nix build .#payment-streams-ffi
 

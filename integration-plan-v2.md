@@ -31,13 +31,26 @@ mixed paid and unpaid Store interoperability,
 production hardening of off-chain key custody,
 and any new wire format for protocols other than Store.
 
+### Store query dependency
+
+Steps that issue Store queries through `delivery_module` (Step 13 eligibility
+routing, Step 14 demo, Step 15 UI) depend on upstream Store query exposure on
+`logos-delivery-module` `master`. The Delivery roadmap is implementing that
+capability with a different approach than our earlier
+`logosdelivery_query_store` / `queryStore` PRs.
+
+We do not integrate against those PRs, feature branches, or local forks of them.
+Step 6a tracks upstream only. Until `queryStore` (or the equivalent upstream API)
+lands on `master`, active work stays on Steps 1–12 and wallet-pinned module flows
+(Steps 6b–11, 8a).
+
 ## Onboarding
 
 ### Recommended reading order
 
 1. This file (`integration-plan-v2.md`).
    The 16-step plan (Step 3 is split into 3a core and 3b FFI,
-   Step 6 is split into 6a upstream PR, 6b module bootstrap,
+   Step 6 is split into 6a wait for upstream Store query, 6b module bootstrap,
    and 6c operator or install basics),
    definitions of done,
    resolved decisions (D1–D5),
@@ -61,10 +74,9 @@ and any new wire format for protocols other than Store.
    Protocol source of truth for vault, stream, proof types, lifecycle,
    and `StreamProviderPolicy` (see `docs/step3-stream-provider-policy.md`).
 5. [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
-   Why `logos-delivery-module` and the payment-streams wallet dependency pin
-   Git refs on feature branches or PR heads,
-   what files encode those pins,
-   and how to reproduce builds.
+   Why the payment-streams wallet dependency pins Git refs on feature branches
+   or PR heads, what files encode those pins, and how to reproduce builds.
+   Store querying is explicitly out of scope for that doc; see N6 and Step 6a.
 6. [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md).
    How Nix flakes in this repo relate to `.lgx` output,
    how `nix-bundle-lgx` fits the patched wallet flake,
@@ -152,23 +164,27 @@ This work adds two thin routing methods on its interface,
 `setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`,
 that bridge the new `liblogosdelivery` hooks to a named Logos module
 via `LogosAPI` / `LogosAPIClient`.
-It also exposes `queryStore(jsonQuery, peerAddr, timeoutMs)`
+When upstream lands Store query support, the module will expose the upstream
+method (planned name in this doc: `queryStore(jsonQuery, peerAddr, timeoutMs)`)
 so modules and apps can issue Store queries through `delivery_module`.
+We do not ship or pin our own `queryStore` PR implementation; see N6 and Step 6a.
 At registration time the bridge uses each module's auto-generated
 `getPluginMethods` surface to confirm that the named module exposes
 the expected verifier and provider methods,
 so a misconfigured registration fails fast with a structured error.
 `payment_streams_module` is one such named module;
 future modules (different incentivization schemes) can register the same way.
-We ship `logos-delivery-module` from our own branch
-pinned in `payment_streams_module`'s `flake.nix`.
+Eligibility hook changes in `logos-delivery` / `logos-delivery-module` (Steps 11–13)
+ship on our branches until upstreamed; Store query consumption uses upstream
+`master` once available, not our retired query-store PR branch.
 
 `logoscore`
 is the headless runtime used to load and exercise modules during integration testing.
 The end-to-end demo runs two `logoscore` instances on one host,
 one as user and one as provider,
 each loading `lez_wallet_module`, `payment_streams_module`,
-and our branch of `delivery_module`.
+and `delivery_module` built from upstream `master` plus our eligibility-hook branch
+when Step 13 is in progress (see Step 14).
 
 `logos-basecamp`
 is optional for the MVP.
@@ -294,10 +310,11 @@ Confirm tag `30` is unused in `waku/waku_store/rpc_codec.nim` before implementat
 `liblogosdelivery` gains a generic registration entry point
 that takes a verifier callback (called for inbound Store requests carrying an `eligibility_proof`)
 and a path for attaching opaque eligibility-proof bytes to outbound Store queries.
-`logos-delivery-module` (our branch) gains
-`setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`,
-`queryStore(jsonQuery, peerAddr, timeoutMs)`,
+`logos-delivery-module` (our branch for eligibility hooks) gains
+`setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`
 plus a `paidStoreMode` configuration toggle.
+Store query on the module surface comes from upstream `master` (N6, Step 6a),
+not from our retired `queryStore` PR branch.
 The bridge validates the named module's surface at registration time
 via the auto-generated `getPluginMethods` introspection.
 Both layers stay payment-streams-agnostic.
@@ -458,15 +475,19 @@ while fixing the bytes used in proofs and on-chain streams.
 
 ### N6, Delivery module Store query exposure
 
-The lower-level `logos-delivery` C ABI already exposes Store queries,
-but the current `logos-delivery-module` Qt surface does not.
-We ask the Delivery team to expose the existing Store query functionality
-through the module surface as
-`queryStore(jsonQuery, peerAddr, timeoutMs)`.
-This is exposing already-implemented functionality, not a spec change;
-no Store protocol semantics are modified.
-If the upstream change does not land in time for the demo,
-we implement the method on our branch.
+Store retrieval through `delivery_module` is an upstream deliverable on the
+Delivery roadmap, not something this integration implements locally.
+
+We opened exploratory PRs (`logosdelivery_query_store` /
+`queryStore`) that exposed existing `liblogosdelivery` Store query hooks.
+Those PRs are not the integration path: upstream is implementing Store access
+with a different design. We wait for that work on `logos-delivery` and
+`logos-delivery-module` `master` and do not pin, fork, or maintain our PR
+branch (`feat/liblogosdelivery-query-store`) in payment-streams flakes.
+
+Steps 13–14 assume an upstream module method with the same call shape planned
+for the demo (`queryStore(jsonQuery, peerAddr, timeoutMs)` or whatever name
+ships on `master`). Until then, all other integration steps proceed in parallel.
 
 ### N7, Session key concurrency
 
@@ -840,58 +861,53 @@ encoded payloads round-trip through `lez-payment-streams-core` Borsh decoders,
 and account-list planners agree with the harness builders in
 `lez-payment-streams-core/src/test_helpers.rs`.
 
-### Step 6a, Submit upstream PR for Store query exposure
-  
+### Step 6a, Wait for upstream Store query exposure
+
 Architectural context:
-`logos-delivery-module` does not currently expose Store query functionality,
-even though the underlying `liblogosdelivery` implements `waku_store_query`.
-Per N6, we submit `queryStore(jsonQuery, peerAddr, timeoutMs)` upstream first,
-then branch from the updated master for eligibility hook work in Step 13.
+`logos-delivery-module` on released tags does not yet expose Store query
+functionality suitable for the paid Store demo. The Delivery team is adding
+Store access on their roadmap with an approach different from our earlier PRs.
+
+Per N6, this step is tracking and coordination only.
+We do not merge, pin, or fork our own `queryStore` / `logosdelivery_query_store`
+implementation. Step 13 and Step 14 start only after upstream Store query support
+is on `logos-delivery-module` `master` (method name and JSON shape documented in
+upstream release notes; this plan uses `queryStore(jsonQuery, peerAddr, timeoutMs)`
+as the expected demo shape).
 
 This step is independent from `payment_streams_module` development.
-It is tracked here because Store retrieval through `delivery_module`
-(Step 13 and Step 14) requires `queryStore` to be available there.
-Earlier steps in this repo (including Step 6b) do not call `queryStore` and can proceed while upstream review finishes.
+Earlier steps in this repo (including Step 6b) do not call Store query APIs on
+`delivery_module` and proceed while upstream work continues.
 
 Components required to run:
-Access to `logos-delivery-module` repository and CI.
+None in this repo (follow upstream `logos-delivery` / `logos-delivery-module`
+releases and messaging-team channels).
 
 Definition of done:
-1. PR opened against `logos-messaging/logos-delivery` adding `logosdelivery_query_store`
-   to liblogosdelivery, and PR opened against `logos-co/logos-delivery-module` adding
-   the `queryStore` method
-2. PR descriptions explain the module method exposes existing liblogosdelivery Store functionality
-3. No protocol changes or version bumps required (D1)
-4. CI passes on the PR:
-   - `nix build` succeeds on Ubuntu and macOS
-   - `nix build .#unit-tests` passes (unit tests with mocked liblogosdelivery)
-   - Integration tests build if liblogosdelivery is present
-5. Code review approval from maintainers
-6. If PR merges before demo completion, Step 13 branches from updated master
-7. If PR is pending, Step 13 branches from v0.1.1 and includes `queryStore` locally
+1. Upstream documents and ships Store query exposure on `master` in
+   `logos-delivery-module` (and matching `liblogosdelivery` support in
+   `logos-delivery`).
+2. The shipped API is sufficient for Step 14:
+   issue a Store query to an explicit provider peer from the user host.
+3. Payment-streams integration records the upstream method name and signature in
+   Step 13 / Step 14 implementor notes if they differ from the planned
+   `queryStore(jsonQuery, peerAddr, timeoutMs)` shape.
+4. No payment-streams flake pins the retired PR branch
+   `feat/liblogosdelivery-query-store` or equivalent.
 
-Pre-flight verification (before opening PR):
-- Run `nix build -L` locally to verify the module builds
-- Run `nix build .#unit-tests -L` to verify tests pass
-- Check that the new `queryStore` method follows the pattern of existing methods (`send`, `subscribe`, etc.)
-- Verify the method signature matches the planned usage in Step 14: `queryStore(jsonQuery, peerAddr, timeoutMs)`
+Status — on hold, waiting for upstream (2026-05-19).
 
-Status — done, awaiting review.
-
-Upstream PRs are open for `logos-messaging/logos-delivery` (liblogosdelivery FFI:
-`logosdelivery_query_store`) and `logos-co/logos-delivery-module` (module method:
-`queryStore`). Merge and CI approval are pending.
+Exploratory PRs against `logos-messaging/logos-delivery` and
+`logos-co/logos-delivery-module` may remain open for reference but are not
+integration targets. Do not block other steps on their review or merge.
 
 Concurrent progress.
 
-Work in this repo can continue on steps that do not invoke `delivery_module.queryStore`
-(for example Steps 1–6b, chain reads and writes through `lez_wallet_module`,
-and Rust FFI work through Step 5).
+Work in this repo continues on steps that do not invoke Store queries through
+`delivery_module` (Steps 1–6b, 7–11, and Nim/C++ eligibility work in Steps
+11–12 that does not require `queryStore`).
 
-Steps that issue Store queries via `delivery_module` (Step 13 eligibility routing,
-Step 14 demo) still need the landed upstream changes, or the fallback called out
-above (branch from updated master once merged, else patch locally / bump
-`flake.lock` / use `nix` `--override-input logos-delivery …` during development).
+Steps 13–15 remain gated on upstream Store query landing on `master`.
 
 ### Step 6b, Bootstrap the Logos Core module
 
@@ -914,8 +930,9 @@ See [`docs/step6b-implementation-guidance.md`](docs/step6b-implementation-guidan
 - Safe cross-module call patterns
 - Implementation verification checklist
 
-For flake pins that pull Store FFI and wallet signing APIs ahead of upstream merges,
+For flake pins that pull wallet signing APIs ahead of upstream merges,
 see [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
+Store query pins are intentionally absent; see N6 and Step 6a.
 
 Complete Step 6c ([`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md))
 before investing in Step 6b runtime verification if Nix packaging,
@@ -1452,11 +1469,14 @@ any module with the same method names in the future).
 The registration uses the auto-generated `getPluginMethods`
 introspection surface every Logos module already exposes.
 
-On our branch of `logos-delivery-module`,
+On our branch of `logos-delivery-module` (eligibility hooks only; build
+`liblogosdelivery` / module against upstream `master` for Store query),
 extend the `delivery_module` interface with
-`setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`
-plus `queryStore(jsonQuery, peerAddr, timeoutMs)`,
+`setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`,
+wire through upstream `queryStore` when present on `master`,
 and add a `paidStoreMode` configuration toggle to `createNode`.
+Do not add a parallel `queryStore` implementation in our fork; Step 6a must be
+satisfied from upstream first.
 Implement the bridge that translates the new `liblogosdelivery` callbacks
 into `LogosAPIClient` calls on the named module
 (`verifyEligibilityForStoreQuery`, `prepareEligibilityForStoreQuery`).
@@ -1474,12 +1494,14 @@ The full Store query exchange is the Step 14 demo
 and requires the full stack documented there.
 
 Definition of done:
-without any verifier registered,
-`delivery_module` behaves exactly as it did at `v0.1.1`.
+Prerequisite: Step 6a complete (upstream Store query on `master`).
+Without any verifier registered,
+`delivery_module` behaves exactly as it did at `v0.1.1` aside from upstream
+Store query APIs.
 Registering a module that does not expose the expected methods
 returns a structured error and leaves the previous registration in place.
 Store queries can be issued through `delivery_module`
-against an explicit provider peer address.
+against an explicit provider peer address using the upstream Store query API.
 With `payment_streams_module` registered as both verifier and provider,
 an end-to-end Store query produced by the user
 returns a successful Store outcome
@@ -1503,7 +1525,8 @@ starts a fresh scaffold workspace,
 deploys `lez_payment_streams`,
 builds `.lgx` packages for `lez_wallet_module` (our branch),
 `payment_streams_module`,
-and `delivery_module` (our branch),
+and `delivery_module` (upstream `master` with eligibility hooks merged or
+branched as in Step 13; Store query from upstream only per Step 6a),
 installs them with `lgpm` into two module directories,
 launches two `logoscore` instances loaded with all three modules
 on disjoint `portsShift` values
