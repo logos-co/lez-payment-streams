@@ -19,3 +19,7 @@ debug/
 .lez_payment_streams-state
 .lez_payment_streams-state.tmp
 .scaffold
+
+# Nix build outputs (symlinks)
+result
+logos-payment-streams-module/result

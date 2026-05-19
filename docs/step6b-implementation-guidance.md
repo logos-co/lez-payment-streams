@@ -38,11 +38,7 @@ It serves as the single source of truth for component selection, pattern choice,
   - `LogosResult` for return values
   - `QByteArray` for binary data
 
-- Direct `invokeRemoteMethod` calls
-  ```cpp
-  LogosResult result = logosAPI->getClient("lez_wallet_module")
-      ->invokeRemoteMethod("lez_wallet_module", "get_account_public", accountIdHex);
-  ```
+- Step 6b uses `invokeRemoteMethod` only inside startup code (typically `initLogos`) to prove `getClient` and dispatch work; keep the public plugin surface to `initLogos`, `name`, and whatever `PluginInterface` requires. Step 7 adds `Q_INVOKABLE` helpers that wrap wallet reads.
 
 ### FFI Integration
 
@@ -67,31 +63,23 @@ It serves as the single source of truth for component selection, pattern choice,
 
 ## Cross-Module Call Pattern
 
-The safe pattern for calling `lez_wallet_module` from `payment_streams_module`:
+Use raw `invokeRemoteMethod` (same as `logos-rln-module` and dependencies). For Step 6b, perform one probe from `initLogos` only; do not add extra exported methods on `payment_streams_module` for wallet access until Step 7.
 
 ```cpp
-// In payment_streams_module_plugin.h
-class PaymentStreamsModulePlugin : public QObject, public PluginInterface {
-    Q_OBJECT
-    Q_PLUGIN_METADATA(IID PluginInterface_iid FILE "metadata.json")
-    Q_INTERFACES(PluginInterface)
-
-public:
-    Q_INVOKABLE void initLogos(LogosAPI* api) override {
-        logosAPI = api;
-    }
-
-private:
-    LogosAPI* logosAPI = nullptr;
-};
-
-// In payment_streams_module_plugin.cpp
-LogosResult PaymentStreamsModulePlugin::callWalletGetAccount(
-    const QString& accountIdHex) {
-    return logosAPI->getClient("lez_wallet_module")
-        ->invokeRemoteMethod("lez_wallet_module", "get_account_public", accountIdHex);
+// payment_streams_module_plugin.cpp — startup plumbing only (Step 6b)
+void PaymentStreamsModulePlugin::initLogos(LogosAPI* logosApiInstance) {
+    m_logosApi = logosApiInstance;
+    LogosAPIClient* walletClient =
+        m_logosApi->getClient(QStringLiteral("lez_wallet_module"));
+    const QVariant probe = walletClient->invokeRemoteMethod(
+        QStringLiteral("lez_wallet_module"), QStringLiteral("list_accounts"));
+    (void)probe;
 }
 ```
+
+Declare `initLogos` as `Q_INVOKABLE` in the plugin header. Current `PluginInterface` does not always expose a virtual `initLogos`, so do not mark it `override` unless your pinned `logos-module` headers actually declare one.
+
+Step 7 repeats the same `getClient` plus `invokeRemoteMethod` pattern inside dedicated helpers (for example wrappers around `get_account_public`) exposed as `Q_INVOKABLE` methods.
 
 ## References
 

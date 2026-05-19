@@ -916,7 +916,8 @@ and `include` listing all platform variants of the FFI shared library:
 `flake.nix` calling `mkLogosModule`,
 `CMakeLists.txt`,
 and `src/payment_streams_module_plugin.{h,cpp}` plus `src/i_payment_streams_module.h`.
-The plugin implements `PluginInterface` and exposes only `initLogos` and `name` for now.
+The plugin implements `PluginInterface` and exposes only `initLogos` and `name` on its public LogosAPI surface for now.
+Cross-module plumbing is verified by issuing at least one `invokeRemoteMethod` into `lez_wallet_module` from startup code (for example the body of `initLogos`), without adding any other `Q_INVOKABLE` methods on `payment_streams_module`.
 
 Implementor hints (FFI from Step 5, no extra Qt surface yet):
 
@@ -947,13 +948,13 @@ Definition of done:
 1. `nix build` produces a valid `.lgx` file
 2. `lgpm install` places the module alongside `lez_wallet_module`
 3. `logoscore` loads the module without errors
-4. `lm methods` shows the expected plugin surface
-5. A test call to `lez_wallet_module` using `invokeRemoteMethod` succeeds
+4. `lm methods` on `payment_streams_module` shows only the minimal shell (`initLogos`, `name`, plus any symbols the host always reflects for `PluginInterface`; no payment-streams API yet)
+5. Cross-module plumbing verified: during plugin startup (for example inside `initLogos`), `getClient("lez_wallet_module")` and one `invokeRemoteMethod` into `lez_wallet_module` run without crashing the host; the call returns a normal `LogosResult` boundary (success or structured failure). Prefer a cheap remote method such as `list_accounts` so this step stays independent of LEZ deployment; if the wallet only returns errors until JSON-RPC to the sequencer works, that still satisfies Step 6b as plumbing-only. Chain-backed read success belongs in Step 7.
 
 ### Step 7, Wire chain reads from the module
 
 Architectural context:
-this step exercises LogosAPI (inter-module calls) for the first time.
+this step adds stable read helpers and exercises wallet-backed chain reads end-to-end for the first time.
 `payment_streams_module` calls into `lez_wallet_module`,
 which in turn uses its own FFI (`wallet_ffi`) to reach the LEZ sequencer
 over JSON-RPC.

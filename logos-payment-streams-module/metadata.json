@@ -1,0 +1,34 @@
+{
+  "name": "payment_streams_module",
+  "version": "0.1.0",
+  "description": "LEZ payment streams Logos Core module",
+  "author": "Logos",
+  "type": "core",
+  "category": "blockchain",
+  "main": "payment_streams_module_plugin",
+  "dependencies": ["lez_wallet_module"],
+  "capabilities": [],
+  "include": [
+    "liblez_payment_streams_ffi.so",
+    "liblez_payment_streams_ffi.dylib",
+    "liblez_payment_streams_ffi.dll"
+  ],
+
+  "nix": {
+    "packages": {
+      "build": [],
+      "runtime": []
+    },
+    "external_libraries": [
+      {
+        "name": "lez_payment_streams_ffi"
+      }
+    ],
+    "cmake": {
+      "find_packages": [],
+      "extra_sources": [],
+      "extra_include_dirs": [],
+      "extra_link_libraries": []
+    }
+  }
+}
