@@ -47,7 +47,7 @@ RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib program_tests
 
 `RISC0_DEV_MODE=1` skips zk proof generation in the RISC Zero zkVM harness and should be used for all routine test runs.
 
-Optional privacy-preserving program tests compile only with `--features pp-program-tests`; they intentionally **panic unless** `RISC0_DEV_MODE=1` so local or CI jobs never regress into full zk proving accidentally.
+Optional privacy-preserving program tests compile only with `--features pp-program-tests`; they intentionally panic unless `RISC0_DEV_MODE=1` so local or CI jobs never regress into full zk proving accidentally.
 
 ```bash
 RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib \

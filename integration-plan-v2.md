@@ -58,6 +58,11 @@ and any new wire format for protocols other than Store.
 4. LIP-155 spec at `rfc-index/docs/ift-ts/raw/payment-streams.md`.
    Protocol source of truth for vault, stream, proof types, lifecycle,
    and `StreamProviderPolicy` (see `docs/step3-stream-provider-policy.md`).
+5. [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
+   Why `logos-delivery-module` and the payment-streams wallet dependency pin
+   Git refs on feature branches or PR heads,
+   what files encode those pins,
+   and how to reproduce builds.
 
 ### Prerequisites
 
@@ -898,6 +903,9 @@ See [`docs/step6b-implementation-guidance.md`](docs/step6b-implementation-guidan
 - Components to use and avoid
 - Safe cross-module call patterns
 - Implementation verification checklist
+
+For flake pins that pull Store FFI and wallet signing APIs ahead of upstream merges,
+see [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
 
 Scaffold the module from the `logos-module-builder`
 `with-external-lib` template, modeled on `logos-rln-module`

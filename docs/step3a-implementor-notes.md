@@ -73,9 +73,9 @@ Signature and malformed wire → `PROOF_INVALID` in Step 4, not these variants.
 ### `new_stream_satisfies_proposal`
 
 - Run on folded `StreamConfig` at verification `now`.
-- Compare **stored `allocation` field** and `rate` to accepted `StreamParams`
+- Compare stored `allocation` field and `rate` to accepted `StreamParams`
   (>= semantics).
-- Do **not** compare unaccrued to `StreamParams::allocation`.
+- Do not compare unaccrued to `StreamParams::allocation`.
   Accrual lowers unaccrued without reducing `allocation` until a claim.
 - LEZ: `StreamConfig.provider` octets equal `provider_id` from acceptance.
 
@@ -85,7 +85,7 @@ Signature and malformed wire → `PROOF_INVALID` in Step 4, not these variants.
 - On-chain `rate` >= `policy_at_acceptance.min_rate` (and >= accepted
   params if you also enforce proposal floors on every request).
 - Provider binding: same 32-byte payee check as establishment.
-- Use **policy pinned at acceptance**, not the provider's latest
+- Use policy pinned at acceptance, not the provider's latest
   advertisement (LIP-155).
 
 ### `response_within_policy`
