@@ -145,15 +145,22 @@ from `logos-payment-streams-module/` so new follows nodes are recorded.
 
 ## Verification commands
 
+Workspace layout uses two flakes.
+The repo root flake only exposes `payment-streams-ffi`.
+The Logos Qt module (`lgx`) is built from `logos-payment-streams-module/` (that flake inputs `path:..`, so the root flake cannot forward `#lgx` without a circular lock).
+
 ```bash
 # Delivery module (from logos-delivery-module checkout)
 nix build .#lgx
 
-# Payment-streams FFI only (from lez-payment-streams checkout)
+# Payment-streams FFI (from lez-payment-streams repo root)
 nix build .#payment-streams-ffi
 
-# Payment-streams module bundle (from logos-payment-streams-module checkout)
-nix build .#lgx
+# Payment-streams Logos module bundle (from logos-payment-streams-module subflake only)
+nix build ./logos-payment-streams-module#lgx
 ```
 
 Adjust the system attribute for non-Linux hosts.
+
+For installing `.lgx` files with `lgpm` and running `logoscore`,
+see [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md).

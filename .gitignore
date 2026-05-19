@@ -23,3 +23,6 @@ debug/
 # Nix build outputs (symlinks)
 result
 logos-payment-streams-module/result
+
+# Local `nix bundle -o …` symlinks under the patched wallet flake
+logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/*lgx-dev

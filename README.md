@@ -26,6 +26,22 @@ Closing releases only the unaccrued remainder.
 Claiming pays out accrued funds.
 
 
+## Logos module package (Nix)
+
+The workspace root `flake.nix` exposes `packages.<system>.payment-streams-ffi` only.
+To build the payment-streams Logos Core plugin bundle (`.lgx`), use the nested flake:
+
+```bash
+nix build ./logos-payment-streams-module#lgx
+```
+
+(Run from the `lez-payment-streams` repo root, or `cd logos-payment-streams-module` and use `nix build .#lgx`.)
+
+Operator setup (`lgpm`, `logoscore`, wallet `.lgx` bundling, shared `modules/` directory)
+is summarized in [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md)
+(integration plan Step 6c).
+
+
 ## Running Tests
 
 After any change to the guest binary or to types shared with the guest,

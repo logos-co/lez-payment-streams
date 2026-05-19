@@ -36,7 +36,9 @@ and any new wire format for protocols other than Store.
 ### Recommended reading order
 
 1. This file (`integration-plan-v2.md`).
-   The 16-step plan (Step 3 is split into 3a core and 3b FFI, Step 6 is split into 6a upstream PR and 6b module bootstrap),
+   The 16-step plan (Step 3 is split into 3a core and 3b FFI,
+   Step 6 is split into 6a upstream PR, 6b module bootstrap,
+   and 6c operator or install basics),
    definitions of done,
    resolved decisions (D1–D5),
    and non-blocking notes (N1–N8).
@@ -63,6 +65,11 @@ and any new wire format for protocols other than Store.
    Git refs on feature branches or PR heads,
    what files encode those pins,
    and how to reproduce builds.
+6. [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md).
+   How Nix flakes in this repo relate to `.lgx` output,
+   how `nix-bundle-lgx` fits the patched wallet flake,
+   and how `lgpm` plus `logoscore` share one `modules/` directory.
+   Read before treating Step 6b runtime items as actionable if packaging is new.
 
 ### Prerequisites
 
@@ -73,6 +80,9 @@ and any new wire format for protocols other than Store.
 - `logoscore`, `lgpm`, `lm` —
   available through `logos-module-builder` outputs
   or as separate flake-buildable binaries.
+  See [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md)
+  for how `.lgx` artifacts, `lgpm --modules-dir`, and `logoscore -m` fit together
+  (Step 6c).
 - Outbound internet access for the `logos.dev` messaging-network preset
   during Step 14 and Step 15.
 - A working `git` and the workspace already checked out
@@ -907,6 +917,10 @@ See [`docs/step6b-implementation-guidance.md`](docs/step6b-implementation-guidan
 For flake pins that pull Store FFI and wallet signing APIs ahead of upstream merges,
 see [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
 
+Complete Step 6c ([`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md))
+before investing in Step 6b runtime verification if Nix packaging,
+`nix-bundle-lgx`, `lgpm`, or `logoscore` are unfamiliar.
+
 Scaffold the module from the `logos-module-builder`
 `with-external-lib` template, modeled on `logos-rln-module`
 and the Rust-FFI pattern documented in `logos-tutorial/logos-developer-guide.md`.
@@ -958,6 +972,39 @@ Definition of done:
 3. `logoscore` loads the module without errors
 4. `lm methods` on `payment_streams_module` shows only the minimal shell (`initLogos`, `name`, plus any symbols the host always reflects for `PluginInterface`; no payment-streams API yet)
 5. Cross-module plumbing verified: during plugin startup (for example inside `initLogos`), `getClient("lez_wallet_module")` and one `invokeRemoteMethod` into `lez_wallet_module` run without crashing the host; the call returns a normal `LogosResult` boundary (success or structured failure). Prefer a cheap remote method such as `list_accounts` so this step stays independent of LEZ deployment; if the wallet only returns errors until JSON-RPC to the sequencer works, that still satisfies Step 6b as plumbing-only. Chain-backed read success belongs in Step 7.
+
+### Step 6c, Operator install basics (Nix, LGX, lgpm, logoscore)
+
+Goal.
+
+Understand how payment-streams artifacts are built with Nix,
+how `.lgx` packages are produced for both `lez_wallet_module` and `payment_streams_module`,
+how `lgpm` installs them into one `modules/` directory,
+and how `logoscore` loads that directory,
+before treating Step 6b definition-of-done items 2–5 as the operating checklist.
+
+This step is documentation and environment setup only.
+No change to module source code is required.
+
+Components required.
+
+Read access to this repo,
+[`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md),
+and [`logos-tutorial/logos-developer-guide.md`](../logos-tutorial/logos-developer-guide.md)
+(package manager and logoscore sections).
+
+Definition of done.
+
+1. You can explain why `nix build .#lgx` at the `lez-payment-streams` repository root does not work,
+   and which flake attribute builds `payment_streams_module` instead.
+2. You can produce a wallet `.lgx` via
+   `logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/`
+   and `nix bundle --bundler github:logos-co/nix-bundle-lgx .#lib`,
+   and produce `payment_streams_module` via `nix build ./logos-payment-streams-module#lgx`.
+3. You use one absolute `modules/` path for both `lgpm --modules-dir` and `logoscore -m`,
+   installing `lez_wallet_module` before `payment_streams_module`,
+   and you can run `lgpm list` and start `logoscore -D` against that tree without ad hoc relative `PATH` hacks
+   (prefer `nix shell` or a locked dev shell when convenience matters).
 
 ### Step 7, Wire chain reads from the module
 
