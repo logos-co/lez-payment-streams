@@ -102,9 +102,12 @@ What we changed.
    - Applies `cmake-wallet-ffi-include.patch`
      (adds `target_include_directories(... "${LOGOS_EXECUTION_ZONE_WALLET_INCLUDE}")`).
    - `postPatch` on the wallet derivation substitutes `metadata.json`
-     so manifest name matches `lez_wallet_module`.
-   - `postInstall` installs `metadata.json` into `$out/` and adds
+     so manifest name matches `lez_wallet_module` (build tree).
+   - `postInstall` writes canonical `lez_wallet_module` metadata into `$out/`
+     (name, `type: core`, `main: lez_wallet_module_plugin`) and adds
      `$out/lib/lez_wallet_module_plugin.so` symlink to the real Qt plugin `.so`.
+   - The SDK-headers wrapper attaches a `src` tree with the same metadata so
+     `nix-bundle-lgx` can read `type` at eval time (see operator guide).
    - PR 16 ships plain CMake packages (no `mkLogosModule`), so the wallet store path
      never gained `include/lez_wallet_module_api.{h,cpp}` that `logos-plugin-qt`
      copies into dependents before `--general-only`. The wrapper adds a
@@ -149,5 +152,6 @@ nix build ./logos-payment-streams-module#lgx
 
 Adjust the system attribute for non-Linux hosts.
 
-For installing `.lgx` files with `lgpm` and running `logoscore`,
-see [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md).
+For installing `.lgx` files with `lgpm`, running `logoscore`, and the Step 7+ retest loop,
+see [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md)
+and [`docs/ps-module-integration-test-loop.md`](docs/ps-module-integration-test-loop.md).

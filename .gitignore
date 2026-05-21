@@ -24,5 +24,7 @@ debug/
 result
 logos-payment-streams-module/result
 
-# Local `nix bundle -o …` symlinks under the patched wallet flake
+# Local `nix bundle -o …` under the patched wallet flake (see operator guide)
+logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out
+logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/*lgx-out
 logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/*lgx-dev

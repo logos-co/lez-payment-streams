@@ -78,10 +78,13 @@ Steps 1–12 and wallet-pinned module flows (Steps 6b–6c, 7–11, 8a).
    or PR heads, what files encode those pins, and how to reproduce builds.
    Store querying is explicitly out of scope for that doc; see N6.
 6. [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md).
-   How Nix flakes in this repo relate to `.lgx` output,
-   how `nix-bundle-lgx` fits the patched wallet flake,
-   and how `lgpm` plus `logoscore` share one `modules/` directory.
+   End-to-end build, `lgpm` install, `logoscore` daemon, and explicit `load-module`
+   for wallet + payment streams (no delivery).
    Read before Step 6c runtime verification if packaging is new.
+7. [`docs/ps-module-integration-test-loop.md`](docs/ps-module-integration-test-loop.md).
+   Repeatable loop for Steps 7–10 after editing the module or Rust FFI
+   (rebuild `.lgx`, reinstall, LEZ localnet + logoscore).
+   Steps 11–12 use delivery-repo tests instead.
 
 ### Prerequisites
 
@@ -90,11 +93,10 @@ Steps 1–12 and wallet-pinned module flows (Steps 6b–6c, 7–11, 8a).
 - `logos-scaffold` binary (`lgs` alias)
   for localnet, wallet, and program deploy.
 - `logoscore`, `lgpm`, `lm` —
-  available through `logos-module-builder` outputs
-  or as separate flake-buildable binaries.
-  See [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md)
-  for how `.lgx` artifacts, `lgpm --modules-dir`, and `logoscore -m` fit together
-  (Step 6b).
+  use the three-package `nix shell` documented in
+  [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md)
+  (or equivalent flake-built binaries from the developer guide).
+  Step 6b covers install; Step 6c covers `load-module` after `logoscore -D -m`.
 - Outbound internet access for the `logos.dev` messaging-network preset
   during Step 14 and Step 15.
 - A working `git` and the workspace already checked out
@@ -889,7 +891,8 @@ Understand how payment-streams artifacts are built with Nix,
 how `.lgx` packages are produced for both `lez_wallet_module` and `payment_streams_module`,
 how `lgpm` installs them into one `modules/` directory,
 and how `logoscore` loads that directory,
-before treating Step 6c definition-of-done items 2–5 as the operating checklist.
+before treating Step 6c definition-of-done items 2–5 as the operating checklist
+(install, explicit `load-module`, `lm`, plumbing — see operator guide).
 
 This step is documentation and environment setup only.
 No change to module source code is required.
@@ -911,8 +914,11 @@ Definition of done.
    and produce `payment_streams_module` via `nix build ./logos-payment-streams-module#lgx`.
 3. You use one absolute `modules/` path for both `lgpm --modules-dir` and `logoscore -m`,
    installing `lez_wallet_module` before `payment_streams_module`,
-   and you can run `lgpm list` and start `logoscore -D` against that tree without ad hoc relative `PATH` hacks
-   (prefer `nix shell` or a locked dev shell when convenience matters).
+   running `lgpm list` (two modules),
+   starting `logoscore -D -m` (daemon plus `capability_module`),
+   then loading wallet and payment streams via `load-module` or `-l lez_wallet_module,payment_streams_module`,
+   without ad hoc relative `PATH` hacks
+   (prefer `nix shell` in each terminal tab; see operator guide).
 
 ### Step 6c, Bootstrap the Logos Core module
 
@@ -989,9 +995,15 @@ No chain, no messaging network, no UI host.
 Definition of done:
 1. `nix build` produces a valid `.lgx` file
 2. `lgpm install` places the module alongside `lez_wallet_module`
-3. `logoscore` loads the module without errors
+3. `logoscore` loads the module without errors after explicit `load-module`
+   (or `-l` on daemon startup); `-m` alone only adds a search path
 4. `lm methods` on `payment_streams_module` shows only the minimal shell (`initLogos`, `name`, plus any symbols the host always reflects for `PluginInterface`; no payment-streams API yet)
 5. Cross-module plumbing verified: during plugin startup (for example inside `initLogos`), `getClient("lez_wallet_module")` and one `invokeRemoteMethod` into `lez_wallet_module` run without crashing the host; the call returns a normal `LogosResult` boundary (success or structured failure). Prefer a cheap remote method such as `list_accounts` so this step stays independent of LEZ deployment; if the wallet only returns errors until JSON-RPC to the sequencer works, that still satisfies Step 6c as plumbing-only. Chain-backed read success belongs in Step 7.
+
+Operator commands and expected checks:
+[`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md).
+From Step 7 onward, repeat build/install/load and LEZ:
+[`docs/ps-module-integration-test-loop.md`](docs/ps-module-integration-test-loop.md).
 
 ### Step 7, Wire chain reads from the module
 
@@ -1020,6 +1032,11 @@ brought up by `lgs init` + `lgs setup` + `lgs localnet start` from a scaffold wo
 `lez_payment_streams` program deployed onto that sequencer
 (new prerequisite — via `lgs deploy`).
 No messaging network yet.
+
+Scaffold RPC, account id formats, and deploy notes:
+[`docs/step1-findings-scaffold-rpc.md`](docs/step1-findings-scaffold-rpc.md).
+Repeatable logoscore + LEZ test loop after module edits:
+[`docs/ps-module-integration-test-loop.md`](docs/ps-module-integration-test-loop.md).
 
 Definition of done:
 against a scaffold-deployed `lez_payment_streams` program,
@@ -1088,8 +1105,9 @@ and by the optional Basecamp UI in Step 15.
 Components required to run:
 sub-step 8a needs no runtime
 (verified via `nix build` and `lm methods` showing the new surface).
-Sub-step 8b needs the same set as Step 7
-(`logoscore` daemon with both modules, LEZ sequencer, deployed program).
+Sub-step 8b needs the same runtime stack as Step 7
+(`logoscore` with both modules loaded, LEZ sequencer, deployed program).
+Retest loop: [`docs/ps-module-integration-test-loop.md`](docs/ps-module-integration-test-loop.md).
 
 Definition of done:
 through `logoscore` against scaffold localnet,
@@ -1236,6 +1254,8 @@ The definition of done's verifier round-trip is in-process through the FFI;
 a live sequencer is not strictly required for that verification itself,
 but the same Step 7 stack remains useful for sanity-checking
 that vault data the proof asserts matches chain state.
+After code changes, rebuild and reload via
+[`docs/ps-module-integration-test-loop.md`](docs/ps-module-integration-test-loop.md).
 
 #### Definition of done
 
@@ -1317,6 +1337,8 @@ not on transport peer continuity.
 The structural-failure portion of the definition of done needs nothing more.
 The happy-path verdict portion needs the Step 7 stack
 (LEZ sequencer plus deployed program plus seeded vault/stream state).
+Module retest loop:
+[`docs/ps-module-integration-test-loop.md`](docs/ps-module-integration-test-loop.md).
 
 #### Definition of done
 
