@@ -39,10 +39,10 @@ routing, Step 14 demo, Step 15 UI) depend on upstream Store query exposure on
 capability with a different approach than our earlier
 `logosdelivery_query_store` / `queryStore` PRs.
 
-We do not integrate against those PRs, feature branches, or local forks of them.
-Step 6a tracks upstream only. Until `queryStore` (or the equivalent upstream API)
-lands on `master`, active work stays on Steps 1–12 and wallet-pinned module flows
-(Steps 6b–11, 8a).
+We do not integrate against those PRs, feature branches, or local forks of them,
+and we will not implement or upstream our own Store query exposure (Step 6a, closed).
+Until the Delivery team ships Store query support on `master`, active work stays on
+Steps 1–12 and wallet-pinned module flows (Steps 6b–6c, 7–11, 8a).
 
 ## Onboarding
 
@@ -50,8 +50,8 @@ lands on `master`, active work stays on Steps 1–12 and wallet-pinned module fl
 
 1. This file (`integration-plan-v2.md`).
    The 16-step plan (Step 3 is split into 3a core and 3b FFI,
-   Step 6 is split into 6a wait for upstream Store query, 6b module bootstrap,
-   and 6c operator or install basics),
+   Step 6 is split into 6b operator or install basics, 6c module bootstrap;
+   Step 6a records the closed decision not to pursue local Store query exposure),
    definitions of done,
    resolved decisions (D1–D5),
    and non-blocking notes (N1–N8).
@@ -76,12 +76,12 @@ lands on `master`, active work stays on Steps 1–12 and wallet-pinned module fl
 5. [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
    Why the payment-streams wallet dependency pins Git refs on feature branches
    or PR heads, what files encode those pins, and how to reproduce builds.
-   Store querying is explicitly out of scope for that doc; see N6 and Step 6a.
+   Store querying is explicitly out of scope for that doc; see N6.
 6. [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md).
    How Nix flakes in this repo relate to `.lgx` output,
    how `nix-bundle-lgx` fits the patched wallet flake,
    and how `lgpm` plus `logoscore` share one `modules/` directory.
-   Read before treating Step 6b runtime items as actionable if packaging is new.
+   Read before Step 6c runtime verification if packaging is new.
 
 ### Prerequisites
 
@@ -94,7 +94,7 @@ lands on `master`, active work stays on Steps 1–12 and wallet-pinned module fl
   or as separate flake-buildable binaries.
   See [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md)
   for how `.lgx` artifacts, `lgpm --modules-dir`, and `logoscore -m` fit together
-  (Step 6c).
+  (Step 6b).
 - Outbound internet access for the `logos.dev` messaging-network preset
   during Step 14 and Step 15.
 - A working `git` and the workspace already checked out
@@ -167,7 +167,7 @@ via `LogosAPI` / `LogosAPIClient`.
 When upstream lands Store query support, the module will expose the upstream
 method (planned name in this doc: `queryStore(jsonQuery, peerAddr, timeoutMs)`)
 so modules and apps can issue Store queries through `delivery_module`.
-We do not ship or pin our own `queryStore` PR implementation; see N6 and Step 6a.
+We do not ship or pin our own `queryStore` PR implementation; see N6.
 At registration time the bridge uses each module's auto-generated
 `getPluginMethods` surface to confirm that the named module exposes
 the expected verifier and provider methods,
@@ -313,7 +313,7 @@ and a path for attaching opaque eligibility-proof bytes to outbound Store querie
 `logos-delivery-module` (our branch for eligibility hooks) gains
 `setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`
 plus a `paidStoreMode` configuration toggle.
-Store query on the module surface comes from upstream `master` (N6, Step 6a),
+Store query on the module surface comes from upstream `master` (N6),
 not from our retired `queryStore` PR branch.
 The bridge validates the named module's surface at registration time
 via the auto-generated `getPluginMethods` introspection.
@@ -476,7 +476,8 @@ while fixing the bytes used in proofs and on-chain streams.
 ### N6, Delivery module Store query exposure
 
 Store retrieval through `delivery_module` is an upstream deliverable on the
-Delivery roadmap, not something this integration implements locally.
+Delivery roadmap, not something this integration implements locally (Step 6a,
+abandoned; done, won't fix).
 
 We opened exploratory PRs (`logosdelivery_query_store` /
 `queryStore`) that exposed existing `liblogosdelivery` Store query hooks.
@@ -861,61 +862,67 @@ encoded payloads round-trip through `lez-payment-streams-core` Borsh decoders,
 and account-list planners agree with the harness builders in
 `lez-payment-streams-core/src/test_helpers.rs`.
 
-### Step 6a, Wait for upstream Store query exposure
+### Step 6a, Store query via `delivery_module` (abandoned)
 
-Architectural context:
-`logos-delivery-module` on released tags does not yet expose Store query
-functionality suitable for the paid Store demo. The Delivery team is adding
-Store access on their roadmap with an approach different from our earlier PRs.
+Closed decision (2026-05-19): this integration will not pursue an independent
+implementation, feature branch, or upstream PR to expose Store queries through
+`logos-delivery-module`. Exploratory PRs for `logosdelivery_query_store` /
+`queryStore` are retired. Store access is an upstream deliverable on the Delivery
+roadmap (different design than those PRs).
 
-Per N6, this step is tracking and coordination only.
-We do not merge, pin, or fork our own `queryStore` / `logosdelivery_query_store`
-implementation. Step 13 and Step 14 start only after upstream Store query support
-is on `logos-delivery-module` `master` (method name and JSON shape documented in
-upstream release notes; this plan uses `queryStore(jsonQuery, peerAddr, timeoutMs)`
-as the expected demo shape).
+Steps 13–15 remain blocked on upstream Store query support landing on
+`logos-delivery` and `logos-delivery-module` `master`. All other steps proceed
+without calling Store query APIs on `delivery_module`. Normative detail: N6.
 
-This step is independent from `payment_streams_module` development.
-Earlier steps in this repo (including Step 6b) do not call Store query APIs on
-`delivery_module` and proceed while upstream work continues.
+Components required to run: none.
 
-Components required to run:
-None in this repo (follow upstream `logos-delivery` / `logos-delivery-module`
-releases and messaging-team channels).
+Definition of done: decision recorded; no payment-streams work item remains for
+local Store query exposure.
 
-Definition of done:
-1. Upstream documents and ships Store query exposure on `master` in
-   `logos-delivery-module` (and matching `liblogosdelivery` support in
-   `logos-delivery`).
-2. The shipped API is sufficient for Step 14:
-   issue a Store query to an explicit provider peer from the user host.
-3. Payment-streams integration records the upstream method name and signature in
-   Step 13 / Step 14 implementor notes if they differ from the planned
-   `queryStore(jsonQuery, peerAddr, timeoutMs)` shape.
-4. No payment-streams flake pins the retired PR branch
-   `feat/liblogosdelivery-query-store` or equivalent.
+Status — done (won't fix): wait for upstream only.
 
-Status — on hold, waiting for upstream (2026-05-19).
+### Step 6b, Operator install basics (Nix, LGX, lgpm, logoscore)
 
-Exploratory PRs against `logos-messaging/logos-delivery` and
-`logos-co/logos-delivery-module` may remain open for reference but are not
-integration targets. Do not block other steps on their review or merge.
+Goal.
 
-Concurrent progress.
+Understand how payment-streams artifacts are built with Nix,
+how `.lgx` packages are produced for both `lez_wallet_module` and `payment_streams_module`,
+how `lgpm` installs them into one `modules/` directory,
+and how `logoscore` loads that directory,
+before treating Step 6c definition-of-done items 2–5 as the operating checklist.
 
-Work in this repo continues on steps that do not invoke Store queries through
-`delivery_module` (Steps 1–6b, 7–11, and Nim/C++ eligibility work in Steps
-11–12 that does not require `queryStore`).
+This step is documentation and environment setup only.
+No change to module source code is required.
 
-Steps 13–15 remain gated on upstream Store query landing on `master`.
+Components required.
 
-### Step 6b, Bootstrap the Logos Core module
+Read access to this repo,
+[`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md),
+and [`logos-tutorial/logos-developer-guide.md`](../logos-tutorial/logos-developer-guide.md)
+(package manager and logoscore sections).
+
+Definition of done.
+
+1. You can explain why `nix build .#lgx` at the `lez-payment-streams` repository root does not work,
+   and which flake attribute builds `payment_streams_module` instead.
+2. You can produce a wallet `.lgx` via
+   `logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/`
+   and `nix bundle --bundler github:logos-co/nix-bundle-lgx .#lib`,
+   and produce `payment_streams_module` via `nix build ./logos-payment-streams-module#lgx`.
+3. You use one absolute `modules/` path for both `lgpm --modules-dir` and `logoscore -m`,
+   installing `lez_wallet_module` before `payment_streams_module`,
+   and you can run `lgpm list` and start `logoscore -D` against that tree without ad hoc relative `PATH` hacks
+   (prefer `nix shell` or a locked dev shell when convenience matters).
+
+### Step 6c, Bootstrap the Logos Core module
 
 Architectural context:
 this step lays down the C++ Qt-plugin shell of `payment_streams_module`.
 The shell is a Qt plugin (`type: core`)
 that will host the Rust FFI crate (from Steps 1–5)
 and expose LogosAPI methods to other modules in later steps.
+
+Prerequisite: Step 6b ([`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md)).
 
 Pattern decision point (2026-05-18):
 Both `lez_wallet_module` and `delivery_module` use the legacy `PluginInterface` pattern.
@@ -924,7 +931,7 @@ crashes in core module sidecars (see `logos-delivery-module` [Issue #31](https:/
 
 Use the legacy `PluginInterface` pattern for `payment_streams_module`.
 
-See [`docs/step6b-implementation-guidance.md`](docs/step6b-implementation-guidance.md) for:
+See [`docs/step6c-implementation-guidance.md`](docs/step6c-implementation-guidance.md) for:
 - Confirmed component selections
 - Components to use and avoid
 - Safe cross-module call patterns
@@ -932,11 +939,7 @@ See [`docs/step6b-implementation-guidance.md`](docs/step6b-implementation-guidan
 
 For flake pins that pull wallet signing APIs ahead of upstream merges,
 see [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
-Store query pins are intentionally absent; see N6 and Step 6a.
-
-Complete Step 6c ([`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md))
-before investing in Step 6b runtime verification if Nix packaging,
-`nix-bundle-lgx`, `lgpm`, or `logoscore` are unfamiliar.
+Store query pins are intentionally absent; see N6.
 
 Scaffold the module from the `logos-module-builder`
 `with-external-lib` template, modeled on `logos-rln-module`
@@ -963,7 +966,7 @@ Implementor hints (FFI from Step 5, no extra Qt surface yet):
 - Link the same `liblez_payment_streams_ffi` artifact the metadata `include` list names, and
   vendor [`lez_payment_streams_ffi.h`](lez-payment-streams-ffi/lez_payment_streams_ffi.h) the same
   way `logos-rln-module` pulls in `rln_ffi`/headers from its external lib (CMake + flake inputs).
-  Step 6b is load/plumbing only; you do not need to call the instruction entrypoints from C++ until
+  Step 6c is load/plumbing only; you do not need to call the instruction entrypoints from C++ until
   chain writes land.
 - On-chain instruction bytes and account-list planning live in
   [`lez-payment-streams-ffi/src/instruction_abi.rs`](lez-payment-streams-ffi/src/instruction_abi.rs).
@@ -988,40 +991,7 @@ Definition of done:
 2. `lgpm install` places the module alongside `lez_wallet_module`
 3. `logoscore` loads the module without errors
 4. `lm methods` on `payment_streams_module` shows only the minimal shell (`initLogos`, `name`, plus any symbols the host always reflects for `PluginInterface`; no payment-streams API yet)
-5. Cross-module plumbing verified: during plugin startup (for example inside `initLogos`), `getClient("lez_wallet_module")` and one `invokeRemoteMethod` into `lez_wallet_module` run without crashing the host; the call returns a normal `LogosResult` boundary (success or structured failure). Prefer a cheap remote method such as `list_accounts` so this step stays independent of LEZ deployment; if the wallet only returns errors until JSON-RPC to the sequencer works, that still satisfies Step 6b as plumbing-only. Chain-backed read success belongs in Step 7.
-
-### Step 6c, Operator install basics (Nix, LGX, lgpm, logoscore)
-
-Goal.
-
-Understand how payment-streams artifacts are built with Nix,
-how `.lgx` packages are produced for both `lez_wallet_module` and `payment_streams_module`,
-how `lgpm` installs them into one `modules/` directory,
-and how `logoscore` loads that directory,
-before treating Step 6b definition-of-done items 2–5 as the operating checklist.
-
-This step is documentation and environment setup only.
-No change to module source code is required.
-
-Components required.
-
-Read access to this repo,
-[`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md),
-and [`logos-tutorial/logos-developer-guide.md`](../logos-tutorial/logos-developer-guide.md)
-(package manager and logoscore sections).
-
-Definition of done.
-
-1. You can explain why `nix build .#lgx` at the `lez-payment-streams` repository root does not work,
-   and which flake attribute builds `payment_streams_module` instead.
-2. You can produce a wallet `.lgx` via
-   `logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/`
-   and `nix bundle --bundler github:logos-co/nix-bundle-lgx .#lib`,
-   and produce `payment_streams_module` via `nix build ./logos-payment-streams-module#lgx`.
-3. You use one absolute `modules/` path for both `lgpm --modules-dir` and `logoscore -m`,
-   installing `lez_wallet_module` before `payment_streams_module`,
-   and you can run `lgpm list` and start `logoscore -D` against that tree without ad hoc relative `PATH` hacks
-   (prefer `nix shell` or a locked dev shell when convenience matters).
+5. Cross-module plumbing verified: during plugin startup (for example inside `initLogos`), `getClient("lez_wallet_module")` and one `invokeRemoteMethod` into `lez_wallet_module` run without crashing the host; the call returns a normal `LogosResult` boundary (success or structured failure). Prefer a cheap remote method such as `list_accounts` so this step stays independent of LEZ deployment; if the wallet only returns errors until JSON-RPC to the sequencer works, that still satisfies Step 6c as plumbing-only. Chain-backed read success belongs in Step 7.
 
 ### Step 7, Wire chain reads from the module
 
@@ -1039,7 +1009,7 @@ and returns the current sequencer time.
 These helpers are pure read paths and do not touch any payment-streams logic.
 Use `LogosAPIClient::invokeRemoteMethod` directly,
 following the safe pattern documented in
-[`docs/step6b-implementation-guidance.md`](docs/step6b-implementation-guidance.md).
+[`docs/step6c-implementation-guidance.md`](docs/step6c-implementation-guidance.md).
 Do not use the `LogosModules` typed wrapper as it crashes in core module sidecars.
 
 Components required to run:
@@ -1475,8 +1445,7 @@ extend the `delivery_module` interface with
 `setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`,
 wire through upstream `queryStore` when present on `master`,
 and add a `paidStoreMode` configuration toggle to `createNode`.
-Do not add a parallel `queryStore` implementation in our fork; Step 6a must be
-satisfied from upstream first.
+Do not add a parallel `queryStore` implementation in our fork.
 Implement the bridge that translates the new `liblogosdelivery` callbacks
 into `LogosAPIClient` calls on the named module
 (`verifyEligibilityForStoreQuery`, `prepareEligibilityForStoreQuery`).
@@ -1494,7 +1463,7 @@ The full Store query exchange is the Step 14 demo
 and requires the full stack documented there.
 
 Definition of done:
-Prerequisite: Step 6a complete (upstream Store query on `master`).
+Prerequisite: upstream Store query API on `logos-delivery-module` `master`.
 Without any verifier registered,
 `delivery_module` behaves exactly as it did at `v0.1.1` aside from upstream
 Store query APIs.
@@ -1526,7 +1495,7 @@ deploys `lez_payment_streams`,
 builds `.lgx` packages for `lez_wallet_module` (our branch),
 `payment_streams_module`,
 and `delivery_module` (upstream `master` with eligibility hooks merged or
-branched as in Step 13; Store query from upstream only per Step 6a),
+branched as in Step 13; Store query API from upstream only),
 installs them with `lgpm` into two module directories,
 launches two `logoscore` instances loaded with all three modules
 on disjoint `portsShift` values

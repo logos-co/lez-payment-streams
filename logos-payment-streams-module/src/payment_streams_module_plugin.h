@@ -7,7 +7,7 @@
 #include "logos_api.h"
 
 /**
- * Logos Core module shell for payment_streams_module (Step 6b).
+ * Logos Core module shell for payment_streams_module (Step 6c).
  * Links lez_payment_streams_ffi and probes cross-module plumbing to lez_wallet_module.
  */
 class PaymentStreamsModulePlugin : public QObject, public IPaymentStreamsModule

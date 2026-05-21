@@ -1,6 +1,6 @@
-# Step 6b Implementation Guidance
+# Step 6c Implementation Guidance
 
-This document records the architectural decisions for implementing the Logos Core module shell in Step 6b.
+This document records the architectural decisions for implementing the Logos Core module shell in Step 6c.
 It serves as the single source of truth for component selection, pattern choice, and implementation approach.
 
 ## Decisions Summary
@@ -38,7 +38,7 @@ It serves as the single source of truth for component selection, pattern choice,
   - `LogosResult` for return values
   - `QByteArray` for binary data
 
-- Step 6b uses `invokeRemoteMethod` only inside startup code (typically `initLogos`) to prove `getClient` and dispatch work; keep the public plugin surface to `initLogos`, `name`, and whatever `PluginInterface` requires. Step 7 adds `Q_INVOKABLE` helpers that wrap wallet reads.
+- Step 6c uses `invokeRemoteMethod` only inside startup code (typically `initLogos`) to prove `getClient` and dispatch work; keep the public plugin surface to `initLogos`, `name`, and whatever `PluginInterface` requires. Step 7 adds `Q_INVOKABLE` helpers that wrap wallet reads.
 
 ### FFI Integration
 
@@ -63,10 +63,10 @@ It serves as the single source of truth for component selection, pattern choice,
 
 ## Cross-Module Call Pattern
 
-Use raw `invokeRemoteMethod` (same as `logos-rln-module` and dependencies). For Step 6b, perform one probe from `initLogos` only; do not add extra exported methods on `payment_streams_module` for wallet access until Step 7.
+Use raw `invokeRemoteMethod` (same as `logos-rln-module` and dependencies). For Step 6c, perform one probe from `initLogos` only; do not add extra exported methods on `payment_streams_module` for wallet access until Step 7.
 
 ```cpp
-// payment_streams_module_plugin.cpp — startup plumbing only (Step 6b)
+// payment_streams_module_plugin.cpp — startup plumbing only (Step 6c)
 void PaymentStreamsModulePlugin::initLogos(LogosAPI* logosApiInstance) {
     m_logosApi = logosApiInstance;
     LogosAPIClient* walletClient =

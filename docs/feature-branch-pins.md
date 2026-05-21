@@ -38,8 +38,8 @@ Earlier experiments opened PRs to expose `logosdelivery_query_store` and
 do not point `logos-delivery-module` flakes at `feat/liblogosdelivery-query-store`
 or maintain a parallel `queryStore` in our forks.
 
-When upstream merges Store query support on `master`, update
-`integration-plan-v2.md` Step 6a status and consume the released API only.
+When upstream merges Store query support on `master`, consume the released API
+only (see N6 in `integration-plan-v2.md`).
 
 ## Payment streams workspace (`lez-payment-streams`)
 
