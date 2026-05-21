@@ -14,6 +14,19 @@
   outputs =
     inputs@{ upstream, nixpkgs, logos-cpp-sdk, ... }:
     let
+      # Bundler (nix-bundle-lgx) reads metadata from drv.src at eval time; PR 16 wallet build is not mkLogosModule.
+      walletMetadataJson = builtins.toJSON {
+        name = "lez_wallet_module";
+        version = "1.0.0";
+        description = "Logos Execution Zone Wallet Module for Logos Core";
+        author = "Logos Blockchain Team";
+        type = "core";
+        category = "blockchain";
+        main = "lez_wallet_module_plugin";
+        dependencies = [ ];
+        capabilities = [ ];
+      };
+
       patchWalletInclude = drv: drv.overrideAttrs (old: {
         patches = (old.patches or [ ]) ++ [ ./cmake-wallet-ffi-include.patch ];
         postPatch =
@@ -26,8 +39,10 @@
         postInstall =
           (old.postInstall or "")
           + ''
-            # logos-module-builder / logos-cpp-generator resolves dependency modules using metadata.json.
-            install -Dm644 "$src/metadata.json" "$out/metadata.json"
+            # Stable module id for logos-module-builder / nix-bundle-lgx.
+            cat > "$out/metadata.json" <<'WALLET_METADATA_EOF'
+${walletMetadataJson}
+WALLET_METADATA_EOF
 
             # logos-module-builder uses "<module>_plugin.<shlibExt>" without a leading lib/ prefix.
             ln -sfn liblogos_execution_zone_wallet_module.so "$out/lib/lez_wallet_module_plugin.so"
@@ -40,8 +55,13 @@
         let
           pkgs = import nixpkgs { inherit system; };
           logosSdk = logos-cpp-sdk.packages.${system}.default;
+          # nix-bundle-lgx reads metadata.json from drv.src at eval time, not from $out.
+          bundleSrc = pkgs.runCommand "lez-wallet-module-bundle-src" { } ''
+            mkdir -p $out
+            cp ${pkgs.writeText "lez-wallet-module-metadata.json" walletMetadataJson} $out/metadata.json
+          '';
         in
-        pkgs.runCommand "${base.name}-with-sdk-api-headers" {
+        (pkgs.runCommand "${base.name}-with-sdk-api-headers" {
           nativeBuildInputs = [ logosSdk ];
         } ''
           cp -a "${base}/." "$out/"
@@ -51,7 +71,9 @@
           logos-cpp-generator "$out/lib/lez_wallet_module_plugin.so" --output-dir gen --module-only
           install -Dm644 gen/lez_wallet_module_api.h "$out/include/lez_wallet_module_api.h"
           install -Dm644 gen/lez_wallet_module_api.cpp "$out/include/lez_wallet_module_api.cpp"
-        '';
+        '') // {
+          src = bundleSrc;
+        };
 
       mapSystemPackages =
         system: pkgsForSys:
