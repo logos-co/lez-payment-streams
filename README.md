@@ -2,7 +2,7 @@
 
 LEZ implementation of payment streams.
 A SPEL program built with [spel-framework](https://github.com/logos-co/spel).
-Protocol semantics are defined in [LIP-155](https://lip.logos.co/ift-ts/raw/payment-streams.html).
+Protocol semantics are defined in [LIP-155](https://lip.logos.co/anoncomms/raw/payment-streams.html).
 For the rationale behind design choices and a suggested reading order, see [architecture.md](architecture.md).
 
 ## Code Map
