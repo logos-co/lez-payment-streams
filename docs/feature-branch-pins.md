@@ -12,146 +12,74 @@ than our earlier `logosdelivery_query_store` / `queryStore` PRs.
 Integration work waits for that functionality on `logos-delivery-module` `master`
 and does not use branch `feat/liblogosdelivery-query-store` or local forks of those PRs.
 
-We still pin wallet FFI for arbitrary public transactions
-(`wallet_ffi_send_public_transaction`)
-and the corresponding wallet module surface (`send_public_transaction`)
-until those PRs merge.
+## Wallet — primary path (491 + 19)
 
-Until wallet merges happen,
-flakes pin Git refs that correspond to open PRs
-(or equivalently named branches that carry the same commits).
+Chain writes use **generic public transactions**:
 
-Links used when pinning:
+| Layer | Upstream PR | Role |
+| --- | --- | --- |
+| LEZ `wallet_ffi` | [`logos-execution-zone` PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491) | Resolve accounts, serialize instruction words, send with program ELF bundle |
+| Wallet Qt module | [`logos-execution-zone-module` PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19) | Expose 491 to Logos modules (`Q_INVOKABLE` / LogosAPI) |
 
-- Universal public transaction signing (execution zone) —
-  [`logos-blockchain/logos-execution-zone` PR 429](https://github.com/logos-blockchain/logos-execution-zone/pull/429).
-  The flake input used by sibling repos may appear as `logos-blockchain/lssa`
-  with `refs/pull/429/head` because module flakes historically named that input against `lssa`.
-  Commit resolved by Nix matches PR head (`6721d8d96e71566f072bab2ededcf56d29b002b0`).
-- Companion wallet module changes —
-  [`logos-blockchain/logos-execution-zone-module` PR 16](https://github.com/logos-blockchain/logos-execution-zone-module/pull/16).
+PR 491 supersedes [PR 429](https://github.com/logos-blockchain/logos-execution-zone/pull/429).
+PR 19 supersedes [PR 16](https://github.com/logos-blockchain/logos-execution-zone-module/pull/16) (429 JSON wrapper).
 
-## Logos Delivery module (Store query — not used)
+**Do not pin 429 or 16** in this integration.
 
-Earlier experiments opened PRs to expose `logosdelivery_query_store` and
-`delivery_module.queryStore`. That path is retired for this integration:
-do not point `logos-delivery-module` flakes at `feat/liblogosdelivery-query-store`
-or maintain a parallel `queryStore` in our forks.
+### Flake refs (until merge)
 
-When upstream merges Store query support on `master`, consume the released API
-only (see N6 in `integration-plan-v2.md`).
+- `logos-execution-zone.url` =
+  `github:logos-blockchain/lssa?ref=refs/pull/491/head`
+  (flake input name may be `logos-execution-zone` or `lssa` depending on flake).
+- Patched wallet wrapper `upstream` =
+  `github:logos-blockchain/logos-execution-zone-module?ref=refs/pull/19/head`
+  with `upstream.inputs.logos-execution-zone.follows` the same LEZ input as payment streams.
+
+After both PRs merge, pin `main` on both repos and drop pull-request refs.
+
+### Our patch (wrapper flake)
+
+We still use the local wrapper flake when upstream metadata names differ from `lez_wallet_module`
+or when we add `sign_public_payload` before upstream does.
+PR 19 uses `mkLogosModule` (not the old plain-CMake PR 16 layout); the wrapper may only need
+metadata/codegen overrides — if `nix bundle` fails after a pin bump, adjust
+`logos-execution-zone-module-patched/flake.nix` against current PR 19 packages.
+
+### After changing pins
+
+```bash
+cd logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched
+nix flake update
+
+cd ../../..   # logos-payment-streams-module/
+nix flake update logos-execution-zone logos-execution-zone-module
+```
+
+Refresh `rev` / `sha256` in `nix/payment-streams-ffi.nix` when the LEZ pin moves
+(`fetchFromGitHub` for program-methods symlink).
 
 ## Payment streams workspace (`lez-payment-streams`)
 
-This repo ties together Rust FFI (`payment-streams-ffi`),
-the payment-streams Logos module (`logos-payment-streams-module`),
-and integration docs.
-
 ### Rust FFI (`nix/payment-streams-ffi.nix`)
 
-Goal.
-
-`lez-payment-streams-ffi` must symlink LEZ program-methods artifacts from the same tree
-that understands current NSSA layouts used by the crate graph.
-
-What we changed.
-
-- `fetchFromGitHub` for `logos-blockchain/logos-execution-zone`
-  was bumped to PR 429 head
-  (`rev = 6721d8d96e71566f072bab2ededcf56d29b002b0`,
-  `sha256 = sha256-t0SsUY2+gusYfvTZP1yUORIhlDiQWagV6pUUwCplEew=`).
-
-That aligns vendored LEZ sources used during `nix build .#payment-streams-ffi`
-with the wallet FFI branch.
+`lez-payment-streams-ffi` symlinks LEZ `artifacts/` from the same **`logos-execution-zone` revision**
+as the wallet stack (491 head until merge).
 
 ### Payment-streams Logos module (`logos-payment-streams-module/flake.nix`)
 
-Goal.
-
-The module declares `lez_wallet_module` as a flake dependency (`mkLogosModule` `flakeInputs`).
-That dependency must be the wallet PR 16 branch
-built against LEZ PR 429,
-not older LEZ revisions bundled inside an unlocked submodule flake lock.
-
-What we changed.
-
-1. Pin LEZ (PR 429).
-
-   - Root flake input `logos-execution-zone.url` =
-     `github:logos-blockchain/lssa?ref=refs/pull/429/head`.
-   - Child flake follows —
-     `logos-execution-zone-module.inputs.logos-execution-zone.follows = "logos-execution-zone"`.
-
-2. Pin wallet module (PR 16) behind a thin wrapper.
-
-   Direct upstream PR 16 triggers several mismatches with the stock toolchain:
-
-   - CMake did not put `wallet_ffi.h` on the compile line for the Qt plugin target
-     (`INTERFACE_INCLUDE_DIRECTORIES` on an `IMPORTED` target did not propagate as expected).
-   - Upstream PR 16 metadata names the module `liblogos_execution_zone_wallet_module`,
-     while `logos-module-builder` / `logos-cpp-generator` historically assume `lez_wallet_module`
-     for dependency APIs and plugin filenames (`lez_wallet_module_plugin.so`).
-
-   So instead of pointing `mkLogosModule` straight at the upstream PR flake,
-   we added a local wrapper flake
-   `logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/`:
-
-   - Input `upstream` =
-     `github:logos-blockchain/logos-execution-zone-module?ref=refs/pull/16/head`.
-   - Input `upstream.inputs.logos-execution-zone.follows = "logos-execution-zone"`.
-   - Applies `cmake-wallet-ffi-include.patch`
-     (adds `target_include_directories(... "${LOGOS_EXECUTION_ZONE_WALLET_INCLUDE}")`).
-   - `postPatch` on the wallet derivation substitutes `metadata.json`
-     so manifest name matches `lez_wallet_module` (build tree).
-   - `postInstall` writes canonical `lez_wallet_module` metadata into `$out/`
-     (name, `type: core`, `main: lez_wallet_module_plugin`) and adds
-     `$out/lib/lez_wallet_module_plugin.so` symlink to the real Qt plugin `.so`.
-   - The SDK-headers wrapper attaches a `src` tree with the same metadata so
-     `nix-bundle-lgx` can read `type` at eval time (see operator guide).
-   - PR 16 ships plain CMake packages (no `mkLogosModule`), so the wallet store path
-     never gained `include/lez_wallet_module_api.{h,cpp}` that `logos-plugin-qt`
-     copies into dependents before `--general-only`. The wrapper adds a
-     `runCommand` pass that runs `logos-cpp-generator` with `--module-only` on
-     `lez_wallet_module_plugin.so`, installs those files under `include/`, and
-     reuses `logos-cpp-sdk` / `nixpkgs` from `logos-module-builder` (wired via
-     follows in `logos-payment-streams-module/flake.nix`). After copying the base
-     derivation into the new store path, `chmod -R u+w` is required so generated
-     headers can be installed (store paths copied with `cp -a` are read-only).
-
-   The parent flake sets:
-
-   - `logos-execution-zone-module.url = "path:./nix/flakes/logos-execution-zone-module-patched"`.
-   - `logos-execution-zone-module.inputs.logos-cpp-sdk.follows = "logos-module-builder/logos-cpp-sdk"`.
-   - `logos-execution-zone-module.inputs.nixpkgs.follows = "logos-module-builder/nixpkgs"`.
-
-Nix requirement.
-
-Flakes referenced with `path:` must live under the Git tree Nix evaluates,
-and untracked paths are invisible until `git add`.
-Track the wrapper directory when locking or building from a dirty repo.
-
-Lockfile.
-
-`logos-payment-streams-module/flake.lock` encodes the resolved revisions and follows edges.
-After changing inputs on the patched flake, run `nix flake update logos-execution-zone-module`
-from `logos-payment-streams-module/` so new follows nodes are recorded.
+- `lez_wallet_module` flake input → patched wrapper (PR 19 upstream inside).
+- `logos-execution-zone` follows PR 491 for LEZ + `wallet_ffi`.
 
 ## Verification commands
 
-Workspace layout uses two flakes.
-The repo root flake only exposes `payment-streams-ffi`.
-The Logos Qt module (`lgx`) is built from `logos-payment-streams-module/` (that flake inputs `path:..`, so the root flake cannot forward `#lgx` without a circular lock).
-
 ```bash
-# Payment-streams FFI (from lez-payment-streams repo root)
+# Payment-streams FFI (repo root)
 nix build .#payment-streams-ffi
 
-# Payment-streams Logos module bundle (from logos-payment-streams-module subflake only)
+# Payment-streams Logos module bundle
 nix build ./logos-payment-streams-module#lgx
 ```
 
-Adjust the system attribute for non-Linux hosts.
-
-For installing `.lgx` files with `lgpm`, running `logoscore`, and the Step 7+ retest loop,
-see [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md)
-and [`docs/ps-module-integration-test-loop.md`](docs/ps-module-integration-test-loop.md).
+For `lgpm`, `logoscore`, and the Step 7+ loop see
+[`logos-operator-install-basics.md`](logos-operator-install-basics.md)
+and [`ps-module-integration-test-loop.md`](ps-module-integration-test-loop.md).

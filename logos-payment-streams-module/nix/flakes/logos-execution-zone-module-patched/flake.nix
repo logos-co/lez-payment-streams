@@ -1,20 +1,20 @@
 {
-  description = "logos-execution-zone-module PR 16 + CMake include fix for wallet_ffi.h";
+  description = "logos-execution-zone-module PR 19 + lez_wallet_module packaging (491 LEZ)";
 
   inputs = {
-    logos-execution-zone.url = "github:logos-blockchain/lssa?ref=refs/pull/429/head";
+    logos-execution-zone.url = "github:logos-blockchain/lssa?ref=refs/pull/491/head";
 
-    upstream.url = "github:logos-blockchain/logos-execution-zone-module?ref=refs/pull/16/head";
+    upstream.url = "github:logos-blockchain/logos-execution-zone-module?ref=refs/pull/19/head";
     upstream.inputs.logos-execution-zone.follows = "logos-execution-zone";
 
-    nixpkgs.follows = "upstream/logos-liblogos/nixpkgs";
+    nixpkgs.follows = "upstream/logos-module-builder/nixpkgs";
     logos-cpp-sdk.url = "github:logos-co/logos-cpp-sdk";
   };
 
   outputs =
     inputs@{ upstream, nixpkgs, logos-cpp-sdk, ... }:
     let
-      # Bundler (nix-bundle-lgx) reads metadata from drv.src at eval time; PR 16 wallet build is not mkLogosModule.
+      # Bundler (nix-bundle-lgx) reads metadata from drv.src at eval time; upstream wallet build is not mkLogosModule.
       walletMetadataJson = builtins.toJSON {
         name = "lez_wallet_module";
         version = "1.0.0";
@@ -49,7 +49,7 @@ WALLET_METADATA_EOF
           '';
       });
 
-      # PR 16 builds the Qt plugin with plain CMake (no mkLogosModule). Downstream modules expect
+      # Upstream PR 19 builds the Qt plugin with plain CMake (no mkLogosModule). Downstream modules expect
       # include/lez_wallet_module_api.{h,cpp} (see logos-plugin-qt lib/buildPlugin.nix dependency copy).
       addSdkApiHeaders = system: base:
         let

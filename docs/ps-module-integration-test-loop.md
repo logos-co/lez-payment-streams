@@ -267,7 +267,7 @@ FFI inside the installed tree.
 
 ## Repeat loop — wallet module changes (Step 8a+)
 
-When `lez_wallet_module` gains new methods or patched flake inputs change:
+When pins move (491 / 19) or `sign_public_payload` lands on the patched wrapper:
 
 ```bash
 cd "$REPO/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched"
@@ -284,7 +284,7 @@ lgpm --modules-dir "$MODULES" install --file "$WALLET_LGX"
 Check:
 
 ```bash
-lm methods "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" | rg send_public_transaction
+lm methods "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" | rg 'send_generic|sign_public'
 ```
 
 Then rebuild/reinstall PS if CMake/codegen depended on wallet API headers, and

@@ -5,11 +5,10 @@
     logos-module-builder.url = "github:logos-co/logos-module-builder";
     lez-payment-streams.url = "path:..";
 
-    # https://github.com/logos-blockchain/logos-execution-zone/pull/429
-    # Module flake names this input logos-execution-zone but points it at logos-blockchain/lssa.
-    logos-execution-zone.url = "github:logos-blockchain/lssa?ref=refs/pull/429/head";
+    # LEZ PR 491 — https://github.com/logos-blockchain/logos-execution-zone/pull/491
+    logos-execution-zone.url = "github:logos-blockchain/lssa?ref=refs/pull/491/head";
 
-    # Wallet module from PR 16, built against LEZ PR 429 (see patched wrapper flake).
+    # Wallet module PR 19 via patched wrapper — https://github.com/logos-blockchain/logos-execution-zone-module/pull/19
     logos-execution-zone-module.url = "path:./nix/flakes/logos-execution-zone-module-patched";
     logos-execution-zone-module.inputs.logos-execution-zone.follows = "logos-execution-zone";
     # Patched flake runs logos-cpp-generator on the wallet plugin; pin SDK and nixpkgs with the builder.

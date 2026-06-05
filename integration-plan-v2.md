@@ -142,10 +142,11 @@ is the existing Logos Core module (repo `logos-execution-zone-module`)
 that wraps `wallet_ffi`.
 It is the single point of contact with the LEZ chain.
 Reads of vault, stream, and clock accounts go through `get_account_public`.
-Writes go through `send_public_transaction`
-(JSON request shape `program_id` / `accounts` / `instruction` / `signer_account`),
-which is already exercised by `logos-rln-module`
-and is implemented in an open PR on the wallet module (see [D3](#d3-wallet-write-path)).
+Writes go through `lez_wallet_module` using
+[PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19)
+on LEZ
+[PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491)
+(see [D3](#d3-wallet-write-path)).
 
 `logos-delivery` and `liblogosdelivery`
 host the Store protocol implementation in Nim and its C FFI surface.
@@ -224,12 +225,10 @@ It is a `core` module that wraps a Rust FFI crate (`lez-rln-ffi`)
 and calls `lez_wallet_module` for chain reads and writes
 via `LogosAPIClient::invokeRemoteMethod`.
 We reuse its file layout,
-the JSON request shape for `send_public_transaction`,
-and its hex/byte conversion-helper patterns.
+cross-module `invokeRemoteMethod` patterns and hex/byte helpers.
 Start at `src/logos_rln_module.cpp`.
-Note the JSON request shape it sends to `send_public_transaction`
-(`program_id`, `accounts`, `instruction`, `signer_account`) —
-we adopt the same shape per D3.
+RLN may still call a legacy JSON `send_public_transaction` where deployed;
+payment streams chain writes follow [D3](#d3-wallet-write-path) (491 generic transactions).
 
 `logos-delivery-module` (currently pinned at `v0.1.1` upstream)
 is the module we extend in Step 13.
@@ -331,22 +330,58 @@ We ship this on our branches and do not negotiate spec changes.
 
 ### D3, Wallet write path
 
-`payment_streams_module` writes go through `lez_wallet_module.send_public_transaction`,
-matching the JSON shape defined in this decision.
-That method is implemented in open PRs:
-- `logos-execution-zone` PR #429 adds `wallet_ffi_send_public_transaction` to the Rust FFI
-- `logos-execution-zone-module` PR #16 exposes it as `send_public_transaction` in the Qt plugin
+`payment_streams_module` chain writes go through `lez_wallet_module`, which delegates
+to the **generic public transaction** APIs in `wallet_ffi`.
 
-As of 2026-05-18, these PRs are not merged. We use the feature branches:
-- `feat/wallet-ffi-send-public-transaction` for `logos-execution-zone`
-- `feat/send-public-transaction` for `logos-execution-zone-module`
+#### LEZ FFI — PR 491 (canonical)
 
-Pin these branches in `payment_streams_module`'s `flake.nix` inputs.
-If the PRs merge before we reach Step 8, switch to mainline; see Step 8a.
+Upstream work lives in
+[logos-execution-zone PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491)
+(`feat(wallet_ffi): wallet ffi generic transactions`).
+It supersedes the narrower
+[PR 429](https://github.com/logos-blockchain/logos-execution-zone/pull/429)
+(`wallet_ffi_send_public_transaction`); maintainers intend to close 429 after 491 merges.
 
-#### JSON request shape
+491 exposes (among others):
 
-The canonical JSON shape for `send_public_transaction`:
+- `wallet_ffi_resolve_public_account` — map each 32-byte account id to `FfiAccountIdentity`
+  (signer vs read-only via `needs_sign`).
+- `wallet_ffi_serialization_helper` — Borsh instruction bytes to RISC0 `u32` instruction words
+  (same wire step as `lez-payment-streams-core` / `instruction_wire.rs`).
+- `wallet_ffi_send_generic_public_transaction` — submit using ordered account identities,
+  instruction words, and `FfiProgramWithDependencies` (guest program ELF plus dependency ELFs).
+
+Private/generic PP paths exist in 491 but are out of scope for the MVP transparent vault demo.
+
+#### Wallet module Qt surface — PR 19 (primary)
+
+Upstream exposes 491 to Logos modules via
+[logos-execution-zone-module PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19)
+(`feat: general transactions flow`, branch `Pravdyvy/generic-transactions-extension`).
+Same author and timeline as PR 491; this is the intended **16 replacement** for generic public (and eventually private) execution.
+
+**Primary path:** pin and build the patched wallet wrapper against **PR 19 head** + **LEZ PR 491 head** (see [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md)).
+Step 8b calls the **upstream methods PR 19 adds** once pinned; read that PR for the exact `Q_INVOKABLE` names and request shape when implementing.
+
+**Our wallet work (Step 8a, reduced scope):**
+
+- **`sign_public_payload`** per [N1](#n1-off-chain-canonical-payload-signing) — not in 491 or 19; add on our patched wrapper (LEZ FFI + Qt) until upstream ships it.
+- **Packaging only:** `lez_wallet_module` metadata rename, CMake `wallet_ffi.h` include, codegen headers for dependents — keep the local wrapper flake; do **not** reimplement generic public send if PR 19 already does.
+
+Do **not** pin or build against
+[PR 16](https://github.com/logos-blockchain/logos-execution-zone-module/pull/16) (429 JSON wrapper) or
+[PR 429](https://github.com/logos-blockchain/logos-execution-zone/pull/429).
+
+#### Pinning
+
+Pin `logos-execution-zone` to **`refs/pull/491/head`** and the wallet module upstream input to **`refs/pull/19/head`**
+until both merge; then pin `main` on both repos.
+See [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
+
+#### Superseded — 429 / 16 JSON shape (reference only)
+
+429 and PR 16 used a single JSON object with lowercase hex, no `0x` prefix:
+
 ```json
 {
   "program_id": "hex",
@@ -355,8 +390,8 @@ The canonical JSON shape for `send_public_transaction`:
   "signer_account": "hex"
 }
 ```
-This shape is used by `logos-rln-module` and adopted here per D3.
-All hex strings are lowercase, no `0x` prefix.
+
+`logos-rln-module` may still use this shape where deployed; **payment streams uses the 491 generic path**, not 429.
 
 ### D4, Wallet module dependency name
 
@@ -943,8 +978,7 @@ See [`docs/step6c-implementation-guidance.md`](docs/step6c-implementation-guidan
 - Safe cross-module call patterns
 - Implementation verification checklist
 
-For flake pins that pull wallet signing APIs ahead of upstream merges,
-see [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
+For flake pins (LEZ **491**, wallet module **19**), see [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
 Store query pins are intentionally absent; see N6.
 
 Scaffold the module from the `logos-module-builder`
@@ -1048,35 +1082,32 @@ into the expected typed values.
 ### Step 8, Add and wire chain writes through the wallet module
 
 Architectural context:
-sub-step 8a adds new methods to `lez_wallet_module`'s Qt-plugin surface,
-delegating to `wallet_ffi` underneath
-(both boundaries of the wallet module are touched).
-Sub-step 8b uses LogosAPI from `payment_streams_module` to call it.
+sub-step 8a pins **PR 491 + PR 19**, rebuilds wallet `.lgx`, and adds **`sign_public_payload`**
+on the patched wrapper only (N1).
+Generic public send comes from **PR 19**, not custom code in this repo.
+Sub-step 8b uses LogosAPI from `payment_streams_module` to call PR 19’s methods.
 Instruction bytes and account lists are built through
 `payment_streams_module`'s Rust FFI layer (from Steps 1–5).
 
 Two sub-steps that ship together:
 
-Sub-step 8a:
-on the feature branch of `logos-execution-zone-module`
-(`feat/send-public-transaction`, see [D3](#d3-wallet-write-path)),
-add `send_public_transaction(QString jsonRequest) -> QString`
-on `lez_wallet_module`.
-The method accepts the JSON shape defined in D3.
-It delegates to the underlying `wallet_ffi` signing-and-submit path.
-Add `sign_public_payload(accountId, canonical_payload_digest_hex) -> QString`
-on the same branch,
-returning a 64-byte NSSA Schnorr signature for a 32-byte `canonical_payload_digest`
-with the public account's signing key.
-No domain parameter; see [N1](#n1-off-chain-canonical-payload-signing) for rationale.
+Sub-step 8a (wallet — mostly upstream):
+
+Ensure flakes pin **LEZ [PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491)** and
+**wallet module [PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19)**.
+Rebuild the patched wallet `.lgx`; `lm methods` should list PR 19’s generic transaction entry point(s).
+
+Add **`sign_public_payload(accountId, canonical_payload_digest_hex) -> QString`** on the patched wrapper only
+(LEZ FFI + Qt), per [N1](#n1-off-chain-canonical-payload-signing).
+Do not duplicate 491’s generic public send in our patch if PR 19 already exposes it.
 
 Sub-step 8b:
 add a private helper inside `payment_streams_module`
 that takes an `Instruction` kind, its typed arguments,
 and a signer account ID,
-builds the Borsh instruction bytes and account list through the FFI,
-serializes the JSON request,
-and submits via `lez_wallet_module.send_public_transaction`.
+builds Borsh instruction bytes and the ordered account list through the payment-streams FFI,
+assembles the program-with-dependencies bundle for the guest program,
+and submits via **`lez_wallet_module` using PR 19’s API** (match upstream request shape from that PR).
 
 Expose user-facing `Q_INVOKABLE` write methods
 for the nine payment-stream operations:

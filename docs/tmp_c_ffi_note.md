@@ -24,12 +24,15 @@ Given mixed Rust and Nim components, the practical pattern is:
 - expose narrow capabilities through C FFI
 - let Nim-side `logos-delivery` orchestrate protocol logic, policy, and flow
 
-This aligns with the generic wallet FFI direction shown in:
+This aligns with the generic wallet FFI direction in
+[logos-execution-zone PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491)
+and the module bridge in
+[logos-execution-zone-module PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19).
+Superseded: [PR 429](https://github.com/logos-blockchain/logos-execution-zone/pull/429),
+[PR 16](https://github.com/logos-blockchain/logos-execution-zone-module/pull/16).
 
-- [`logos-execution-zone` PR #429](https://github.com/logos-blockchain/logos-execution-zone/pull/429)
-- [`logos-execution-zone-module` PR #16](https://github.com/logos-blockchain/logos-execution-zone-module/pull/16)
-
-Those PRs illustrate “one generic Rust capability exposed once, reused by modules” rather than per-program bespoke wrappers.
+491 illustrates “resolve accounts + program ELF bundle + instruction words, submit once”
+rather than per-program bespoke wallet FFI wrappers.
 
 ## Impact on payment streams work
 

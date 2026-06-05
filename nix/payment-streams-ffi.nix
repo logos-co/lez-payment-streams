@@ -9,13 +9,12 @@
 }:
 
 let
-  # Pinned to PR 429 (wallet FFI arbitrary public transactions):
-  # https://github.com/logos-blockchain/logos-execution-zone/pull/429
+  # LEZ PR 491 head — https://github.com/logos-blockchain/logos-execution-zone/pull/491
   logosExecutionZoneSrc = fetchFromGitHub {
     owner = "logos-blockchain";
     repo = "logos-execution-zone";
-    rev = "6721d8d96e71566f072bab2ededcf56d29b002b0";
-    sha256 = "sha256-t0SsUY2+gusYfvTZP1yUORIhlDiQWagV6pUUwCplEew=";
+    rev = "a999563a2d27325ecada318746f1a0dc083d187f";
+    sha256 = "sha256-OCGxIR0yq07OcTCxLSEb8WR/5Hrtv51L0g1Utdjp4fw=";
   };
 in
 

@@ -86,7 +86,11 @@ nix build .#payment-streams-ffi
 
 ### 1b — Wallet module `.lgx`
 
-PR 16 wallet build is not `mkLogosModule`; bundle via the patched wrapper flake:
+Wallet module is pinned to upstream
+[PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19)
+on LEZ
+[PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491);
+bundle via the patched wrapper flake (see [`feature-branch-pins.md`](feature-branch-pins.md)):
 
 ```bash
 cd "$REPO/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched"
