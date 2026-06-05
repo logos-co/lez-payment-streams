@@ -6,7 +6,7 @@ how the implementation is split,
 and which distinctions matter during review.
 
 The protocol definition lives in the
-[LIP-155 payment-streams spec](https://lip.logos.co/ift-ts/raw/payment-streams.html).
+[LIP-155 payment-streams spec](https://lip.logos.co/anoncomms/raw/payment-streams.html).
 Build, run, and test instructions live in `README.md`.
 
 ## Review order
