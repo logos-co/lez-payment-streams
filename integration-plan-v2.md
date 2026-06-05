@@ -85,6 +85,9 @@ Steps 1–12 and wallet-pinned module flows (Steps 6b–6c, 7–11, 8a).
    Repeatable loop for Steps 7–10 after editing the module or Rust FFI
    (rebuild `.lgx`, reinstall, LEZ localnet + logoscore).
    Steps 11–12 use delivery-repo tests instead.
+8. [`docs/universal-vs-legacy-dilemma.md`](docs/universal-vs-legacy-dilemma.md).
+   A summary of the architectural trade-offs between building the payment streams module as Universal vs. Legacy, specifically focusing on the dynamic invocation boundaries.
+   Read before deciding on the pattern in Step 6c-probe and 6c.
 
 ### Prerequisites
 
@@ -954,6 +957,22 @@ Definition of done.
    then loading wallet and payment streams via `load-module` or `-l lez_wallet_module,payment_streams_module`,
    without ad hoc relative `PATH` hacks
    (prefer `nix shell` in each terminal tab; see operator guide).
+
+### Step 6c-probe, Verify Universal-to-Legacy Dynamic Invocation
+
+Architectural context:
+Before committing to the Legacy pattern in Step 6c, we must determine if `logoscore` can safely route a dynamic call from a Universal module to a Legacy module.
+See [`docs/universal-vs-legacy-dilemma.md`](docs/universal-vs-legacy-dilemma.md) for the full rationale.
+
+Create a minimal "probe" module using the `logos-module-builder` universal template.
+Do NOT add `lez_wallet_module` to its `metadata.json` dependencies.
+In the module's `onInit(LogosAPI* api)` method, make a dynamic call to the legacy wallet:
+`LogosResult result = api->callModule("lez_wallet_module", "list_accounts", {});`
+Compile the probe and run `logoscore`, loading both the legacy wallet and the universal probe.
+
+Next steps based on the result:
+- If it segfaults or crashes: The host's `LogosAPI` cannot safely route `callModule` to a `PluginInterface` legacy module. You must proceed with the Legacy pattern for `payment_streams_module` in Step 6c.
+- If it returns a success or a clean error string: The dynamic boundary works. You may choose to build `payment_streams_module` as a Universal module in Step 6c, provided you use `callModule()` to talk to the wallet instead of declaring it in `metadata.json`.
 
 ### Step 6c, Bootstrap the Logos Core module
 

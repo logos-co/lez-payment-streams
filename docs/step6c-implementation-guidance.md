@@ -13,6 +13,56 @@ It serves as the single source of truth for component selection, pattern choice,
 | Cross-module calls | Raw `invokeRemoteMethod` | Safe, battle-tested, matches `logos-rln-module` precedent |
 | AI guidance source | `logos-ai-skills` | Already installed in workspace, provides task-specific guidance |
 
+## Required Updates (Post-Step 6c)
+
+### logosAPI Member Assignment
+
+The module must assign to the inherited `logosAPI` member from `PluginInterface`, not a private `m_logosApi` member.
+The host reads `logosAPI` directly to dispatch calls.
+A separate member is invisible.
+
+Current (incorrect) in `payment_streams_module_plugin.cpp`:
+
+```cpp
+void PaymentStreamsModulePlugin::initLogos(LogosAPI* logosApiInstance)
+{
+    m_logosApi = logosApiInstance;  // Wrong - host cannot see this
+    ...
+    LogosAPIClient* walletClient = m_logosApi->getClient(...);
+}
+```
+
+Required fix:
+
+```cpp
+void PaymentStreamsModulePlugin::initLogos(LogosAPI* logosApiInstance)
+{
+    logosAPI = logosApiInstance;  // Correct - assign to inherited member
+    ...
+    LogosAPIClient* walletClient = logosAPI->getClient(...);
+}
+```
+
+In `payment_streams_module_plugin.h`, remove:
+
+```cpp
+private:
+    LogosAPI* m_logosApi = nullptr;  // Delete this line
+```
+
+Rationale: `logos-module-builder` commit `131faf1` ("fix logosAPI handling") updated templates to assign to the inherited `logosAPI` member.
+The host's call dispatch mechanism reads this member directly.
+Private shadow members cause silent failures.
+
+Verification after fix:
+
+```bash
+nix build ./logos-payment-streams-module#lgx
+lgpm --modules-dir "$MODULES" install --file "$REPO/result"/*.lgx
+logoscore -D -m "$MODULES" -l lez_wallet_module,payment_streams_module -v
+logoscore call lez_wallet_module list_accounts  // Should not crash
+```
+
 ## Components to Use
 
 ### Build and Packaging
