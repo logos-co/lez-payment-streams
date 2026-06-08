@@ -15,6 +15,34 @@
         "type": "github"
       }
     },
+    "lez": {
+      "inputs": {
+        "crane": "crane",
+        "logos-blockchain-circuits": "logos-blockchain-circuits",
+        "logos-liblogos": "logos-liblogos",
+        "nixpkgs": [
+          "logos-execution-zone",
+          "lez",
+          "logos-liblogos",
+          "nixpkgs"
+        ],
+        "rust-overlay": "rust-overlay"
+      },
+      "locked": {
+        "lastModified": 1780670706,
+        "narHash": "sha256-ST5KExyHCZidz6QnMa3jd1S9qQJnnQm0q2agdEzHXXc=",
+        "owner": "logos-blockchain",
+        "repo": "lssa",
+        "rev": "c37a3c30a96515cba756174da1da4137ff025d7f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "logos-blockchain",
+        "repo": "lssa",
+        "rev": "c37a3c30a96515cba756174da1da4137ff025d7f",
+        "type": "github"
+      }
+    },
     "logos-blockchain-circuits": {
       "inputs": {
         "nixpkgs": "nixpkgs_2"
@@ -55,6 +83,7 @@
       "inputs": {
         "logos-cpp-sdk": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -65,6 +94,7 @@
         "logos-nix": "logos-nix_10",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -94,6 +124,7 @@
         "logos-nix": "logos-nix_15",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -594,6 +625,7 @@
         "logos-nix": "logos-nix_2",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -621,6 +653,7 @@
         "logos-nix": "logos-nix_11",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -649,6 +682,7 @@
         "logos-nix": "logos-nix_13",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -679,6 +713,7 @@
         "logos-nix": "logos-nix_16",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -708,6 +743,7 @@
         "logos-nix": "logos-nix_44",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-cpp-sdk",
           "logos-nix",
@@ -740,11 +776,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1780583907,
-        "narHash": "sha256-BVYWW8sFPmTrWCUZc9IgPRI3C0dPw1aEz0ddphlRrho=",
+        "lastModified": 1780703083,
+        "narHash": "sha256-Z0nOivZhmNWprngIAxx1ZwpZPKH3EvZRTPzr3nTrMgs=",
         "owner": "logos-co",
         "repo": "logos-cpp-sdk",
-        "rev": "760916e97b1feff928c1d86ef61a28e043326778",
+        "rev": "eb71a1aa90e05a98814138779680de2ea60a9ff2",
         "type": "github"
       },
       "original": {
@@ -815,6 +851,7 @@
         "logos-nix": "logos-nix_12",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -925,30 +962,22 @@
     },
     "logos-execution-zone": {
       "inputs": {
-        "crane": "crane",
-        "logos-blockchain-circuits": "logos-blockchain-circuits",
-        "logos-liblogos": "logos-liblogos",
+        "lez": "lez",
         "nixpkgs": [
           "logos-execution-zone",
-          "logos-liblogos",
+          "lez",
           "nixpkgs"
-        ],
-        "rust-overlay": "rust-overlay"
+        ]
       },
       "locked": {
-        "lastModified": 1780488595,
-        "narHash": "sha256-OCGxIR0yq07OcTCxLSEb8WR/5Hrtv51L0g1Utdjp4fw=",
-        "owner": "logos-blockchain",
-        "repo": "lssa",
-        "rev": "a999563a2d27325ecada318746f1a0dc083d187f",
-        "type": "github"
+        "path": "./lez-python-overlay",
+        "type": "path"
       },
       "original": {
-        "owner": "logos-blockchain",
-        "ref": "refs/pull/491/head",
-        "repo": "lssa",
-        "type": "github"
-      }
+        "path": "./lez-python-overlay",
+        "type": "path"
+      },
+      "parent": []
     },
     "logos-liblogos": {
       "inputs": {
@@ -959,6 +988,7 @@
         "logos-package-manager": "logos-package-manager_3",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-nix",
           "nixpkgs"
@@ -988,6 +1018,7 @@
         "logos-package-manager": "logos-package-manager",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -1114,6 +1145,7 @@
         "logos-nix": "logos-nix_3",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -1149,6 +1181,7 @@
         "nix-bundle-logos-module-install": "nix-bundle-logos-module-install",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -1189,11 +1222,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1780584506,
-        "narHash": "sha256-hQfGPYReBMJ2zemlfJ7XBT0XOFBCZav6Nq23VY2FVjs=",
+        "lastModified": 1780705793,
+        "narHash": "sha256-sOegBiJGTLXCkaASQ02WdPMApkSsOMIaD1zdBuO8I/Y=",
         "owner": "logos-co",
         "repo": "logos-module-builder",
-        "rev": "bd647c1e255abbccfb9e9a1de96db6b25ca22fd5",
+        "rev": "2afd64405439d3fdda1ffb53852a9bb0049f0f0e",
         "type": "github"
       },
       "original": {
@@ -1570,6 +1603,7 @@
         "logos-nix": "logos-nix_5",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -1719,6 +1753,7 @@
         "logos-nix": "logos-nix_7",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -1747,6 +1782,7 @@
         "logos-nix": "logos-nix_9",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -1776,6 +1812,7 @@
         "logos-nix": "logos-nix_14",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -1806,6 +1843,7 @@
         "logos-nix": "logos-nix_17",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -1835,6 +1873,7 @@
         "logos-nix": "logos-nix_45",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-module",
           "logos-nix",
@@ -1867,11 +1906,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1780583965,
-        "narHash": "sha256-mp2J60ULkWIORERo/rd4BTRcFjBXvdL+JmVg3URMT6M=",
+        "lastModified": 1780603603,
+        "narHash": "sha256-CV7R+lwNIP0baXZtE9uNjqu7qDLiANwyGfMkHfTjcl0=",
         "owner": "logos-co",
         "repo": "logos-module",
-        "rev": "740d484bb1f90f3ed6697a7cadc99766a0926226",
+        "rev": "780894dd40ebc8eded0fa97b1729286f31571cfb",
         "type": "github"
       },
       "original": {
@@ -5079,6 +5118,7 @@
         "logos-nix": "logos-nix_20",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -5112,6 +5152,7 @@
         "nix-bundle-dir": "nix-bundle-dir_2",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -5144,6 +5185,7 @@
         "nix-bundle-dir": "nix-bundle-dir_6",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -5175,6 +5217,7 @@
         "nix-bundle-dir": "nix-bundle-dir_9",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-package-manager",
           "logos-nix",
@@ -5687,6 +5730,7 @@
         "logos-nix": "logos-nix_29",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -5795,6 +5839,7 @@
         "logos-nix": "logos-nix_33",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -5823,6 +5868,7 @@
         "logos-nix": "logos-nix_37",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -5852,6 +5898,7 @@
         "logos-nix": "logos-nix_42",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -5881,6 +5928,7 @@
         "logos-nix": "logos-nix_48",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-package-manager",
           "logos-package",
@@ -5998,6 +6046,7 @@
         "logos-nix": "logos-nix_6",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -6033,11 +6082,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1779206088,
-        "narHash": "sha256-a+T5XY7KL1eFREtj4fzdMFnhD9BR8juSg9bQObbMeEQ=",
+        "lastModified": 1780703355,
+        "narHash": "sha256-QwLWoeYn0yMrldG63dWaH2lqyYFn7qgTi5XFlrgCJSc=",
         "owner": "logos-co",
         "repo": "logos-plugin-qt",
-        "rev": "8f8260e6f9aba54b55bf8cc88ddb673dabb7512b",
+        "rev": "f58fbaa25acbc547ae2671e2cddcc1517d6643f0",
         "type": "github"
       },
       "original": {
@@ -6111,6 +6160,7 @@
         "logos-nix": "logos-nix_8",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -6146,11 +6196,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1779206088,
-        "narHash": "sha256-a+T5XY7KL1eFREtj4fzdMFnhD9BR8juSg9bQObbMeEQ=",
+        "lastModified": 1780703355,
+        "narHash": "sha256-QwLWoeYn0yMrldG63dWaH2lqyYFn7qgTi5XFlrgCJSc=",
         "owner": "logos-co",
         "repo": "logos-plugin-qt",
-        "rev": "8f8260e6f9aba54b55bf8cc88ddb673dabb7512b",
+        "rev": "f58fbaa25acbc547ae2671e2cddcc1517d6643f0",
         "type": "github"
       },
       "original": {
@@ -6223,6 +6273,7 @@
         "logos-nix": "logos-nix_26",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -6340,6 +6391,7 @@
         "nix-bundle-lgx": "nix-bundle-lgx",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -6469,6 +6521,7 @@
       "inputs": {
         "logos-cpp-sdk": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -6477,6 +6530,7 @@
         "logos-nix": "logos-nix_31",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -6607,6 +6661,7 @@
       "inputs": {
         "logos-cpp-sdk": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -6616,6 +6671,7 @@
         "logos-nix": "logos-nix_27",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -6747,6 +6803,7 @@
         "nix-bundle-dir": "nix-bundle-dir",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -6778,6 +6835,7 @@
         "nix-bundle-dir": "nix-bundle-dir_5",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -6808,6 +6866,7 @@
         "nix-bundle-dir": "nix-bundle-dir_8",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-package-manager",
           "nix-bundle-appimage",
@@ -7019,6 +7078,7 @@
         "logos-nix": "logos-nix_22",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -7351,6 +7411,7 @@
         "logos-nix": "logos-nix_23",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -7664,6 +7725,7 @@
         "logos-nix": "logos-nix_30",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -7745,6 +7807,7 @@
         "logos-nix": "logos-nix_34",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -7773,6 +7836,7 @@
         "logos-nix": "logos-nix_39",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -7801,6 +7865,7 @@
         "logos-nix": "logos-nix_40",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -7830,6 +7895,7 @@
         "logos-nix": "logos-nix_43",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -7859,6 +7925,7 @@
         "logos-nix": "logos-nix_50",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-package-manager",
           "nix-bundle-appimage",
@@ -7884,6 +7951,7 @@
         "logos-nix": "logos-nix_51",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-package-manager",
           "nix-bundle-dir",
@@ -7912,6 +7980,7 @@
         "nix-bundle-dir": "nix-bundle-dir_3",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -8050,6 +8119,7 @@
         "nix-bundle-dir": "nix-bundle-dir_4",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -8079,6 +8149,7 @@
         "nix-bundle-dir": "nix-bundle-dir_7",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -8294,6 +8365,7 @@
         "nix-bundle-lgx": "nix-bundle-lgx_3",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -11241,6 +11313,7 @@
         "logos-nix": "logos-nix_24",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "logos-capability-module",
           "logos-module-builder",
@@ -11270,6 +11343,7 @@
         "logos-nix": "logos-nix_52",
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "logos-liblogos",
           "process-stats",
           "logos-nix",
@@ -11394,6 +11468,7 @@
       "inputs": {
         "nixpkgs": [
           "logos-execution-zone",
+          "lez",
           "nixpkgs"
         ]
       },
@@ -11420,11 +11495,11 @@
         "nix-bundle-lgx": "nix-bundle-lgx_13"
       },
       "locked": {
-        "lastModified": 1780597603,
-        "narHash": "sha256-RtK4T2hWgjTYm0YV7K25sw9IMSXcBLF4j0+hGK4xrUU=",
+        "lastModified": 1780923171,
+        "narHash": "sha256-0xbn3qhVVjoqyHoJ94vCWpWLUE2fipS4M84tTSnLARA=",
         "owner": "logos-blockchain",
         "repo": "logos-execution-zone-module",
-        "rev": "b05e9aecce5274f878af273c5f5997c21cba2bf2",
+        "rev": "8b24950b50d9362c585c42c4675d544e40c8bf3b",
         "type": "github"
       },
       "original": {

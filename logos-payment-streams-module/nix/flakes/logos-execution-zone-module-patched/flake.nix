@@ -1,8 +1,9 @@
 {
-  description = "logos-execution-zone-module PR 19 + lez_wallet_module packaging (491 LEZ)";
+  description = "logos-execution-zone-module PR 19 + lez_wallet_module packaging (LEZ rev aligned with PR 19)";
 
   inputs = {
-    logos-execution-zone.url = "github:logos-blockchain/lssa?ref=refs/pull/491/head";
+    # pyo3-build-config in wallet-ffi-deps needs a Python interpreter in nativeBuildInputs.
+    logos-execution-zone.url = "path:./lez-python-overlay";
 
     upstream.url = "github:logos-blockchain/logos-execution-zone-module?ref=refs/pull/19/head";
     upstream.inputs.logos-execution-zone.follows = "logos-execution-zone";
@@ -28,24 +29,35 @@
       };
 
       patchWalletInclude = drv: drv.overrideAttrs (old: {
-        patches = (old.patches or [ ]) ++ [ ./cmake-wallet-ffi-include.patch ];
         postPatch =
           (old.postPatch or "")
           + ''
-            # Keep stable Logos module id + codegen naming expected by logos-module-builder.
+            # Stable Logos module id expected by logoscore / lgpm / downstream codegen.
             substituteInPlace metadata.json \
-              --replace '"liblogos_execution_zone_wallet_module"' '"lez_wallet_module"'
+              --replace '"name": "logos_execution_zone"' '"name": "lez_wallet_module"' \
+              --replace '"main": "logos_execution_zone_plugin"' '"main": "lez_wallet_module_plugin"'
+            # logos_host registers the Qt Remote Object under PluginInterface::name().
+            sed -i '/LogosExecutionZoneWalletModule::name() const/,/^}/ s/return "[^"]*";/return "lez_wallet_module";/' \
+              src/logos_execution_zone_wallet_module.cpp
           '';
         postInstall =
           (old.postInstall or "")
           + ''
-            # Stable module id for logos-module-builder / nix-bundle-lgx.
             cat > "$out/metadata.json" <<'WALLET_METADATA_EOF'
 ${walletMetadataJson}
 WALLET_METADATA_EOF
 
-            # logos-module-builder uses "<module>_plugin.<shlibExt>" without a leading lib/ prefix.
-            ln -sfn liblogos_execution_zone_wallet_module.so "$out/lib/lez_wallet_module_plugin.so"
+            _plugin=""
+            for _c in logos_execution_zone_plugin.so liblogos_execution_zone_plugin.so \
+              liblogos_execution_zone_wallet_module.so lez_wallet_module_plugin.so; do
+              if [ -f "$out/lib/$_c" ]; then _plugin="$_c"; break; fi
+            done
+            if [ -z "$_plugin" ]; then
+              echo "No wallet plugin .so under $out/lib:" >&2
+              ls -la "$out/lib" >&2 || true
+              exit 1
+            fi
+            ln -sfn "$_plugin" "$out/lib/lez_wallet_module_plugin.so"
           '';
       });
 
