@@ -6,7 +6,8 @@
   "type": "core",
   "category": "blockchain",
   "main": "payment_streams_module_plugin",
-  "dependencies": ["lez_wallet_module"],
+  "interface": "universal",
+  "dependencies": [],
   "capabilities": [],
   "include": [
     "liblez_payment_streams_ffi.so",

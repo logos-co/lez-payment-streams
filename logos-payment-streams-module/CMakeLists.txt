@@ -13,9 +13,8 @@ endif()
 logos_module(
   NAME payment_streams_module
   SOURCES
-    src/i_payment_streams_module.h
-    src/payment_streams_module_plugin.h
-    src/payment_streams_module_plugin.cpp
+    src/payment_streams_module_impl.h
+    src/payment_streams_module_impl.cpp
   EXTERNAL_LIBS
     lez_payment_streams_ffi
 )

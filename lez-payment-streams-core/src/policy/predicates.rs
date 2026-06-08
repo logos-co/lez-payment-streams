@@ -207,7 +207,7 @@ fn stream_provider_binding_satisfies_expected_payee(
 
 #[cfg(test)]
 mod predicates_unit_tests {
-    //! Documented vectors called out under `step3a-implementor-notes.md` (reuse verbatim from Step 3b).
+    //! Documented vectors called out under `step3-policy-and-implementor-notes.md` (reuse verbatim from Step 3b).
 
     use nssa_core::account::AccountId;
 

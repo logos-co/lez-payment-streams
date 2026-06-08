@@ -141,25 +141,28 @@ The `dependencies` array in `metadata.json` declares outbound dependencies,
 what other modules this module needs to call.
 The runtime loads these dependencies before your module.
 
-Example. `payment_streams_module` lists `lez_wallet_module`
-because it calls `get_account_public` and `send_public_transaction`.
+Example. `payment_streams_module` calls `lez_wallet_module` for chain reads and writes.
+It does not list the wallet in `metadata.json` (D6).
+Load the wallet module before payment streams at runtime.
 
 Inbound dependencies, modules that call you, are not declared in `metadata.json`.
 They are established at runtime through registration.
 
 Example. `delivery_module` calls `payment_streams_module`
-via the eligibility verifier or provider hooks configured in Step 13,
+via the eligibility verifier or provider hooks configured in Step 16,
 but `payment_streams_module` does not list `delivery_module` in its dependencies.
 The host application calls `setEligibilityVerifier("payment_streams_module")`
 on `delivery_module`, creating the inbound link dynamically.
 
-This distinction matters for `payment_streams_module`.
-Outbound. `lez_wallet_module` (static dependency in `metadata.json`).
-Inbound. `delivery_module` (runtime registration, no metadata entry).
+For this integration, outbound wallet access is runtime-only, not a static
+`dependencies` entry. Other modules may still declare static dependencies when
+codegen and dependency types align (Universal-on-Universal or Legacy patterns).
 
 ## Two boundaries
 
 There are two distinct boundaries in this stack.
+The integration plan describes the same layers as Rust FFI (Boundary A here) and
+LogosAPI / inter-module calls (Boundary B here).
 
 ### Boundary A. C FFI to non-C++ backends
 
@@ -222,10 +225,15 @@ logosAPI->getClient("other_module")
         ->invokeRemoteMethod("other_module", "methodName", arg…);
 ```
 
-Universal pattern caller:
+Universal pattern caller (typical, Universal-on-Universal or when SDK exposes it):
 ```cpp
 LogosAPI::callModule("other_module", "methodName", {arg1, arg2});
 ```
+
+Payment streams integration (Step 8, D6): a Universal `payment_streams_module`
+calling Legacy `lez_wallet_module` uses the same dispatch as Legacy callers on
+the pinned SDK: `modules().api->getClient("lez_wallet_module")->invokeRemoteMethod(...)`.
+See [`docs/step8-universal-legacy-probe-results.md`](docs/step8-universal-legacy-probe-results.md).
 
 The called module receives the invocation through Qt's meta-object system.
 It does not see which module called it, only that the runtime is invoking a method.
@@ -265,7 +273,8 @@ Qt is in this stack for three independent reasons.
    Cross-module calls are marshaled between `logos_host` subprocesses
    using Qt Remote Objects.
    Legacy modules call via `LogosAPIClient::invokeRemoteMethod()`.
-   Universal modules call via `LogosAPI::callModule()`.
+   Universal modules may call via `LogosAPI::callModule()` when the SDK supports it;
+   this integration uses `invokeRemoteMethod` for Universal → Legacy wallet (Step 8).
 
 3. UI framework (QML, QtQuick, signals and slots in views).
    Only `ui_qml` modules touch this.

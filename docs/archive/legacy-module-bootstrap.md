@@ -1,9 +1,39 @@
-# Step 6c Implementation Guidance
+# Legacy payment streams plugin bootstrap (archived)
 
-This document records the architectural decisions for implementing the Logos Core module shell in Step 6c.
-It serves as the single source of truth for component selection, pattern choice, and implementation approach.
+Status: outdated (2026-06-08). Superseded by Step 9 in
+[`integration-plan-v2.md`](../../integration-plan-v2.md) and
+[`docs/logos-runtime-guide.md`](../logos-runtime-guide.md).
 
-## Decisions Summary
+This records the original Legacy bootstrap plan (pre–Step 9): a Legacy `PluginInterface` Qt plugin
+(`payment_streams_module_plugin.{h,cpp}`, `i_payment_streams_module.h`) with
+`lez_wallet_module` listed in `metadata.json` dependencies.
+
+We chose the Universal interface instead after
+[`docs/step8-universal-legacy-probe-results.md`](../step8-universal-legacy-probe-results.md)
+(Step 8).
+
+## What the Legacy shell contained
+
+- `metadata.json` without `"interface": "universal"`; `dependencies: ["lez_wallet_module"]`
+- Qt plugin implementing `PluginInterface` and `Q_INVOKABLE initLogos`
+- Wallet plumbing via `getClient("lez_wallet_module")` and `invokeRemoteMethod`
+  inside `initLogos`
+- `flake.nix` with `mkLogosModule`, `lez_payment_streams_ffi` external lib,
+  optional `lez_wallet_module` flake input for builder dependency wiring
+- Linked `liblez_payment_streams_ffi`; no instruction entrypoints called from C++
+  until chain-write steps
+
+## Why it was retired
+
+- Universal → Legacy dynamic wallet calls are validated; no need to stay Legacy
+  for downstream wallet access.
+- Typed `modules().lez_wallet_module` remains unsafe in core sidecars (Issue 31);
+  Universal with empty dependencies plus dynamic `invokeRemoteMethod` matches
+  the probe pattern.
+- Legacy plugin sources were a thin scaffold (~90 lines), not product logic.
+
+## Legacy implementation guidance (detail)
+
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
@@ -13,7 +43,7 @@ It serves as the single source of truth for component selection, pattern choice,
 | Cross-module calls | Raw `invokeRemoteMethod` | Safe, battle-tested, matches `logos-rln-module` precedent |
 | AI guidance source | `logos-ai-skills` | Already installed in workspace, provides task-specific guidance |
 
-## Required Updates (Post-Step 6c)
+## Required Updates (Legacy shell, archived)
 
 ### logosAPI Member Assignment
 
@@ -88,7 +118,7 @@ logoscore call lez_wallet_module list_accounts  // Should not crash
   - `LogosResult` for return values
   - `QByteArray` for binary data
 
-- Step 6c uses `invokeRemoteMethod` only inside startup code (typically `initLogos`) to prove `getClient` and dispatch work; keep the public plugin surface to `initLogos`, `name`, and whatever `PluginInterface` requires. Step 7 adds `Q_INVOKABLE` helpers that wrap wallet reads.
+- Legacy bootstrap used `invokeRemoteMethod` only inside startup code (typically `initLogos`) to prove `getClient` and dispatch work; keep the public plugin surface to `initLogos`, `name`, and whatever `PluginInterface` requires. Modern Step 10 adds helpers that wrap wallet reads.
 
 ### FFI Integration
 
@@ -113,10 +143,10 @@ logoscore call lez_wallet_module list_accounts  // Should not crash
 
 ## Cross-Module Call Pattern
 
-Use raw `invokeRemoteMethod` (same as `logos-rln-module` and dependencies). For Step 6c, perform one probe from `initLogos` only; do not add extra exported methods on `payment_streams_module` for wallet access until Step 7.
+Use raw `invokeRemoteMethod` (same as `logos-rln-module` and dependencies). For Legacy bootstrap, perform one probe from `initLogos` only; do not add extra exported methods on `payment_streams_module` for wallet access until Step 10.
 
 ```cpp
-// payment_streams_module_plugin.cpp — startup plumbing only (Step 6c)
+// payment_streams_module_plugin.cpp — startup plumbing only (Legacy bootstrap, archived)
 void PaymentStreamsModulePlugin::initLogos(LogosAPI* logosApiInstance) {
     m_logosApi = logosApiInstance;
     LogosAPIClient* walletClient =

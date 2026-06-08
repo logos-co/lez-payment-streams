@@ -37,12 +37,8 @@ nix build ./logos-payment-streams-module#lgx
 
 (Run from the `lez-payment-streams` repo root, or `cd logos-payment-streams-module` and use `nix build .#lgx`.)
 
-Operator setup (build wallet + payment streams `.lgx`, `lgpm`, `logoscore`, `load-module`)
-is in [`docs/logos-operator-install-basics.md`](docs/logos-operator-install-basics.md)
-(integration plan Step 6b–6c).
-
-After Step 7, when changing the module or FFI, use
-[`docs/ps-module-integration-test-loop.md`](docs/ps-module-integration-test-loop.md).
+Logos runtime (install, module, dev loop): [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md)
+(integration plan Steps 7, 9–11). See [`docs/README.md`](docs/README.md) for all integration docs.
 
 Logos stack integration (LIP-155 demo, Store eligibility, module wiring) is planned in
 [`integration-plan-v2.md`](integration-plan-v2.md) with context in [`handoff.md`](handoff.md).

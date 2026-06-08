@@ -6,15 +6,11 @@ and what changed in each repo to make that pin reproducible with Nix.
 The overarching goal is to run the payment-streams demo stack against wallet APIs
 that are not yet on upstream default branches.
 
-Store querying through `delivery_module` is not pinned here.
-Upstream is implementing Store access on their roadmap with a different design
-than our earlier `logosdelivery_query_store` / `queryStore` PRs.
-Integration work waits for that functionality on `logos-delivery-module` `master`
-and does not use branch `feat/liblogosdelivery-query-store` or local forks of those PRs.
+Store querying through `delivery_module`: integration plan N6 and Step 6 (not pinned here).
 
 ## Wallet — primary path (491 + 19)
 
-Chain writes use **generic public transactions**:
+Chain writes use generic public transactions:
 
 | Layer | Upstream PR | Role |
 | --- | --- | --- |
@@ -24,7 +20,7 @@ Chain writes use **generic public transactions**:
 PR 491 supersedes [PR 429](https://github.com/logos-blockchain/logos-execution-zone/pull/429).
 PR 19 supersedes [PR 16](https://github.com/logos-blockchain/logos-execution-zone-module/pull/16) (429 JSON wrapper).
 
-**Do not pin 429 or 16** in this integration.
+Do not pin 429 or 16 in this integration.
 
 ### Flake refs (until merge)
 
@@ -62,7 +58,7 @@ Refresh `rev` / `sha256` in `nix/payment-streams-ffi.nix` when the LEZ pin moves
 
 ### Rust FFI (`nix/payment-streams-ffi.nix`)
 
-`lez-payment-streams-ffi` symlinks LEZ `artifacts/` from the same **`logos-execution-zone` revision**
+`lez-payment-streams-ffi` symlinks LEZ `artifacts/` from the same `logos-execution-zone` revision
 as the wallet stack (491 head until merge).
 
 ### Payment-streams Logos module (`logos-payment-streams-module/flake.nix`)
@@ -81,5 +77,5 @@ nix build ./logos-payment-streams-module#lgx
 ```
 
 For `lgpm`, `logoscore`, and the Step 7+ loop see
-[`logos-operator-install-basics.md`](logos-operator-install-basics.md)
-and [`ps-module-integration-test-loop.md`](ps-module-integration-test-loop.md).
+[`logos-runtime-guide.md`](logos-runtime-guide.md)
+and [`logos-runtime-guide.md`](logos-runtime-guide.md).
