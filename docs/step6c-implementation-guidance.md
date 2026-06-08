@@ -8,7 +8,7 @@ It serves as the single source of truth for component selection, pattern choice,
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Build infrastructure | `logos-module-builder` | Stable, well-tested, provides `mkLogosModule` and packaging |
-| Implementation pattern | Legacy `PluginInterface` | Both dependencies use legacy; avoids runtime incompatibility |
+| Implementation pattern | Legacy `PluginInterface` | Downstream dependency uses legacy; avoids untested mixed-pattern routing |
 | Code generation | Not used | `logos-cpp-generator` produces `LogosModules` wrapper that crashes in core sidecars (see Issue #31) |
 | Cross-module calls | Raw `invokeRemoteMethod` | Safe, battle-tested, matches `logos-rln-module` precedent |
 | AI guidance source | `logos-ai-skills` | Already installed in workspace, provides task-specific guidance |
@@ -106,7 +106,7 @@ logoscore call lez_wallet_module list_accounts  // Should not crash
 |-----------|--------|
 | `logos-cpp-generator` | Generates code that crashes in core module sidecars (Issue #31) |
 | `LogosModules` typed wrapper | Segfaults during construction in `LogosAPI::getClient` |
-| Universal pattern (`"interface": "universal"`) | Runtime incompatible with `PluginInterface` dependencies |
+| Universal pattern (`"interface": "universal"`) | Mixing patterns requires untested dynamic routing (`callModule` to `PluginInterface`) |
 | `LogosProviderBase` | Base class for universal pattern only |
 | `LogosAPI::callModule()` | Only available in universal pattern |
 | `logos-dev-boost` templates | Target universal pattern by default |
