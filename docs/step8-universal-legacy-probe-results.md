@@ -76,7 +76,7 @@ not `LogosAPI::callModule` (not on pinned `logos-cpp-sdk`).
 ## Implication for `payment_streams_module`
 
 Universal module shape and empty wallet `dependencies` follow D6 and Step 9.
-Step 10 adds the first wallet calls from this repo's module.
+Step 11a adds the first wallet calls from this repo's module.
 
 Follow-up for funded LEZ tests: wallet storage compatible with module FFI (Pass B).
 

@@ -1,7 +1,7 @@
 # Logos runtime guide
 
 Build, install, and exercise `lez_wallet_module` and `payment_streams_module` in
-`logoscore` (integration plan Steps 7, 9–13). Delivery modules are out of scope.
+`logoscore` (integration plan Steps 7, 9–13; Steps 10–11 for chain fixture and module I/O).
 
 Related: [`feature-branch-pins.md`](feature-branch-pins.md),
 [`step8-universal-legacy-probe-results.md`](step8-universal-legacy-probe-results.md),
@@ -252,7 +252,7 @@ lm methods "$MODULES/payment_streams_module/payment_streams_module_plugin.so"
 ```
 
 Expected: Universal plugin loads; no payment-streams business API until Steps 10–13
-(only framework or codegen symbols until you add Step 10 methods).
+(only framework or codegen symbols until you add Step 11a methods).
 
 ```bash
 lm methods "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" | rg list_accounts
@@ -266,7 +266,7 @@ Expected: a `list_accounts` (or similarly named) invokable method on the wallet 
 logoscore module-info payment_streams_module
 ```
 
-Expected: `Status: loaded`. No custom RPC methods until Step 10.
+Expected: `Status: loaded`. No custom RPC methods until Step 11a.
 
 Cross-module Universal to Legacy wallet calls were validated in Step 8
 ([`step8-universal-legacy-probe-results.md`](step8-universal-legacy-probe-results.md)).
@@ -336,7 +336,7 @@ logos-payment-streams-module/
 ```
 
 Do not add `onInit` on the impl class; codegen treats it as a public API method.
-Step 10 adds wallet read helpers using the `invokeRemoteMethod` pattern in the section above.
+Step 11a adds wallet read helpers using the `invokeRemoteMethod` pattern in the section above.
 
 ## Cross-module wallet pattern
 
@@ -362,9 +362,10 @@ use `LogosModules` typed wrapper from core sidecars.
 
 ## Later steps (plan Steps 10–11)
 
-Step 10 adds wallet read helpers using the same `invokeRemoteMethod` pattern.
-Step 11 adds writes via PR 19 wallet methods. New Universal API methods belong
-on the impl class; wallet stays dynamic.
+Step 10a–10b: local chain fixture and patched wallet `.lgx` (see integration plan).
+Step 11a adds wallet read helpers using the same `invokeRemoteMethod` pattern.
+Step 11b adds writes via PR 19 wallet methods; Step 11c adds `sign_public_payload` on the wallet wrapper.
+New Universal API methods belong on the impl class; wallet stays dynamic.
 
 ## References
 
@@ -374,7 +375,10 @@ on the impl class; wallet stays dynamic.
 
 ---
 
-## Part 3 — Dev test loop (Steps 10+)
+## Part 3 — Dev test loop (Steps 11a–13)
+
+Step 10a–10b (chain fixture + wallet `.lgx`) are documented in the integration plan;
+this part covers the loop after `payment_streams_module` chain code changes.
 
 Steps 14–15 change `logos-delivery` / `liblogosdelivery` (Nim, C ABI smoke tests).
 They do not use this Logos host loop; see [Steps 14–15](#steps-14-15-delivery-only) at the end.
@@ -385,12 +389,12 @@ They do not use this Logos host loop; see [Steps 14–15](#steps-14-15-delivery-
 
 | Frequency | Work |
 |-----------|------|
-| One-time per machine | Pick `SCAFFOLD_WS`, run `lgs init` / `lgs setup`, deploy `lez_payment_streams`, note program id and test account ids ([`step1-findings-scaffold-rpc.md`](step1-findings-scaffold-rpc.md)) |
-| One-time per machine | First `lgpm` install of wallet + PS ([Part 1](#part-1--first-time-install-step-7)) |
+| One-time per machine | Step 10a: `SCAFFOLD_WS`, `lgs init` / setup, deploy, fund, fixture manifest ([`step1-findings-scaffold-rpc.md`](step1-findings-scaffold-rpc.md), integration plan Step 10a) |
+| One-time per machine | Step 7 + 10b: first `lgpm` install of wallet + PS ([Part 1](#part-1--first-time-install-step-7)) |
 | Each new terminal | `export` paths + `nix shell` (tools) |
 | Each dev iteration | PS `nix build` → `lgpm install` PS → restart logoscore → `load-module` |
 | Each test session | Start LEZ localnet if stopped; point wallet at `http://127.0.0.1:3040` |
-| When wallet Qt/FFI changes (Step 11+) | Re-bundle wallet `.lgx`, `lgpm install` wallet, then PS reinstall if needed |
+| When wallet Qt/FFI changes (Steps 10b / 11c+) | Re-bundle wallet `.lgx`, `lgpm install` wallet, then PS reinstall if needed |
 
 ---
 
@@ -471,7 +475,7 @@ Typical touch points:
 - `lez-payment-streams-ffi/` — decoders, instruction builders, proof bytes
 - `lez-payment-streams-core/` — domain logic consumed by FFI
 
-Step 11 wallet changes happen in `logos-execution-zone-module` (patched flake), not only here.
+Step 10b / 11c wallet changes happen in the patched wrapper flake, not only in `payment_streams_module`.
 
 ### 2. Build payment streams `.lgx`
 
@@ -559,7 +563,7 @@ After adding methods, plugin metadata should reflect them:
 lm methods "$MODULES/payment_streams_module/payment_streams_module_plugin.so"
 ```
 
-Compare to Step 9 baseline (no business methods yet) — Step 10+ should list your new
+Compare to Step 9 baseline (no business methods yet) — Step 11a+ should list your new
 exported method entries.
 
 ```bash
@@ -573,27 +577,35 @@ Expected: `Status: loaded`, methods section includes new names.
 Use `logoscore call payment_streams_module <method> …` with arguments your Step
 defines. Exact calls depend on implemented signatures; patterns:
 
-Step 10 — chain reads
+Step 10a–10b — fixture and wallet `.lgx`
+
+- Scaffold workspace, localnet, deploy, fund (integration plan Step 10a)
+- Patched `lez_wallet_module` install and `open` (Step 10b)
+
+Step 11a — chain reads
 
 - Calls into PS helpers that wrap `get_account_public` / clock read
 - Expected: JSON strings decodable by FFI tests; failures should be structured
   errors, not daemon crash
-- Prerequisite: LEZ up, program deployed, accounts initialized or PDAs read as
-  documented in step1 findings
+- Prerequisite: Step 10a fixture (LEZ up, program deployed, accounts as documented)
 
-Step 11 — writes and status
+Step 11b — writes and status
 
-- Same LEZ stack as Step 10
+- Same LEZ stack as Step 11a
 - `lm methods` shows write + `getVaultStatus` / `getStreamStatus` when implemented
 - Expected: lifecycle calls return wallet JSON; on-chain state visible via status
-  helpers (integration plan Step 11 definition of done)
+  helpers (integration plan Step 11b definition of done)
+
+Step 11c — wallet signing
+
+- Rebuild wallet `.lgx` after `sign_public_payload`; required before Step 12
 
 Step 12 — eligibility (user side)
 
 - Methods such as `prepareEligibilityForStoreQuery`, `registerProviderMapping`,
   `listMyStreams`, `rediscoverStreams`
 - Some DoD items are FFI verifier round-trips (may not need live chain for every
-  test); chain sanity still uses Step 10 stack
+  test); chain sanity still uses Steps 10a–11b stack
 - Restart logoscore and repeat calls to test `instancePersistencePath` survival
 
 Step 13 — provider verify
@@ -618,7 +630,7 @@ FFI inside the installed tree.
 
 ---
 
-## Repeat loop — wallet module changes (Step 11+)
+## Repeat loop — wallet module changes (Steps 10b / 11c)
 
 When pins move (491 / 19) or `sign_public_payload` lands on the patched wrapper:
 

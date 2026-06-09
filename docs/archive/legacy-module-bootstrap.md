@@ -118,7 +118,7 @@ logoscore call lez_wallet_module list_accounts  // Should not crash
   - `LogosResult` for return values
   - `QByteArray` for binary data
 
-- Legacy bootstrap used `invokeRemoteMethod` only inside startup code (typically `initLogos`) to prove `getClient` and dispatch work; keep the public plugin surface to `initLogos`, `name`, and whatever `PluginInterface` requires. Modern Step 10 adds helpers that wrap wallet reads.
+- Legacy bootstrap used `invokeRemoteMethod` only inside startup code (typically `initLogos`) to prove `getClient` and dispatch work; keep the public plugin surface to `initLogos`, `name`, and whatever `PluginInterface` requires. Modern Step 11a adds helpers that wrap wallet reads.
 
 ### FFI Integration
 
@@ -143,7 +143,7 @@ logoscore call lez_wallet_module list_accounts  // Should not crash
 
 ## Cross-Module Call Pattern
 
-Use raw `invokeRemoteMethod` (same as `logos-rln-module` and dependencies). For Legacy bootstrap, perform one probe from `initLogos` only; do not add extra exported methods on `payment_streams_module` for wallet access until Step 10.
+Use raw `invokeRemoteMethod` (same as `logos-rln-module` and dependencies). For Legacy bootstrap, perform one probe from `initLogos` only; do not add extra exported methods on `payment_streams_module` for wallet access until Step 11a.
 
 ```cpp
 // payment_streams_module_plugin.cpp — startup plumbing only (Legacy bootstrap, archived)
