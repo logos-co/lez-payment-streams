@@ -151,7 +151,7 @@ Neither layer learns anything about payment streams.
 
 `logos-delivery-module`
 is the existing Logos Core module
-(repo `logos-delivery-module`, currently pinned at `v0.1.1`)
+(repo `logos-delivery-module`; upstream release line is `v0.1.2`, not pinned in this repo until Step 16)
 that wraps `liblogosdelivery` and exposes the typed `delivery_module` API
 documented in the journey doc
 [Use the Logos Delivery module API from an app](https://github.com/logos-co/logos-docs/blob/main/docs/messaging/journeys/use-the-logos-delivery-module-api-from-an-app.md).
@@ -222,7 +222,7 @@ Start at `src/logos_rln_module.cpp`.
 RLN may still call a legacy JSON `send_public_transaction` where deployed;
 payment streams chain writes follow [D3](#d3-wallet-write-path) (491 generic transactions).
 
-`logos-delivery-module` (currently pinned at `v0.1.1` upstream)
+`logos-delivery-module` (upstream `v0.1.2` on `master` as reference; extend on our branch in Step 16)
 is the module we extend in Step 16.
 Skim `README.md` and `src/delivery_module_plugin.h`
 to see the surface we add `setEligibilityVerifier`
@@ -947,171 +947,768 @@ implementation, feature branch, or upstream PR to expose Store queries through
 `queryStore` are retired. Store access is an upstream deliverable on the Delivery
 roadmap (different design than those PRs).
 
-Steps 16–18 are specified so the demo can resume when upstream lands Store query
-support. They are not actionable until then (N6, Step 6).
+Steps 16–18 remain blocked on upstream Store query support landing on
+`logos-delivery` and `logos-delivery-module` `master`. All other steps proceed
+without calling Store query APIs on `delivery_module`. Normative detail: N6.
+
 Active work proceeds on Steps 1–15 without calling Store query APIs on
 `delivery_module`.
+
+Components required to run: none.
+
+Definition of done: decision recorded; no payment-streams work item remains for
+local Store query exposure.
 
 Status: done (wait for upstream only).
 
 ### Step 7, Operator install basics (Nix, LGX, lgpm, logoscore)
 
-Goal: build and install `lez_wallet_module` and `payment_streams_module`,
-use one `modules/` directory with `lgpm` and `logoscore`, and load modules
-explicitly before calling them.
+Goal.
 
-Documentation only; no application logic required.
+Understand how payment-streams artifacts are built with Nix,
+how `.lgx` packages are produced for both `lez_wallet_module` and `payment_streams_module`,
+how `lgpm` installs them into one `modules/` directory,
+and how `logoscore` loads that directory,
+before treating Step 9 definition-of-done items 2–5 as the operating checklist
+(install, explicit `load-module`, `lm`, plumbing — see operator guide).
 
-See [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 1.
+This step is documentation and environment setup only.
+No change to module source code is required.
 
-Definition of done:
+Components required.
 
-1. Explain why `nix build .#lgx` at the repo root does not build the module.
-2. Produce wallet `.lgx` via
+Read access to this repo,
+[`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 1),
+and [`logos-tutorial/logos-developer-guide.md`](../logos-tutorial/logos-developer-guide.md)
+(package manager and logoscore sections).
+
+Definition of done.
+
+1. You can explain why `nix build .#lgx` at the `lez-payment-streams` repository root does not work,
+   and which flake attribute builds `payment_streams_module` instead.
+2. You can produce a wallet `.lgx` via
    `logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/`
-   and PS `.lgx` via `nix build ./logos-payment-streams-module#lgx`.
-3. Install both into one `MODULES` path; start daemon; `load-module` wallet then
-   payment streams.
+   and `nix bundle --bundler github:logos-co/nix-bundle-lgx .#lib`,
+   and produce `payment_streams_module` via `nix build ./logos-payment-streams-module#lgx`.
+3. You use one absolute `modules/` path for both `lgpm --modules-dir` and `logoscore -m`,
+   installing `lez_wallet_module` before `payment_streams_module`,
+   running `lgpm list` (two modules),
+   starting `logoscore -D -m` (daemon plus `capability_module`),
+   then loading wallet and payment streams via `load-module` or `-l lez_wallet_module,payment_streams_module`,
+   without ad hoc relative `PATH` hacks
+   (prefer `nix shell` in each terminal tab; see operator guide).
 
-### Step 8, Universal-to-Legacy wallet probe (done)
+### Step 8, Universal-to-Legacy wallet probe
 
-Goal: confirm a Universal core module can call Legacy `lez_wallet_module`
-dynamically without listing the wallet in `metadata.json`.
+Architectural context:
+Before committing to Universal `payment_streams_module` (D6), we had to determine whether
+`logoscore` can safely route a dynamic call from a Universal module to Legacy
+`lez_wallet_module` without listing the wallet in `metadata.json`.
+Historical rationale and probe design:
+[`docs/step8-universal-legacy-probe-results.md`](docs/step8-universal-legacy-probe-results.md)
+(appendix references the retired dilemma write-up).
+
+The probe module uses the `logos-module-builder` Universal template.
+It does not add `lez_wallet_module` to `metadata.json` `dependencies`.
+It calls the wallet via
+`modules().api->getClient("lez_wallet_module")->invokeRemoteMethod(...)`.
+Compile the probe and run `logoscore`, loading Legacy wallet then Universal probe.
 
 Status: done for Step 8 goal (2026-06-08).
-Validated: Universal caller can invoke Legacy `lez_wallet_module` without listing
-the wallet in `metadata.json`; daemon stable; `invokeRemoteMethod` dispatch works
-(empty account list is OK for marshaling smoke).
-Not validated here: funded wallet / scaffold storage via module `open` (Pass B
-storage failure). See results doc.
-
-Results and runbook:
-[`docs/step8-universal-legacy-probe-results.md`](docs/step8-universal-legacy-probe-results.md),
+Validated: Universal caller invokes Legacy `lez_wallet_module` without a static dependency;
+daemon stable; `invokeRemoteMethod` dispatch works (empty account list OK for marshaling smoke).
+Not validated in the probe: funded wallet / scaffold storage via module `open` (Pass B storage failure).
+See [`docs/step8-universal-legacy-probe-results.md`](docs/step8-universal-legacy-probe-results.md) and
 [`logos-universal-legacy-probe/docs/probe-runbook-and-results.md`](../logos-universal-legacy-probe/docs/probe-runbook-and-results.md).
 
-Decision D6: build `payment_streams_module` as Universal; call the wallet via
-`modules().api->getClient("lez_wallet_module")->invokeRemoteMethod(...)` with
-empty `dependencies`.
+Decision D6: build `payment_streams_module` as Universal; call the wallet dynamically with empty
+`dependencies`.
+
+Components required to run:
+`logoscore`, patched `lez_wallet_module`, probe `.lgx`, optional LEZ for Pass B only.
+
+Definition of done:
+probe loads with wallet; `invokeRemoteMethod` reaches `lez_wallet_module` without host crash;
+results recorded in the Step 8 doc; D6 recorded in this plan.
 
 ### Step 9, Bootstrap Universal `payment_streams_module`
 
-Status: done (Universal skeleton in `logos-payment-streams-module/`).
+Architectural context:
+this step lays down the Universal C++ module shell of `payment_streams_module`.
+The module is a `type: core` plugin with `"interface": "universal"`
+that hosts the Rust FFI crate (from Steps 1–5)
+and will expose LogosAPI methods to other modules in later steps.
 
-Architectural context: Universal core module (`"interface": "universal"`) wrapping
-`lez_payment_streams_ffi`. No wallet entry in `metadata.json`; wallet access is
-dynamic (Step 8 validated).
+Prerequisite: Step 7 ([`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 1)).
 
-Guidance: [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 2.
-
-Archived Legacy bootstrap (superseded):
+Pattern decision (D6, Step 8 probe):
+build `payment_streams_module` as Universal (`LogosModuleContext` in
+`payment_streams_module_impl.{h,cpp}`).
+Do not restore the Legacy `PluginInterface` shell.
+Call `lez_wallet_module` at runtime via `invokeRemoteMethod`; keep `"dependencies": []`.
+Archived Legacy bootstrap notes:
 [`docs/archive/legacy-module-bootstrap.md`](docs/archive/legacy-module-bootstrap.md).
 
-Reuse from the retired Legacy shell:
+`logos-delivery-module` [Issue #31](https://github.com/logos-co/logos-delivery-module/issues/31)
+documents that the `LogosModules` typed wrapper crashes in core module sidecars.
+Outbound wallet calls use `LogosAPIClient::invokeRemoteMethod` directly regardless of interface.
 
-- `flake.nix` / `mkLogosModule` + `externalLibInputs.lez_payment_streams_ffi`
-- `metadata.json` `include` list for `liblez_payment_streams_ffi`
-- Patched wallet flake path for operator installs (module id `lez_wallet_module`)
+Implementation checklist and operator loop:
+[`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 2.
 
-Layout:
+For flake pins (LEZ PR 491, wallet module PR 19), see [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
+Store query pins are intentionally absent; see N6.
 
-- `src/payment_streams_module_impl.{h,cpp}` extending `LogosModuleContext` (empty impl until Step 10)
-- Do not declare `onInit` on the impl class (codegen conflict; see probe)
-- Step 8 probe repo proves Universal to Legacy wallet `invokeRemoteMethod`; Step 10 adds the first in-module wallet calls
+Scaffold from `logos-module-builder` with external lib input, modeled on `logos-rln-module`
+and the Rust-FFI pattern in `logos-tutorial/logos-developer-guide.md`.
+Per D5, directory `logos-payment-streams-module/` sits alongside `lez-payment-streams-core/`
+and `lez-payment-streams-ffi/` in this repo.
+It ships
+`metadata.json` (`name = "payment_streams_module"`, `type = "core"`,
+`"interface": "universal"`, `dependencies = []`,
+`include` listing platform variants of `liblez_payment_streams_ffi`),
+`flake.nix` (`mkLogosModule` + `externalLibInputs.lez_payment_streams_ffi`),
+`CMakeLists.txt`,
+and `src/payment_streams_module_impl.{h,cpp}` extending `LogosModuleContext`.
+Do not declare `onInit` on the impl class (codegen conflict; see Step 8 probe).
+Step 8 validated Universal-to-Legacy wallet `invokeRemoteMethod`; Step 10 adds the first
+in-module wallet calls.
+
+Implementor hints (FFI from Step 5, no extra Qt surface yet):
+
+- Link `liblez_payment_streams_ffi` named in metadata `include`, and vendor
+  [`lez_payment_streams_ffi.h`](lez-payment-streams-ffi/lez_payment_streams_ffi.h) like
+  `logos-rln-module` (CMake + flake inputs).
+  Step 9 is load/plumbing only; do not call instruction entrypoints from C++ until Step 11.
+- On-chain instruction bytes and account-list planning live in
+  [`lez-payment-streams-ffi/src/instruction_abi.rs`](lez-payment-streams-ffi/src/instruction_abi.rs).
+  Skim the file-level doc for two-phase output sizing and 64-byte lowercase hex stride per account.
+- Instruction payloads follow
+  [`lez-payment-streams-core/src/instruction_wire.rs`](lez-payment-streams-core/src/instruction_wire.rs),
+  not Step 4 protobuf/N8.
+- Deposit helpers use `payment_streams_ffi_authenticated_transfer_program_id_bytes` where needed.
 
 Pin `logos-module-builder` recent enough for Universal glue (same band as
 `logos-universal-legacy-probe`). Wallet LEZ rev aligned with patched wallet flake
-(module PR 19 + LEZ `c37a3c30…` via `lez-python-overlay`).
+(module PR 19 + LEZ pin via `lez-python-overlay`; see feature-branch pins).
 
-Implementor hints (FFI from Step 5):
+Components required to run:
+`logoscore` host (first step needing a running Logos host).
+No chain, messaging network, or UI host.
 
-- Link `liblez_payment_streams_ffi`; vendor `lez_payment_streams_ffi.h`
-- Step 9 does not call instruction entrypoints from C++ until chain writes (Step 11)
-
-Components: `logoscore` host; no chain required for Step 9 load checks.
+Status: done (Universal skeleton in `logos-payment-streams-module/`).
 
 Definition of done:
 
-1. `nix build ./logos-payment-streams-module#lgx` succeeds
-2. `lgpm install` alongside patched `lez_wallet_module`
-3. `load-module` order: wallet, then payment streams
+1. `nix build ./logos-payment-streams-module#lgx` produces a valid `.lgx`
+2. `lgpm install` places the module alongside patched `lez_wallet_module`
+3. `logoscore` loads the module after explicit `load-module` (wallet first, then payment streams)
 4. `payment_streams_module` reports loaded; daemon shows no crash
 5. `logoscore call lez_wallet_module list_accounts` reaches the wallet RPC (LEZ optional for failure-only smoke)
 
-Operator loop from Step 10:
-[`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 3.
+Operator commands:
+[`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 1).
+From Step 10 onward, repeat build/install/load and LEZ:
+[`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 3).
 
 ### Step 10, Wire chain reads from the module
 
-Add helpers wrapping `lez_wallet_module.account_id_from_base58`,
-`get_account_public`, and clock read via `invokeRemoteMethod`
-([`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 3, wallet pattern in Part 2).
+Architectural context:
+this step adds stable read helpers and exercises wallet-backed chain reads end-to-end for the first time.
+`payment_streams_module` calls into `lez_wallet_module`,
+which in turn uses its own FFI (`wallet_ffi`) to reach the LEZ sequencer
+over JSON-RPC.
+The chain is now part of the picture.
 
-Components: logoscore, both modules, LEZ on `127.0.0.1:3040`, deployed
-`lez_payment_streams` program.
+Add helpers inside `payment_streams_module` that wrap
+`lez_wallet_module.account_id_from_base58` and `lez_wallet_module.get_account_public`,
+plus a higher-level helper that reads the configured clock account
+and returns the current sequencer time.
+These helpers are pure read paths and do not touch any payment-streams logic.
+Use `LogosAPIClient::invokeRemoteMethod` directly,
+following the safe pattern documented in
+[`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 2).
+Do not use the `LogosModules` typed wrapper as it crashes in core module sidecars.
 
-Definition of done: read known vault/stream/clock accounts; decode via FFI.
+Components required to run:
+`logoscore` daemon hosting both `lez_wallet_module` and `payment_streams_module`,
+LEZ sequencer on `127.0.0.1:3040`
+(new prerequisite — first step that needs a chain;
+brought up by `lgs init` + `lgs setup` + `lgs localnet start` from a scaffold workspace),
+`lez_payment_streams` program deployed onto that sequencer
+(new prerequisite — via `lgs deploy`).
+No messaging network yet.
+
+Scaffold RPC, account id formats, and deploy notes:
+[`docs/step1-findings-scaffold-rpc.md`](docs/step1-findings-scaffold-rpc.md).
+Repeatable logoscore + LEZ test loop after module edits:
+[`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 3).
+
+Definition of done:
+against a scaffold-deployed `lez_payment_streams` program,
+the module can read a known vault config, vault holding, stream config,
+and clock account through `logoscore`,
+and the JSON returned by `get_account_public` decodes through the FFI
+into the expected typed values.
 
 ### Step 11, Add and wire chain writes through the wallet module
 
-Wallet pin: patched wrapper + PR 19 generic transaction APIs; `sign_public_payload`
-on patched wrapper (N1). LEZ FFI alignment via patched flake (see
-[`docs/feature-branch-pins.md`](docs/feature-branch-pins.md)).
+Architectural context:
+Sub-step 11a pins PR 491 + PR 19, rebuilds wallet `.lgx`, and adds `sign_public_payload`
+on the patched wrapper only (N1).
+Generic public send comes from PR 19, not custom code in this repo.
+Sub-step 11b uses LogosAPI from `payment_streams_module` to call PR 19’s methods.
+Instruction bytes and account lists are built through
+`payment_streams_module`'s Rust FFI layer (from Steps 1–5).
 
-Add write helpers using payment-streams FFI + PR 19 wallet methods; expose
-user-facing methods for the nine stream operations and status helpers
-(`getVaultStatus`, `getStreamStatus`).
+Two sub-steps that ship together:
 
-Definition of done: full vault/stream lifecycle on scaffold localnet through
-`logoscore`. Wallet rebuild loop: runtime guide Part 3 (wallet section).
+Sub-step 11a (wallet — mostly upstream):
+
+Ensure flakes pin LEZ [PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491) and
+wallet module [PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19).
+Rebuild the patched wallet `.lgx`; `lm methods` should list PR 19’s generic transaction entry point(s).
+
+Add `sign_public_payload(accountId, canonical_payload_digest_hex) -> QString` on the patched wrapper only
+(LEZ FFI + Qt), per [N1](#n1-off-chain-canonical-payload-signing).
+Do not duplicate 491’s generic public send in our patch if PR 19 already exposes it.
+
+Sub-step 11b:
+add a private helper inside `payment_streams_module`
+that takes an `Instruction` kind, its typed arguments,
+and a signer account ID,
+builds Borsh instruction bytes and the ordered account list through the payment-streams FFI,
+assembles the program-with-dependencies bundle for the guest program,
+and submits via `lez_wallet_module` using PR 19’s API (match upstream request shape from that PR).
+
+Expose user-facing `Q_INVOKABLE` write methods
+for the nine payment-stream operations:
+initialize vault, deposit, withdraw, create stream, top up,
+pause, resume, close, claim.
+
+Expose user-facing `Q_INVOKABLE` status helper methods:
+`getVaultStatus(vaultConfigAccountId) -> QString`
+reads the vault config and vault holding accounts via `get_account_public`,
+decodes both through the FFI,
+and returns a JSON object with owner, privacy tier, total allocated,
+vault holding balance, and derived unallocated balance.
+`getStreamStatus(streamConfigAccountId) -> QString`
+reads the stream config account and the clock account,
+decodes both through the FFI,
+folds the stream to the current clock time via `at_time`,
+and returns a JSON object with stream ID, provider, rate, allocation,
+accrued, unaccrued, effective state, and `accrued_as_of`.
+
+These read methods compose the Step 10 chain-read helpers
+with the Step 2 decoders and Step 3a/3b folding logic.
+They are used by the demo script in Step 17
+to verify intermediate state
+and by the optional Basecamp UI in Step 18.
+
+Components required to run:
+Sub-step 11a needs no runtime
+(verified via `nix build` and `lm methods` showing the new surface).
+Sub-step 11b needs the same runtime stack as Step 10
+(`logoscore` with both modules loaded, LEZ sequencer, deployed program).
+Retest loop: [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 3).
+
+Definition of done:
+through `logoscore` against scaffold localnet,
+the module can drive a complete vault and stream lifecycle from initialization
+through claim,
+with on-chain state observable through `getVaultStatus` and `getStreamStatus`.
 
 ### Step 12, Session keys and user-side proof construction
 
-User-side methods for eligibility, including
-`prepareEligibilityForStoreQuery`, `registerProviderMapping`, `listMyStreams`,
-and `rediscoverStreams` (exercise via runtime guide Part 3).
+Architectural context:
+this is the user-side method that `delivery_module` will auto-invoke
+once registered as the outbound eligibility provider in Step 16.
+It does not, by itself, initiate any Store traffic;
+it just produces opaque bytes when asked.
 
-Definition of done: valid proof bytes, persistence, documented error codes.
+#### Quick reference
+
+| Method | Purpose | Called by |
+|--------|---------|-----------|
+| `prepareEligibilityForStoreQuery` | Returns `StreamProposal` or `StreamProof` | `delivery_module` (auto) |
+| `registerProviderMapping` | Maps `PeerId` to `providerId` | Host application |
+| `listMyStreams` | Lists streams for a vault | Host application |
+| `rediscoverStreams` | Re-enumerates streams from chain | Host application (recovery) |
+
+#### User-side flow
+
+The intended sequence for a new provider relationship is:
+
+1. Host application calls `registerProviderMapping`
+   to bind the provider's libp2p `PeerId`
+   to its generic `providerId` and LEZ account ID.
+2. User issues a Store query.
+   `delivery_module` invokes `prepareEligibilityForStoreQuery`.
+   The module has no established stream for this `(vault, provider)` pair,
+   so it generates a session keypair, persists it,
+   and returns a `StreamProposal`.
+3. Provider accepts the proposal and serves the first request.
+4. User explicitly calls `create_stream`
+   (the Step 11b write method) to open the stream on-chain.
+   This is a manual action by the host application or demo script,
+   never triggered automatically by any hook.
+5. User issues the next Store query.
+   `delivery_module` invokes `prepareEligibilityForStoreQuery` again.
+   The module queries `get_account_public` for the `StreamConfig` PDA,
+   confirms it exists and is `ACTIVE`,
+   and returns a `StreamProof` signed by the session key.
+
+#### Session and stream state management
+
+Add session-keypair management inside `payment_streams_module`,
+backed by atomic JSON in `instancePersistencePath` (see [N4](#n4-persistence-policy)).
+The persisted state per `(vault_id, provider_id)` includes:
+the `stream_id` (allocated locally, used as the PDA seed on-chain),
+the session keypair,
+the proposal status (pending, established, expired),
+and the last known on-chain stream state.
+
+The module maintains a local inventory of stream IDs per vault.
+Every `create_stream` call records the new `stream_id` in the inventory.
+This inventory is the backing store for `listMyStreams`.
+Stale proposals are evicted on a timer and on cold start.
+
+#### Exposed methods
+
+`prepareEligibilityForStoreQuery(canonicalRequestBytes, providerPeerId) -> QString`
+returns either a `StreamProposal` or a `StreamProof` byte string
+depending on whether the stream for the `(vault, provider)` pair
+has been established on-chain.
+Before returning a `StreamProof`,
+the module reads the `StreamConfig` PDA via `get_account_public`,
+decodes it through the FFI,
+folds it at the current clock time,
+and checks that the effective state is `ACTIVE`.
+For `StreamProposal` output,
+the module asks `lez_wallet_module.sign_public_payload`
+to produce `VaultProof.owner_signature` with the vault owner's LEZ key.
+Later `StreamProof`s are signed with the persisted session key.
+
+`registerProviderMapping(providerPeerId, providerId, providerAccountId) -> LogosResult`
+lets the host configure the identity mapping (see [N5](#n5-provider-identity-mapping)).
+
+`listMyStreams(vaultId) -> QString`
+returns a JSON array of stream statuses
+for all locally known streams belonging to the given vault.
+For each stream in the local inventory,
+the module derives the `StreamConfig` PDA,
+reads it via `get_account_public`,
+decodes and folds to the current clock time,
+and returns the typed status.
+
+`rediscoverStreams(vaultId) -> QString`
+re-enumerates streams from the chain
+by deriving PDA addresses for `stream_id = 0, 1, 2, ...` sequentially,
+reading each via `get_account_public`,
+and stopping when an uninitialized account is encountered.
+Discovered streams are added to the local inventory.
+This is a recovery path for cold-start or persistence-loss scenarios.
+For the MVP demo, `listMyStreams` is the primary query path.
+
+#### User-side error conditions
+
+`prepareEligibilityForStoreQuery` returns a structured error
+in each of the following cases.
+The error string includes a machine-readable code
+and a human-readable description.
+
+- `UNKNOWN_PROVIDER`:
+  `providerPeerId` not registered via `registerProviderMapping`.
+- `NO_ELIGIBLE_VAULT`:
+  no vault configured or no vault with sufficient unallocated balance.
+- `PROPOSAL_PENDING`:
+  a `StreamProposal` for this `(vault_id, provider_id)` pair
+  was already issued and has not expired or been resolved.
+  User must wait for expiry or call `create_stream`.
+- `PROPOSAL_EXPIRED`:
+  the pending proposal's `create_stream_deadline` has passed
+  without stream creation.
+  The module evicts the stale proposal.
+  The next call generates a fresh `StreamProposal`.
+- `STREAM_NOT_CONFIRMED`:
+  user called `create_stream` but the `StreamConfig` PDA
+  does not yet exist on-chain.
+  User should retry after a short delay.
+- `STREAM_DEPLETED`:
+  folded stream state shows allocation fully accrued (unaccrued is zero).
+  User must top up or close.
+- `STREAM_PAUSED`:
+  stream is paused (user-initiated).
+  User must resume before querying.
+- `STREAM_CLOSED`:
+  stream has been closed (by user or provider).
+  User must open a new stream to this provider.
+- `WALLET_SIGNING_FAILED`:
+  `sign_public_payload` call to wallet module failed.
+  Error includes upstream details.
+- `CHAIN_READ_FAILED`:
+  `get_account_public` call failed.
+  Error includes upstream details.
+
+#### Components required to run
+
+`logoscore` daemon hosting both modules.
+The definition of done's verifier round-trip is in-process through the FFI;
+a live sequencer is not strictly required for that verification itself,
+but the same Step 10 stack remains useful for sanity-checking
+that vault data the proof asserts matches chain state.
+After code changes, rebuild and reload via
+[`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 3).
+
+#### Definition of done
+
+The module produces a syntactically valid eligibility proof byte string
+for fixed inputs;
+restarts cleanly with state intact;
+the FFI structural verifier accepts the proof format;
+`listMyStreams` returns correct folded status for locally known streams;
+each user-side error condition returns the documented error code;
+and (when chain state is available) the provider-side verifier accepts
+the proof against actual on-chain stream state.
 
 ### Step 13, Provider-side proof verification
 
-`verifyEligibilityForStoreQuery` and provider verdict mapping.
+Architectural context:
+this is the provider-side method that `delivery_module` will auto-invoke
+once registered as the inbound eligibility verifier in Step 16.
+Structural checks happen entirely through the Rust FFI;
+chain checks happen via LogosAPI calls to `lez_wallet_module`.
 
-Definition of done: `verifyEligibilityForStoreQuery` maps structural and
-happy-path inputs to LIP-155 eligibility verdicts (see Step 3a mapping table).
+Expose a single provider-side `Q_INVOKABLE` method
+`verifyEligibilityForStoreQuery(proofBytes, canonicalRequestBytes, requesterPeerId)`
+that parses and dispatches the proof,
+runs structural checks through the FFI,
+queries chain state through the wallet module,
+folds stream state at the current sequencer time,
+and returns a structured verdict mapping to LIP-155 outcomes.
+
+#### Provider-side verdicts
+
+The verifier returns one of the following eligibility status codes.
+These are carried inside the `eligibility_status` object (D1)
+and never surface as Store status codes.
+
+- `OK`:
+  proof is valid, chain state confirms eligibility, request is served.
+- `PARAMS_REJECTED`:
+  stream parameters do not match `StreamProviderPolicy`
+  (rate below `min_rate`, allocation below `min_allocation`,
+  `create_stream_deadline` outside `max_create_stream_deadline_delay`),
+  or vault unallocated balance is below the proposed `allocation`
+  (`StreamParams`, same semantics as on-chain `StreamConfig::allocation` after `create_stream`),
+  or the proposal's `create_stream_deadline` has already passed.
+  The `VaultProof` is not marked as spent;
+  the user may retry with adjusted parameters.
+- `PROOF_INVALID`:
+  proof format is malformed,
+  `VaultProof.owner_signature` or `StreamProof.signature` verification failed,
+  or the owner public key does not derive to `VaultConfig.owner`.
+- `STREAM_NOT_ACTIVE`:
+  the referenced stream exists on-chain
+  but its folded state is not `ACTIVE`
+  (paused, closed, or depleted).
+
+#### Pending-proposal tracking
+
+Pending-proposal tracking on the provider side is independent
+of any user-side state and lives in `instancePersistencePath`.
+The provider stores pending proposal state
+keyed by `(vault_id, provider_id)`,
+matching the LIP-155 constraint
+that a user must not have more than one pending proposal
+per vault-provider pair.
+The stored record includes accepted or pending `StreamParams`,
+the committed session public key, and `create_stream_deadline`.
+After acceptance, add `stream_id` from the first valid `StreamProof`.
+Evict when LIP-155 treats negotiation as failed (no acceptance or no
+compliant stream by `create_stream_deadline`).
+
+The inbound `requesterPeerId` is available for logs,
+short-lived anti-abuse policy,
+and proposal retry limits,
+but Store eligibility is based on proof validity and chain state,
+not on transport peer continuity.
+
+#### Components required to run
+
+`logoscore` daemon hosting both modules.
+The structural-failure portion of the definition of done needs nothing more.
+The happy-path verdict portion needs the Step 10 stack
+(LEZ sequencer plus deployed program plus seeded vault/stream state).
+Module retest loop:
+[`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 3).
+
+#### Definition of done
+
+For fixed inputs the verifier returns `OK` on the happy path
+and the documented eligibility status code on each failure mode
+(`PARAMS_REJECTED`, `PROOF_INVALID`, `STREAM_NOT_ACTIVE`),
+without performing chain reads when the failure is purely structural.
 
 ### Step 14, Extend the Store wire format in `logos-delivery`
 
-Nim wire format changes in `logos-delivery` (no Logos host).
+Architectural context:
+this step modifies the Nim implementation that lives behind `delivery_module`'s FFI.
+It is a wire-format change in `logos-delivery`,
+not in any Logos module.
+No Qt, no `LogosAPI`, no chain.
 
-Definition of done: round-trip new optional fields; unchanged when absent.
+In `logos-delivery`,
+add an optional opaque `eligibility_proof` field to `StoreQueryRequest` (tag `30`)
+and an optional `eligibility_status` object to `StoreQueryResponse` (tag `30`),
+together with an enumeration of eligibility status codes
+distinct from Store status codes.
+Update the codec in `waku/waku_store/rpc_codec.nim` and the typed surfaces in
+`waku/waku_store/common.nim`.
+Ship on our branch; no protocol-ID version bump.
+
+Components required to run:
+none beyond the Nim test infrastructure.
+Round-trip tests run as two in-process Nim nodes.
+
+Definition of done:
+two Nim nodes agree on a round-trip of the new fields when present,
+behaviour is unchanged when both fields are absent,
+and existing Store codec coverage continues to pass.
 
 ### Step 15, Eligibility hooks in `liblogosdelivery`
 
-C ABI registration and canonical Store request bytes (N8).
+Architectural context:
+this step modifies the internal FFI on the delivery side —
+the C ABI between `liblogosdelivery` (Nim) and `delivery_module` (C++ Qt plugin).
+No Qt, no `LogosAPI`, no Logos host yet;
+the C ABI is consumed by a C smoke test.
 
-Definition of done: documented C ABI + Nim smoke test + Rust/Nim vector match.
+#### Registration and callbacks
+
+In `liblogosdelivery`,
+add a single C ABI registration entry point that lets a host attach
+a verifier callback called for inbound Store requests carrying an `eligibility_proof`,
+and a path for attaching opaque eligibility-proof bytes to outgoing Store queries.
+Both surfaces are bytes-in / bytes-out and carry no payment-streams knowledge.
+Existing behaviour is preserved when no callback is registered.
+The verifier callback is synchronous (`Future`-returning) per N3.
+Bump the `liblogosdelivery` ABI on our branch.
+
+#### Eligibility check injection pattern
+
+The verifier callback is injected as a decorator (wrapper)
+around the existing `StoreQueryRequestHandler`.
+`protocol.nim` is not modified.
+At registration time,
+`liblogosdelivery` replaces the active `requestHandler`
+with a wrapper that:
+
+1. Extracts `eligibility_proof` from the decoded request.
+2. If present and `paidStoreMode` is enabled,
+   produces `canonicalRequestBytes` from the request (see below),
+   then calls the verifier callback with the proof bytes,
+   the canonical bytes, and the requester `PeerId`.
+3. On failure, returns early with `BAD_REQUEST` status code (400),
+   the `eligibility_status` object populated with the verdict,
+   and an empty `messages` list.
+   The inner `requestHandler` is never called.
+4. On success (or if no proof is present and `paidStoreMode` is off),
+   delegates to the inner `requestHandler`.
+
+This pattern keeps all eligibility logic
+outside `protocol.nim` and `client.nim`.
+
+#### Canonical Store request bytes
+
+`canonicalRequestBytes` are produced by `liblogosdelivery`
+from the Store query before eligibility bytes are attached.
+On the provider side,
+`liblogosdelivery` recomputes the same bytes
+from the decoded inbound request
+after extracting and clearing `eligibility_proof`.
+These bytes are the Store eligibility `canonical_payload`;
+`StreamProof.signature` signs `canonical_payload_digest`,
+which `payment_streams_module` verifies.
+
+The struct layout, domain prefix, serialization rules,
+and `canonical_payload` / `canonical_payload_digest` computation are defined in N8.
+The Nim serializer in this step must produce bytes
+identical to the Rust serializer in Step 4.
+
+#### Components required to run
+
+None beyond a Nim test rig and a small C consumer
+linking against the new `liblogosdelivery`.
+
+#### Definition of done
+
+The new C ABI is documented and used by a Nim-side smoke test.
+The inbound callback is invoked exactly once
+per Store request that carries a proof.
+The outbound path delivers attached bytes onto the wire unchanged.
+A cross-language test vector confirms
+that the Nim canonical-bytes serializer
+produces output identical to the Rust serializer
+for a fixed `StoreQueryRequest` with known field values
+(see [N8](#n8-canonical-store-request-bytes-format) for the test vector specification).
 
 ### Step 16, Generic eligibility routing in `logos-delivery-module`
 
-Blocked on upstream Store query API (N6, Step 6). Implement when `master` exposes
-query entrypoints; method name may differ from early PR sketches.
+Blocked on upstream Store query API (N6, Step 6).
+Implement when `master` exposes query entrypoints;
+method name may differ from early PR sketches.
 
-Qt bridge: `setEligibilityVerifier` / `setEligibilityProvider`, upstream
-`queryStore` when on `master` (N6). Prerequisite: upstream Store query API.
+Architectural context:
+this step modifies the C++ Qt-plugin shell of `delivery_module`.
+It bridges the Step 15 C callbacks into LogosAPI calls
+on a configurable named module
+(`payment_streams_module` in our demo;
+any module with the same method names in the future).
+The registration uses the auto-generated `getPluginMethods`
+introspection surface every Logos module already exposes.
 
-Definition of done: registration validation; end-to-end eligibility with PS
-registered (full Store query in Step 17).
+On our branch of `logos-delivery-module` (eligibility hooks only; build
+`liblogosdelivery` / module against upstream `master` for Store query),
+extend the `delivery_module` interface with
+`setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`,
+wire through upstream `queryStore` when present on `master`,
+and add a `paidStoreMode` configuration toggle to `createNode`.
+Do not add a parallel `queryStore` implementation in our fork.
+Implement the bridge that translates the new `liblogosdelivery` callbacks
+into `LogosAPIClient` calls on the named module
+(`verifyEligibilityForStoreQuery`, `prepareEligibilityForStoreQuery`).
+Note that the host application is responsible for calling
+`registerProviderMapping` on the streams module before initiating queries.
+On registration, the bridge calls the named module's auto-generated
+`getPluginMethods` and rejects the registration with a structured error
+if the expected method names are not present,
+so misconfiguration surfaces at setup time rather than on the first Store request.
+
+Components required to run:
+the unit-level checks (no verifier registered, structured error on misregistration)
+needs only a `logoscore` daemon with `delivery_module` loaded.
+The full Store query exchange is the Step 17 demo
+and requires the full stack documented there.
+
+Definition of done:
+Prerequisite: upstream Store query API on `logos-delivery-module` `master`.
+Without any verifier registered,
+`delivery_module` behaves exactly as it did at the pre-eligibility baseline aside from upstream
+Store query APIs.
+Registering a module that does not expose the expected methods
+returns a structured error and leaves the previous registration in place.
+Store queries can be issued through `delivery_module`
+against an explicit provider peer address using the upstream Store query API.
+With `payment_streams_module` registered as both verifier and provider,
+an end-to-end Store query produced by the user
+returns a successful Store outcome
+and a successful eligibility outcome on the provider side.
+Requests failing eligibility checks immediately return
+a `BAD_REQUEST` (400) Store status code,
+a populated `eligibility_status` object with the specific verdict,
+and an empty messages list.
 
 ### Step 17, End-to-end demo wiring
 
 Blocked on Step 16 / upstream Store query (N6).
 
-Two `logoscore` instances, three modules each, LEZ, Store traffic.
+Architectural context:
+this is the only step that exercises every layer at once:
+two Logos hosts (`logoscore` daemons),
+all three backend modules in each host,
+the LEZ sequencer for chain reads and writes,
+and direct Store traffic from the user host to the provider host.
 
-Definition of done: script completes with structured logs.
+Create a single shell script that
+starts a fresh scaffold workspace,
+deploys `lez_payment_streams`,
+builds `.lgx` packages for `lez_wallet_module` (our branch),
+`payment_streams_module`,
+and `delivery_module` (upstream `master` with eligibility hooks merged or
+branched as in Step 16; Store query API from upstream only),
+installs them with `lgpm` into two module directories,
+launches two `logoscore` instances loaded with all three modules
+on disjoint `portsShift` values
+(per the workaround documented in
+[`logos-delivery-module#18`](https://github.com/logos-co/logos-delivery-module/issues/18)
+and used by `logos-delivery-demo`;
+example: user `portsShift: 0`, provider `portsShift: 100`),
+starts the provider `delivery_module` with relay and Store service enabled,
+backed by a SQLite archive and a demo retention policy,
+starts the user `delivery_module` with Store client support
+and the provider's explicit peer address configured as the Store target,
+drives the user flow from vault initialization through Store query,
+and drives a manual claim on the provider side.
+The script captures structured logs at each phase.
+
+The first smoke path uses two nodes:
+the provider archives messages and the user queries the provider directly.
+For the fastest integration smoke test,
+the user may publish a message that the provider archives
+and then issue a paid Store query for it.
+If time allows,
+the demo should add a third publisher node
+that publishes messages for the provider to archive,
+so the user retrieves historical messages it did not originate.
+
+Components required to run:
+LEZ sequencer on `127.0.0.1:3040`,
+`lez_payment_streams` program deployed onto it,
+two `logoscore` daemons (one for user, one for provider),
+each daemon hosting `lez_wallet_module`, `payment_streams_module`,
+and `delivery_module`,
+provider `delivery_module` configuration with relay and Store service enabled,
+a SQLite Store archive path,
+a retention policy such as `capacity:10000`,
+user `delivery_module` configuration with the provider's explicit peer address
+as the Store target,
+and direct network reachability between the two local hosts.
+
+Definition of done:
+the script runs to completion against a clean workspace
+and produces a log artifact that documents
+every chain transaction, every Store request,
+and the eligibility outcomes observed on both ends.
 
 ### Step 18, Optional Basecamp UI
 
 Blocked on Step 17 demo wiring.
 
-`ui_qml` plugin; `LogosModules` in-process (Issue 31 does not apply to UI host).
+Architectural context:
+the UI plugin added here is itself a Logos module
+(`type: ui_qml` with a C++ backend),
+not a piece of Basecamp.
+Basecamp is the host that loads it,
+in the same sense that `logoscore` is the host for Steps 7–17.
+The plugin calls the unchanged backend modules from earlier steps
+through the same `LogosAPI`;
+no backend work is repeated here.
+
+Scaffold a `ui_qml` plugin under `logos-basecamp` (or a sibling repo)
+from the `logos-module-builder` `ui-qml-backend` template,
+modeled on `logos-delivery-demo`.
+It depends on `payment_streams_module` and `delivery_module`,
+constructs `LogosModules` in `initLogos`,
+and calls both modules through the generated typed wrappers.
+
+Note: `LogosModules` is used here because UI modules run in-process with the host,
+not in a `logos_host` sidecar. The crash documented in Issue #31 affects core modules only.
+
+The plugin surfaces vault state, stream state,
+the current pending-proposal slot,
+and the result of the most recent Store query.
+No custom backend is required for the MVP.
+
+Components required to run:
+everything from Step 17
+plus `logos-basecamp` as the host
+(new prerequisite — first step that uses a GUI host
+instead of `logoscore`).
+The new `ui_qml` module is installed via `lgpm`
+into Basecamp's plugins directory.
+
+Definition of done:
+`nix build` produces a `.lgx` that loads in Basecamp without QML errors,
+and a user can complete the full demo flow through the UI
+without using the CLI.
