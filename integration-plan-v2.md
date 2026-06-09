@@ -56,7 +56,7 @@ only (no Store query on `delivery_module`).
    Step 6 records the closed Store-query decision; Step 8 (probe) is done; Step 9
    bootstraps the Universal module; Steps 10–11 (fixture, wallet runtime, module chain I/O)
    precede eligibility in Steps 12–13.
-   Definitions of done, decisions (D1–D6), and notes (N1–N8).
+   Definitions of done, decisions (D1–D6), and notes (N1–N9).
    Supporting doc index: [`docs/README.md`](docs/README.md).
 2. `logos-architecture-overview.md` in this directory.
    Architectural facts about hosts versus modules,
@@ -634,6 +634,43 @@ This mirrors the `hash_public_pinned` test
 in `nssa/src/public_transaction/message.rs`
 that spells out the expected Borsh encoding byte by byte.
 
+### N9, Step 10a local chain fixture (decisions)
+
+Scaffold config and runtime layout
+
+- Commit `scaffold.toml` in this repo (LEZ/SPEL pins move with the integration).
+- Do not commit sequencer or wallet state. Use `SCAFFOLD_WS` outside the git tree
+  or a gitignored `.scaffold/` under the repo; keys and `.scaffold/state/` stay local.
+
+LEZ pin
+
+- `[repos.lez]` in `scaffold.toml` uses the same revision as LEZ PR 491 and
+  [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md) / `nix/payment-streams-ffi.nix`
+  (no separate “old LEZ” localnet for 10a and 491 for 10b). Re-run `lgs setup` after pin bumps.
+
+Deploy (canonical for 10a script and runbook)
+
+- After `lgs init`, `lgs setup`, `lgs localnet start` (from the chosen workspace):
+  from repo root, `make build`, `make idl`, `make deploy` (`wallet deploy-program` on the guest
+  binary), then `make program-id` into the fixture manifest.
+- Operator detail and RPC formats: [`docs/step1-findings-scaffold-rpc.md`](docs/step1-findings-scaffold-rpc.md)
+  (scaffold discovery doc — not integration plan Step 1, which is Rust FFI only).
+
+Fixture scope
+
+- Step 10a seeds the full demo chain state in one pass: fund owner, deploy program,
+  `initialize_vault`, deposit, and `create_stream` for a designated demo vault/stream
+  (CLI / IDL + `wallet` until Step 11b), so Step 11a can decode all account types.
+- PDAs in the manifest come from the same derivation as `lez-payment-streams-ffi` tests,
+  not fragile SPEL CLI account-seed helpers.
+- Step 11b still proves module-driven lifecycle; use a fresh `vault_id` or reset chain
+  when testing init from `payment_streams_module`, not an empty chain at 11a.
+
+Artifacts
+
+- Idempotent seed script, gitignored `fixtures/localnet.json`, committed
+  `fixtures/localnet.json.example`, brief runbook under `docs/`.
+
 ## Integration Steps
 
 Each step is independently testable.
@@ -652,7 +689,7 @@ Doc index: [`docs/README.md`](docs/README.md).
 | 7 | Operator install | [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 1 |
 | 8 | Universal → Legacy wallet probe | Done; [`docs/step8-universal-legacy-probe-results.md`](docs/step8-universal-legacy-probe-results.md) |
 | 9 | Universal module bootstrap | Done; [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 2 |
-| 10 | LEZ fixture + wallet runtime | 10a chain fixture; 10b patched `lez_wallet_module` (491 + 19) |
+| 10 | LEZ fixture + wallet runtime | 10a chain fixture ([N9](#n9-step-10a-local-chain-fixture-decisions)); 10b wallet (491 + 19) |
 | 11 | Module chain access | 11a reads; 11b writes + status; 11c `sign_public_payload` |
 | 12–13 | Eligibility (user + provider) | [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 3 |
 | 14–15 | Store wire + `liblogosdelivery` hooks | Nim/C repos; no logoscore loop |
@@ -1138,34 +1175,34 @@ Sub-step order: 10a → 10b before any Step 11 work.
 
 Goal:
 reproducible localnet, deployed `lez_payment_streams`, funded public owner,
-recorded fixture ids (program id, owner, PDAs, clock account), and persistent
-sequencer state between dev sessions until an explicit reset.
+initialized demo vault and stream, recorded fixture ids, and persistent sequencer
+state between dev sessions until an explicit reset.
+See [N9](#n9-step-10a-local-chain-fixture-decisions).
 
-Work (operator / script — prefer an idempotent seed script and gitignored manifest,
-e.g. `fixtures/localnet.json`, plus runbook in `docs/`):
+Work (operator / script — idempotent seed script, gitignored manifest, runbook in `docs/`):
 
-- Dedicated scaffold workspace (`SCAFFOLD_WS`, separate from `lez-payment-streams` repo).
-- `lgs init`, `lgs setup`, `lgs localnet start`, deploy `lez_payment_streams`.
-- Fund at least one public owner: `lgs wallet topup --address Public/<base58-id>`
-  (scaffold may run auth-transfer init and `wallet pinata claim`; see
+- `scaffold.toml` in repo; runtime state per N9 (`SCAFFOLD_WS` or gitignored `.scaffold/`).
+- `lgs init`, `lgs setup`, `lgs localnet start`; deploy via `make build`, `make idl`, `make deploy`
+  (N9); record program id (`make program-id`).
+- Fund public owner: `lgs wallet topup --address Public/<base58-id>` (pinata path in
   [`docs/step1-findings-scaffold-rpc.md`](docs/step1-findings-scaffold-rpc.md)).
-- Record program id, owner account ids, derived vault/stream PDAs, and `CLOCK_10` base58.
-- Reuse: keep `.scaffold/state/` when stopping localnet; only wipe state for a full reset
-  (stop localnet, remove `.scaffold/state/`, re-run 10a).
-- Optional (recommended for Step 11a decode tests): CLI-init vault or full pre-seed
-  (`initialize_vault`, deposit, stream) so vault/stream accounts have non-empty `data`
-  before module writes land in Step 11b.
+- Full seed: `initialize_vault`, deposit, `create_stream` for demo `vault_id` / `stream_id`
+  (manifest records which ids are pre-seeded vs reserved for Step 11b lifecycle tests).
+- Manifest: program id, owner, PDAs (FFI-consistent derivation), `CLOCK_10`, demo vault/stream ids.
+- Reuse: keep `.scaffold/state/` when stopping localnet; reset = stop, remove `.scaffold/state/`,
+  re-run 10a.
 
 Components required to run:
-`lgs`, network to local sequencer only, `lez-payment-streams` checkout for deploy.
+`lgs`, `wallet` on PATH after `lgs setup`, guest build toolchain, local sequencer only.
 
 Definition of done:
 
 1. Localnet reachable at `http://127.0.0.1:3040`; `lgs wallet -- check-health` passes.
-2. `lez_payment_streams` deployed; program id recorded in the fixture manifest.
-3. At least one initialized, funded public owner; topup path documented or scripted.
-4. Fixture manifest lists ids needed for Step 11a (minimum: clock + PDAs or post-init vault bytes).
-5. Reset procedure documented (wipe `.scaffold/state/` → re-run 10a).
+2. `lez_payment_streams` deployed; program id in fixture manifest.
+3. Funded public owner; topup scripted or documented.
+4. Demo vault and stream initialized on chain; manifest supports Step 11a decode of vault,
+   holding, stream, and clock accounts.
+5. Reset procedure documented (N9).
 
 #### Step 10b, Wallet runtime artifact (PR 491 + PR 19)
 
