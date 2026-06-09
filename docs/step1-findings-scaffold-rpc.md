@@ -193,7 +193,7 @@ Clock snapshot:
 
 ## Inspect limitations
 
-`spel inspect` network mode failed in this environment due to wallet storage
+`spel` network-backed account decode failed in this environment due to wallet storage
 compatibility and root initialization expectations.
 
 Observed failures:
@@ -204,7 +204,7 @@ Observed failures:
 Working fallback for Step 1:
 
 - fetch account bytes via `getAccount`
-- decode with `spel inspect ... --data <hex>`
+- decode with `spel decode ... --data <hex>` (or offline IDL-driven decode)
 
 For uninitialized vault accounts, `data` is empty and decode is not meaningful.
 

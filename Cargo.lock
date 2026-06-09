@@ -67,7 +67,7 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 [[package]]
 name = "amm_core"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc3#cf3639d8252040d13b3d4e933feb19b42c76e14a"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2#cf3639d8252040d13b3d4e933feb19b42c76e14a"
 dependencies = [
  "borsh",
  "nssa_core",
@@ -625,7 +625,7 @@ dependencies = [
 [[package]]
 name = "ata_core"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc3#cf3639d8252040d13b3d4e933feb19b42c76e14a"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2#cf3639d8252040d13b3d4e933feb19b42c76e14a"
 dependencies = [
  "nssa_core",
  "risc0-zkvm",
@@ -1090,7 +1090,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 [[package]]
 name = "clock_core"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc3#cf3639d8252040d13b3d4e933feb19b42c76e14a"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2#cf3639d8252040d13b3d4e933feb19b42c76e14a"
 dependencies = [
  "borsh",
  "nssa_core",
@@ -1124,7 +1124,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc3#cf3639d8252040d13b3d4e933feb19b42c76e14a"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2#cf3639d8252040d13b3d4e933feb19b42c76e14a"
 dependencies = [
  "anyhow",
  "base64",
@@ -2842,7 +2842,7 @@ dependencies = [
 [[package]]
 name = "key_protocol"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc3#cf3639d8252040d13b3d4e933feb19b42c76e14a"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2#cf3639d8252040d13b3d4e933feb19b42c76e14a"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -3721,7 +3721,7 @@ dependencies = [
 [[package]]
 name = "nssa"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc3#cf3639d8252040d13b3d4e933feb19b42c76e14a"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2#cf3639d8252040d13b3d4e933feb19b42c76e14a"
 dependencies = [
  "anyhow",
  "borsh",
@@ -3743,7 +3743,7 @@ dependencies = [
 [[package]]
 name = "nssa_core"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc3#cf3639d8252040d13b3d4e933feb19b42c76e14a"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2#cf3639d8252040d13b3d4e933feb19b42c76e14a"
 dependencies = [
  "base58",
  "borsh",
@@ -5117,7 +5117,7 @@ checksum = "f638d531eccd6e23b980caf34876660d38e265409d8e99b397ab71eb3612fad0"
 [[package]]
 name = "sequencer_service_protocol"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc3#cf3639d8252040d13b3d4e933feb19b42c76e14a"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2#cf3639d8252040d13b3d4e933feb19b42c76e14a"
 dependencies = [
  "common",
  "nssa",
@@ -5127,7 +5127,7 @@ dependencies = [
 [[package]]
 name = "sequencer_service_rpc"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc3#cf3639d8252040d13b3d4e933feb19b42c76e14a"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2#cf3639d8252040d13b3d4e933feb19b42c76e14a"
 dependencies = [
  "jsonrpsee",
  "sequencer_service_protocol",
@@ -5388,8 +5388,8 @@ dependencies = [
 
 [[package]]
 name = "spel"
-version = "0.2.0"
-source = "git+https://github.com/logos-co/spel.git?rev=767826d2b32943c1e43c7c983c02225fb7a68075#767826d2b32943c1e43c7c983c02225fb7a68075"
+version = "0.5.0"
+source = "git+https://github.com/logos-co/spel.git?tag=v0.5.0#73fc462eb8f0a4d00f1a846437c627ec2e523f83"
 dependencies = [
  "base58",
  "borsh",
@@ -5409,8 +5409,8 @@ dependencies = [
 
 [[package]]
 name = "spel-framework"
-version = "0.2.0"
-source = "git+https://github.com/logos-co/spel.git?rev=767826d2b32943c1e43c7c983c02225fb7a68075#767826d2b32943c1e43c7c983c02225fb7a68075"
+version = "0.5.0"
+source = "git+https://github.com/logos-co/spel.git?tag=v0.5.0#73fc462eb8f0a4d00f1a846437c627ec2e523f83"
 dependencies = [
  "borsh",
  "nssa_core",
@@ -5421,9 +5421,10 @@ dependencies = [
 
 [[package]]
 name = "spel-framework-core"
-version = "0.2.0"
-source = "git+https://github.com/logos-co/spel.git?rev=767826d2b32943c1e43c7c983c02225fb7a68075#767826d2b32943c1e43c7c983c02225fb7a68075"
+version = "0.5.0"
+source = "git+https://github.com/logos-co/spel.git?tag=v0.5.0#73fc462eb8f0a4d00f1a846437c627ec2e523f83"
 dependencies = [
+ "base58",
  "borsh",
  "nssa_core",
  "proc-macro2",
@@ -5437,8 +5438,8 @@ dependencies = [
 
 [[package]]
 name = "spel-framework-macros"
-version = "0.2.0"
-source = "git+https://github.com/logos-co/spel.git?rev=767826d2b32943c1e43c7c983c02225fb7a68075#767826d2b32943c1e43c7c983c02225fb7a68075"
+version = "0.5.0"
+source = "git+https://github.com/logos-co/spel.git?tag=v0.5.0#73fc462eb8f0a4d00f1a846437c627ec2e523f83"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5583,7 +5584,7 @@ dependencies = [
 [[package]]
 name = "testnet_initial_state"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc3#cf3639d8252040d13b3d4e933feb19b42c76e14a"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2#cf3639d8252040d13b3d4e933feb19b42c76e14a"
 dependencies = [
  "common",
  "key_protocol",
@@ -5709,7 +5710,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "token_core"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc3#cf3639d8252040d13b3d4e933feb19b42c76e14a"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2#cf3639d8252040d13b3d4e933feb19b42c76e14a"
 dependencies = [
  "borsh",
  "nssa_core",
@@ -6260,7 +6261,7 @@ dependencies = [
 [[package]]
 name = "wallet"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc3#cf3639d8252040d13b3d4e933feb19b42c76e14a"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2#cf3639d8252040d13b3d4e933feb19b42c76e14a"
 dependencies = [
  "amm_core",
  "anyhow",

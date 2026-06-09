@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = []
+default = ["host"]
+# Host-side NSSA (`nssa` crate): instruction wire + off-chain proofs. Disabled for RISC0 guest builds.
+host = ["dep:nssa"]
 # Privacy-preserving NSSA proving tests in `program_tests` (slow). Enable with `--features pp-program-tests`.
 pp-program-tests = []
 
@@ -12,9 +14,9 @@ pp-program-tests = []
 serde = { version = "1.0", features = ["derive"] }
 borsh = "1.5"
 risc0-zkvm = { version = "=3.0.5", features = ["std"] }
-nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["test-utils"] }
-nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["host"] }
-clock_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3" }
+nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.1.2", features = ["test-utils"], optional = true }
+nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.1.2", features = ["host"] }
+clock_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.1.2" }
 sha2 = "0.10"
-spel-framework-macros = { git = "https://github.com/logos-co/spel.git", rev = "767826d2b32943c1e43c7c983c02225fb7a68075" }
-spel-framework-core = { git = "https://github.com/logos-co/spel.git", rev = "767826d2b32943c1e43c7c983c02225fb7a68075" }
+spel-framework-macros = { git = "https://github.com/logos-co/spel.git", tag = "v0.5.0" }
+spel-framework-core = { git = "https://github.com/logos-co/spel.git", tag = "v0.5.0" }

@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup inspect status clean
+.PHONY: help build idl cli deploy setup program-id status clean
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -30,7 +30,7 @@ help: ## Show this help
 	@echo "  make cli ARGS=   Run the IDL-driven CLI (pass args via ARGS=)"
 	@echo "  make deploy      Deploy program to sequencer"
 	@echo "  make setup       Create accounts needed for the program"
-	@echo "  make inspect     Show ProgramId for built binary"
+	@echo "  make program-id  Show ProgramId for built binary"
 	@echo "  make status      Show saved state and binary info"
 	@echo "  make clean       Remove saved state"
 	@echo ""
@@ -57,8 +57,8 @@ deploy: ## Deploy program to sequencer
 	wallet deploy-program $(PROGRAM_BIN)
 	@echo "✅ Program deployed"
 
-inspect: ## Show ProgramId for built binary
-	cargo run --bin lez_payment_streams_cli -- -i $(IDL_FILE) inspect $(PROGRAM_BIN)
+program-id: ## Show ProgramId for built binary
+	cargo run --bin lez_payment_streams_cli -- -i $(IDL_FILE) program-id $(PROGRAM_BIN)
 
 setup: ## Create accounts needed for the program
 	@echo "Creating signer account..."

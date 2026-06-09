@@ -16,7 +16,9 @@ mod program_tests;
 mod error_codes;
 mod instruction;
 mod instruction_accounts;
+#[cfg(feature = "host")]
 mod instruction_wire;
+#[cfg(feature = "host")]
 mod off_chain;
 mod pda;
 mod policy;
@@ -39,11 +41,13 @@ pub use instruction_accounts::{
     InitializeVaultInstructionAccounts, StreamAuthorityInstructionAccounts,
     StreamOwnerInstructionAccounts, WithdrawInstructionAccounts,
 };
+#[cfg(feature = "host")]
 pub use instruction_wire::{
     instruction_bytes_for_public_transaction, instruction_bytes_le_from_words,
     instruction_try_from_instruction_words, instruction_words_for_public_transaction,
     instruction_words_from_bytes_le,
 };
+#[cfg(feature = "host")]
 pub use off_chain::*;
 pub use pda::{derive_stream_config_account_id, derive_vault_account_ids};
 pub use policy::{
