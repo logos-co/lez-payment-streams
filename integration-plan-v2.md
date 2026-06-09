@@ -42,8 +42,9 @@ capability with a different approach than our earlier
 We do not integrate against those PRs, feature branches, or local forks of them,
 and we will not implement or upstream our own Store query exposure (Step 6, closed).
 Until the Delivery team ships Store query support on `master`, active work stays on
-Steps 1–15: Rust and FFI through Step 5, logoscore path Steps 7–13, delivery-repo
-Steps 14–15 only (no Store query on `delivery_module`).
+Steps 1–15: Rust and FFI through Step 5, logoscore path Steps 7–13 (Steps 10–11
+cover chain fixture, wallet runtime, and module chain I/O), delivery-repo Steps 14–15
+only (no Store query on `delivery_module`).
 
 ## Onboarding
 
@@ -53,7 +54,8 @@ Steps 14–15 only (no Store query on `delivery_module`).
    Steps 1–5 (Rust FFI), Steps 6–18 (integration and demo).
    Step 3 splits into 3a (core) and 3b (FFI).
    Step 6 records the closed Store-query decision; Step 8 (probe) is done; Step 9
-   bootstraps the Universal module.
+   bootstraps the Universal module; Steps 10–11 (fixture, wallet runtime, module chain I/O)
+   precede eligibility in Steps 12–13.
    Definitions of done, decisions (D1–D6), and notes (N1–N8).
    Supporting doc index: [`docs/README.md`](docs/README.md).
 2. `logos-architecture-overview.md` in this directory.
@@ -78,7 +80,8 @@ Steps 14–15 only (no Store query on `delivery_module`).
    or PR heads, what files encode those pins, and how to reproduce builds.
    Store querying is explicitly out of scope for that doc; see N6.
 6. [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md).
-   Step 7 first install, Step 9 Universal module, Steps 10+ dev loop (`lgpm`, `logoscore`, LEZ).
+   Step 7 first install, Step 9 Universal module, Steps 10–11 (chain fixture + module I/O),
+   Steps 12+ dev loop (`lgpm`, `logoscore`, LEZ).
 7. [`docs/step8-universal-legacy-probe-results.md`](docs/step8-universal-legacy-probe-results.md).
    Step 8 probe evidence and historical Universal vs Legacy appendix (D6).
 8. [`docs/step3-policy-and-implementor-notes.md`](docs/step3-policy-and-implementor-notes.md).
@@ -357,12 +360,16 @@ Upstream exposes 491 to Logos modules via
 Same author and timeline as PR 491; this is the intended 16 replacement for generic public (and eventually private) execution.
 
 Primary path: pin and build the patched wallet wrapper against PR 19 head + LEZ PR 491 head (see [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md)).
-Step 11 calls the upstream methods PR 19 adds once pinned; read that PR for the exact `Q_INVOKABLE` names and request shape when implementing.
+Step 11b calls the upstream methods PR 19 adds once pinned (Step 10b); read that PR for
+the exact `Q_INVOKABLE` names and request shape when implementing.
 
-Our wallet work (Step 11, reduced scope):
+Our wallet work (Steps 10b and 11c, reduced scope):
 
-- `sign_public_payload` per [N1](#n1-off-chain-canonical-payload-signing) — not in 491 or 19; add on our patched wrapper (LEZ FFI + Qt) until upstream ships it.
-- Packaging only: `lez_wallet_module` metadata rename, CMake `wallet_ffi.h` include, codegen headers for dependents — keep the local wrapper flake; do not reimplement generic public send if PR 19 already does.
+- Step 10b: packaging — `lez_wallet_module` metadata rename, CMake `wallet_ffi.h` include,
+  codegen headers for dependents — keep the local wrapper flake; pin PR 491 + PR 19; do not
+  reimplement generic public send if PR 19 already does.
+- Step 11c: `sign_public_payload` per [N1](#n1-off-chain-canonical-payload-signing) — not in
+  491 or 19; add on our patched wrapper (LEZ FFI + Qt) until upstream ships it.
 
 Do not pin or build against
 [PR 16](https://github.com/logos-blockchain/logos-execution-zone-module/pull/16) (429 JSON wrapper) or
@@ -449,7 +456,7 @@ a primitive that signs an arbitrary canonical payload with a wallet account's ke
 That primitive is required for `VaultProof.owner_signature`,
 because the vault proof must prove control of the LEZ vault owner key.
 For the MVP, we add `sign_public_payload` to `lez_wallet_module`
-on our branch (see Step 11 wallet write helpers and N8).
+on our branch (see Step 11b wallet write helpers and N8).
 
 No domain parameter is included.
 The NSSA wallet avoids exposing generic signing entirely
@@ -645,9 +652,14 @@ Doc index: [`docs/README.md`](docs/README.md).
 | 7 | Operator install | [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 1 |
 | 8 | Universal → Legacy wallet probe | Done; [`docs/step8-universal-legacy-probe-results.md`](docs/step8-universal-legacy-probe-results.md) |
 | 9 | Universal module bootstrap | Done; [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 2 |
-| 10–13 | Module reads, writes, eligibility | [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 3 |
+| 10 | LEZ fixture + wallet runtime | 10a chain fixture; 10b patched `lez_wallet_module` (491 + 19) |
+| 11 | Module chain access | 11a reads; 11b writes + status; 11c `sign_public_payload` |
+| 12–13 | Eligibility (user + provider) | [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 3 |
 | 14–15 | Store wire + `liblogosdelivery` hooks | Nim/C repos; no logoscore loop |
 | 16–18 | Routing, E2E demo, Basecamp UI | Blocked on upstream Store query (Step 6) |
+
+Step 10 and Step 11 use lettered sub-steps (same convention as Step 3a/3b).
+Order: 10a → 10b → 11a → 11b → 11c → 12.
 
 ### Step 1, Bootstrap the Rust FFI crate
 
@@ -1071,7 +1083,7 @@ It ships
 `CMakeLists.txt`,
 and `src/payment_streams_module_impl.{h,cpp}` extending `LogosModuleContext`.
 Do not declare `onInit` on the impl class (codegen conflict; see Step 8 probe).
-Step 8 validated Universal-to-Legacy wallet `invokeRemoteMethod`; Step 10 adds the first
+Step 8 validated Universal-to-Legacy wallet `invokeRemoteMethod`; Step 11a adds the first
 in-module wallet calls.
 
 Implementor hints (FFI from Step 5, no extra Qt surface yet):
@@ -1079,7 +1091,7 @@ Implementor hints (FFI from Step 5, no extra Qt surface yet):
 - Link `liblez_payment_streams_ffi` named in metadata `include`, and vendor
   [`lez_payment_streams_ffi.h`](lez-payment-streams-ffi/lez_payment_streams_ffi.h) like
   `logos-rln-module` (CMake + flake inputs).
-  Step 9 is load/plumbing only; do not call instruction entrypoints from C++ until Step 11.
+  Step 9 is load/plumbing only; do not call instruction entrypoints from C++ until Step 11b.
 - On-chain instruction bytes and account-list planning live in
   [`lez-payment-streams-ffi/src/instruction_abi.rs`](lez-payment-streams-ffi/src/instruction_abi.rs).
   Skim the file-level doc for two-phase output sizing and 64-byte lowercase hex stride per account.
@@ -1108,115 +1120,170 @@ Definition of done:
 
 Operator commands:
 [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 1).
-From Step 10 onward, repeat build/install/load and LEZ:
+From Step 11a onward, repeat build/install/load and LEZ after `payment_streams_module` edits:
 [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 3).
+Step 10a–10b use scaffold and wallet `.lgx` setup (Part 1 and fixture notes in step1 findings).
 
-### Step 10, Wire chain reads from the module
+### Step 10, LEZ fixture and wallet runtime
 
 Architectural context:
-this step adds stable read helpers and exercises wallet-backed chain reads end-to-end for the first time.
+Step 10 prepares local chain state and the patched `lez_wallet_module` artifact.
+No `payment_streams_module` chain reads or writes yet (those are Step 11).
+Scaffold CLI (`lgs`) owns localnet lifecycle and program deploy; the wallet `.lgx`
+from the patched wrapper (PR 491 + PR 19) is what logoscore loads as `lez_wallet_module`.
+
+Sub-step order: 10a → 10b before any Step 11 work.
+
+#### Step 10a, Local chain fixture
+
+Goal:
+reproducible localnet, deployed `lez_payment_streams`, funded public owner,
+recorded fixture ids (program id, owner, PDAs, clock account), and persistent
+sequencer state between dev sessions until an explicit reset.
+
+Work (operator / script — prefer an idempotent seed script and gitignored manifest,
+e.g. `fixtures/localnet.json`, plus runbook in `docs/`):
+
+- Dedicated scaffold workspace (`SCAFFOLD_WS`, separate from `lez-payment-streams` repo).
+- `lgs init`, `lgs setup`, `lgs localnet start`, deploy `lez_payment_streams`.
+- Fund at least one public owner: `lgs wallet topup --address Public/<base58-id>`
+  (scaffold may run auth-transfer init and `wallet pinata claim`; see
+  [`docs/step1-findings-scaffold-rpc.md`](docs/step1-findings-scaffold-rpc.md)).
+- Record program id, owner account ids, derived vault/stream PDAs, and `CLOCK_10` base58.
+- Reuse: keep `.scaffold/state/` when stopping localnet; only wipe state for a full reset
+  (stop localnet, remove `.scaffold/state/`, re-run 10a).
+- Optional (recommended for Step 11a decode tests): CLI-init vault or full pre-seed
+  (`initialize_vault`, deposit, stream) so vault/stream accounts have non-empty `data`
+  before module writes land in Step 11b.
+
+Components required to run:
+`lgs`, network to local sequencer only, `lez-payment-streams` checkout for deploy.
+
+Definition of done:
+
+1. Localnet reachable at `http://127.0.0.1:3040`; `lgs wallet -- check-health` passes.
+2. `lez_payment_streams` deployed; program id recorded in the fixture manifest.
+3. At least one initialized, funded public owner; topup path documented or scripted.
+4. Fixture manifest lists ids needed for Step 11a (minimum: clock + PDAs or post-init vault bytes).
+5. Reset procedure documented (wipe `.scaffold/state/` → re-run 10a).
+
+#### Step 10b, Wallet runtime artifact (PR 491 + PR 19)
+
+Goal:
+installable `lez_wallet_module` `.lgx` built from
+`logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/`
+(upstream [PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19)
+on LEZ [PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491)),
+with D4 naming and packaging overrides only — generic public send comes from PR 19,
+not a reimplementation in this repo.
+
+Work:
+
+- Pin and build per [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
+- `nix bundle` wallet `.lgx`; `lgpm install` into shared `MODULES`.
+- Document `open` (config + storage + sequencer RPC) so `logoscore call lez_wallet_module …`
+  reaches the same localnet as Step 10a (`get_account_public`, `list_accounts`).
+- Verify: `lm methods` lists PR 19 generic public transaction entry point(s).
+
+`sign_public_payload` is Step 11c, not 10b.
+
+Components required to run:
+Step 10a localnet (for RPC validation); logoscore + `lgpm` per runtime guide Part 1.
+
+Definition of done:
+
+1. Patched wallet `.lgx` installs as `lez_wallet_module`.
+2. `logoscore load-module lez_wallet_module` succeeds after Step 9 payment streams load order rules.
+3. Documented `open` path; `get_account_public` returns JSON for a fixture account id from 10a.
+4. `lm methods` confirms PR 19 send surface (names per that PR).
+
+### Step 11, Module chain access
+
+Architectural context:
+Step 11 wires `payment_streams_module` to `lez_wallet_module` for reads, writes, and
+(off-chain) digest signing support. Requires 10a → 10b complete.
+Sub-step order: 11a → 11b → 11c (11c must complete before Step 12 eligibility).
+
+#### Step 11a, Wire chain reads from the module
+
+This step adds stable read helpers and exercises wallet-backed chain reads end-to-end
+for the first time in `payment_streams_module`.
 `payment_streams_module` calls into `lez_wallet_module`,
-which in turn uses its own FFI (`wallet_ffi`) to reach the LEZ sequencer
-over JSON-RPC.
-The chain is now part of the picture.
+which uses `wallet_ffi` to reach the LEZ sequencer over JSON-RPC.
 
 Add helpers inside `payment_streams_module` that wrap
 `lez_wallet_module.account_id_from_base58` and `lez_wallet_module.get_account_public`,
 plus a higher-level helper that reads the configured clock account
+(default `CLOCK_10`, see Step 10a fixture)
 and returns the current sequencer time.
-These helpers are pure read paths and do not touch any payment-streams logic.
-Use `LogosAPIClient::invokeRemoteMethod` directly,
-following the safe pattern documented in
-[`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 2).
-Do not use the `LogosModules` typed wrapper as it crashes in core module sidecars.
+These helpers are pure read paths: decode via `lez-payment-streams-ffi`, no fold,
+no payment-stream transactions.
+Use `LogosAPIClient::invokeRemoteMethod` directly
+([`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 2).
+Do not use the `LogosModules` typed wrapper (Issue #31).
 
 Components required to run:
-`logoscore` daemon hosting both `lez_wallet_module` and `payment_streams_module`,
-LEZ sequencer on `127.0.0.1:3040`
-(new prerequisite — first step that needs a chain;
-brought up by `lgs init` + `lgs setup` + `lgs localnet start` from a scaffold workspace),
-`lez_payment_streams` program deployed onto that sequencer
-(new prerequisite — via `lgs deploy`).
-No messaging network yet.
+`logoscore` with both modules loaded, Step 10a fixture (deployed program, funded owner),
+Step 10b wallet `open` + RPC. No messaging network.
 
-Scaffold RPC, account id formats, and deploy notes:
-[`docs/step1-findings-scaffold-rpc.md`](docs/step1-findings-scaffold-rpc.md).
-Repeatable logoscore + LEZ test loop after module edits:
-[`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 3).
+Scaffold RPC and formats: [`docs/step1-findings-scaffold-rpc.md`](docs/step1-findings-scaffold-rpc.md).
+Module edit loop: [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 3.
 
 Definition of done:
-against a scaffold-deployed `lez_payment_streams` program,
-the module can read a known vault config, vault holding, stream config,
-and clock account through `logoscore`,
-and the JSON returned by `get_account_public` decodes through the FFI
-into the expected typed values.
+against the Step 10a fixture,
+the module reads known vault config, vault holding, stream config,
+and clock accounts through `logoscore`,
+and wallet JSON decodes through the FFI into expected typed values.
+If 10a left vault/stream PDAs empty, minimum DoD is clock plus any accounts 10a pre-initialized;
+full four-account decode requires initialized vault/stream bytes on chain.
 
-### Step 11, Add and wire chain writes through the wallet module
+#### Step 11b, Chain writes and status helpers
 
-Architectural context:
-Sub-step 11a pins PR 491 + PR 19, rebuilds wallet `.lgx`, and adds `sign_public_payload`
-on the patched wrapper only (N1).
-Generic public send comes from PR 19, not custom code in this repo.
-Sub-step 11b uses LogosAPI from `payment_streams_module` to call PR 19’s methods.
-Instruction bytes and account lists are built through
-`payment_streams_module`'s Rust FFI layer (from Steps 1–5).
-
-Two sub-steps that ship together:
-
-Sub-step 11a (wallet — mostly upstream):
-
-Ensure flakes pin LEZ [PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491) and
-wallet module [PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19).
-Rebuild the patched wallet `.lgx`; `lm methods` should list PR 19’s generic transaction entry point(s).
-
-Add `sign_public_payload(accountId, canonical_payload_digest_hex) -> QString` on the patched wrapper only
-(LEZ FFI + Qt), per [N1](#n1-off-chain-canonical-payload-signing).
-Do not duplicate 491’s generic public send in our patch if PR 19 already exposes it.
-
-Sub-step 11b:
-add a private helper inside `payment_streams_module`
-that takes an `Instruction` kind, its typed arguments,
-and a signer account ID,
+Add a private helper inside `payment_streams_module`
+that takes an instruction kind, typed arguments, and a signer account ID,
 builds Borsh instruction bytes and the ordered account list through the payment-streams FFI,
 assembles the program-with-dependencies bundle for the guest program,
-and submits via `lez_wallet_module` using PR 19’s API (match upstream request shape from that PR).
+and submits via `lez_wallet_module` using PR 19’s API (match upstream request shape).
 
-Expose user-facing `Q_INVOKABLE` write methods
-for the nine payment-stream operations:
+Expose user-facing write methods for the nine payment-stream operations:
 initialize vault, deposit, withdraw, create stream, top up,
 pause, resume, close, claim.
 
-Expose user-facing `Q_INVOKABLE` status helper methods:
-`getVaultStatus(vaultConfigAccountId) -> QString`
-reads the vault config and vault holding accounts via `get_account_public`,
-decodes both through the FFI,
-and returns a JSON object with owner, privacy tier, total allocated,
-vault holding balance, and derived unallocated balance.
-`getStreamStatus(streamConfigAccountId) -> QString`
-reads the stream config account and the clock account,
-decodes both through the FFI,
-folds the stream to the current clock time via `at_time`,
-and returns a JSON object with stream ID, provider, rate, allocation,
-accrued, unaccrued, effective state, and `accrued_as_of`.
+Expose status helpers (compose Step 11a reads with Step 2 decoders and Step 3a/3b fold):
 
-These read methods compose the Step 10 chain-read helpers
-with the Step 2 decoders and Step 3a/3b folding logic.
-They are used by the demo script in Step 17
-to verify intermediate state
-and by the optional Basecamp UI in Step 18.
+- `getVaultStatus(vaultConfigAccountId) -> QString` — vault config + holding, unallocated balance.
+- `getStreamStatus(streamConfigAccountId) -> QString` — stream config + clock, folded at `at_time`.
+
+Used by Step 17 demo and optional Step 18 UI.
 
 Components required to run:
-Sub-step 11a needs no runtime
-(verified via `nix build` and `lm methods` showing the new surface).
-Sub-step 11b needs the same runtime stack as Step 10
-(`logoscore` with both modules loaded, LEZ sequencer, deployed program).
-Retest loop: [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 3).
+same stack as 11a; PR 19 send surface from Step 10b.
 
 Definition of done:
-through `logoscore` against scaffold localnet,
-the module can drive a complete vault and stream lifecycle from initialization
-through claim,
-with on-chain state observable through `getVaultStatus` and `getStreamStatus`.
+through `logoscore` on the Step 10a fixture,
+the module drives a complete vault and stream lifecycle from initialization through claim,
+with state observable via `getVaultStatus` and `getStreamStatus`.
+
+#### Step 11c, `sign_public_payload` on the patched wallet
+
+Goal:
+expose digest signing for `VaultProof.owner_signature` (N1) on the patched wrapper only
+(LEZ FFI + Qt); required before Step 12.
+
+Work:
+
+- Implement `sign_public_payload(accountId, canonical_payload_digest_hex) -> QString`.
+- Rebuild and reinstall wallet `.lgx` (same flake as 10b).
+- Smoke via `logoscore call lez_wallet_module …` (no full Store flow required).
+
+Components required to run:
+Step 10b pipeline; logoscore.
+
+Definition of done:
+
+1. `lm methods` lists `sign_public_payload` (or chosen name).
+2. Sign-then-verify smoke against a test digest with a funded public key from Step 10a.
+3. Step 12 may depend on this method without further wallet feature work.
 
 ### Step 12, Session keys and user-side proof construction
 
@@ -1225,6 +1292,8 @@ this is the user-side method that `delivery_module` will auto-invoke
 once registered as the outbound eligibility provider in Step 16.
 It does not, by itself, initiate any Store traffic;
 it just produces opaque bytes when asked.
+Requires Step 11c (`sign_public_payload`) and the Step 11a read path;
+user flows that open streams on-chain use Step 11b (`create_stream`).
 
 #### Quick reference
 
@@ -1355,7 +1424,7 @@ and a human-readable description.
 `logoscore` daemon hosting both modules.
 The definition of done's verifier round-trip is in-process through the FFI;
 a live sequencer is not strictly required for that verification itself,
-but the same Step 10 stack remains useful for sanity-checking
+but the same Steps 10a–11b stack remains useful for sanity-checking
 that vault data the proof asserts matches chain state.
 After code changes, rebuild and reload via
 [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 3).
@@ -1438,7 +1507,7 @@ not on transport peer continuity.
 
 `logoscore` daemon hosting both modules.
 The structural-failure portion of the definition of done needs nothing more.
-The happy-path verdict portion needs the Step 10 stack
+The happy-path verdict portion needs the Steps 10a–11b stack
 (LEZ sequencer plus deployed program plus seeded vault/stream state).
 Module retest loop:
 [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 3).
