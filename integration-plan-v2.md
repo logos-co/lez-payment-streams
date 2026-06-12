@@ -670,6 +670,38 @@ Artifacts
 
 - Idempotent seed script, gitignored `fixtures/localnet.json`, committed
   `fixtures/localnet.json.example`, brief runbook under `docs/`.
+- Runbook troubleshooting: owner or `SIGNER_ID` vs wallet home, and foreign localnet on
+  3040 — [`docs/step10a-local-chain-fixture.md`](docs/step10a-local-chain-fixture.md)
+  (Troubleshooting).
+- Step 10a status, LEZ 491 guest patches, and sequencer follow-up —
+  [`docs/step10a-handoff-and-follow-up.md`](docs/step10a-handoff-and-follow-up.md).
+- Why `seed_localnet_fixture` inflates workspace `Cargo.lock` (fat LEZ `wallet`/`lee` deps,
+  dual LEZ pins) and optional slimming paths —
+  [`docs/step10a-local-chain-fixture.md`](docs/step10a-local-chain-fixture.md)
+  (Seed binary and workspace Cargo.lock).
+
+SPEL-on-LEE cleanup (public PDA prefix)
+
+Published SPEL (`v0.5.0`) derives in-guest public PDAs with the NSSA prefix
+(`/NSSA/v0.2/...`). LEZ PR 491 and `lez-payment-streams-core` use LEE
+(`/LEE/v0.2/...`). Until upstream SPEL matches LEZ, this repo vendors
+`vendor/spel-framework-core` and patches `compute_pda` to call
+`lee_core::AccountId::for_public_pda` (root `Cargo.toml` and
+`methods/guest/Cargo.toml` `[patch]` on `spel-framework-core`).
+
+When SPEL officially targets LEE, that vendor fork should be removable.
+Do not drop it on a version bump alone; confirm upstream `compute_pda`
+matches host PDA derivation (FFI tests) and 491 localnet
+(`initialize_vault` without `MismatchedPdaClaim`).
+
+Then simplify: remove `vendor/spel-framework-core`, remove both
+`[patch."https://github.com/logos-co/spel.git"]` entries, bump the SPEL
+pin if needed, `make build`, full 10a chain reset, and
+`./scripts/verify-step10a-dod.sh` exit 0.
+
+The deposit `authenticated_transfer` enum encoding is a separate guest
+workaround; SPEL-on-LEE may ship both fixes, but verify each before
+deleting local shims.
 
 ## Integration Steps
 
@@ -1203,6 +1235,29 @@ Definition of done:
 4. Demo vault and stream initialized on chain; manifest supports Step 11a decode of vault,
    holding, stream, and clock accounts.
 5. Reset procedure documented (N9).
+
+Follow-up (LEZ PR 491 localnet, not green until seed completes)
+
+Operator checklist and troubleshooting live in
+[`docs/step10a-handoff-and-follow-up.md`](docs/step10a-handoff-and-follow-up.md) and
+[`docs/step10a-local-chain-fixture.md`](docs/step10a-local-chain-fixture.md).
+
+1. Guest public PDAs: vendored `vendor/spel-framework-core` (LEE `compute_pda`) plus guest
+   rebuild (`make build`). Without this, `initialize_vault` fails with `MismatchedPdaClaim`.
+   Revisit and remove the vendor when SPEL-on-LEE matches 491 ([N9](#n9-step-10a-local-chain-fixture-decisions)
+   SPEL-on-LEE cleanup).
+2. Guest deposit chained call: LEZ 491 `authenticated_transfer` expects enum
+   `Transfer { amount }`, not NSSA bare `u128`. Apply the guest change documented in the handoff
+   before expecting deposit and DoD item 4; then `#[ignore]` NSSA deposit/claim program tests
+   until SPEL-on-LEE.
+3. After any guest rebuild, refresh or delete gitignored `fixtures/localnet.json` and redeploy;
+   PDAs and `program_id_hex` depend on ImageID.
+4. If seed confirms `initialize_vault` but deposit fails with
+   `Transaction not found in preconfigured amount of blocks`, treat as sequencer or validation
+   first: search `.scaffold/logs/sequencer.log` for the tx hash, then full reset
+   (`.scaffold/state/`, stale manifest) and re-seed. Do not assume a version bump of `nssa_core`
+   removes these patches (published tags remain NSSA-prefix; host pin is PR 491).
+5. Step 10b should wait until `./scripts/verify-step10a-dod.sh` exits 0.
 
 #### Step 10b, Wallet runtime artifact (PR 491 + PR 19)
 

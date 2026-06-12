@@ -61,6 +61,11 @@ Refresh `rev` / `sha256` in `nix/payment-streams-ffi.nix` when the LEZ pin moves
 `lez-payment-streams-ffi` symlinks LEZ `artifacts/` from the same `logos-execution-zone` revision
 as the wallet stack (491 head until merge).
 
+### Scaffold localnet (`scaffold.toml`)
+
+`[repos.lez].pin` must match the LEZ `rev` in `nix/payment-streams-ffi.nix` (Step 10a).
+After bumping either pin, re-run `lgs setup` from this repo so `wallet` and localnet match 491.
+
 ### Payment-streams Logos module (`logos-payment-streams-module/flake.nix`)
 
 - `lez_wallet_module` flake input → patched wrapper (PR 19 upstream inside).
