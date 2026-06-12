@@ -9,3 +9,6 @@ exclude = [
     "methods/guest",
 ]
 resolver = "2"
+
+[patch."https://github.com/logos-co/spel.git"]
+spel-framework-core = { path = "vendor/spel-framework-core" }

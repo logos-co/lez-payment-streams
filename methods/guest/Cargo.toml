@@ -16,3 +16,6 @@ risc0-zkvm = { version = "=3.0.5", features = ["std"] }
 lez-payment-streams-core = { path = "../../lez-payment-streams-core", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 borsh = "1.5"
+
+[patch."https://github.com/logos-co/spel.git"]
+spel-framework-core = { path = "../../vendor/spel-framework-core" }

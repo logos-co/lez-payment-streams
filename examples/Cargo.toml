@@ -11,6 +11,10 @@ path = "src/bin/generate_idl.rs"
 name = "lez_payment_streams_cli"
 path = "src/bin/lez_payment_streams_cli.rs"
 
+[[bin]]
+name = "seed_localnet_fixture"
+path = "src/bin/seed_localnet_fixture.rs"
+
 [dependencies]
 spel-framework = { git = "https://github.com/logos-co/spel.git", tag = "v0.5.0" }
 nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.1.2" }
@@ -18,3 +22,14 @@ spel = { git = "https://github.com/logos-co/spel.git", tag = "v0.5.0" }
 lez-payment-streams-core = { path = "../lez-payment-streams-core" }
 serde_json = "1.0"
 tokio = { version = "1.28.2", features = ["net", "rt-multi-thread", "sync", "macros"] }
+anyhow = "1.0"
+base58 = "0.2"
+clap = { version = "4.5", features = ["derive"] }
+# LEZ PR 491 — must match scaffold.toml [repos.lez].pin (seed_localnet_fixture only).
+lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a999563a2d27325ecada318746f1a0dc083d187f" }
+lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a999563a2d27325ecada318746f1a0dc083d187f" }
+common = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a999563a2d27325ecada318746f1a0dc083d187f" }
+sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a999563a2d27325ecada318746f1a0dc083d187f", features = ["client"] }
+wallet = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a999563a2d27325ecada318746f1a0dc083d187f" }
+nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.1.2" }
+serde = { version = "1.0", features = ["derive"] }

@@ -2,6 +2,9 @@
 //!
 //! Seeds match the LEZ payment streams SPEL guest account constraints
 //! (`literal(...)`, `account(...)`, `arg(...)` with `ToSeed` / `compute_pda`).
+//!
+//! Public PDA addresses use LEE `/v0.2/` derivation via patched
+//! [`spel_framework_core::pda::compute_pda`] (aligned with LEZ 491 host validation).
 
 use crate::{StreamId, VaultId};
 use nssa_core::account::AccountId;

@@ -1633,6 +1633,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
+name = "lee_core"
+version = "0.1.0"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=a999563a2d27325ecada318746f1a0dc083d187f#a999563a2d27325ecada318746f1a0dc083d187f"
+dependencies = [
+ "base58",
+ "borsh",
+ "bytemuck",
+ "bytesize",
+ "chacha20",
+ "risc0-zkvm",
+ "serde",
+ "serde_with",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "lez-payment-streams-core"
 version = "0.1.0"
 dependencies = [
@@ -2903,10 +2919,10 @@ dependencies = [
 [[package]]
 name = "spel-framework-core"
 version = "0.5.0"
-source = "git+https://github.com/logos-co/spel.git?tag=v0.5.0#73fc462eb8f0a4d00f1a846437c627ec2e523f83"
 dependencies = [
  "base58",
  "borsh",
+ "lee_core",
  "nssa_core",
  "proc-macro2",
  "serde",

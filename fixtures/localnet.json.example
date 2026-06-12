@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "sequencer_url": "http://127.0.0.1:3040",
+  "program_id_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+  "owner_account_id": "REPLACE_AFTER_SEED",
+  "provider_account_id": "REPLACE_AFTER_SEED",
+  "vault_id": 0,
+  "stream_id": 0,
+  "vault_config_account_id": "REPLACE_AFTER_SEED",
+  "vault_holding_account_id": "REPLACE_AFTER_SEED",
+  "stream_config_account_id": "REPLACE_AFTER_SEED",
+  "clock_10_account_id": "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs",
+  "demo_deposit_amount": 500,
+  "stream_rate": 10,
+  "stream_allocation": 200,
+  "reserved_for_step_11b": "Use a fresh vault_id (e.g. 1) or reset .scaffold/state/ for module-driven init tests."
+}

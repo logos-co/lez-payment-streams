@@ -18,7 +18,9 @@ debug/
 *.bin
 .lez_payment_streams-state
 .lez_payment_streams-state.tmp
+.lez_payment_streams-fixture-provider
 .scaffold
+fixtures/localnet.json
 
 # Nix build outputs (symlinks)
 result

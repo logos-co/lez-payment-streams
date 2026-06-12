@@ -3,7 +3,7 @@ version = "0.2.0"
 
 [repos.lez]
 source = "https://github.com/logos-blockchain/logos-execution-zone.git"
-pin = "cf3639d8252040d13b3d4e933feb19b42c76e14a"
+pin = "a999563a2d27325ecada318746f1a0dc083d187f"
 
 [repos.spel]
 source = "https://github.com/logos-co/spel.git"

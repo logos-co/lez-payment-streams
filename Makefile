@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean
+.PHONY: help build idl cli deploy setup program-id status clean seed-fixture
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -32,6 +32,7 @@ help: ## Show this help
 	@echo "  make setup       Create accounts needed for the program"
 	@echo "  make program-id  Show ProgramId for built binary"
 	@echo "  make status      Show saved state and binary info"
+	@echo "  make seed-fixture Run Step 10a localnet seed script"
 	@echo "  make clean       Remove saved state"
 	@echo ""
 	@echo "Example:"
@@ -52,7 +53,8 @@ idl: ## Generate IDL JSON from program source
 cli: ## Run the IDL-driven CLI (ARGS="...")
 	cargo run --bin lez_payment_streams_cli -- -i $(IDL_FILE) $(ARGS)
 
-deploy: ## Deploy program to sequencer
+deploy: ## Deploy program to sequencer (491 wallet; set LEE_WALLET_HOME_DIR)
+	@test -n "$$LEE_WALLET_HOME_DIR" || (echo "ERROR: set LEE_WALLET_HOME_DIR (see docs/step10a-local-chain-fixture.md)"; exit 1)
 	@test -f "$(PROGRAM_BIN)" || (echo "ERROR: Binary not found. Run 'make build' first."; exit 1)
 	wallet deploy-program $(PROGRAM_BIN)
 	@echo "✅ Program deployed"
@@ -82,3 +84,6 @@ status: ## Show saved state and binary info
 clean: ## Remove saved state
 	rm -f $(STATE_FILE) $(STATE_FILE).tmp
 	@echo "✅ State cleaned"
+
+seed-fixture: ## Step 10a local chain fixture (scripts/seed-localnet-fixture.sh)
+	./scripts/seed-localnet-fixture.sh
