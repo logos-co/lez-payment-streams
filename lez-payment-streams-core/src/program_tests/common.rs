@@ -55,6 +55,9 @@ pub(crate) const DEFAULT_CLOCK_INITIAL_TS: Timestamp = 1;
 /// Single deposit into vault holding after `initialize_vault` for stream-focused tests (unified fixture).
 pub(crate) const DEFAULT_STREAM_TEST_DEPOSIT: Balance = 500;
 
+/// Reason for [`#[ignore]`](ignore) on in-process program tests while the guest targets LEZ 491.
+pub(crate) const IGNORE_LEZ_GUEST_ON_NSSA_HARNESS: &str = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding";
+
 /// Account order for stream instructions: vault config, holding, stream PDA, owner, clock account.
 pub(crate) type StreamIxAccounts = [AccountId; 5];
 

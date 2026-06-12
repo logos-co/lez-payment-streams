@@ -19,6 +19,7 @@ use lez_payment_streams_core::{
     VaultId,
     VaultPrivacyTier,
 };
+use authenticated_transfer_core::Instruction as AuthenticatedTransferInstruction;
 use nssa_core::account::{Account, AccountId, Balance};
 use nssa_core::program::ProgramId;
 
@@ -335,8 +336,9 @@ mod lez_payment_streams {
     }
 
     fn serialize_transfer_amount(amount: Balance) -> Result<Vec<u32>, SpelError> {
-        risc0_zkvm::serde::to_vec(&amount).map_err(|_| SpelError::SerializationError {
-            message: "failed to serialize transfer amount".into(),
+        let instruction = AuthenticatedTransferInstruction::Transfer { amount };
+        risc0_zkvm::serde::to_vec(&instruction).map_err(|_| SpelError::SerializationError {
+            message: "failed to serialize authenticated_transfer instruction".into(),
         })
     }
 

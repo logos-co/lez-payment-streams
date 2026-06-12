@@ -16,6 +16,7 @@ use super::common::{DEFAULT_OWNER_GENESIS_BALANCE, TEST_PUBLIC_TX_TIMESTAMP};
 use crate::harness_seeds::SEED_OWNER;
 
 #[test]
+#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_initialize_vault_then_reinitialize_fails() {
     let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
@@ -88,6 +89,7 @@ fn test_initialize_vault_then_reinitialize_fails() {
 }
 
 #[test]
+#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_initialize_vault_wrong_signer_witness_fails() {
     let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
     let (_, owner_account_id) = create_keypair(SEED_OWNER);
@@ -129,6 +131,7 @@ fn test_initialize_vault_wrong_signer_witness_fails() {
 }
 
 #[test]
+#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_initialize_vault_pseudonymous_funder_succeeds() {
     let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);

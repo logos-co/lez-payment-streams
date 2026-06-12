@@ -17,9 +17,9 @@ through `create_stream`.
   Host-side PDAs in `lez-payment-streams-core` already match LEZ 491.
 - With the PDA patch, **`initialize_vault` can validate and confirm** on 491 (observed in local
   runs after guest rebuild).
-- NSSA in-process **program tests** (`cargo test -p lez-payment-streams-core`) are left
-  unmodified: the guest still serializes a **bare `u128`** for deposit chained calls (NSSA
-  `authenticated_transfer` contract). That matches the test harness but **not** LEZ 491.
+- NSSA in-process **program tests** (`cargo test -p lez-payment-streams-core`) that execute
+  the guest on [`nssa::V03State`] are **`#[ignore]`** while the guest targets LEZ 491 (LEE PDAs
+  and `authenticated_transfer` enum). Unit tests outside that harness still run.
 
 ## What blocked green DoD
 
@@ -39,11 +39,10 @@ NSSA v0.1.2 (and SPEL v0.5.0 guest) still emit a **bare `u128`** in the deposit
 errors such as `invalid value: integer 500, expected variant index 0 <= i < 2` when depositing
 500 units.
 
-**Required code change (not currently in tree — re-apply for 491 localnet):** in
-`methods/guest/src/bin/lez_payment_streams.rs`, serialize
-`AuthenticatedTransferInstruction::Transfer { amount }` with variant order
-`Transfer` then `Initialize`, matching 491. After that change, mark NSSA-harness deposit/claim
-program tests `#[ignore]` until SPEL targets LEE or tests migrate to a LEE executor.
+**Required code change:** in `methods/guest/src/bin/lez_payment_streams.rs`, serialize
+`authenticated_transfer_core::Instruction::Transfer { amount }` (LEZ 491) for deposit
+`ChainedCall` data. NSSA in-process program tests are `#[ignore]` until SPEL-on-LEE or a
+LEE executor.
 
 ### Root cause B — sequencer / wallet poller (symptom, not always root)
 
