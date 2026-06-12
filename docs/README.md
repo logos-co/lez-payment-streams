@@ -7,7 +7,7 @@
 | [`logos-runtime-guide.md`](logos-runtime-guide.md) | Build `.lgx`, install, logoscore, Steps 7/9/11a–13 loop |
 | [`step1-findings-scaffold-rpc.md`](step1-findings-scaffold-rpc.md) | LEZ localnet, deploy, scaffold RPC findings |
 | [`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md) | Step 10a seed script, manifest, reset, wallet re-init |
-| [`step10a-handoff-and-follow-up.md`](step10a-handoff-and-follow-up.md) | Step 10a status, LEZ 491 patches, sequencer troubleshooting |
+| [`step10a-handoff-and-follow-up.md`](step10a-handoff-and-follow-up.md) | Step 10a verify failures, sequencer log triage, next (10b) |
 | [`step3-policy-and-implementor-notes.md`](step3-policy-and-implementor-notes.md) | Step 3a policy and implementor detail |
 | [`step8-universal-legacy-probe-results.md`](step8-universal-legacy-probe-results.md) | Step 8 probe results (+ historical dilemma appendix) |
 | [`feature-branch-pins.md`](feature-branch-pins.md) | Wallet flake pins (491 + 19) |

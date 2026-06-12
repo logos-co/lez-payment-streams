@@ -140,26 +140,15 @@ Then re-run `lgs localnet start`.
 
 ### NSSA vs LEE public PDA prefix
 
-LEZ 491 validates public PDAs with `/LEE/v0.2/AccountId/PDA/`. Fixture derivation in
-`lez-payment-streams-core` matches via `lee_core`.
+LEZ 491 validates public PDAs with `/LEE/v0.2/AccountId/PDA/`. Host fixture derivation uses
+`lee_core`; the guest uses vendored [`vendor/spel-framework-core`](../vendor/spel-framework-core)
+(patched `compute_pda`). Rebuild the guest after changing that patch (`make build`). Upstream
+SPEL-on-LEE cleanup: integration plan N9.
 
-The guest uses SPEL + vendored [`vendor/spel-framework-core`](../vendor/spel-framework-core)
-(patched `compute_pda`) so in-guest PDA checks align with the sequencer. Rebuild the guest
-after changing that patch (`make build`).
+### Deposit or seed failures on 491
 
-### Deposit fails on LEZ 491 (chained authenticated_transfer)
-
-The guest must serialize LEZ 491 `authenticated_transfer` as enum `Transfer { amount }`, not a
-bare `u128` (NSSA v0.1.2). See the patch description in
-[`step10a-handoff-and-follow-up.md`](step10a-handoff-and-follow-up.md).
-
-Demo deposit/allocation defaults in `seed_localnet_fixture` are sized for a single local
-pinata topup (deposit 100, stream allocation 80). Increase owner balance or lower amounts if
-deposit fails with authenticated_transfer "insufficient balance".
-
-Symptoms: sequencer guest panic on variant index, or seed error
-`Transaction not found in preconfigured amount of blocks` on deposit. Inspect
-`.scaffold/logs/sequencer.log` for the deposit tx hash.
+Troubleshooting (enum encoding, pinata balance vs demo deposit, poller vs execution): see
+[`step10a-handoff-and-follow-up.md`](step10a-handoff-and-follow-up.md) (When verify fails).
 
 ### Stale `fixtures/localnet.json`
 

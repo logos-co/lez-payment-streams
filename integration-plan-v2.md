@@ -673,7 +673,7 @@ Artifacts
 - Runbook troubleshooting: owner or `SIGNER_ID` vs wallet home, and foreign localnet on
   3040 — [`docs/step10a-local-chain-fixture.md`](docs/step10a-local-chain-fixture.md)
   (Troubleshooting).
-- Step 10a status, LEZ 491 guest patches, and sequencer follow-up —
+- Step 10a operator troubleshooting and verify failures —
   [`docs/step10a-handoff-and-follow-up.md`](docs/step10a-handoff-and-follow-up.md).
 - Why `seed_localnet_fixture` inflates workspace `Cargo.lock` (fat LEZ `wallet`/`lee` deps,
   dual LEZ pins) and optional slimming paths —
@@ -699,9 +699,8 @@ Then simplify: remove `vendor/spel-framework-core`, remove both
 pin if needed, `make build`, full 10a chain reset, and
 `./scripts/verify-step10a-dod.sh` exit 0.
 
-The deposit `authenticated_transfer` enum encoding is a separate guest
-workaround; SPEL-on-LEE may ship both fixes, but verify each before
-deleting local shims.
+The guest deposit `authenticated_transfer` enum encoding is implemented in tree; SPEL-on-LEE may
+allow removing that shim later — verify deposit on 491 before deleting it.
 
 ## Integration Steps
 
@@ -1236,28 +1235,24 @@ Definition of done:
    holding, stream, and clock accounts.
 5. Reset procedure documented (N9).
 
-Follow-up (LEZ PR 491 localnet, not green until seed completes)
+Follow-up (LEZ PR 491 localnet — operator)
 
-Operator checklist and troubleshooting live in
-[`docs/step10a-handoff-and-follow-up.md`](docs/step10a-handoff-and-follow-up.md) and
+Checklist and troubleshooting:
+[`docs/step10a-handoff-and-follow-up.md`](docs/step10a-handoff-and-follow-up.md),
 [`docs/step10a-local-chain-fixture.md`](docs/step10a-local-chain-fixture.md).
 
-1. Guest public PDAs: vendored `vendor/spel-framework-core` (LEE `compute_pda`) plus guest
-   rebuild (`make build`). Without this, `initialize_vault` fails with `MismatchedPdaClaim`.
-   Revisit and remove the vendor when SPEL-on-LEE matches 491 ([N9](#n9-step-10a-local-chain-fixture-decisions)
-   SPEL-on-LEE cleanup).
-2. Guest deposit chained call: LEZ 491 `authenticated_transfer` expects enum
-   `Transfer { amount }`, not NSSA bare `u128`. Apply the guest change documented in the handoff
-   before expecting deposit and DoD item 4; then `#[ignore]` NSSA deposit/claim program tests
-   until SPEL-on-LEE.
-3. After any guest rebuild, refresh or delete gitignored `fixtures/localnet.json` and redeploy;
-   PDAs and `program_id_hex` depend on ImageID.
-4. If seed confirms `initialize_vault` but deposit fails with
-   `Transaction not found in preconfigured amount of blocks`, treat as sequencer or validation
-   first: search `.scaffold/logs/sequencer.log` for the tx hash, then full reset
-   (`.scaffold/state/`, stale manifest) and re-seed. Do not assume a version bump of `nssa_core`
-   removes these patches (published tags remain NSSA-prefix; host pin is PR 491).
-5. Step 10b should wait until `./scripts/verify-step10a-dod.sh` exits 0.
+Guest alignment already in tree (rebuild + redeploy after changes):
+
+1. LEE public PDAs via vendored `spel-framework-core` — remove when SPEL-on-LEE matches 491
+   ([N9](#n9-step-10a-local-chain-fixture-decisions) SPEL-on-LEE cleanup).
+2. Deposit `ChainedCall` uses LEZ `authenticated_transfer` enum `Transfer { amount }`; NSSA
+   in-process harness tests are `#[ignore]` until SPEL-on-LEE or a LEE executor.
+3. After any guest rebuild, refresh gitignored `fixtures/localnet.json` and redeploy; PDAs and
+   `program_id_hex` follow ImageID.
+4. If seed fails on deposit, use sequencer logs (execution vs poller); see handoff — do not assume
+   a `nssa_core` tag bump removes the vendor or enum encoding.
+5. Run `./scripts/verify-step10a-dod.sh` (vault config, **vault holding**, stream config on chain)
+   before Step 10b.
 
 #### Step 10b, Wallet runtime artifact (PR 491 + PR 19)
 
