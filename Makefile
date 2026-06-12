@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean seed-fixture
+.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -33,6 +33,9 @@ help: ## Show this help
 	@echo "  make program-id  Show ProgramId for built binary"
 	@echo "  make status      Show saved state and binary info"
 	@echo "  make seed-fixture Run Step 10a localnet seed script"
+	@echo "  make wallet-lgx    Build Step 10b patched lez_wallet_module .lgx"
+	@echo "  make verify-step10a Run Step 10a DoD script"
+	@echo "  make verify-step10b Run Step 10b DoD script"
 	@echo "  make clean       Remove saved state"
 	@echo ""
 	@echo "Example:"
@@ -87,3 +90,12 @@ clean: ## Remove saved state
 
 seed-fixture: ## Step 10a local chain fixture (scripts/seed-localnet-fixture.sh)
 	./scripts/seed-localnet-fixture.sh
+
+wallet-lgx: ## Step 10b patched lez_wallet_module .lgx (scripts/build-wallet-lgx.sh)
+	./scripts/build-wallet-lgx.sh
+
+verify-step10a: ## Step 10a definition of done (scripts/verify-step10a-dod.sh)
+	./scripts/verify-step10a-dod.sh
+
+verify-step10b: ## Step 10b definition of done (scripts/verify-step10b-dod.sh)
+	./scripts/verify-step10b-dod.sh

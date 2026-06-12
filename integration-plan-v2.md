@@ -1284,6 +1284,10 @@ Definition of done:
 3. Documented `open` path; `get_account_public` returns JSON for a fixture account id from 10a.
 4. `lm methods` confirms PR 19 send surface (names per that PR).
 
+Deliverables in tree:
+[`docs/step10b-wallet-runtime.md`](docs/step10b-wallet-runtime.md),
+`scripts/build-wallet-lgx.sh`, `scripts/verify-step10b-dod.sh`, `make wallet-lgx` / `make verify-step10b`.
+
 ### Step 11, Module chain access
 
 Architectural context:

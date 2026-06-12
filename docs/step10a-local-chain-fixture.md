@@ -194,3 +194,8 @@ Acceptable for Step 10a; optional later improvements (after fixture DoD is green
 
 Demo vault `0` is for Step 11a decode tests. Module-driven lifecycle in 11b should use
 `vault_id = 1` or a reset chain (see `reserved_for_step_11b` in the manifest).
+
+## Step 10b (wallet in logoscore)
+
+After `./scripts/verify-step10a-dod.sh` exits 0, install the patched wallet `.lgx` and run
+[`step10b-wallet-runtime.md`](step10b-wallet-runtime.md) / `./scripts/verify-step10b-dod.sh`.

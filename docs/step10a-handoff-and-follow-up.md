@@ -75,5 +75,6 @@ plan.
 
 ## Next step
 
-Proceed to **Step 10b** after `./scripts/verify-step10a-dod.sh` exits 0 locally. Do not commit
-`fixtures/localnet.json` (gitignored).
+After `./scripts/verify-step10a-dod.sh` exits 0, follow [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md)
+and run `./scripts/verify-step10b-dod.sh`. When Step 10b DoD is green, proceed to integration plan
+Step 11a. Do not commit `fixtures/localnet.json` (gitignored).
