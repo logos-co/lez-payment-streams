@@ -13,6 +13,25 @@ fail=0
 ok() { echo "PASS: $*"; }
 bad() { echo "FAIL: $*"; fail=1; }
 
+account_on_chain_data_len() {
+  local account_id="$1"
+  curl -s -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$account_id\"]}" \
+    | python3 -c "import sys,json; d=json.load(sys.stdin).get('result',{}).get('data') or []; print(len(d))"
+}
+
+check_pda_initialized() {
+  local label="$1"
+  local account_id="$2"
+  local data_len
+  data_len="$(account_on_chain_data_len "$account_id")"
+  if [[ "$data_len" -gt 0 ]]; then
+    ok "$label PDA has on-chain data ($account_id)"
+  else
+    bad "$label PDA empty ($account_id) — on-chain seed not complete"
+  fi
+}
+
 echo "=== Step 10a DoD verification ==="
 
 if lgs localnet status 2>/dev/null | grep -q 'listener 127.0.0.1:3040: reachable'; then
@@ -44,23 +63,11 @@ if [[ -f "$MANIFEST" ]]; then
     bad "CLOCK_10 unexpected: $CLOCK"
   fi
   VC="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['vault_config_account_id'])")"
-  DATA_LEN="$(curl -s -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
-    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$VC\"]}" \
-    | python3 -c "import sys,json; d=json.load(sys.stdin).get('result',{}).get('data') or []; print(len(d))")"
-  if [[ "$DATA_LEN" -gt 0 ]]; then
-    ok "vault_config PDA has on-chain data ($VC)"
-  else
-    bad "vault_config PDA empty ($VC) — on-chain seed not complete"
-  fi
+  check_pda_initialized "vault_config" "$VC"
+  VH="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['vault_holding_account_id'])")"
+  check_pda_initialized "vault_holding" "$VH"
   SC="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['stream_config_account_id'])")"
-  SD_LEN="$(curl -s -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
-    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$SC\"]}" \
-    | python3 -c "import sys,json; d=json.load(sys.stdin).get('result',{}).get('data') or []; print(len(d))")"
-  if [[ "$SD_LEN" -gt 0 ]]; then
-    ok "stream_config PDA has on-chain data ($SC)"
-  else
-    bad "stream_config PDA empty ($SC)"
-  fi
+  check_pda_initialized "stream_config" "$SC"
 else
   bad "missing $MANIFEST (run ./scripts/seed-localnet-fixture.sh)"
 fi

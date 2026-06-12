@@ -83,8 +83,8 @@ cargo run --bin seed_localnet_fixture -- write-manifest \
 1. `curl -s http://127.0.0.1:3040` or `lgs localnet status` — sequencer up.
 2. `lgs wallet -- check-health` — wallet + programs OK.
 3. `make program-id` matches `program_id_hex` in `fixtures/localnet.json`.
-4. JSON-RPC `getAccount` on manifest vault/stream PDAs returns non-empty `data`
-   (see step1 findings for raw base58 id format).
+4. JSON-RPC `getAccount` on manifest vault config, vault holding, and stream config PDAs
+   returns non-empty `data` (see step1 findings for raw base58 id format).
 5. `CLOCK_10` id in manifest: `4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs`.
 
 ## Troubleshooting
@@ -152,6 +152,10 @@ after changing that patch (`make build`).
 The guest must serialize LEZ 491 `authenticated_transfer` as enum `Transfer { amount }`, not a
 bare `u128` (NSSA v0.1.2). See the patch description in
 [`step10a-handoff-and-follow-up.md`](step10a-handoff-and-follow-up.md).
+
+Demo deposit/allocation defaults in `seed_localnet_fixture` are sized for a single local
+pinata topup (deposit 100, stream allocation 80). Increase owner balance or lower amounts if
+deposit fails with authenticated_transfer "insufficient balance".
 
 Symptoms: sequencer guest panic on variant index, or seed error
 `Transaction not found in preconfigured amount of blocks` on deposit. Inspect

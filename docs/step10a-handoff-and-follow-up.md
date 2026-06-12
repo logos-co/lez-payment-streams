@@ -1,8 +1,7 @@
 # Step 10a — progress handoff and follow-up
 
-Status as of 2026-06-09: fixture scaffolding is in the repo; **Step 10a DoD is not green** on a
-LEZ PR 491 localnet until two guest/host alignment patches are applied and the seed completes
-through `create_stream`.
+Status: fixture tooling and LEZ 491 guest alignment are in tree. **Step 10a DoD** is green when
+`./scripts/verify-step10a-dod.sh` exits 0 after a full seed on PR 491 localnet (see runbook).
 
 ## What is done
 

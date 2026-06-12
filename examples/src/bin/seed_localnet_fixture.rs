@@ -30,9 +30,10 @@ use serde::Serialize;
 use wallet::WalletCore;
 
 const DEFAULT_SEQUENCER: &str = "http://127.0.0.1:3040";
-const DEFAULT_DEPOSIT: Balance = 500;
+/// Local pinata topup is well below 500 on typical scaffold localnets; keep deposit + allocation within one claim.
+const DEFAULT_DEPOSIT: Balance = 100;
 const DEFAULT_STREAM_RATE: TokensPerSecond = 10;
-const DEFAULT_STREAM_ALLOCATION: Balance = 200;
+const DEFAULT_STREAM_ALLOCATION: Balance = 80;
 
 #[derive(Parser)]
 #[command(name = "seed_localnet_fixture")]
