@@ -39,6 +39,7 @@
             # logos_host registers the Qt Remote Object under PluginInterface::name().
             sed -i '/LogosExecutionZoneWalletModule::name() const/,/^}/ s/return "[^"]*";/return "lez_wallet_module";/' \
               src/logos_execution_zone_wallet_module.cpp
+            patch -p1 --forward < ${./wallet-guest-elf-from-env.patch}
           '';
         postInstall =
           (old.postInstall or "")

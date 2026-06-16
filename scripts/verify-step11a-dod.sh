@@ -55,7 +55,7 @@ if [[ -f "$PLUGIN" ]] && nix shell github:logos-co/logos-module#lm --command bas
   out=\$(lm methods '$PLUGIN')
   echo \"\$out\" | rg -q 'readVaultConfigDecoded'
   echo \"\$out\" | rg -q 'readClock10Decoded'
-  echo \"\$out\" | rg -q 'accountIdHexFromBase58'
+  echo \"\$out\" | rg -q 'chainAction'
 "; then
   ok "lm methods lists Step 11a read API"
 else

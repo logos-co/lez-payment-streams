@@ -259,10 +259,11 @@ Expected: Universal plugin loads; no payment-streams business API until Steps 10
 
 ```bash
 lm methods "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" | rg list_accounts
-lm methods "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" | rg send_generic_public_transaction
+lm methods "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" | rg 'send_generic_public_transaction|PAYMENT_STREAMS_GUEST_BIN'
 ```
 
-Expected: `list_accounts` and PR 19 `send_generic_public_transaction` on the patched wallet
+Expected: `list_accounts`, PR 19 `send_generic_public_transaction`, and (patched 11b build)
+`PAYMENT_STREAMS_GUEST_BIN` / JSON submit support on the wallet plugin
 (Step 10b). Full install, `open`, and DoD: [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md).
 
 ### Runtime module info
@@ -369,7 +370,8 @@ use `LogosModules` typed wrapper from core sidecars.
 
 Step 10a–10b: local chain fixture and patched wallet `.lgx` (see integration plan).
 Step 11a adds wallet read helpers using the same `invokeRemoteMethod` pattern.
-Step 11b adds writes via PR 19 wallet methods; Step 11c adds `sign_public_payload` on the wallet wrapper.
+Step 11b adds writes via `payment_streams_module.chainAction` and patched wallet submit helpers;
+Step 11c adds `sign_public_payload` on the wallet wrapper.
 New Universal API methods belong on the impl class; wallet stays dynamic.
 
 ## References
@@ -600,10 +602,12 @@ Step 11a — chain reads
 
 Step 11b — writes and status
 
-- Same LEZ stack as Step 11a
-- `lm methods` shows write + `getVaultStatus` / `getStreamStatus` when implemented
-- Expected: lifecycle calls return wallet JSON; on-chain state visible via status
-  helpers (integration plan Step 11b definition of done)
+- Same LEZ stack as Step 11a; runbook [`step11b-chain-writes.md`](step11b-chain-writes.md)
+- `lm methods` on the PS plugin lists five read helpers plus `chainAction` (not per-write names)
+- Wallet plugin should expose `send_generic_public_transaction` and, for 11b IPC,
+  `send_generic_public_transaction_json`; set `PAYMENT_STREAMS_GUEST_BIN` on the daemon
+- Expected DoD: `./scripts/verify-step11b-dod.sh` — submit lifecycle via `chainAction`;
+  status may SKIP if derived vault PDAs are not yet readable after submits
 
 Step 11c — wallet signing
 

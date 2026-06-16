@@ -12,12 +12,14 @@ endif()
 
 logos_module(
   NAME payment_streams_module
-  SOURCES
+    SOURCES
     src/payment_streams_module_impl.h
     src/payment_streams_module_impl.cpp
+    src/payment_streams_module_writes.cpp
     src/payment_streams_ffi_bridge.c
+    src/payment_streams_ffi_bridge_writes.c
   EXTERNAL_LIBS
     lez_payment_streams_ffi
 )
 
-set_source_files_properties(src/payment_streams_ffi_bridge.c PROPERTIES LANGUAGE C)
+set_source_files_properties(src/payment_streams_ffi_bridge.c src/payment_streams_ffi_bridge_writes.c PROPERTIES LANGUAGE C)

@@ -14,12 +14,15 @@ All return compact JSON with `"status":"ok"` or `"status":"error"`.
 
 | Method | Purpose |
 | --- | --- |
-| `accountIdHexFromBase58` | Wrap `lez_wallet_module.account_id_from_base58` |
 | `readVaultConfigDecoded` | Vault config PDA (base58 id) → FFI decode |
 | `readVaultHoldingDecoded` | Vault holding PDA |
 | `readStreamConfigDecoded` | Stream config PDA |
 | `readClockDecoded` | Clock account PDA (base58 id) |
 | `readClock10Decoded` | Default `CLOCK_10` (`fixtures/localnet.json.example`) |
+| `chainAction` | Step 11b writes and status (see [`step11b-chain-writes.md`](step11b-chain-writes.md)) |
+
+For base58 → hex conversion, call `lez_wallet_module.account_id_from_base58` directly
+(`accountIdHexFromBase58` is not on the public Universal surface).
 
 Implementation uses `invokeRemoteMethod` into `lez_wallet_module` (D6), then
 `payment_streams_ffi_decode_*` on account `data` bytes.

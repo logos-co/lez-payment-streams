@@ -1,0 +1,56 @@
+diff --git a/src/logos_execution_zone_wallet_module.cpp b/src/logos_execution_zone_wallet_module.cpp
+index 58ebc03..0e8a52f 100644
+--- a/src/logos_execution_zone_wallet_module.cpp
++++ b/src/logos_execution_zone_wallet_module.cpp
+@@ -6,6 +6,8 @@
+ #include <QtCore/QJsonDocument>
+ #include <QtCore/QJsonObject>
+ #include <QtCore/QVariantMap>
++#include <QtCore/QFile>
++#include <QtCore/QProcessEnvironment>
+ 
+ static QString bytesToHex(const uint8_t* data, const size_t length) {
+     const QByteArray bytearray(reinterpret_cast<const char*>(data), static_cast<int>(length));
+@@ -878,6 +880,22 @@ QString LogosExecutionZoneWalletModule::send_generic_public_transaction(
+     for (const QString& val : program_elf) {
+         program_elf_list.append(static_cast<uint8_t>(val.toUInt()));
+     }
++    if (program_elf_list.isEmpty()) {
++        const QByteArray guestPath = qEnvironmentVariable("PAYMENT_STREAMS_GUEST_BIN");
++        if (!guestPath.isEmpty()) {
++            QFile guestFile(QString::fromUtf8(guestPath));
++            if (guestFile.open(QIODevice::ReadOnly)) {
++                const QByteArray guestBytes = guestFile.readAll();
++                program_elf_list.reserve(guestBytes.size());
++                for (unsigned char byte : guestBytes) {
++                    program_elf_list.append(static_cast<uint8_t>(byte));
++                }
++            } else {
++                qWarning() << "send_generic_public_transaction: cannot read PAYMENT_STREAMS_GUEST_BIN"
++                           << guestPath;
++            }
++        }
++    }
+ 
+     const uint8_t *program_elf_data = program_elf_list.constData();
+     uintptr_t program_elf_size = static_cast<uintptr_t>(program_elf_list.size());
+@@ -897,6 +915,19 @@ QString LogosExecutionZoneWalletModule::send_generic_public_transaction(
+         program_dependencies_list.append(inner);
+     }
+ 
++    if (program_dependencies_list.isEmpty()) {
++        FfiProgram transferProgram{};
++        if (wallet_ffi_transfer_elf(&transferProgram) == SUCCESS && transferProgram.elf_size > 0) {
++            QList<uint8_t> transferBytes;
++            transferBytes.reserve(static_cast<int>(transferProgram.elf_size));
++            for (size_t i = 0; i < transferProgram.elf_size; ++i) {
++                transferBytes.append(static_cast<uint8_t>(transferProgram.elf_data[i]));
++            }
++            program_dependencies_list.append(transferBytes);
++            wallet_ffi_free_ffi_program(&transferProgram);
++        }
++    }
++
+     QList<FfiProgram> ffi_program_dependencies;
+ 
+     for (int i = 0; i < program_dependencies_list.size(); ++i) {

@@ -73,11 +73,18 @@ lm methods "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" \
 Expected invokables include:
 
 - `send_generic_public_transaction` — generic public instruction submit (491 FFI)
+- `send_generic_public_transaction_json` — JSON IPC entry used by `payment_streams_module` (11b)
 - `send_generic_private_transaction`, `send_program_deployment_transaction`
 - `authenticated_transfer_elf` (and related ELF helpers)
-- `get_account_public`, `account_id_from_base58`, `open`
+- `get_account_public`, `account_id_from_base58`, `open`, `sync_to_block`
 
-Older installs may only expose legacy `send_public_transaction`; reinstall from the patched `.lgx`.
+Patched 11b builds also load guest ELF from `PAYMENT_STREAMS_GUEST_BIN` inside
+`send_generic_public_transaction` when program bytes are empty. Verify with
+`rg -F PAYMENT_STREAMS_GUEST_BIN` on `lez_wallet_module_plugin.so`.
+
+If `nix bundle … .#lib` fails on `wallet-ffi-deps` / `pol` download, use the Qt-aligned manual
+build documented in [`step11b-chain-writes.md`](step11b-chain-writes.md) until offline
+`LBC_POL_LIB_DIR` is wired in the flake.
 
 ## Wallet `open` for Step 10a
 

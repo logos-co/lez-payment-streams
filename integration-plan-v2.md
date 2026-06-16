@@ -56,7 +56,7 @@ only (no Store query on `delivery_module`).
    Step 6 records the closed Store-query decision; Step 8 (probe) is done; Step 9
    bootstraps the Universal module; Steps 10–11 (fixture, wallet runtime, module chain I/O)
    precede eligibility in Steps 12–13.
-   Definitions of done, decisions (D1–D6), and notes (N1–N9).
+   Definitions of done, decisions (D1–D6), and notes (N1–N10).
    Supporting doc index: [`docs/README.md`](docs/README.md).
 2. `logos-architecture-overview.md` in this directory.
    Architectural facts about hosts versus modules,
@@ -360,14 +360,16 @@ Upstream exposes 491 to Logos modules via
 Same author and timeline as PR 491; this is the intended 16 replacement for generic public (and eventually private) execution.
 
 Primary path: pin and build the patched wallet wrapper against PR 19 head + LEZ PR 491 head (see [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md)).
-Step 11b calls the upstream methods PR 19 adds once pinned (Step 10b); read that PR for
-the exact `Q_INVOKABLE` names and request shape when implementing.
+Step 11b submits through PR 19 `send_generic_public_transaction` in the wallet; the Universal
+module uses a repo-specific `send_generic_public_transaction_json` IPC helper (N10). Read PR 19
+for the underlying QList request shape.
 
 Our wallet work (Steps 10b and 11c, reduced scope):
 
 - Step 10b: packaging — `lez_wallet_module` metadata rename, CMake `wallet_ffi.h` include,
   codegen headers for dependents — keep the local wrapper flake; pin PR 491 + PR 19; do not
-  reimplement generic public send if PR 19 already does.
+  reimplement generic public send if PR 19 already does. Step 11b adds guest-ELF-from-env and
+  JSON submit patches on the same wrapper (see N10).
 - Step 11c: `sign_public_payload` per [N1](#n1-off-chain-canonical-payload-signing) — not in
   491 or 19; add on our patched wrapper (LEZ FFI + Qt) until upstream ships it.
 
@@ -710,6 +712,47 @@ pin if needed, `make build`, full 10a chain reset, and
 The guest deposit `authenticated_transfer` enum encoding is implemented in tree; SPEL-on-LEE may
 allow removing that shim later — verify deposit on 491 before deleting it.
 
+### N10, Step 11b module writes (decisions)
+
+Wallet submit and module shape
+
+- Submit via PR 19 `send_generic_public_transaction` inside the wallet. The Universal module
+  calls `send_generic_public_transaction_json` (one JSON string) over LogosAPI because
+  QList-shaped cross-module IPC to the Legacy wallet is unreliable.
+- Instruction bytes passed to the wallet are Borsh-serialized guest instruction bytes as
+  `QList<uint8_t>`; the wallet runs `wallet_ffi_serialization_helper` to LE u32 words (not
+  caller-supplied decimal string lists).
+- Guest ELF: Step 10a `lez_payment_streams.bin` with `PAYMENT_STREAMS_GUEST_BIN` on the daemon;
+  the PS module omits the ELF blob from IPC when that env var is set. Deposit uses wallet
+  `authenticated_transfer_elf()` as a dependency when deps are empty. Bundling guest ELF inside
+  the PS `.lgx` remains a follow-on.
+- Nine write operations plus two status queries are implemented on the impl class; a single
+  public `chainAction(operation, paramsJson)` router exposes them (Universal codegen limit: eight
+  public methods — five Step 11a reads plus `chainAction`). `signing_requirements` are derived
+  from the signer vs the FFI-planned account list.
+- Submit-level JSON only (`success`, `tx_hash`, `error`) from writes. Callers and
+  `./scripts/verify-step11b-dod.sh` use wallet `sync_to_block` when sequencer height is
+  available, retries on status `chainAction`, and may SKIP status when derived PDAs are not yet
+  readable after successful submits.
+
+E2E signer and wallet (G)
+
+- Writes take signer/provider base58 in `chainAction` JSON. DoD uses manifest
+  `owner_account_id` and `provider_account_id` with wallet storage copied from
+  `.scaffold/wallet/storage.json` into the e2e dir (seeded owner keys).
+- Module-driven lifecycle uses `vault_id` 1 by default or a reset chain (`reserved_for_step_11b`
+  in the manifest). Demo vault `0` stays for Step 11a decode only.
+
+Fixture and config (H)
+
+- Chain fixture: gitignored `fixtures/localnet.json` (template `fixtures/localnet.json.example`).
+  Override with env `FIXTURE_MANIFEST`.
+- The module loads `program_id_hex` and related manifest fields once (init or first chain use).
+  Write and status helpers do not take `program_id` on every call. Default clock account is
+  `CLOCK_10` from the manifest when needed.
+- Wallet sequencer RPC comes from `wallet_config.json` (`sequencer_addr`). Manifest
+  `sequencer_url` documents the expected endpoint for operators and verify scripts.
+
 ## Integration Steps
 
 Each step is independently testable.
@@ -729,7 +772,7 @@ Doc index: [`docs/README.md`](docs/README.md).
 | 8 | Universal → Legacy wallet probe | Done; [`docs/step8-universal-legacy-probe-results.md`](docs/step8-universal-legacy-probe-results.md) |
 | 9 | Universal module bootstrap | Done; [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 2 |
 | 10 | LEZ fixture + wallet runtime | 10a chain fixture ([N9](#n9-step-10a-local-chain-fixture-decisions)); 10b wallet (491 + 19) |
-| 11 | Module chain access | 11a reads; 11b writes + status; 11c `sign_public_payload` |
+| 11 | Module chain access | 11a reads; 11b writes + status ([N10](#n10-step-11b-module-writes-decisions)); 11c `sign_public_payload` |
 | 12–13 | Eligibility (user + provider) | [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 3 |
 | 14–15 | Store wire + `liblogosdelivery` hooks | Nim/C repos; no logoscore loop |
 | 16–18 | Routing, E2E demo, Basecamp UI | Blocked on upstream Store query (Step 6) |
@@ -1278,6 +1321,8 @@ Work:
 - `nix bundle` wallet `.lgx`; `lgpm install` into shared `MODULES`.
 - Document `open` (config + storage + sequencer RPC) so `logoscore call lez_wallet_module …`
   reaches the same localnet as Step 10a (`get_account_public`, `list_accounts`).
+- Step 11b wallet extras (same flake / manual Qt build): `PAYMENT_STREAMS_GUEST_BIN`,
+  `send_generic_public_transaction_json` — see [`docs/step11b-chain-writes.md`](docs/step11b-chain-writes.md).
 - Verify: `lm methods` lists PR 19 generic public transaction entry point(s).
 
 `sign_public_payload` is Step 11c, not 10b.
@@ -1303,7 +1348,13 @@ Step 11 wires `payment_streams_module` to `lez_wallet_module` for reads, writes,
 (off-chain) digest signing support. Requires 10a → 10b complete.
 Sub-step order: 11a → 11b → 11c (11c must complete before Step 12 eligibility).
 
+Universal modules: at most eight public methods from codegen. Step 11a/11b share
+`PaymentStreamsModuleImpl` — five read helpers plus one `chainAction` router for all writes
+and status (see N10 and [`docs/step11b-chain-writes.md`](docs/step11b-chain-writes.md)).
+
 #### Step 11a, Wire chain reads from the module
+
+Runbook: [`docs/step11a-chain-reads.md`](docs/step11a-chain-reads.md).
 
 This step adds stable read helpers and exercises wallet-backed chain reads end-to-end
 for the first time in `payment_streams_module`.
@@ -1338,30 +1389,28 @@ full four-account decode requires initialized vault/stream bytes on chain.
 
 #### Step 11b, Chain writes and status helpers
 
-Add a private helper inside `payment_streams_module`
-that takes an instruction kind, typed arguments, and a signer account ID,
-builds Borsh instruction bytes and the ordered account list through the payment-streams FFI,
-assembles the program-with-dependencies bundle for the guest program,
-and submits via `lez_wallet_module` using PR 19’s API (match upstream request shape).
+See [N10](#n10-step-11b-module-writes-decisions) for wallet submit shape, E2E signer,
+fixture config, and tx completion boundaries. Operator runbook:
+[`docs/step11b-chain-writes.md`](docs/step11b-chain-writes.md).
 
-Expose user-facing write methods for the nine payment-stream operations:
-initialize vault, deposit, withdraw, create stream, top up,
-pause, resume, close, claim.
+Add a private submit helper inside `payment_streams_module` that builds Borsh instruction
+bytes and ordered accounts via the payment-streams FFI, assembles program-with-dependencies
+(guest ELF from env when set), and submits through the patched wallet (JSON IPC wrapper).
 
-Expose status helpers (compose Step 11a reads with Step 2 decoders and Step 3a/3b fold):
+Expose chain I/O through public `chainAction(operation, paramsJson)` covering initialize
+vault, deposit, withdraw, create stream, top up, pause, resume, close, claim, plus
+`getVaultStatus` and `getStreamStatus` operations in JSON (implementation derives PDAs from
+owner base58 + vault/stream ids and fixture `program_id_hex`).
 
-- `getVaultStatus(vaultConfigAccountId) -> QString` — vault config + holding, unallocated balance.
-- `getStreamStatus(streamConfigAccountId) -> QString` — stream config + clock, folded at `at_time`.
-
-Used by Step 17 demo and optional Step 18 UI.
+Status helpers compose wallet reads with Step 2 decoders and Step 3a/3b fold where applicable.
 
 Components required to run:
-same stack as 11a; PR 19 send surface from Step 10b.
+same stack as 11a; PR 19 send surface and Step 11b wallet patches from Step 10b.
 
 Definition of done:
-through `logoscore` on the Step 10a fixture,
-the module drives a complete vault and stream lifecycle from initialization through claim,
-with state observable via `getVaultStatus` and `getStreamStatus`.
+`./scripts/verify-step11b-dod.sh` exits 0: full submit lifecycle via `chainAction` on the
+Step 10a fixture with seeded wallet storage; status checks pass or SKIP with documented
+account-read gap for fresh vault PDAs.
 
 #### Step 11c, `sign_public_payload` on the patched wallet
 
@@ -1392,7 +1441,7 @@ once registered as the outbound eligibility provider in Step 16.
 It does not, by itself, initiate any Store traffic;
 it just produces opaque bytes when asked.
 Requires Step 11c (`sign_public_payload`) and the Step 11a read path;
-user flows that open streams on-chain use Step 11b (`create_stream`).
+user flows that open streams on-chain use Step 11b (`chainAction` / `createStream`).
 
 #### Quick reference
 
@@ -1416,8 +1465,8 @@ The intended sequence for a new provider relationship is:
    so it generates a session keypair, persists it,
    and returns a `StreamProposal`.
 3. Provider accepts the proposal and serves the first request.
-4. User explicitly calls `create_stream`
-   (the Step 11b write method) to open the stream on-chain.
+4. User explicitly calls `chainAction` with operation `createStream`
+   (Step 11b) to open the stream on-chain.
    This is a manual action by the host application or demo script,
    never triggered automatically by any hook.
 5. User issues the next Store query.
