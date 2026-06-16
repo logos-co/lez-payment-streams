@@ -3,7 +3,6 @@ members = [
     "lez-payment-streams-core",
     "lez-payment-streams-ffi",
     "methods",
-    "examples",
 ]
 exclude = [
     "methods/guest",

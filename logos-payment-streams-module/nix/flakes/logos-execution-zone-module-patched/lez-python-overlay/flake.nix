@@ -1,7 +1,7 @@
 {
   description = "logos-execution-zone: python3 for pyo3 + correct wallet_ffi.h install path";
 
-  inputs.lez.url = "github:logos-blockchain/lssa?rev=c37a3c30a96515cba756174da1da4137ff025d7f";
+  inputs.lez.url = "github:logos-blockchain/logos-execution-zone?rev=a8c81f5445166b22672a614b159a1c38a5907a65";
   inputs.nixpkgs.follows = "lez/nixpkgs";
 
   outputs =

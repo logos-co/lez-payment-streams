@@ -1,5 +1,5 @@
 {
-  description = "logos-execution-zone-module PR 19 + lez_wallet_module packaging (LEZ rev aligned with PR 19)";
+  description = "logos-execution-zone-module PR 19 + lez_wallet_module packaging (LEZ main / 491 merged)";
 
   inputs = {
     # pyo3-build-config in wallet-ffi-deps needs a Python interpreter in nativeBuildInputs.

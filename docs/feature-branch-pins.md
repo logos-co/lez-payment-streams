@@ -8,13 +8,13 @@ that are not yet on upstream default branches.
 
 Store querying through `delivery_module`: integration plan N6 and Step 6 (not pinned here).
 
-## Wallet — primary path (491 + 19)
+## Wallet — primary path (491 on main + PR 19)
 
 Chain writes use generic public transactions:
 
-| Layer | Upstream PR | Role |
+| Layer | Upstream | Role |
 | --- | --- | --- |
-| LEZ `wallet_ffi` | [`logos-execution-zone` PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491) | Resolve accounts, serialize instruction words, send with program ELF bundle |
+| LEZ `wallet_ffi` | [`logos-execution-zone` `main`](https://github.com/logos-blockchain/logos-execution-zone) (491 merged) | Resolve accounts, serialize instruction words, send with program ELF bundle |
 | Wallet Qt module | [`logos-execution-zone-module` PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19) | Expose 491 to Logos modules (`Q_INVOKABLE` / LogosAPI) |
 
 PR 491 supersedes [PR 429](https://github.com/logos-blockchain/logos-execution-zone/pull/429).
@@ -22,16 +22,15 @@ PR 19 supersedes [PR 16](https://github.com/logos-blockchain/logos-execution-zon
 
 Do not pin 429 or 16 in this integration.
 
-### Flake refs (until merge)
+### Flake refs
 
-- `logos-execution-zone.url` =
-  `github:logos-blockchain/lssa?ref=refs/pull/491/head`
-  (flake input name may be `logos-execution-zone` or `lssa` depending on flake).
+- LEZ: pin `logos-execution-zone` to `main` at merge rev `a8c81f5445166b22672a614b159a1c38a5907a65`
+  (`scaffold.toml`, `nix/payment-streams-ffi.nix`, wallet `lez-python-overlay`).
 - Patched wallet wrapper `upstream` =
   `github:logos-blockchain/logos-execution-zone-module?ref=refs/pull/19/head`
   with `upstream.inputs.logos-execution-zone.follows` the same LEZ input as payment streams.
 
-After both PRs merge, pin `main` on both repos and drop pull-request refs.
+After PR 19 merges, pin `main` on the wallet module repo and drop pull-request refs.
 
 ### Our patch (wrapper flake)
 
@@ -59,17 +58,17 @@ Refresh `rev` / `sha256` in `nix/payment-streams-ffi.nix` when the LEZ pin moves
 ### Rust FFI (`nix/payment-streams-ffi.nix`)
 
 `lez-payment-streams-ffi` symlinks LEZ `artifacts/` from the same `logos-execution-zone` revision
-as the wallet stack (491 head until merge).
+as the wallet stack (LEZ `main` / 491 merge).
 
 ### Scaffold localnet (`scaffold.toml`)
 
 `[repos.lez].pin` must match the LEZ `rev` in `nix/payment-streams-ffi.nix` (Step 10a).
-After bumping either pin, re-run `lgs setup` from this repo so `wallet` and localnet match 491.
+After bumping either pin, re-run `lgs setup` from this repo so `wallet` and localnet match LEZ `main`.
 
 ### Payment-streams Logos module (`logos-payment-streams-module/flake.nix`)
 
 - `lez_wallet_module` flake input → patched wrapper (PR 19 upstream inside).
-- `logos-execution-zone` follows PR 491 for LEZ + `wallet_ffi`.
+- `logos-execution-zone` follows LEZ `main` (491) for `wallet_ffi`.
 
 ## Verification commands
 

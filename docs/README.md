@@ -9,8 +9,9 @@
 | [`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md) | Step 10a seed script, manifest, reset, wallet re-init |
 | [`step10a-handoff-and-follow-up.md`](step10a-handoff-and-follow-up.md) | Step 10a verify failures, sequencer log triage |
 | [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md) | Step 10b wallet `.lgx`, install, `open`, verify script |
+| [`step11a-chain-reads.md`](step11a-chain-reads.md) | Step 11a wallet-backed reads + verify script |
 | [`step3-policy-and-implementor-notes.md`](step3-policy-and-implementor-notes.md) | Step 3a policy and implementor detail |
 | [`step8-universal-legacy-probe-results.md`](step8-universal-legacy-probe-results.md) | Step 8 probe results (+ historical dilemma appendix) |
-| [`feature-branch-pins.md`](feature-branch-pins.md) | Wallet flake pins (491 + 19) |
+| [`feature-branch-pins.md`](feature-branch-pins.md) | Wallet flake pins (LEZ main + PR 19) |
 | [`archive/legacy-module-bootstrap.md`](archive/legacy-module-bootstrap.md) | Superseded Legacy plugin bootstrap |
 | [`archive/engineering-notes.md`](archive/engineering-notes.md) | Misc engineering notes (FFI, SPEL PDA) |

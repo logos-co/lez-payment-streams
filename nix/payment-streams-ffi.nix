@@ -9,12 +9,12 @@
 }:
 
 let
-  # LEZ PR 491 head — https://github.com/logos-blockchain/logos-execution-zone/pull/491
+  # LEZ main (491 merged) — https://github.com/logos-blockchain/logos-execution-zone/pull/491
   logosExecutionZoneSrc = fetchFromGitHub {
     owner = "logos-blockchain";
     repo = "logos-execution-zone";
-    rev = "a999563a2d27325ecada318746f1a0dc083d187f";
-    sha256 = "sha256-OCGxIR0yq07OcTCxLSEb8WR/5Hrtv51L0g1Utdjp4fw=";
+    rev = "a8c81f5445166b22672a614b159a1c38a5907a65";
+    sha256 = "sha256-xBrIY3W9P8wxAxJZKxcTkM+C2oktpaX+z5EY1VEMgUg=";
   };
 in
 

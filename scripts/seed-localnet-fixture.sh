@@ -40,8 +40,8 @@ if ! lgs wallet -- check-health 2>/dev/null; then
   echo "WARN: wallet check-health failed (foreign localnet or program-id drift is common); continuing seed…" >&2
 fi
 
-echo "Building guest + IDL…"
-make build idl
+echo "Building guest (IDL not required for on-chain seed)…"
+make build
 
 if [[ ! -f "$PROGRAM_BIN" ]]; then
   echo "ERROR: missing $PROGRAM_BIN after make build" >&2
@@ -81,7 +81,7 @@ if [[ "$FORCE" == "1" ]]; then
 fi
 
 echo "Seeding on-chain demo vault (vault_id=0, stream_id=0)…"
-cargo run --quiet --bin seed_localnet_fixture -- seed-onchain \
+cargo run --quiet --manifest-path examples/Cargo.toml --bin seed_localnet_fixture -- seed-onchain \
   --program-bin "$PROGRAM_BIN" \
   --owner "$OWNER" \
   --provider "$PROVIDER" \

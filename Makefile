@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b
+.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -36,6 +36,7 @@ help: ## Show this help
 	@echo "  make wallet-lgx    Build Step 10b patched lez_wallet_module .lgx"
 	@echo "  make verify-step10a Run Step 10a DoD script"
 	@echo "  make verify-step10b Run Step 10b DoD script"
+	@echo "  make verify-step11a Run Step 11a DoD script"
 	@echo "  make clean       Remove saved state"
 	@echo ""
 	@echo "Example:"
@@ -50,11 +51,11 @@ build: ## Build the guest binary
 	@ls -la $(PROGRAM_BIN) 2>/dev/null || true
 
 idl: ## Generate IDL JSON from program source
-	cargo run --bin generate_idl > $(IDL_FILE)
+	cargo run --manifest-path examples/Cargo.toml --bin generate_idl > $(IDL_FILE)
 	@echo "✅ IDL written to $(IDL_FILE)"
 
 cli: ## Run the IDL-driven CLI (ARGS="...")
-	cargo run --bin lez_payment_streams_cli -- -i $(IDL_FILE) $(ARGS)
+	cargo run --manifest-path examples/Cargo.toml --bin lez_payment_streams_cli -- -i $(IDL_FILE) $(ARGS)
 
 deploy: ## Deploy program to sequencer (491 wallet; set LEE_WALLET_HOME_DIR)
 	@test -n "$$LEE_WALLET_HOME_DIR" || (echo "ERROR: set LEE_WALLET_HOME_DIR (see docs/step10a-local-chain-fixture.md)"; exit 1)
@@ -63,7 +64,7 @@ deploy: ## Deploy program to sequencer (491 wallet; set LEE_WALLET_HOME_DIR)
 	@echo "✅ Program deployed"
 
 program-id: ## Show ProgramId for built binary
-	cargo run --bin lez_payment_streams_cli -- -i $(IDL_FILE) program-id $(PROGRAM_BIN)
+	cargo run --manifest-path examples/Cargo.toml --bin lez_payment_streams_cli -- -i $(IDL_FILE) program-id $(PROGRAM_BIN)
 
 setup: ## Create accounts needed for the program
 	@echo "Creating signer account..."
@@ -99,3 +100,7 @@ verify-step10a: ## Step 10a definition of done (scripts/verify-step10a-dod.sh)
 
 verify-step10b: ## Step 10b definition of done (scripts/verify-step10b-dod.sh)
 	./scripts/verify-step10b-dod.sh
+
+verify-step11a: ## Step 11a definition of done (scripts/verify-step11a-dod.sh)
+	chmod +x scripts/verify-step11a-dod.sh
+	./scripts/verify-step11a-dod.sh

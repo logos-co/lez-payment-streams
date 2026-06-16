@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(LogosPaymentStreamsModule LANGUAGES CXX)
+project(LogosPaymentStreamsModule LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,6 +15,9 @@ logos_module(
   SOURCES
     src/payment_streams_module_impl.h
     src/payment_streams_module_impl.cpp
+    src/payment_streams_ffi_bridge.c
   EXTERNAL_LIBS
     lez_payment_streams_ffi
 )
+
+set_source_files_properties(src/payment_streams_ffi_bridge.c PROPERTIES LANGUAGE C)

@@ -553,6 +553,14 @@ Steps 16–17 assume an upstream module method with the same call shape planned
 for the demo (`queryStore(jsonQuery, peerAddr, timeoutMs)` or whatever name
 ships on `master`). Until then, all other integration steps proceed in parallel.
 
+`logos-chat` is not a reusable Store path.
+We checked it at `origin/main` (`3a5f508`) and at the `logos-chat-module`
+flake pin (`53302e4`): the embedded delivery node mounts only metadata,
+filter, and relay (`src/chat/delivery/waku_client.nim`), issues no Store query,
+and exposes no Store method.
+Chat fetches messages live over relay/filter, so it neither uses nor
+re-exports the Store protocol and does not shortcut the upstream dependency above.
+
 ### N7, Session key concurrency
 
 Session key signing is synchronous.

@@ -279,7 +279,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "authenticated_transfer_core"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=a999563a2d27325ecada318746f1a0dc083d187f#a999563a2d27325ecada318746f1a0dc083d187f"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=a8c81f5445166b22672a614b159a1c38a5907a65#a8c81f5445166b22672a614b159a1c38a5907a65"
 dependencies = [
  "serde",
 ]
@@ -1640,22 +1640,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
-name = "lee_core"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=a999563a2d27325ecada318746f1a0dc083d187f#a999563a2d27325ecada318746f1a0dc083d187f"
-dependencies = [
- "base58",
- "borsh",
- "bytemuck",
- "bytesize",
- "chacha20",
- "risc0-zkvm",
- "serde",
- "serde_with",
- "thiserror 2.0.18",
-]
-
-[[package]]
 name = "lez-payment-streams-core"
 version = "0.1.0"
 dependencies = [
@@ -2930,9 +2914,10 @@ version = "0.5.0"
 dependencies = [
  "base58",
  "borsh",
- "lee_core",
+ "bytemuck",
  "nssa_core",
  "proc-macro2",
+ "risc0-zkvm",
  "serde",
  "serde_json",
  "sha2",
