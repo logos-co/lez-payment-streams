@@ -1,6 +1,9 @@
-# Payment Streams on LEZ - Implementation Plan
+# On-chain program implementation plan (archived)
 
-This plan covers the SPEL-based LEZ implementation for payment streams.
+Historical checklist for the LEZ SPEL guest program and `lez-payment-streams-core`.
+Store / Logos integration is separate: [integration-index.md](../../integration-index.md).
+
+This work is largely complete; use [architecture.md](../../architecture.md) and [README.md](../../README.md) for current review order.
 
 ## Steps
 
@@ -100,7 +103,7 @@ claim semantics (reduces allocation and total_allocated).
 
 ## References
 
-- `https://lip.logos.co/ift-ts/raw/payment-streams.html` — protocol semantics.
-- `https://github.com/logos-blockchain/logos-execution-zone/pull/403` — system clock accounts.
-- `https://github.com/logos-co/spel` — SPEL framework.
-- `https://kindainsecurebot.github.io/lez-book/` — LEZ Development Guide.
+- [LIP-155 payment-streams spec](https://lip.logos.co/ift-ts/raw/payment-streams.html) — protocol semantics
+- [LEZ PR 403](https://github.com/logos-blockchain/logos-execution-zone/pull/403) — system clock accounts
+- [SPEL framework](https://github.com/logos-co/spel)
+- [LEZ Development Guide](https://kindainsecurebot.github.io/lez-book/)

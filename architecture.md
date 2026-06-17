@@ -70,6 +70,9 @@ such a transfer creates a public link.
 Handling that privacy consequence is a wallet concern,
 not guest logic.
 
+Archived on-chain implementation milestone list:
+[docs/archive/implementation-plan-on-chain.md](docs/archive/implementation-plan-on-chain.md).
+
 ## Core semantics
 
 The semantic center of the program is `StreamConfig::at_time`.

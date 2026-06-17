@@ -14,8 +14,8 @@ against LEZ on-chain state before serving. Crypto and policy live in Rust (`lez-
 `liblogosdelivery` hooks in the delivery repos (Steps 14–16).
 
 MVP scope: LIP-155 transparent vaults, single user and single provider on one local sequencer,
-paid Store mode on the provider. Out of scope: private vaults, production key custody, unrelated
-wire formats.
+paid Store mode on the provider. The on-chain SPEL program and core crate are a separate concern;
+see [architecture.md](architecture.md).
 
 ### Store query dependency
 
