@@ -1,0 +1,71 @@
+--- a/src/i_logos_execution_zone_wallet_module.h
++++ b/src/i_logos_execution_zone_wallet_module.h
+@@ -24,6 +24,7 @@
+     virtual QString get_account_private(const QString& account_id_hex) = 0;
+     virtual QString get_public_account_key(const QString& account_id_hex) = 0;
+     virtual QString get_private_account_keys(const QString& account_id_hex) = 0;
++    virtual QString sign_public_payload(const QString& account_id_hex, const QString& digest_hex) = 0;
+ 
+     // Account Encoding
+     virtual QString account_id_to_base58(const QString& account_id_hex) = 0;
+--- a/src/logos_execution_zone_wallet_module.h
++++ b/src/logos_execution_zone_wallet_module.h
+@@ -71,6 +71,7 @@
+     Q_INVOKABLE QString get_account_private(const QString& account_id_hex) override;
+     Q_INVOKABLE QString get_public_account_key(const QString& account_id_hex) override;
+     Q_INVOKABLE QString get_private_account_keys(const QString& account_id_hex) override;
++    Q_INVOKABLE QString sign_public_payload(const QString& account_id_hex, const QString& digest_hex) override;
+ 
+     // Account Encoding
+     Q_INVOKABLE QString account_id_to_base58(const QString& account_id_hex) override;
+--- a/src/logos_execution_zone_wallet_module.cpp
++++ b/src/logos_execution_zone_wallet_module.cpp
+@@ -49,6 +49,8 @@
+ static constexpr auto AccountId = "account_id";
+ static constexpr auto IsPublic = "is_public";
+ static constexpr auto Secrets = "secrets";
++static constexpr auto Status = "status";
++static constexpr auto Result = "result";
+ } // namespace JsonKeys
+ 
+ static bool hexToBytes(const QString& hex, QByteArray& output_bytes, int expectedLength = -1) {
+@@ -356,6 +358,39 @@
+ 
+ // === Account Encoding ===
+ 
++QString LogosExecutionZoneWalletModule::sign_public_payload(
++    const QString& account_id_hex, const QString& digest_hex)
++{
++    auto errorJson = [](const QString& msg) {
++        QVariantMap m;
++        m[JsonKeys::Status] = QStringLiteral("error");
++        m[JsonKeys::Error] = msg;
++        return QJsonDocument(QJsonObject::fromVariantMap(m)).toJson(QJsonDocument::Compact);
++    };
++
++    FfiBytes32 id{};
++    if (!hexToBytes32(account_id_hex, &id)) {
++        qWarning() << "sign_public_payload: invalid account_id_hex";
++        return errorJson(QStringLiteral("invalid account_id_hex"));
++    }
++    FfiBytes32 digest{};
++    if (!hexToBytes32(digest_hex, &digest)) {
++        qWarning() << "sign_public_payload: invalid digest_hex";
++        return errorJson(QStringLiteral("invalid digest_hex"));
++    }
++    FfiSignature64 sig{};
++    const WalletFfiError error = wallet_ffi_sign_public_payload(walletHandle, &id, &digest, &sig);
++    if (error != SUCCESS) {
++        qWarning() << "sign_public_payload: wallet FFI error" << error;
++        return errorJson(
++            QStringLiteral("wallet FFI error ") + QString::number(static_cast<int>(error)));
++    }
++    QVariantMap map;
++    map[JsonKeys::Status] = QStringLiteral("ok");
++    map[JsonKeys::Result] = bytesToHex(sig.data, 64);
++    return QJsonDocument(QJsonObject::fromVariantMap(map)).toJson(QJsonDocument::Compact);
++}
++
+ QString LogosExecutionZoneWalletModule::account_id_to_base58(const QString& account_id_hex) {
+     FfiBytes32 id{};
+     if (!hexToBytes32(account_id_hex, &id)) {

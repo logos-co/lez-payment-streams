@@ -1,0 +1,103 @@
+--- a/lez/wallet-ffi/src/types.rs
++++ b/lez/wallet-ffi/src/types.rs
+@@ -100,6 +100,13 @@
+     pub public_key: FfiBytes32,
+ }
+ 
++/// 64-byte Schnorr signature output from `wallet_ffi_sign_public_payload`.
++#[repr(C)]
++#[derive(Clone, Copy)]
++pub struct FfiSignature64 {
++    pub data: [u8; 64],
++}
++
+ /// Single entry in the account list.
+ #[repr(C)]
+ #[derive(Clone, Copy)]
+--- a/lez/wallet-ffi/src/keys.rs
++++ b/lez/wallet-ffi/src/keys.rs
+@@ -2,12 +2,12 @@
+ 
+ use std::{ffi::CString, ptr};
+ 
+-use lee::{AccountId, PublicKey};
++use lee::{AccountId, PublicKey, Signature};
+ use wallet::AccountIdentity;
+ 
+ use crate::{
+     error::{print_error, WalletFfiError},
+-    types::{FfiBytes32, FfiPrivateAccountKeys, FfiPublicAccountKey, WalletHandle},
++    types::{FfiBytes32, FfiPrivateAccountKeys, FfiPublicAccountKey, FfiSignature64, WalletHandle},
+     wallet::get_wallet,
+     FfiAccountIdentity,
+ };
+@@ -68,6 +68,69 @@
+     }
+ 
+     WalletFfiError::Success
++}
++
++
++/// Sign a 32-byte canonical payload digest with the signing key of a public account.
++///
++/// Produces a 64-byte BIP-340 Schnorr signature.
++///
++/// # Parameters
++/// - `handle`: Valid wallet handle
++/// - `account_id`: The account ID (32 bytes, same format as `wallet_ffi_get_public_account_key`)
++/// - `canonical_payload_digest`: 32-byte pre-hashed digest to sign
++/// - `out_signature`: Output buffer for the 64-byte Schnorr signature
++///
++/// # Returns
++/// - `Success` on success
++/// - `KeyNotFound` if the account's signing key is not in this wallet
++/// - Error code on other failures
++///
++/// # Safety
++/// - `handle` must be a valid wallet handle from `wallet_ffi_create_new` or `wallet_ffi_open`
++/// - `account_id` must be a valid pointer to a `FfiBytes32` struct
++/// - `canonical_payload_digest` must be a valid pointer to a `FfiBytes32` struct
++/// - `out_signature` must be a valid pointer to a `FfiSignature64` struct
++#[no_mangle]
++pub unsafe extern "C" fn wallet_ffi_sign_public_payload(
++    handle: *mut WalletHandle,
++    account_id: *const FfiBytes32,
++    canonical_payload_digest: *const FfiBytes32,
++    out_signature: *mut FfiSignature64,
++) -> WalletFfiError {
++    let wrapper = match get_wallet(handle) {
++        Ok(w) => w,
++        Err(e) => return e,
++    };
++
++    if account_id.is_null() || canonical_payload_digest.is_null() || out_signature.is_null() {
++        print_error("Null pointer argument");
++        return WalletFfiError::NullPointer;
++    }
++
++    let wallet = match wrapper.core.lock() {
++        Ok(w) => w,
++        Err(e) => {
++            print_error(format!("Failed to lock wallet: {e}"));
++            return WalletFfiError::InternalError;
++        }
++    };
++
++    let account_id = AccountId::new(unsafe { (*account_id).data });
++
++    let Some(private_key) = wallet.get_account_public_signing_key(account_id) else {
++        print_error("Public account signing key not found in wallet");
++        return WalletFfiError::KeyNotFound;
++    };
++
++    let digest = unsafe { (*canonical_payload_digest).data };
++    let signature = Signature::new(private_key, &digest);
++
++    unsafe {
++        (*out_signature).data = signature.value;
++    }
++
++    WalletFfiError::Success
+ }
+ 
+ /// Get keys for a private account.

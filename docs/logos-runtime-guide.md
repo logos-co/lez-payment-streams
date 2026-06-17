@@ -110,7 +110,7 @@ ls -l ./wallet-lgx-out/*.lgx
 ```
 
 Expected: one `.lgx` under `wallet-lgx-out/` (symlink to store), e.g.
-`logos-execution-zone-module-dev-with-sdk-api-headers.lgx`.
+`logos-logos_execution_zone-module-lib-1.0.0-with-sdk-api-headers.lgx`.
 Manifest name inside the package is `logos_execution_zone`.
 
 Refresh path exports:
@@ -610,7 +610,8 @@ Step 11b — writes and status
 
 Step 11c — wallet signing
 
-- Rebuild wallet `.lgx` after `sign_public_payload`; required before Step 12
+- `sign_public_payload` is implemented; verify with `./scripts/verify-step11c-dod.sh`
+- Required before Step 12
 
 Step 12 — eligibility (user side)
 
@@ -644,7 +645,7 @@ FFI inside the installed tree.
 
 ## Repeat loop — wallet module changes (Steps 10b / 11c)
 
-When pins move (491 / 19) or `sign_public_payload` lands on the patched wrapper:
+When wallet pins move or patches change (e.g. after a LEZ rev bump):
 
 ```bash
 cd "$REPO/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched"

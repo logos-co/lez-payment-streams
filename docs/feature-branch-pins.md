@@ -21,8 +21,10 @@ Do not pin [PR 429 / PR 16](archive/superseded-wallet-pr-429-16.md) in this inte
 
 ### Flake refs
 
-- LEZ: pin `logos-execution-zone` to `main` at merge rev `a8c81f5445166b22672a614b159a1c38a5907a65`
-  (`scaffold.toml`, `nix/payment-streams-ffi.nix`, wallet `lez-wallet-ffi-patched`).
+- LEZ: pin `logos-execution-zone` to rev `76696a5d084236a234abc62c2b8c0d04acbf5e20`
+  in `lez-wallet-ffi-patched/flake.nix` (the commit the PR 19 Qt module was built against).
+  `scaffold.toml` and `nix/payment-streams-ffi.nix` pin the earlier 491 merge rev
+  `a8c81f5445166b22672a614b159a1c38a5907a65` for the payment-streams FFI and localnet.
 - Patched wallet wrapper `upstream` =
   `github:logos-blockchain/logos-execution-zone-module?ref=refs/pull/19/head`
   with `upstream.inputs.logos-execution-zone.follows` the same LEZ input as payment streams.

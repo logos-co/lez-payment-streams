@@ -33,6 +33,7 @@
           (old.postPatch or "")
           + ''
             patch -p1 --forward < ${./wallet-qt-guest-elf-from-env.patch}
+            patch -p1 --forward < ${./wallet-qt-sign-public-payload.patch}
           '';
         postInstall =
           (old.postInstall or "")
