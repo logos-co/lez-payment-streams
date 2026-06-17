@@ -26,8 +26,67 @@ constexpr uint32_t kFfiSuccess = 0u;
 constexpr uint8_t kStreamStateActive = 0u;
 constexpr uint8_t kStreamStatePaused = 1u;
 constexpr uint8_t kStreamStateClosed = 2u;
+constexpr quint64 kDemoMinRate = 1;
+constexpr quint64 kDemoMinAllocation = 1;
+constexpr quint64 kDemoMaxDeadlineDelay = 3600;
+constexpr quint64 kDemoVaultProofMaxResponseBytes = 65536;
 constexpr char kServiceId[] = "/vac/waku/store-query/3.0.0";
 constexpr quint64 kDemoRate = 10;
+constexpr uint32_t kMaxServiceIdLen = 128;
+
+QString makeVerifyOk() {
+    QJsonObject obj;
+    obj.insert(QStringLiteral("status"), QStringLiteral("ok"));
+    obj.insert(QStringLiteral("eligibility"), QStringLiteral("OK"));
+    return QJsonDocument(obj).toJson(QJsonDocument::Compact);
+}
+
+QString makeVerifyEligibilityError(const QString& eligibility, const QString& message) {
+    QJsonObject obj;
+    obj.insert(QStringLiteral("status"), QStringLiteral("error"));
+    obj.insert(QStringLiteral("eligibility"), eligibility);
+    obj.insert(QStringLiteral("message"), message);
+    return QJsonDocument(obj).toJson(QJsonDocument::Compact);
+}
+
+quint64 foldClockForPolicy(quint64 rawTs) {
+    if (rawTs > 1'000'000'000'000ULL) {
+        return rawTs / 1000;
+    }
+    return rawTs;
+}
+
+void fillDemoProviderPolicy(PsFfiStreamProviderPolicy* policy) {
+    std::memset(policy, 0, sizeof(*policy));
+    policy->min_rate = kDemoMinRate;
+    policy->min_allocation_lo = kDemoMinAllocation;
+    policy->max_create_stream_deadline_delay = kDemoMaxDeadlineDelay;
+    policy->vault_proof_max_response_bytes = kDemoVaultProofMaxResponseBytes;
+}
+
+bool serviceIdMatchesParams(const PsFfiStreamParams& params) {
+    const uint32_t len = params.service_id_len;
+    if (len == 0 || len > kMaxServiceIdLen) {
+        return false;
+    }
+    return std::memcmp(params.service_id_bytes, kServiceId, len) == 0 &&
+           std::strlen(kServiceId) == len;
+}
+
+QString verdictForPolicyReject(uint32_t reason) {
+    if (reason == 7u) {
+        return QStringLiteral("STREAM_NOT_ACTIVE");
+    }
+    return QStringLiteral("PARAMS_REJECTED");
+}
+
+QString verdictForFfiStatus(uint32_t status) {
+    if (status == 3u) {
+        return QStringLiteral("PARAMS_REJECTED");
+    }
+    return QStringLiteral("PROOF_INVALID");
+}
+
 constexpr quint64 kDemoAllocationNewStream = 15;
 constexpr quint64 kDemoAllocationFreshVault = 80;
 constexpr quint64 kDemoDeadlineOffset = 600;
@@ -88,6 +147,13 @@ void ensureStateSchema() {
     }
     if (!s.root.contains(QStringLiteral("inventory"))) {
         s.root.insert(QStringLiteral("inventory"), QJsonArray());
+    }
+    if (!s.root.contains(QStringLiteral("provider_acceptances"))) {
+        s.root.insert(QStringLiteral("provider_acceptances"), QJsonArray());
+    }
+    const int version = s.root.value(QStringLiteral("schema_version")).toInt(1);
+    if (version < 2) {
+        s.root.insert(QStringLiteral("schema_version"), 2);
     }
 }
 
@@ -822,6 +888,68 @@ quint64 u128LoFromHexBalance(const QString& balanceHex) {
     return lo;
 }
 
+QJsonArray providerAcceptancesArray() {
+    return state().root.value(QStringLiteral("provider_acceptances")).toArray();
+}
+
+void setProviderAcceptancesArray(QJsonArray arr) {
+    state().root.insert(QStringLiteral("provider_acceptances"), arr);
+    state().dirty = true;
+}
+
+int findProviderAcceptanceIndex(quint64 vaultId, const QString& providerIdHex) {
+    const QJsonArray arr = providerAcceptancesArray();
+    for (int i = 0; i < arr.size(); ++i) {
+        const QJsonObject row = arr.at(i).toObject();
+        if (static_cast<quint64>(row.value(QStringLiteral("vault_id")).toInteger()) == vaultId &&
+            row.value(QStringLiteral("provider_id_hex")).toString().toLower() == providerIdHex.toLower()) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+bool sessionPublicKeyFromNegotiations(quint64 vaultId,
+                                      const QString& providerIdHex,
+                                      uint8_t outSessionPublic[32]) {
+    const QJsonArray arr = negotiations();
+    for (const QJsonValue& v : arr) {
+        const QJsonObject row = v.toObject();
+        if (static_cast<quint64>(row.value(QStringLiteral("vault_id")).toInteger()) != vaultId) {
+            continue;
+        }
+        if (row.value(QStringLiteral("provider_id_hex")).toString().toLower() != providerIdHex.toLower()) {
+            continue;
+        }
+        const QString hex = row.value(QStringLiteral("session_public_key_hex")).toString().trimmed();
+        return hex32FromQString(hex, outSessionPublic);
+    }
+    return false;
+}
+
+bool demoProviderIdBytes(LogosAPIClient* client, const QJsonObject& manifest, uint8_t out[32], QString* errorOut) {
+    const QString base58 = manifest.value(QStringLiteral("provider_account_id")).toString().trimmed();
+    return ownerBytesFromBase58(client, base58, out, errorOut);
+}
+
+void paramsFromStreamConfig(const PsFfiDecodedStreamConfig& decoded, PsFfiStreamParams* params) {
+    std::memset(params, 0, sizeof(*params));
+    params->rate = decoded.rate_tokens_per_second;
+    params->allocation_lo = decoded.allocation_lo;
+    params->allocation_hi = decoded.allocation_hi;
+    fillServiceId(params);
+    params->create_stream_deadline = 0;
+}
+
+void fillAcceptedTermsFromParams(const PsFfiStreamParams& params,
+                                 const uint8_t providerId[32],
+                                 PsFfiAcceptedStreamTerms* terms) {
+    std::memset(terms, 0, sizeof(*terms));
+    std::memcpy(&terms->params, &params, sizeof(params));
+    std::memcpy(terms->provider_id, providerId, 32);
+    fillDemoProviderPolicy(&terms->policy_at_acceptance);
+}
+
 }  // namespace
 
 void paymentStreamsModuleOnContextReady(const char* persistenceDirUtf8) {
@@ -1237,4 +1365,267 @@ QString PaymentStreamsModuleImpl::rediscoverStreams(const QVariant& vaultId) {
     payload.insert(QStringLiteral("streams"), streams);
     payload.insert(QStringLiteral("discovered_count"), static_cast<qint64>(discovered));
     return makeOkJson(payload);
+}
+
+QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant& proofBytes,
+                                                                 const QVariant& canonicalRequestBytes,
+                                                                 const QVariant& requesterPeerId) {
+    const QString peer = requesterPeerId.toString().trimmed();
+    if (peer.isEmpty()) {
+        return makePlainError(QStringLiteral("requesterPeerId is required"));
+    }
+
+    const QByteArray proofWire = QByteArray::fromHex(proofBytes.toString().trimmed().toLatin1());
+    const QByteArray n8Wire = QByteArray::fromHex(canonicalRequestBytes.toString().trimmed().toLatin1());
+    if (proofWire.isEmpty() || n8Wire.isEmpty()) {
+        return makePlainError(QStringLiteral("proofBytes and canonicalRequestBytes must be non-empty even-length hex"));
+    }
+
+    LogosAPIClient* client = walletClientOrNull(modules().api);
+    if (client == nullptr) {
+        return makePlainError(QStringLiteral("logos_execution_zone client unavailable (open wallet first)"));
+    }
+
+    QJsonObject manifest;
+    QString fixtureErr;
+    if (!loadFixtureManifest(&manifest, &fixtureErr)) {
+        return makePlainError(fixtureErr);
+    }
+
+    uint8_t demoProvider[32]{};
+    if (!demoProviderIdBytes(client, manifest, demoProvider, &fixtureErr)) {
+        return makePlainError(fixtureErr);
+    }
+    const QString providerIdHex = bytes32ToHexLower(demoProvider);
+
+    quint64 clockRaw = 0;
+    if (!readClock10Timestamp(client, &clockRaw, &fixtureErr)) {
+        return makePlainError(fixtureErr);
+    }
+    const quint64 policyNow = foldClockForPolicy(clockRaw);
+
+    uint32_t arm = 0;
+    QByteArray inner;
+    QString encErr;
+    if (!ffiBufferTwoPhase(
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
+                return ps_ffi_parse_eligibility_proof_bytes(
+                    reinterpret_cast<const uint8_t*>(proofWire.constData()),
+                    static_cast<size_t>(proofWire.size()),
+                    &arm,
+                    ptr,
+                    cap,
+                    len);
+            },
+            &inner,
+            &encErr)) {
+        return makeVerifyEligibilityError(QStringLiteral("PROOF_INVALID"), encErr);
+    }
+
+    const quint64 vaultId = static_cast<quint64>(manifest.value(QStringLiteral("vault_id")).toInteger(0));
+    const QString ownerBase58 = manifest.value(QStringLiteral("owner_account_id")).toString().trimmed();
+    uint8_t programId[32]{};
+    uint8_t owner[32]{};
+    if (!programIdBytes(programId, &fixtureErr) || !ownerBytesFromBase58(client, ownerBase58, owner, &fixtureErr)) {
+        return makePlainError(fixtureErr);
+    }
+
+    if (arm == 0u) {
+        PsFfiDecodedStreamProposal proposal{};
+        if (ps_ffi_parse_stream_proposal_bytes(reinterpret_cast<const uint8_t*>(inner.constData()),
+                                               static_cast<size_t>(inner.size()),
+                                               &proposal) != kFfiSuccess) {
+            return makeVerifyEligibilityError(QStringLiteral("PROOF_INVALID"),
+                                              QStringLiteral("stream proposal decode failed"));
+        }
+        if (!serviceIdMatchesParams(proposal.params)) {
+            return makeVerifyEligibilityError(QStringLiteral("PARAMS_REJECTED"),
+                                              QStringLiteral("service_id mismatch"));
+        }
+        if (std::memcmp(proposal.vault_proof.provider_id, demoProvider, 32) != 0) {
+            return makeVerifyEligibilityError(QStringLiteral("PROOF_INVALID"),
+                                              QStringLiteral("provider_id mismatch"));
+        }
+        if (proposal.vault_proof.vault_id != vaultId) {
+            return makeVerifyEligibilityError(QStringLiteral("PARAMS_REJECTED"),
+                                              QStringLiteral("vault_id mismatch"));
+        }
+
+        uint8_t vaultCfgAccount[32]{};
+        uint8_t vaultHoldingAccount[32]{};
+        if (ps_ffi_derive_vault_account_ids(programId, owner, vaultId, vaultCfgAccount, vaultHoldingAccount) !=
+            kFfiSuccess) {
+            return makePlainError(QStringLiteral("derive vault accounts failed"));
+        }
+        const QByteArray vaultCfgData =
+            accountDataBytesFromHex(client, bytes32ToHexLower(vaultCfgAccount), &fixtureErr);
+        if (vaultCfgData.isEmpty()) {
+            return makePlainError(fixtureErr);
+        }
+        PsFfiDecodedVaultConfig vaultCfg{};
+        if (ps_ffi_decode_vault_config(reinterpret_cast<const uint8_t*>(vaultCfgData.constData()),
+                                       static_cast<size_t>(vaultCfgData.size()),
+                                       &vaultCfg) != 0u) {
+            return makeVerifyEligibilityError(QStringLiteral("PROOF_INVALID"),
+                                              QStringLiteral("vault config decode failed"));
+        }
+
+        if (ps_ffi_verify_stream_proposal_vault_proof_bytes(reinterpret_cast<const uint8_t*>(inner.constData()),
+                                                            static_cast<size_t>(inner.size()),
+                                                            vaultCfg.owner) != kFfiSuccess) {
+            return makeVerifyEligibilityError(QStringLiteral("PROOF_INVALID"),
+                                              QStringLiteral("vault proof verification failed"));
+        }
+
+        const QString holdingJson =
+            invokeWalletString(client, "get_account_public", bytes32ToHexLower(vaultHoldingAccount));
+        QString balanceHex;
+        if (!parseWalletAccountJson(holdingJson, nullptr, &balanceHex)) {
+            return makePlainError(QStringLiteral("vault holding read failed"));
+        }
+
+        PsFfiProposalCheckInputs checkInputs{};
+        std::memcpy(&checkInputs.params, &proposal.params, sizeof(proposal.params));
+        fillDemoProviderPolicy(&checkInputs.policy);
+        checkInputs.vault_holding_balance_lo = u128LoFromHexBalance(balanceHex);
+        checkInputs.vault_holding_balance_hi = 0;
+        checkInputs.vault_total_allocated_lo = vaultCfg.total_allocated_lo;
+        checkInputs.vault_total_allocated_hi = vaultCfg.total_allocated_hi;
+        checkInputs.now = policyNow;
+
+        uint32_t rejectReason = 9u;
+        if (ps_ffi_proposal_satisfies_policy(&checkInputs, &rejectReason) != kFfiSuccess) {
+            return makeVerifyEligibilityError(verdictForPolicyReject(rejectReason),
+                                              QStringLiteral("proposal policy check failed"));
+        }
+
+        QJsonObject row;
+        row.insert(QStringLiteral("vault_id"), static_cast<qint64>(vaultId));
+        row.insert(QStringLiteral("provider_id_hex"), providerIdHex);
+        row.insert(QStringLiteral("session_public_key_hex"),
+                   bytes32ToHexLower(proposal.session_public_key));
+        row.insert(QStringLiteral("create_stream_deadline"),
+                   static_cast<qint64>(proposal.params.create_stream_deadline));
+        row.insert(QStringLiteral("rate"), QString::number(proposal.params.rate));
+        row.insert(QStringLiteral("allocation_lo"), QString::number(proposal.params.allocation_lo));
+        QJsonObject policyObj;
+        policyObj.insert(QStringLiteral("min_rate"), QStringLiteral("1"));
+        policyObj.insert(QStringLiteral("min_allocation"), QStringLiteral("1"));
+        policyObj.insert(QStringLiteral("max_create_stream_deadline_delay"), QStringLiteral("3600"));
+        row.insert(QStringLiteral("policy_at_acceptance"), policyObj);
+
+        QJsonArray arr = providerAcceptancesArray();
+        const int idx = findProviderAcceptanceIndex(vaultId, providerIdHex);
+        const qint64 existingStream =
+            idx >= 0 ? arr.at(idx).toObject().value(QStringLiteral("stream_id")).toInteger(-1) : -1;
+        if (existingStream >= 0) {
+            row.insert(QStringLiteral("stream_id"), existingStream);
+        }
+        if (idx >= 0) {
+            arr.replace(idx, row);
+        } else {
+            arr.append(row);
+        }
+        setProviderAcceptancesArray(arr);
+        persistIfDirty();
+        return makeVerifyOk();
+    }
+
+    if (arm != 1u) {
+        return makeVerifyEligibilityError(QStringLiteral("PROOF_INVALID"), QStringLiteral("unknown eligibility arm"));
+    }
+
+    PsFfiDecodedStreamProof proof{};
+    if (ps_ffi_parse_stream_proof_bytes(reinterpret_cast<const uint8_t*>(inner.constData()),
+                                        static_cast<size_t>(inner.size()),
+                                        &proof) != kFfiSuccess) {
+        return makeVerifyEligibilityError(QStringLiteral("PROOF_INVALID"), QStringLiteral("stream proof decode failed"));
+    }
+
+    uint8_t sessionPublic[32]{};
+    if (!sessionPublicKeyFromNegotiations(vaultId, providerIdHex, sessionPublic)) {
+        const int accIdx = findProviderAcceptanceIndex(vaultId, providerIdHex);
+        if (accIdx < 0) {
+            return makeVerifyEligibilityError(QStringLiteral("PROOF_INVALID"),
+                                              QStringLiteral("session public key unknown"));
+        }
+        const QString hex =
+            providerAcceptancesArray().at(accIdx).toObject().value(QStringLiteral("session_public_key_hex")).toString();
+        if (!hex32FromQString(hex, sessionPublic)) {
+            return makeVerifyEligibilityError(QStringLiteral("PROOF_INVALID"),
+                                              QStringLiteral("session public key invalid"));
+        }
+    }
+
+    if (ps_ffi_verify_stream_proof_for_n8_wire(reinterpret_cast<const uint8_t*>(inner.constData()),
+                                             static_cast<size_t>(inner.size()),
+                                             sessionPublic,
+                                             reinterpret_cast<const uint8_t*>(n8Wire.constData()),
+                                             static_cast<size_t>(n8Wire.size())) != kFfiSuccess) {
+        return makeVerifyEligibilityError(QStringLiteral("PROOF_INVALID"),
+                                          QStringLiteral("stream proof signature failed"));
+    }
+
+    ChainStreamView view;
+    if (!readStreamAtId(client, programId, owner, vaultId, proof.stream_id, &view, &fixtureErr)) {
+        return makePlainError(fixtureErr);
+    }
+    if (!view.found || !providerMatchesStream(view.decoded, demoProvider)) {
+        return makeVerifyEligibilityError(QStringLiteral("STREAM_NOT_ACTIVE"),
+                                          QStringLiteral("stream not found or provider mismatch"));
+    }
+    if (view.decoded.stream_state != kStreamStateActive) {
+        return makeVerifyEligibilityError(QStringLiteral("STREAM_NOT_ACTIVE"),
+                                          QStringLiteral("stream not active"));
+    }
+    if (view.fold.unaccrued_lo == 0 && view.fold.unaccrued_hi == 0) {
+        return makeVerifyEligibilityError(QStringLiteral("STREAM_NOT_ACTIVE"),
+                                          QStringLiteral("stream depleted"));
+    }
+
+    PsFfiStreamParams acceptedParams{};
+    paramsFromStreamConfig(view.decoded, &acceptedParams);
+
+    PsFfiAcceptedStreamTerms terms{};
+    fillAcceptedTermsFromParams(acceptedParams, demoProvider, &terms);
+
+    const int accIdx = findProviderAcceptanceIndex(vaultId, providerIdHex);
+    const bool streamIdBound =
+        accIdx >= 0 && providerAcceptancesArray().at(accIdx).toObject().contains(QStringLiteral("stream_id"));
+
+    uint32_t rejectReason = 9u;
+
+    if (!streamIdBound) {
+        if (ps_ffi_new_stream_satisfies_proposal(&view.decoded, &acceptedParams, demoProvider, &rejectReason) !=
+            kFfiSuccess) {
+            return makeVerifyEligibilityError(verdictForPolicyReject(rejectReason),
+                                              QStringLiteral("new stream policy check failed"));
+        }
+    }
+
+    if (ps_ffi_stream_satisfies_policy(&view.fold.folded_stream, &terms, &rejectReason) != kFfiSuccess) {
+        return makeVerifyEligibilityError(verdictForPolicyReject(rejectReason),
+                                          QStringLiteral("stream policy check failed"));
+    }
+
+    QJsonObject row;
+    row.insert(QStringLiteral("vault_id"), static_cast<qint64>(vaultId));
+    row.insert(QStringLiteral("provider_id_hex"), providerIdHex);
+    row.insert(QStringLiteral("stream_id"), static_cast<qint64>(proof.stream_id));
+    row.insert(QStringLiteral("session_public_key_hex"), bytes32ToHexLower(sessionPublic));
+    QJsonObject policyObj;
+    policyObj.insert(QStringLiteral("min_rate"), QStringLiteral("1"));
+    policyObj.insert(QStringLiteral("min_allocation"), QStringLiteral("1"));
+    policyObj.insert(QStringLiteral("max_create_stream_deadline_delay"), QStringLiteral("3600"));
+    row.insert(QStringLiteral("policy_at_acceptance"), policyObj);
+    QJsonArray arr = providerAcceptancesArray();
+    const int idx = findProviderAcceptanceIndex(vaultId, providerIdHex);
+    if (idx >= 0) {
+        arr.replace(idx, row);
+    } else {
+        arr.append(row);
+    }
+    setProviderAcceptancesArray(arr);
+    persistIfDirty();
+    return makeVerifyOk();
 }

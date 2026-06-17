@@ -398,3 +398,95 @@ uint32_t ps_ffi_serialize_eligibility_proof_stream_proof(const uint8_t* inner_pt
     return map_status(payment_streams_ffi_serialize_eligibility_proof_stream_proof_bytes(
         inner_ptr, inner_len, out_ptr, out_cap, out_len));
 }
+
+uint32_t ps_ffi_parse_eligibility_proof_bytes(const uint8_t* data,
+                                              size_t data_len,
+                                              uint32_t* out_arm,
+                                              uint8_t* inner_out,
+                                              size_t inner_cap,
+                                              size_t* inner_len) {
+    if (out_arm == NULL || inner_len == NULL) {
+        return map_status(PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_NULL_POINTER);
+    }
+    return map_status(payment_streams_ffi_parse_eligibility_proof_bytes(
+        data, data_len, out_arm, inner_out, inner_cap, inner_len));
+}
+
+uint32_t ps_ffi_parse_stream_proposal_bytes(const uint8_t* data,
+                                            size_t data_len,
+                                            PsFfiDecodedStreamProposal* out_proposal) {
+    if (out_proposal == NULL) {
+        return map_status(PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_NULL_POINTER);
+    }
+    return map_status(payment_streams_ffi_parse_stream_proposal_bytes(
+        data,
+        data_len,
+        (struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamProposal*)out_proposal));
+}
+
+uint32_t ps_ffi_parse_stream_proof_bytes(const uint8_t* data,
+                                         size_t data_len,
+                                         PsFfiDecodedStreamProof* out_proof) {
+    if (out_proof == NULL) {
+        return map_status(PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_NULL_POINTER);
+    }
+    return map_status(payment_streams_ffi_parse_stream_proof_bytes(
+        data, data_len, (struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamProof*)out_proof));
+}
+
+uint32_t ps_ffi_verify_stream_proposal_vault_proof_bytes(const uint8_t* proposal_bytes,
+                                                         size_t proposal_len,
+                                                         const uint8_t vault_owner_id[32]) {
+    if (vault_owner_id == NULL) {
+        return map_status(PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_NULL_POINTER);
+    }
+    return map_status(payment_streams_ffi_verify_stream_proposal_vault_proof_bytes(
+        proposal_bytes, proposal_len, vault_owner_id));
+}
+
+uint32_t ps_ffi_verify_stream_proof_for_n8_wire(const uint8_t* proof_bytes,
+                                                size_t proof_len,
+                                                const uint8_t session_public_key[32],
+                                                const uint8_t* n8_wire,
+                                                size_t n8_wire_len) {
+    if (session_public_key == NULL) {
+        return map_status(PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_NULL_POINTER);
+    }
+    return map_status(payment_streams_ffi_verify_stream_proof_for_n8_wire_bytes(
+        proof_bytes, proof_len, session_public_key, n8_wire, n8_wire_len));
+}
+
+uint32_t ps_ffi_proposal_satisfies_policy(const PsFfiProposalCheckInputs* inputs, uint32_t* reject_reason_out) {
+    if (inputs == NULL || reject_reason_out == NULL) {
+        return map_status(PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_NULL_POINTER);
+    }
+    return map_status(payment_streams_ffi_proposal_satisfies_policy(
+        (const struct PaymentStreamsFfiPaymentStreamsFfiProposalCheckInputs*)inputs,
+        (PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason*)reject_reason_out));
+}
+
+uint32_t ps_ffi_new_stream_satisfies_proposal(const PsFfiDecodedStreamConfig* decoded_stream,
+                                              const PsFfiStreamParams* accepted_params,
+                                              const uint8_t provider_id[32],
+                                              uint32_t* reject_reason_out) {
+    if (decoded_stream == NULL || accepted_params == NULL || provider_id == NULL || reject_reason_out == NULL) {
+        return map_status(PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_NULL_POINTER);
+    }
+    return map_status(payment_streams_ffi_new_stream_satisfies_proposal(
+        (const struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamConfig*)decoded_stream,
+        (const struct PaymentStreamsFfiPaymentStreamsFfiStreamParams*)accepted_params,
+        provider_id,
+        (PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason*)reject_reason_out));
+}
+
+uint32_t ps_ffi_stream_satisfies_policy(const PsFfiDecodedStreamConfig* folded_stream,
+                                        const PsFfiAcceptedStreamTerms* accepted_terms,
+                                        uint32_t* reject_reason_out) {
+    if (folded_stream == NULL || accepted_terms == NULL || reject_reason_out == NULL) {
+        return map_status(PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_NULL_POINTER);
+    }
+    return map_status(payment_streams_ffi_stream_satisfies_policy(
+        (const struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamConfig*)folded_stream,
+        (const struct PaymentStreamsFfiPaymentStreamsFfiAcceptedStreamTerms*)accepted_terms,
+        (PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason*)reject_reason_out));
+}

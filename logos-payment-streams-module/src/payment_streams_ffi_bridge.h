@@ -227,6 +227,35 @@ typedef struct PsFfiDecodedStreamProposal {
     uint8_t session_public_key[32];
 } PsFfiDecodedStreamProposal;
 
+typedef struct PsFfiDecodedStreamProof {
+    uint64_t stream_id;
+    uint8_t signature[64];
+} PsFfiDecodedStreamProof;
+
+typedef struct PsFfiStreamProviderPolicy {
+    uint64_t min_rate;
+    uint64_t min_allocation_lo;
+    uint64_t min_allocation_hi;
+    uint64_t max_create_stream_deadline_delay;
+    uint64_t vault_proof_max_response_bytes;
+} PsFfiStreamProviderPolicy;
+
+typedef struct PsFfiProposalCheckInputs {
+    PsFfiStreamParams params;
+    PsFfiStreamProviderPolicy policy;
+    uint64_t vault_holding_balance_lo;
+    uint64_t vault_holding_balance_hi;
+    uint64_t vault_total_allocated_lo;
+    uint64_t vault_total_allocated_hi;
+    uint64_t now;
+} PsFfiProposalCheckInputs;
+
+typedef struct PsFfiAcceptedStreamTerms {
+    PsFfiStreamParams params;
+    uint8_t provider_id[32];
+    PsFfiStreamProviderPolicy policy_at_acceptance;
+} PsFfiAcceptedStreamTerms;
+
 uint32_t ps_ffi_generate_session_keypair(uint8_t out_secret_key_32[32], uint8_t out_public_key_32[32]);
 uint32_t ps_ffi_store_eligibility_digest_from_n8_wire(const uint8_t* n8_wire,
                                                       size_t n8_wire_len,
@@ -254,6 +283,42 @@ uint32_t ps_ffi_serialize_eligibility_proof_stream_proof(const uint8_t* inner_pt
                                                          uint8_t* out_ptr,
                                                          size_t out_cap,
                                                          size_t* out_len);
+
+uint32_t ps_ffi_parse_eligibility_proof_bytes(const uint8_t* data,
+                                              size_t data_len,
+                                              uint32_t* out_arm,
+                                              uint8_t* inner_out,
+                                              size_t inner_cap,
+                                              size_t* inner_len);
+
+uint32_t ps_ffi_parse_stream_proposal_bytes(const uint8_t* data,
+                                            size_t data_len,
+                                            PsFfiDecodedStreamProposal* out_proposal);
+
+uint32_t ps_ffi_parse_stream_proof_bytes(const uint8_t* data,
+                                         size_t data_len,
+                                         PsFfiDecodedStreamProof* out_proof);
+
+uint32_t ps_ffi_verify_stream_proposal_vault_proof_bytes(const uint8_t* proposal_bytes,
+                                                         size_t proposal_len,
+                                                         const uint8_t vault_owner_id[32]);
+
+uint32_t ps_ffi_verify_stream_proof_for_n8_wire(const uint8_t* proof_bytes,
+                                                  size_t proof_len,
+                                                  const uint8_t session_public_key[32],
+                                                  const uint8_t* n8_wire,
+                                                  size_t n8_wire_len);
+
+uint32_t ps_ffi_proposal_satisfies_policy(const PsFfiProposalCheckInputs* inputs, uint32_t* reject_reason_out);
+
+uint32_t ps_ffi_new_stream_satisfies_proposal(const PsFfiDecodedStreamConfig* decoded_stream,
+                                              const PsFfiStreamParams* accepted_params,
+                                              const uint8_t provider_id[32],
+                                              uint32_t* reject_reason_out);
+
+uint32_t ps_ffi_stream_satisfies_policy(const PsFfiDecodedStreamConfig* folded_stream,
+                                        const PsFfiAcceptedStreamTerms* accepted_terms,
+                                        uint32_t* reject_reason_out);
 
 #ifdef __cplusplus
 }

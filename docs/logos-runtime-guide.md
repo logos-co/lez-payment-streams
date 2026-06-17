@@ -625,8 +625,11 @@ Step 12 — eligibility (user side)
 Step 13 — provider verify
 
 - `verifyEligibilityForStoreQuery` via `logoscore call`
-- Structural failure cases should not require chain; happy path needs seeded
-  vault/stream state on localnet
+- Runbook [`step13-provider-eligibility.md`](step13-provider-eligibility.md);
+  DoD: `./scripts/verify-step13-dod.sh` or `make verify-step13`
+- Structural failure cases should not require chain; happy path needs seeded vault/stream with
+  unaccrued balance on stream `0` (fresh fixture — see recovery doc)
+- Cross-test chains Step 12 `prepareEligibilityForStoreQuery` → Step 13 verify on the same hex
 
 Check after each call:
 

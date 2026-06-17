@@ -22,6 +22,7 @@ public:
 
     QString registerProviderMapping(const QVariant& providerPeerId, const QVariant& providerAccountIdBase58);
     QString prepareEligibilityForStoreQuery(const QVariant& canonicalRequestHex, const QVariant& providerPeerId);
+    QString verifyEligibilityForStoreQuery(const QVariant& proofBytes, const QVariant& canonicalRequestBytes, const QVariant& requesterPeerId);
     QString listMyStreams(const QVariant& vaultId);
     QString rediscoverStreams(const QVariant& vaultId);
 

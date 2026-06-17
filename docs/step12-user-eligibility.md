@@ -1,8 +1,9 @@
 # Step 12 — user-side eligibility
 
 Status: complete for integration DoD (feature in tree, `./scripts/verify-step12-dod.sh`,
-strict localnet path with `REQUIRE_STREAM_PROOF=1`). Step 16 delivery hook and Step 13
-provider cross-test are follow-ons, not blockers for this step.
+strict localnet path with `REQUIRE_STREAM_PROOF=1`). Step 13 provider verify is complete
+separately ([`step13-provider-eligibility.md`](step13-provider-eligibility.md)). Step 16 delivery
+hook is a follow-on, not a blocker for this step.
 
 Session keys, persisted negotiation state, and Store `EligibilityProof` bytes (LIP-155
 `stream_proposal` / `stream_proof` arms) for the paid Store demo. Step 12 in
@@ -260,6 +261,7 @@ Demo policy ([N4](../integration-plan-v2.md#n4-persistence-policy)):
 | Format | Single JSON object, `schema_version`: `1`, atomic write (temp + rename) |
 | Failure | Log error; continue in-memory only |
 | Eviction | No background timer. On load and on each `prepareEligibilityForStoreQuery` / `listMyStreams`, drop pending rows when clock-10 ≥ stored `create_stream_deadline` |
+| Clock-10 fold | LEZ clock account timestamp is milliseconds; fold and deadline checks use `ms / 1000` (truncate). See Step 13 implementor notes in [`integration-plan-v2.md`](../integration-plan-v2.md) |
 | Session keys | Plaintext `session_private_key_hex` / `session_public_key_hex` (lowercase hex) in JSON; treat instance dir as sensitive |
 
 `provider_id_hex` in negotiations is lowercase hex of the 32-byte LEZ account id (same bytes as
@@ -384,8 +386,8 @@ Checks (from plan Step 12):
 - Persistence survives module reload (same `instancePersistencePath`).
 - `listMyStreams` matches folded status when chain state exists.
 - Documented error codes for negative cases.
-- Recommended when Step 13 is available: provider `verifyEligibilityForStoreQuery` accepts proof
-  for fixture stream `0` (not a hard gate for Step 12-only CI).
+- Provider cross-test for the same bytes: [`step13-provider-eligibility.md`](step13-provider-eligibility.md)
+  and `./scripts/verify-step13-dod.sh` (not a hard gate for Step 12-only CI).
 
 Skip live chain:
 
@@ -420,4 +422,5 @@ Left as-is (simplicity / elsewhere):
 - LogosAPI hex for `canonical_request_hex` is in [LogosAPI encoding](#logosapi-encoding).
 - `registerProviderMapping` argument naming (routing vs LIP-155 bytes) is intentional.
 - No `STREAM_ALREADY_EXISTS` code: active stream → proof path; pending → `PROPOSAL_PENDING`.
-- Step 13 provider cross-test is recommended, not required for Step 12 DoD.
+- Step 13 provider cross-test: [`step13-provider-eligibility.md`](step13-provider-eligibility.md)
+  (`VERIFY_LOGOSCORE=1 ./scripts/verify-step13-dod.sh`); not required for Step 12 DoD.

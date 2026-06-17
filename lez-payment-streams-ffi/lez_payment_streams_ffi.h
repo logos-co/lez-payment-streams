@@ -891,6 +891,35 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_stream_pr
                                                                                                 uintptr_t *out_len);
 
 /**
+ * Parse outer protobuf `EligibilityProof` (exactly one arm).
+ *
+ * `out_arm`: `0` = `stream_proposal`, `1` = `stream_proof`.
+ *
+ * # Safety
+ *
+ * `(data_ptr, data_len)` readable; `out_arm` and `inner_out_len` non-null when sizing or copying inner bytes.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_parse_eligibility_proof_bytes(const uint8_t *data_ptr,
+                                                                                           uintptr_t data_len,
+                                                                                           uint32_t *out_arm,
+                                                                                           uint8_t *inner_out_ptr,
+                                                                                           uintptr_t inner_out_cap,
+                                                                                           uintptr_t *inner_out_len);
+
+/**
+ * Verify `StreamProof.signature` over the N8 canonical Store request wire.
+ *
+ * # Safety
+ *
+ * All pointers follow [`borrow_input`] rules; session key is 32 bytes.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_verify_stream_proof_for_n8_wire_bytes(const uint8_t *proof_ptr,
+                                                                                                   uintptr_t proof_len,
+                                                                                                   const uint8_t *session_public_key,
+                                                                                                   const uint8_t *n8_wire_ptr,
+                                                                                                   uintptr_t n8_wire_len);
+
+/**
  * Serialize `EligibilityProof { stream_proposal: inner }`.
  */
 PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_eligibility_proof_stream_proposal_bytes(const uint8_t *inner_proposal_ptr,

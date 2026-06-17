@@ -18,7 +18,8 @@ avoid duplicating long procedural blocks in both places.
 | [`step11b-chain-writes.md`](step11b-chain-writes.md) | Step 11b `chainAction` writes/status + verify script |
 | [`step11c-sign-public-payload.md`](step11c-sign-public-payload.md) | Step 11c `sign_public_payload` Rust FFI + Qt patch + verify script |
 | [`step11d-wallet-510.md`](step11d-wallet-510.md) | Step 11d LEZ 510 wallet pin bump, deploy FFI, verify script |
-| [`step12-user-eligibility.md`](step12-user-eligibility.md) | Step 12 user eligibility (complete; `verify-step12-dod.sh`) |
+| [`step12-user-eligibility.md`](step12-user-eligibility.md) | Step 12 user eligibility (`verify-step12-dod.sh`) |
+| [`step13-provider-eligibility.md`](step13-provider-eligibility.md) | Step 13 provider verify (complete; `verify-step13-dod.sh`) |
 | [`step3-policy-and-implementor-notes.md`](step3-policy-and-implementor-notes.md) | Step 3a policy and implementor detail |
 | [`step8-universal-legacy-probe-results.md`](step8-universal-legacy-probe-results.md) | Step 8 probe results (+ historical dilemma appendix) |
 | [`feature-branch-pins.md`](feature-branch-pins.md) | Wallet flake pins (LEZ 510 + PR 19 wrapper) |
