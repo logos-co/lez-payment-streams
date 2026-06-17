@@ -1,8 +1,9 @@
 # Step 10a — progress handoff and follow-up
 
-Status: fixture tooling and LEZ 491 guest alignment are in tree. **Step 10a DoD** is green when
-`./scripts/verify-step10a-dod.sh` exits 0 after a full seed on PR 491 localnet (see
-[`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md)).
+Status: fixture tooling and LEZ guest alignment are in tree. Step 10a DoD is green when
+`./scripts/verify-step10a-dod.sh` exits 0 after a full seed on the pinned LEZ localnet (see
+[`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md)). Current LEZ pin: `scaffold.toml`
+(matches [PR 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510) merge after Step 11d).
 
 ## What is in tree
 
@@ -10,13 +11,13 @@ Status: fixture tooling and LEZ 491 guest alignment are in tree. **Step 10a DoD*
   `scripts/verify-step10a-dod.sh`, `scripts/reinit-scaffold-wallet.sh`,
   `examples/src/bin/seed_localnet_fixture.rs`, `fixtures/localnet.json.example`.
 - Runbook: [`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md).
-- **Public PDA prefix (LEE vs NSSA):** vendored
+- Public PDA prefix (LEE vs NSSA): vendored
   [`vendor/spel-framework-core`](../vendor/spel-framework-core) (`lee_core::AccountId::for_public_pda`
   in `compute_pda`); guest `[patch]` in root and `methods/guest/Cargo.toml`.
-- **Deposit chained call:** guest serializes LEZ 491
+- Deposit chained call: guest serializes LEZ
   `authenticated_transfer_core::Instruction::Transfer { amount }` (not NSSA bare `u128`).
-- **In-process program tests:** NSSA [`V03State`] harness tests are `#[ignore]` while the guest
-  targets LEZ 491; other `cargo test -p lez-payment-streams-core --lib` tests still run.
+- In-process program tests: NSSA [`V03State`] harness tests are `#[ignore]` while the guest
+  targets the pinned LEZ tree; other `cargo test -p lez-payment-streams-core --lib` tests still run.
 
 Long-term cleanup when SPEL targets LEE: integration plan
 [N9 SPEL-on-LEE cleanup](../integration-plan-v2.md#n9-step-10a-local-chain-fixture-decisions).
@@ -32,21 +33,21 @@ Long-term cleanup when SPEL targets LEE: integration plan
 
 Search `.scaffold/logs/sequencer.log` for the failing tx hash from seed stdout.
 
-- **`MismatchedPdaClaim` on `initialize_vault`:** guest not rebuilt after PDA vendor change, or
+- `MismatchedPdaClaim` on `initialize_vault`: guest not rebuilt after PDA vendor change, or
   wrong program binary deployed.
-- **`invalid value: integer N, expected variant index` on deposit:** old guest (bare `u128` chained
+- `invalid value: integer N, expected variant index` on deposit: old guest (bare `u128` chained
   call); rebuild and redeploy.
-- **`Sender has insufficient balance` (authenticated_transfer):** demo deposit exceeds owner balance
+- `Sender has insufficient balance` (authenticated_transfer): demo deposit exceeds owner balance
   after pinata topup; defaults are deposit 100 / allocation 80 in `seed_localnet_fixture` — adjust
   amounts or top up again.
-- **`Transaction not found in preconfigured amount of blocks`:** tx often never included (check log
+- `Transaction not found in preconfigured amount of blocks`: tx often never included (check log
   for `ProgramExecutionFailed` / skip); poller timeout is not proof the guest encoding is wrong.
 
 ### Operator state
 
 - After every guest rebuild: redeploy, delete or regenerate `fixtures/localnet.json`, re-seed.
 - Partial seed: vault `0` exists, stream `0` does not — re-run seed without `SEED_FORCE`.
-- **`SEED_FORCE=1`:** retries `initialize_vault` and fails if vault `0` already exists; prefer reset
+- `SEED_FORCE=1`: retries `initialize_vault` and fails if vault `0` already exists; prefer reset
   or partial resume.
 
 ### Clean reset + re-verify

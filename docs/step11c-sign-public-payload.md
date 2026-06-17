@@ -49,40 +49,27 @@ Both patches live inside the `lez-wallet-ffi-patched` and outer
 
 ```
 logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/
-  wallet-qt-guest-elf-from-env.patch          # corrected Step 10b patch
-  wallet-qt-sign-public-payload.patch         # new Step 11c Qt patch
+  wallet-qt-guest-elf-from-env.patch
+  wallet-qt-sign-public-payload.patch         # Step 11c Qt patch
   lez-wallet-ffi-patched/
-    lez-rust-sign-public-payload.patch        # new Step 11c Rust patch
-    flake.nix                                 # pins logos-execution-zone rev 76696a5d
+    lez-rust-sign-public-payload.patch        # Step 11c Rust patch
+    flake.nix                                 # LEZ pin — see feature-branch-pins.md
 ```
 
-The `lez-wallet-ffi-patched/flake.nix` pins
-`github:logos-blockchain/logos-execution-zone?rev=76696a5d084236a234abc62c2b8c0d04acbf5e20`
-which is the commit the PR 19 Qt module was built against.
+The `lez-wallet-ffi-patched/flake.nix` LEZ input matches `scaffold.toml` and
+`nix/payment-streams-ffi.nix` (currently
+`62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60`, PR 510 merge).
 
-## Build
+## Build and install
+
+Same patched wallet `.lgx` as Step 10b:
 
 ```bash
 chmod +x scripts/build-wallet-lgx.sh
 ./scripts/build-wallet-lgx.sh
 ```
 
-Export for install:
-
-```bash
-export REPO="$PWD"
-export WALLET_LGX=$(readlink -f \
-  "$REPO/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out"/*.lgx)
-```
-
-## Install into MODULES
-
-Same load-order as Step 10b (wallet first):
-
-```bash
-export MODULES="$HOME/Downloads/software/waku/lez-related/logos-cli/modules"
-lgpm --modules-dir "$MODULES" install --file "$WALLET_LGX"
-```
+Install and `MODULES` layout: [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md#install-into-modules).
 
 ## Verification
 

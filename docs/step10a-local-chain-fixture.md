@@ -53,7 +53,7 @@ The script:
 Idempotent resume: if vault `0` exists but stream `0` does not, re-run the seed script without
 `SEED_FORCE` (deposit + `create_stream` only).
 
-`SEED_FORCE=1` disables skip-if-initialized and retries **including** `initialize_vault`; that
+`SEED_FORCE=1` disables skip-if-initialized and retries including `initialize_vault`; that
 fails when vault `0` already exists. Use a chain reset (below) instead of force after a partial run.
 
 ## Manual steps (equivalent)

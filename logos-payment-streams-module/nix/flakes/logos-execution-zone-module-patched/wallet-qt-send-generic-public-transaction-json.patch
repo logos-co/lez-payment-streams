@@ -1,0 +1,98 @@
+--- a/src/i_logos_execution_zone_wallet_module.h
++++ b/src/i_logos_execution_zone_wallet_module.h
+@@ -107,6 +107,7 @@
+         const QList<QString>& program_elf,
+         const QList<QString>& program_dependencies
+     ) = 0;
++    virtual QString send_generic_public_transaction_json(const QString& payload_json) = 0;
+     virtual QString send_program_deployment_transaction(
+         const QList<QString>& program_elf
+     ) = 0;
+--- a/src/logos_execution_zone_wallet_module.h
++++ b/src/logos_execution_zone_wallet_module.h
+@@ -129,6 +129,7 @@
+         const QList<QString>& program_elf,
+         const QList<QString>& program_dependencies
+     ) override;
++    Q_INVOKABLE QString send_generic_public_transaction_json(const QString& payload_json) override;
+     Q_INVOKABLE QString send_generic_private_transaction(
+         const QList<QString>& account_ids,
+         const QList<QString>& instruction,
+--- a/src/logos_execution_zone_wallet_module.cpp
++++ b/src/logos_execution_zone_wallet_module.cpp
+@@ -1002,6 +1002,75 @@
+     return resultJson;
+ }
+ 
++QString LogosExecutionZoneWalletModule::send_generic_public_transaction_json(const QString& payload_json)
++{
++    QJsonParseError parseError{};
++    const QJsonDocument doc = QJsonDocument::fromJson(payload_json.toUtf8(), &parseError);
++    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
++        return transferResultToJson(nullptr, QStringLiteral("send_generic_public_transaction_json: invalid JSON"));
++    }
++    const QJsonObject obj = doc.object();
++
++    QList<QString> account_ids;
++    for (const QJsonValue value : obj.value(QStringLiteral("account_ids")).toArray()) {
++        account_ids.append(value.toString());
++    }
++    QList<QString> signing_requirements;
++    for (const QJsonValue value : obj.value(QStringLiteral("signing_requirements")).toArray()) {
++        signing_requirements.append(value.toBool() ? QStringLiteral("true") : QStringLiteral("false"));
++    }
++
++    const QByteArray instructionBytes =
++        QByteArray::fromHex(obj.value(QStringLiteral("instruction_hex")).toString().toLatin1());
++    if (instructionBytes.isEmpty()) {
++        return transferResultToJson(nullptr, QStringLiteral("send_generic_public_transaction_json: instruction_hex empty"));
++    }
++
++    FfiInstructionWords words = wallet_ffi_serialization_helper(
++        reinterpret_cast<const uint8_t*>(instructionBytes.constData()),
++        static_cast<uintptr_t>(instructionBytes.size()));
++    if (words.error != SUCCESS) {
++        return transferResultToJson(
++            nullptr,
++            QStringLiteral("send_generic_public_transaction_json: serialization_helper error ")
++                + QString::number(static_cast<int>(words.error)));
++    }
++
++    QList<QString> instructionWords;
++    instructionWords.reserve(static_cast<int>(words.instruction_words_size));
++    for (uintptr_t i = 0; i < words.instruction_words_size; ++i) {
++        instructionWords.append(QString::number(words.instruction_words[i]));
++    }
++    wallet_ffi_free_instruction_words(&words);
++
++    QList<QString> program_elf;
++    const QByteArray programBytes =
++        QByteArray::fromHex(obj.value(QStringLiteral("program_elf_hex")).toString().toLatin1());
++    program_elf.reserve(programBytes.size());
++    for (unsigned char byte : programBytes) {
++        program_elf.append(QString::number(static_cast<uint>(byte)));
++    }
++
++    QList<QString> program_dependencies;
++    for (const QJsonValue depValue : obj.value(QStringLiteral("program_dependencies_hex")).toArray()) {
++        const QByteArray depBytes = QByteArray::fromHex(depValue.toString().toLatin1());
++        QStringList parts;
++        parts.reserve(depBytes.size());
++        for (unsigned char byte : depBytes) {
++            parts.append(QString::number(static_cast<uint>(byte)));
++        }
++        program_dependencies.append(parts.join(QLatin1Char(' ')));
++    }
++
++    return send_generic_public_transaction(
++        account_ids,
++        signing_requirements,
++        instructionWords,
++        program_elf,
++        program_dependencies);
++}
++
++
+ QString LogosExecutionZoneWalletModule::send_generic_private_transaction(
+         const QList<QString>& account_ids,
+         const QList<QString>& instruction,

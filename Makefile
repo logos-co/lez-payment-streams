@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a
+.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -37,6 +37,7 @@ help: ## Show this help
 	@echo "  make verify-step10a Run Step 10a DoD script"
 	@echo "  make verify-step10b Run Step 10b DoD script"
 	@echo "  make verify-step11a Run Step 11a DoD script"
+	@echo "  make verify-step11d Run Step 11d DoD script (LEZ 510 wallet)"
 	@echo "  make clean       Remove saved state"
 	@echo ""
 	@echo "Example:"
@@ -104,3 +105,7 @@ verify-step10b: ## Step 10b definition of done (scripts/verify-step10b-dod.sh)
 verify-step11a: ## Step 11a definition of done (scripts/verify-step11a-dod.sh)
 	chmod +x scripts/verify-step11a-dod.sh
 	./scripts/verify-step11a-dod.sh
+
+verify-step11d: ## Step 11d definition of done (scripts/verify-step11d-dod.sh)
+	chmod +x scripts/verify-step11d-dod.sh scripts/deploy-program-logoscore.sh
+	./scripts/verify-step11d-dod.sh

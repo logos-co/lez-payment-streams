@@ -279,7 +279,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "authenticated_transfer_core"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=a8c81f5445166b22672a614b159a1c38a5907a65#a8c81f5445166b22672a614b159a1c38a5907a65"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60#62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60"
 dependencies = [
  "serde",
 ]

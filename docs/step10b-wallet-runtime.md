@@ -1,8 +1,9 @@
-# Step 10b — wallet runtime artifact (PR 491 + PR 19)
+# Step 10b — wallet runtime artifact (LEZ 510 + PR 19)
 
 Installable `logos_execution_zone` `.lgx` for `logoscore`, aligned with the Step 10a
 local chain fixture (sequencer `http://127.0.0.1:3040`, wallet under `.scaffold/wallet`).
 
+LEZ pin bump (510 merge): [`step11d-wallet-510.md`](step11d-wallet-510.md).
 Pins and flake layout: [`feature-branch-pins.md`](feature-branch-pins.md).
 Build/install overview: [`logos-runtime-guide.md`](logos-runtime-guide.md) Phase 1b–5.
 Step 10a prerequisite: [`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md).
@@ -75,9 +76,9 @@ lm methods "$MODULES/logos_execution_zone/logos_execution_zone_plugin.so" \
 
 Expected invokables include:
 
-- `send_generic_public_transaction` — generic public instruction submit (491 FFI)
-- `send_generic_public_transaction_json` — JSON IPC entry used by `payment_streams_module` (11b)
-- `send_generic_private_transaction`, `send_program_deployment_transaction`
+- `send_generic_public_transaction` — generic public instruction submit (LEZ `wallet_ffi`)
+- `send_generic_public_transaction_json` — JSON IPC entry used by `payment_streams_module` (11b; wrapper patch)
+- `send_generic_private_transaction`, `send_program_deployment_transaction` (510 FFI via PR 19 Qt)
 - `authenticated_transfer_elf` (and related ELF helpers)
 - `get_account_public`, `account_id_from_base58`, `open`, `sync_to_block`
 
@@ -85,9 +86,8 @@ Patched 11b builds also load guest ELF from `PAYMENT_STREAMS_GUEST_BIN` inside
 `send_generic_public_transaction` when program bytes are empty. Verify with
 `rg -F PAYMENT_STREAMS_GUEST_BIN` on `logos_execution_zone_plugin.so`.
 
-If `nix bundle … .#lib` fails on `wallet-ffi-deps` / `pol` download, use the Qt-aligned manual
-build documented in [`step11b-chain-writes.md`](step11b-chain-writes.md) until offline
-`LBC_POL_LIB_DIR` is wired in the flake.
+If `nix bundle … .#lib` fails on `wallet-ffi-deps` / `pol` download, see
+[`step11b-chain-writes.md`](step11b-chain-writes.md) for the Qt-aligned manual build fallback.
 
 ## Wallet `open` for Step 10a
 
@@ -102,8 +102,8 @@ export WALLET_STORAGE="$REPO/.scaffold/wallet/storage.json"
 
 - `sequencer_addr`: `http://127.0.0.1:3040`
 
-That file is created by `lgs init` / `lgs setup` in this repo. Encrypted `storage.json` is
-491-format; if seed fails to load storage, run [`scripts/reinit-scaffold-wallet.sh`](../scripts/reinit-scaffold-wallet.sh)
+That file is created by `lgs init` / `lgs setup` in this repo. Encrypted `storage.json` uses the
+pinned LEZ wallet format; if seed fails to load storage, run [`scripts/reinit-scaffold-wallet.sh`](../scripts/reinit-scaffold-wallet.sh)
 and re-seed (see Step 10a runbook).
 
 Storage password for CLI `wallet` matches `SCAFFOLD_WALLET_SETUP_PASSWORD` (default

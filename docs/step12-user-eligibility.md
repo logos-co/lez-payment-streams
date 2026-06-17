@@ -43,7 +43,7 @@ Same as Step 11b where chain I/O is involved:
 ## User vault (demo)
 
 Eligibility uses one vault for the MVP, loaded from the fixture on first use (N10 fixture
-config). **`vault_id` comes from the manifest** (local default `0` after Step 10a seed).
+config). `vault_id` comes from the manifest (local default `0` after Step 10a seed).
 
 | Field | Source | Demo note |
 | --- | --- | --- |
@@ -71,16 +71,16 @@ do not reuse a stale dir after chain reset.
 
 ### Stream id (same vault, new negotiation)
 
-Step 10a may already have **`stream_id: 0` ACTIVE** on vault `0`. That is enough for
+Step 10a may already have `stream_id: 0` ACTIVE on vault `0`. That is enough for
 proof-path smoke and `listMyStreams`, but it skips the proposal → `createStream` narrative.
 
-For the full demo arc on the **same vault**, allocate the **next free `stream_id`** in module
+For the full demo arc on the same vault, allocate the next free `stream_id` in module
 inventory (e.g. `1` when `0` is taken), issue a `StreamProposal`, then manual `chainAction`
-`createStream` with matching params, then `StreamProof`. Step 11b’s default **`vault_id: 1`**
+`createStream` with matching params, then `StreamProof`. Step 11b’s default `vault_id: 1`
 remains for isolated write-lifecycle tests only; Step 12 and Step 17 default to manifest
-**`vault_id`**, not vault `1`.
+`vault_id`, not vault `1`.
 
-**Stream id allocation (new proposal):** use on-chain `VaultConfig.next_stream_id` from the
+Stream id allocation (new proposal): use on-chain `VaultConfig.next_stream_id` from the
 manifest vault’s config PDA (Step 11a read) when starting a new `(vault_id, provider_id)`
 negotiation. Persist that id for the pending proposal. Local inventory records ids after
 `chainAction` `createStream` succeeds; `rediscoverStreams` scans `stream_id` 0, 1, … on chain
@@ -235,7 +235,7 @@ the same opaque blob (Delivery does not unwrap).
 Inner-only serialization remains valid inside the module and FFI tests; it does not cross the
 Delivery hook.
 
-**Path selection (no extra error codes):** if folded chain state shows an `ACTIVE` stream for
+Path selection (no extra error codes): if folded chain state shows an `ACTIVE` stream for
 the `(vault_id, provider_id)` pair, return the `stream_proof` arm. Pending non-expired proposal →
 `PROPOSAL_PENDING`. Pending past `create_stream_deadline` → evict, return `PROPOSAL_EXPIRED`
 (that call does not mint a new proposal); the following call may issue a fresh `stream_proposal`.
@@ -291,7 +291,7 @@ Additional folded snapshots are optional; omit until a consumer needs them.
 
 ### Session key generation
 
-Generate and use session keys only through **`lez-payment-streams-ffi`** (same NSSA stack as
+Generate and use session keys only through `lez-payment-streams-ffi` (same NSSA stack as
 `payment_streams_ffi_sign_canonical_payload_digest` and verify helpers in Step 4). The Qt module
 stores hex bytes and calls FFI to sign proofs; it does not implement NSSA in C++.
 
@@ -319,7 +319,7 @@ cargo run -q -p lez-payment-streams-core --bin n8_canonical_wire_hex
 
 That binary prints lowercase hex of the full N8 `canonical_payload`:
 `STORE_ELIGIBILITY_DOMAIN_PREFIX` (32 bytes) concatenated with Borsh(`CanonicalStoreRequest`).
-For the reference fixture the wire is **177 bytes** (**354** hex characters).
+For the reference fixture the wire is 177 bytes (354 hex characters).
 `verify-step12-dod.sh` and `step12-topup-and-prepare.sh` invoke this tool.
 
 Pass that full wire to `prepareEligibilityForStoreQuery` as `canonical_request_hex`.
@@ -363,11 +363,13 @@ logoscore call payment_streams_module registerProviderMapping \
 logoscore stop
 ```
 
-## Definition of done (planned)
+## Definition of done
 
 Recovery policy: [`demo-localnet-recovery.md`](demo-localnet-recovery.md). If logoscore smoke
 skips `stream_proof` due to `STREAM_DEPLETED`, run `./scripts/demo-localnet-fresh.sh` and retry.
-Strict proof after wallet upgrade: integration plan Step 12 [verification follow-up](../integration-plan-v2.md#verification-follow-up-after-step-11d) (post **11d**).
+Strict proof hardening: integration plan Step 12
+[verification follow-up](../integration-plan-v2.md#verification-follow-up-after-step-11d)
+(after Step 11d pin bump).
 
 ```bash
 ./scripts/verify-step12-dod.sh

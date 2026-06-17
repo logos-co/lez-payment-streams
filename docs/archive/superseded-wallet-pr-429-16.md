@@ -1,6 +1,7 @@
 # Superseded wallet path — PR 429 and PR 16
 
-Historical reference only. Payment streams uses LEZ `main` (491 merged) and
+Historical reference only. Payment streams uses LEZ `main` (510 merge; see
+[`feature-branch-pins.md`](../feature-branch-pins.md)) and
 [logos-execution-zone-module PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19).
 
 Do not pin or build this integration against:

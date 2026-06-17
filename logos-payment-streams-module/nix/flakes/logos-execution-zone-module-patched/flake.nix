@@ -1,5 +1,5 @@
 {
-  description = "logos-execution-zone-module PR 19 + payment-streams wallet patches (LEZ main / 491 merged)";
+  description = "logos-execution-zone-module PR 19 + payment-streams wallet patches (LEZ main / PR 510)";
 
   inputs = {
     # pyo3-build-config in wallet-ffi-deps needs a Python interpreter in nativeBuildInputs.
@@ -34,6 +34,7 @@
           + ''
             patch -p1 --forward < ${./wallet-qt-guest-elf-from-env.patch}
             patch -p1 --forward < ${./wallet-qt-sign-public-payload.patch}
+            patch -p1 --forward < ${./wallet-qt-send-generic-public-transaction-json.patch}
           '';
         postInstall =
           (old.postInstall or "")

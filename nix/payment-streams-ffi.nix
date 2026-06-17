@@ -9,12 +9,12 @@
 }:
 
 let
-  # LEZ main (491 merged) — https://github.com/logos-blockchain/logos-execution-zone/pull/491
+  # LEZ main at PR 510 merge (program deploy + test ELF FFI).
   logosExecutionZoneSrc = fetchFromGitHub {
     owner = "logos-blockchain";
     repo = "logos-execution-zone";
-    rev = "a8c81f5445166b22672a614b159a1c38a5907a65";
-    sha256 = "sha256-xBrIY3W9P8wxAxJZKxcTkM+C2oktpaX+z5EY1VEMgUg=";
+    rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60";
+    sha256 = "sha256-lhKiGOWisFxEs3tiZ6/mO+4d78D9WolHh3BQsMexFoQ=";
   };
 in
 

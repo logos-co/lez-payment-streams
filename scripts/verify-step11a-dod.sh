@@ -21,16 +21,16 @@ skip() { echo "SKIP: $*"; }
 echo "=== Step 11a DoD verification ==="
 
 LEZ_PIN="$(grep -E '^pin = ' scaffold.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')"
-if [[ "$LEZ_PIN" == a8c81f5445166b22672a614b159a1c38a5907a65 ]]; then
-  ok "scaffold.toml LEZ pin is main (491 merge)"
+if [[ "$LEZ_PIN" == 62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60 ]]; then
+  ok "scaffold.toml LEZ pin is main (510 merge)"
 else
-  bad "scaffold.toml LEZ pin expected a8c81f54… got $LEZ_PIN"
+  bad "scaffold.toml LEZ pin expected 62d9ba10… got $LEZ_PIN"
 fi
 
-if rg -q 'a8c81f5445166b22672a614b159a1c38a5907a65' nix/payment-streams-ffi.nix; then
-  ok "payment-streams-ffi.nix pins LEZ main"
+if rg -q '62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60' nix/payment-streams-ffi.nix; then
+  ok "payment-streams-ffi.nix pins LEZ main (510)"
 else
-  bad "payment-streams-ffi.nix missing LEZ main rev"
+  bad "payment-streams-ffi.nix missing LEZ 510 rev"
 fi
 
 if [[ -f docs/step11a-chain-reads.md ]]; then

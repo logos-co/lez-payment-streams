@@ -95,7 +95,8 @@ nix build .#payment-streams-ffi
 
 Wallet module is pinned to upstream
 [PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19)
-on LEZ `main` ([491 merged](https://github.com/logos-blockchain/logos-execution-zone/pull/491));
+on LEZ `main` ([PR 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510) merge;
+see [`step11d-wallet-510.md`](step11d-wallet-510.md));
 bundle via the patched wrapper flake (see [`feature-branch-pins.md`](feature-branch-pins.md)):
 
 ```bash

@@ -31,11 +31,11 @@ tokio = { version = "1.28.2", features = ["net", "rt-multi-thread", "sync", "mac
 anyhow = "1.0"
 base58 = "0.2"
 clap = { version = "4.5", features = ["derive"] }
-# LEZ main (491 merge) — match scaffold.toml [repos.lez].pin (seed_localnet_fixture).
-lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a8c81f5445166b22672a614b159a1c38a5907a65" }
-lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a8c81f5445166b22672a614b159a1c38a5907a65" }
-common = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a8c81f5445166b22672a614b159a1c38a5907a65" }
-sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a8c81f5445166b22672a614b159a1c38a5907a65", features = ["client"] }
-wallet = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a8c81f5445166b22672a614b159a1c38a5907a65" }
+# LEZ main (510 merge) — match scaffold.toml [repos.lez].pin (seed_localnet_fixture).
+lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60" }
+lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60" }
+common = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60" }
+sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60", features = ["client"] }
+wallet = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60" }
 nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.1.2" }
 serde = { version = "1.0", features = ["derive"] }

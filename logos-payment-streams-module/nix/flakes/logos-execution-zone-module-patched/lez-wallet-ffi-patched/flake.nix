@@ -1,7 +1,8 @@
 {
   description = "logos-execution-zone wallet-ffi patched: python3 for pyo3 + wallet_ffi.h install path + payment-streams Rust patches";
 
-  inputs.lez.url = "github:logos-blockchain/logos-execution-zone?rev=76696a5d084236a234abc62c2b8c0d04acbf5e20";
+  # LEZ main at PR 510 merge (program deploy + test ELF FFI).
+  inputs.lez.url = "github:logos-blockchain/logos-execution-zone?rev=62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60";
   inputs.nixpkgs.follows = "lez/nixpkgs";
 
   outputs =
