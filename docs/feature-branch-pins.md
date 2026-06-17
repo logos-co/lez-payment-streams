@@ -82,3 +82,12 @@ nix build ./logos-payment-streams-module#lgx
 ```
 
 For `lgpm`, `logoscore`, and the Step 7+ loop see [`logos-runtime-guide.md`](logos-runtime-guide.md).
+
+## Planned Step 11d (LEZ PR 510)
+
+Integration plan [Step 11d](../integration-plan-v2.md#step-11d-program-deploy-and-program-elf-lez-pr-510):
+bump pins to LEZ `main` at or after
+[PR 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510) (program deploy FFI,
+program ELF helpers, zones API). Scheduled **after Step 12 lands**, before Step 17 E2E and
+before strict Step 12 logoscore verification. Update this doc’s rev table and run
+`nix flake update` in both flake trees when adopting 510.

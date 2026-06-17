@@ -367,6 +367,7 @@ logoscore stop
 
 Recovery policy: [`demo-localnet-recovery.md`](demo-localnet-recovery.md). If logoscore smoke
 skips `stream_proof` due to `STREAM_DEPLETED`, run `./scripts/demo-localnet-fresh.sh` and retry.
+Strict proof after wallet upgrade: integration plan Step 12 [verification follow-up](../integration-plan-v2.md#verification-follow-up-after-step-11d) (post **11d**).
 
 ```bash
 ./scripts/verify-step12-dod.sh

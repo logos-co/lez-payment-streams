@@ -54,7 +54,8 @@ only (no Store query on `delivery_module`).
    Steps 1–5 (Rust FFI), Steps 6–18 (integration and demo).
    Step 3 splits into 3a (core) and 3b (FFI).
    Step 6 records the closed Store-query decision; Step 8 (probe) is done; Step 9
-   bootstraps the Universal module; Steps 10–11 (fixture, wallet runtime, module chain I/O)
+   bootstraps the Universal module; Steps 10–11 (fixture, wallet runtime, module chain I/O,
+   including planned **11d** LEZ 510 wallet upgrade after Step 12 lands)
    precede eligibility in Steps 12–13.
    Definitions of done, decisions (D1–D6), and notes (N1–N11).
    Supporting doc index: [`docs/README.md`](docs/README.md).
@@ -733,7 +734,9 @@ Wallet submit and module shape
 - Guest ELF: Step 10a `lez_payment_streams.bin` with `PAYMENT_STREAMS_GUEST_BIN` on the daemon;
   the PS module omits the ELF blob from IPC when that env var is set. Deposit uses wallet
   `authenticated_transfer_elf()` as a dependency when deps are empty. Bundling guest ELF inside
-  the PS `.lgx` remains a follow-on.
+  the PS `.lgx` remains a follow-on. **Step 11d** ([LEZ PR 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510))
+  should replace or narrow this env-var path once deploy and program ELF are registered through
+  `wallet_ffi` and exposed on `logos_execution_zone`.
 - Nine write operations plus two status queries are implemented on the impl class; a single
   public `chainAction(operation, paramsJson)` router exposes them on the LogosAPI surface
   (see [N11](#n11-universal-module-public-api)). `signing_requirements` are derived
@@ -793,13 +796,18 @@ Doc index: [`docs/README.md`](docs/README.md).
 | 8 | Universal → Legacy wallet probe | Done; [`docs/step8-universal-legacy-probe-results.md`](docs/step8-universal-legacy-probe-results.md) |
 | 9 | Universal module bootstrap | Done; [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 2 |
 | 10 | LEZ fixture + wallet runtime | 10a chain fixture ([N9](#n9-step-10a-local-chain-fixture-decisions)); 10b wallet (491 + 19) |
-| 11 | Module chain access | 11a reads; 11b writes + status ([N10](#n10-step-11b-module-writes-decisions)); 11c `sign_public_payload` |
-| 12–13 | Eligibility (user + provider) | [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) Part 3 |
+| 11 | Module chain access | 11a reads; 11b writes + status ([N10](#n10-step-11b-module-writes-decisions)); 11c `sign_public_payload`; **11d** wallet deploy/ELF ([LEZ 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510)) |
+| 12 | User eligibility | Landed in tree; logoscore verify hardening after **11d** — [`docs/step12-user-eligibility.md`](docs/step12-user-eligibility.md) |
+| 13 | Provider eligibility | Can start in parallel with 11d (reads + FFI); happy path needs 10a–11b chain |
 | 14–15 | Store wire + `liblogosdelivery` hooks | Nim/C repos; no logoscore loop |
 | 16–18 | Routing, E2E demo, Basecamp UI | Blocked on upstream Store query (Step 6) |
 
 Step 10 and Step 11 use lettered sub-steps (same convention as Step 3a/3b).
-Order: 10a → 10b → 11a → 11b → 11c → 12.
+Document order: 10a → 10b → 11a → 11b → 11c → 12 → (11d) → 13.
+**Execution order (current):** finish and land **Step 12**, then **Step 11d** (wallet runtime
+upgrade), then **Step 12 verification hardening** (scripts and DoD against the new deploy/submit
+path), then continue **Step 13** (may overlap 11d). **Step 17** should not be treated as complete
+until **11d** is done or Step 17 documents an explicit CLI-only deploy fallback.
 
 ### Step 1, Bootstrap the Rust FFI crate
 
@@ -1286,7 +1294,8 @@ Work (operator / script — idempotent seed script, gitignored manifest, runbook
 
 - `scaffold.toml` in repo; runtime state per N9 (`SCAFFOLD_WS` or gitignored `.scaffold/`).
 - `lgs init`, `lgs setup`, `lgs localnet start`; deploy via `make build`, `make idl`, `make deploy`
-  (N9); record program id (`make program-id`).
+  (CLI `wallet deploy-program`, N9) until **Step 11d** adds an optional logoscore/wallet-module
+  deploy path; record program id (`make program-id`).
 - Fund public owner: `lgs wallet topup --address Public/<base58-id>` (pinata path in
   [`docs/step1-findings-scaffold-rpc.md`](docs/step1-findings-scaffold-rpc.md)).
 - Full seed: `initialize_vault`, deposit, `create_stream` for demo `vault_id` / `stream_id`
@@ -1344,6 +1353,7 @@ Work:
   reaches the same localnet as Step 10a (`get_account_public`, `list_accounts`).
 - Step 11b wallet extras (same flake / manual Qt build): `PAYMENT_STREAMS_GUEST_BIN`,
   `send_generic_public_transaction_json` — see [`docs/step11b-chain-writes.md`](docs/step11b-chain-writes.md).
+  **Step 11d** may reduce reliance on `PAYMENT_STREAMS_GUEST_BIN` after LEZ 510 + Qt wrappers land.
 - Verify: `lm methods` lists PR 19 generic public transaction entry point(s).
 
 `sign_public_payload` is Step 11c, not 10b.
@@ -1368,6 +1378,8 @@ Architectural context:
 Step 11 wires `payment_streams_module` to `logos_execution_zone` for reads, writes, and
 (off-chain) digest signing support. Requires 10a → 10b complete.
 Sub-step order: 11a → 11b → 11c (11c must complete before Step 12 eligibility).
+**11d** is documented after 11c but scheduled **after Step 12 lands** (runtime hardening, not
+eligibility feature work). See [Step 11d](#step-11d-program-deploy-and-program-elf-lez-pr-510).
 
 Universal module surface: all public methods on `PaymentStreamsModuleImpl` are exported
 ([N11](#n11-universal-module-public-api)). Step 11a/11b use five read helpers plus one
@@ -1482,6 +1494,63 @@ Definition of done:
    run `./target/debug/smoke_verify <pubkey_hex> <digest_hex> <sig_hex>` and assert exit 0.
 3. Step 12 may depend on this method without further wallet feature work.
 
+#### Step 11d, Program deploy and program ELF (LEZ PR 510)
+
+Architectural context:
+[LEZ PR 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510) merged program
+deployment and test-program ELF exposure into `wallet_ffi`, with zones API updates on LEZ `main`.
+This step upgrades the **wallet runtime stack** from the 491 + PR 19 pin — not new
+`payment_streams_module` eligibility logic. It addresses operator pain where **CLI**
+`wallet deploy-program` (Step 10a) and **logoscore** `open` + `send_generic_public_transaction`
+(Step 11b) share wallet home but diverge in practice, and where `PAYMENT_STREAMS_GUEST_BIN` patches
+guest ELF into the wallet process ([N10](#n10-step-11b-module-writes-decisions)).
+
+**Schedule:** land **Step 12** first, then **11d**, then **Step 12 verification hardening**
+(see [Verification follow-up](#verification-follow-up-after-step-11d) under Step 12).
+**Step 13** provider verify can proceed in parallel with 11d where work is FFI-heavy; do not
+treat **Step 17** E2E as complete until 11d is done or 17 documents CLI-only deploy fallback.
+
+Goal:
+
+- Bump LEZ and wallet-wrapper pins to a revision **≥ 510 merge**; rebuild patched
+  `logos_execution_zone` `.lgx`; re-run `lgs setup` and Step 10a–11b verifies.
+- Expose deploy (and any program-ELF registration helpers) on `logos_execution_zone` once
+  upstream Qt / [PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19)
+  successor wraps the new FFI (510 notes dependent C++ PRs).
+- Optional: extend `./scripts/demo-localnet-fresh.sh` / seed path with logoscore deploy so
+  fixture refresh does not depend on a separate CLI `wallet` invocation.
+- Narrow or remove `PAYMENT_STREAMS_GUEST_BIN` wrapper behavior when submit can use wallet-held
+  program ELF after deploy.
+
+Work:
+
+- Update [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md),
+  `nix/payment-streams-ffi.nix`, `scaffold.toml`, and
+  `logos-execution-zone-module-patched` flakes; full regression
+  `./scripts/verify-step10a-dod.sh`, `./scripts/verify-step10b-dod.sh`,
+  `./scripts/verify-step11b-dod.sh`.
+- Inventory `wallet_ffi.h` for deploy and ELF symbols added in 510; add Qt / LogosAPI shims in
+  the patched wrapper (or track upstream wallet-module PR).
+- Document operator path: deploy + `open` + `chainAction` submit from one logoscore session.
+
+Components required to run:
+Same as Steps 10b–11b; network for pin bump and localnet re-seed.
+
+Definition of done:
+
+1. Patched wallet `.lgx` builds against LEZ ≥ 510; `lm methods` lists deploy (or documented
+   interim name) when Qt wrapper lands.
+2. At least one successful `chainAction` write (e.g. `topUpStream` or `deposit`) on a fresh
+   fixture after `./scripts/demo-localnet-fresh.sh` without relying on
+   `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF`.
+3. `./scripts/verify-step11b-dod.sh` exits 0 on the upgraded stack (or documented SKIP removed).
+4. Step 12 verification follow-up items completed (below).
+
+Deliverables (planned):
+runbook section in [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md) or
+`docs/step11d-wallet-510.md`, updated seed/demo scripts, reduced guest-env patch scope where
+possible.
+
 ### Step 12, Session keys and user-side proof construction
 
 Architectural context:
@@ -1496,6 +1565,17 @@ Runbook (demo vault, API encoding):
 [`docs/step12-user-eligibility.md`](docs/step12-user-eligibility.md).
 Local fixture age and reset policy:
 [`docs/demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
+
+#### Status (implementation)
+
+Step 12 **feature work is in tree**: session keygen FFI, `EligibilityProof` wrapper serialize,
+`payment_streams_module` methods (`registerProviderMapping`, `prepareEligibilityForStoreQuery`,
+`listMyStreams`, `rediscoverStreams`), N4 persistence, N8 pin tool
+(`n8_canonical_wire_hex`), and `./scripts/verify-step12-dod.sh`.
+**Step 12 does not require Step 11d** for offline DoD or read/sign/proposal paths.
+**Honest `stream_proof` logoscore smoke** and full proposal → `createStream` → proof demos
+depend on reliable **11b chain writes** and fresh fixture state — planned via **11d** and
+[`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 
 #### Quick reference
 
@@ -1670,6 +1750,19 @@ After code changes, rebuild and reload via
 
 #### Definition of done
 
+**Landed (current tree):**
+
+1. `./scripts/verify-step12-dod.sh` with `VERIFY_LOGOSCORE=0` exits 0: N8 digest test, FFI
+   session keygen + eligibility wrapper tests, N8 wire tool, installed module plugin, four
+   Step 12 methods in `lm methods`.
+2. With `VERIFY_LOGOSCORE=1`: logoscore smoke for `registerProviderMapping`, `listMyStreams`,
+   persistence under `--persistence-path`; `prepareEligibilityForStoreQuery` may **SKIP** when
+   fixture stream `0` is `STREAM_DEPLETED` on an aged localnet (see recovery doc).
+3. Runbook [`docs/step12-user-eligibility.md`](docs/step12-user-eligibility.md) matches API and
+   error codes.
+
+**Product criteria (unchanged):**
+
 The module produces a syntactically valid eligibility proof byte string
 for fixed inputs;
 `payment_streams_ffi_generate_session_keypair` is implemented and covered by FFI tests;
@@ -1678,7 +1771,23 @@ the FFI structural verifier accepts the proof format;
 `listMyStreams` returns correct folded status for locally known streams;
 each user-side error condition returns the documented error code;
 and (when chain state is available) the provider-side verifier accepts
-the proof against actual on-chain stream state.
+the proof against actual on-chain stream state (Step 13; recommended cross-test).
+
+#### Verification follow-up (after Step 11d)
+
+Small follow-up PR after **11d** — not a reopen of Step 12 feature scope:
+
+1. Tighten `./scripts/verify-step12-dod.sh`: after fresh
+   `./scripts/demo-localnet-fresh.sh`, default or document
+   `REQUIRE_STREAM_PROOF=1` so logoscore smoke **requires** `stream_proof` without
+   `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF`.
+2. Align `./scripts/step12-topup-and-prepare.sh` and demo scripts with logoscore deploy if 11d
+   adds it; keep depleted bypass as emergency-only.
+3. Re-run Step 12 logoscore smoke on the upgraded wallet pin; update env tables in the runbook
+   if `PAYMENT_STREAMS_GUEST_BIN` is no longer required on the daemon.
+
+Until 11d: use `VERIFY_LOGOSCORE=0` for CI gates; local demos use
+[`docs/demo-localnet-recovery.md`](docs/demo-localnet-recovery.md) before strict proof verify.
 
 ### Step 13, Provider-side proof verification
 
@@ -1965,7 +2074,8 @@ so the user retrieves historical messages it did not originate.
 
 Components required to run:
 LEZ sequencer on `127.0.0.1:3040`,
-`lez_payment_streams` program deployed onto it,
+`lez_payment_streams` program deployed onto it
+(**Step 11d** complete, or documented CLI deploy from Step 10a on a clean workspace),
 two `logoscore` daemons (one for user, one for provider),
 each daemon hosting `logos_execution_zone`, `payment_streams_module`,
 and `delivery_module`,
