@@ -6,7 +6,7 @@ Status: outdated (2026-06-08). Superseded by Step 9 in
 
 This records the original Legacy bootstrap plan (pre–Step 9): a Legacy `PluginInterface` Qt plugin
 (`payment_streams_module_plugin.{h,cpp}`, `i_payment_streams_module.h`) with
-`lez_wallet_module` listed in `metadata.json` dependencies.
+`logos_execution_zone` listed in `metadata.json` dependencies.
 
 We chose the Universal interface instead after
 [`docs/step8-universal-legacy-probe-results.md`](../step8-universal-legacy-probe-results.md)
@@ -14,12 +14,12 @@ We chose the Universal interface instead after
 
 ## What the Legacy shell contained
 
-- `metadata.json` without `"interface": "universal"`; `dependencies: ["lez_wallet_module"]`
+- `metadata.json` without `"interface": "universal"`; `dependencies: ["logos_execution_zone"]`
 - Qt plugin implementing `PluginInterface` and `Q_INVOKABLE initLogos`
-- Wallet plumbing via `getClient("lez_wallet_module")` and `invokeRemoteMethod`
+- Wallet plumbing via `getClient("logos_execution_zone")` and `invokeRemoteMethod`
   inside `initLogos`
 - `flake.nix` with `mkLogosModule`, `lez_payment_streams_ffi` external lib,
-  optional `lez_wallet_module` flake input for builder dependency wiring
+  optional `logos_execution_zone` flake input for builder dependency wiring
 - Linked `liblez_payment_streams_ffi`; no instruction entrypoints called from C++
   until chain-write steps
 
@@ -27,7 +27,7 @@ We chose the Universal interface instead after
 
 - Universal → Legacy dynamic wallet calls are validated; no need to stay Legacy
   for downstream wallet access.
-- Typed `modules().lez_wallet_module` remains unsafe in core sidecars (Issue 31);
+- Typed `modules().logos_execution_zone` remains unsafe in core sidecars (Issue 31);
   Universal with empty dependencies plus dynamic `invokeRemoteMethod` matches
   the probe pattern.
 - Legacy plugin sources were a thin scaffold (~90 lines), not product logic.
@@ -89,8 +89,8 @@ Verification after fix:
 ```bash
 nix build ./logos-payment-streams-module#lgx
 lgpm --modules-dir "$MODULES" install --file "$REPO/result"/*.lgx
-logoscore -D -m "$MODULES" -l lez_wallet_module,payment_streams_module -v
-logoscore call lez_wallet_module list_accounts  // Should not crash
+logoscore -D -m "$MODULES" -l logos_execution_zone,payment_streams_module -v
+logoscore call logos_execution_zone list_accounts  // Should not crash
 ```
 
 ## Components to Use
@@ -150,9 +150,9 @@ Use raw `invokeRemoteMethod` (same as `logos-rln-module` and dependencies). For 
 void PaymentStreamsModulePlugin::initLogos(LogosAPI* logosApiInstance) {
     m_logosApi = logosApiInstance;
     LogosAPIClient* walletClient =
-        m_logosApi->getClient(QStringLiteral("lez_wallet_module"));
+        m_logosApi->getClient(QStringLiteral("logos_execution_zone"));
     const QVariant probe = walletClient->invokeRemoteMethod(
-        QStringLiteral("lez_wallet_module"), QStringLiteral("list_accounts"));
+        QStringLiteral("logos_execution_zone"), QStringLiteral("list_accounts"));
     (void)probe;
 }
 ```

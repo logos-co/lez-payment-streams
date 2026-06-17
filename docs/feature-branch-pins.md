@@ -17,10 +17,7 @@ Chain writes use generic public transactions:
 | LEZ `wallet_ffi` | [`logos-execution-zone` `main`](https://github.com/logos-blockchain/logos-execution-zone) (491 merged) | Resolve accounts, serialize instruction words, send with program ELF bundle |
 | Wallet Qt module | [`logos-execution-zone-module` PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19) | Expose 491 to Logos modules (`Q_INVOKABLE` / LogosAPI) |
 
-PR 491 supersedes [PR 429](https://github.com/logos-blockchain/logos-execution-zone/pull/429).
-PR 19 supersedes [PR 16](https://github.com/logos-blockchain/logos-execution-zone-module/pull/16) (429 JSON wrapper).
-
-Do not pin 429 or 16 in this integration.
+Do not pin [PR 429 / PR 16](archive/superseded-wallet-pr-429-16.md) in this integration.
 
 ### Flake refs
 
@@ -34,10 +31,12 @@ After PR 19 merges, pin `main` on the wallet module repo and drop pull-request r
 
 ### Our patch (wrapper flake)
 
-We still use the local wrapper flake when upstream metadata names differ from `lez_wallet_module`
-or when we add `sign_public_payload` before upstream does.
-PR 19 uses `mkLogosModule` (not the old plain-CMake PR 16 layout); the wrapper may only need
-metadata/codegen overrides — if `nix bundle` fails after a pin bump, adjust
+We use the local wrapper flake for payment-streams wallet behavior (guest ELF from env,
+JSON submit helper, future `sign_public_payload`) and build fixes (codegen API headers,
+`.lgx` metadata for bundler). Logos module id matches upstream PR 19: **`logos_execution_zone`**.
+`cmake-wallet-ffi-include.patch` in the same directory is optional (Qt include propagation);
+wire it in `postPatch` if the wallet plugin fails to find `wallet_ffi.h`.
+If `nix bundle` fails after a pin bump, adjust
 `logos-execution-zone-module-patched/flake.nix` against current PR 19 packages.
 
 ### After changing pins
@@ -67,7 +66,7 @@ After bumping either pin, re-run `lgs setup` from this repo so `wallet` and loca
 
 ### Payment-streams Logos module (`logos-payment-streams-module/flake.nix`)
 
-- `lez_wallet_module` flake input → patched wrapper (PR 19 upstream inside).
+- `logos_execution_zone` flake input → patched wrapper (PR 19 upstream inside).
 - `logos-execution-zone` follows LEZ `main` (491) for `wallet_ffi`.
 
 ## Verification commands
@@ -80,6 +79,4 @@ nix build .#payment-streams-ffi
 nix build ./logos-payment-streams-module#lgx
 ```
 
-For `lgpm`, `logoscore`, and the Step 7+ loop see
-[`logos-runtime-guide.md`](logos-runtime-guide.md)
-and [`logos-runtime-guide.md`](logos-runtime-guide.md).
+For `lgpm`, `logoscore`, and the Step 7+ loop see [`logos-runtime-guide.md`](logos-runtime-guide.md).

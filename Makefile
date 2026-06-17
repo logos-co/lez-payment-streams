@@ -33,7 +33,7 @@ help: ## Show this help
 	@echo "  make program-id  Show ProgramId for built binary"
 	@echo "  make status      Show saved state and binary info"
 	@echo "  make seed-fixture Run Step 10a localnet seed script"
-	@echo "  make wallet-lgx    Build Step 10b patched lez_wallet_module .lgx"
+	@echo "  make wallet-lgx    Build Step 10b patched logos_execution_zone .lgx"
 	@echo "  make verify-step10a Run Step 10a DoD script"
 	@echo "  make verify-step10b Run Step 10b DoD script"
 	@echo "  make verify-step11a Run Step 11a DoD script"
@@ -92,7 +92,7 @@ clean: ## Remove saved state
 seed-fixture: ## Step 10a local chain fixture (scripts/seed-localnet-fixture.sh)
 	./scripts/seed-localnet-fixture.sh
 
-wallet-lgx: ## Step 10b patched lez_wallet_module .lgx (scripts/build-wallet-lgx.sh)
+wallet-lgx: ## Step 10b patched logos_execution_zone .lgx (scripts/build-wallet-lgx.sh)
 	./scripts/build-wallet-lgx.sh
 
 verify-step10a: ## Step 10a definition of done (scripts/verify-step10a-dod.sh)

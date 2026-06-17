@@ -1,6 +1,6 @@
 # Step 11a — module chain reads
 
-Wire `payment_streams_module` to `lez_wallet_module` for on-chain account reads (Step 11a
+Wire `payment_streams_module` to `logos_execution_zone` for on-chain account reads (Step 11a
 in [`integration-plan-v2.md`](../integration-plan-v2.md)).
 
 Prerequisites: Step 10a fixture, Step 10b wallet `.lgx`, load order wallet then payment streams,
@@ -21,10 +21,10 @@ All return compact JSON with `"status":"ok"` or `"status":"error"`.
 | `readClock10Decoded` | Default `CLOCK_10` (`fixtures/localnet.json.example`) |
 | `chainAction` | Step 11b writes and status (see [`step11b-chain-writes.md`](step11b-chain-writes.md)) |
 
-For base58 → hex conversion, call `lez_wallet_module.account_id_from_base58` directly
+For base58 → hex conversion, call `logos_execution_zone.account_id_from_base58` directly
 (`accountIdHexFromBase58` is not on the public Universal surface).
 
-Implementation uses `invokeRemoteMethod` into `lez_wallet_module` (D6), then
+Implementation uses `invokeRemoteMethod` into `logos_execution_zone` (D6), then
 `payment_streams_ffi_decode_*` on account `data` bytes.
 
 ## logoscore smoke (fixture manifest)
@@ -38,9 +38,9 @@ export WALLET_STORAGE="$REPO/.scaffold/wallet/storage.json"
 # tooling shell + localnet up (Step 10a)
 logoscore -D -m "$MODULES" -q &
 sleep 3
-logoscore load-module lez_wallet_module
+logoscore load-module logos_execution_zone
 logoscore load-module payment_streams_module
-logoscore call lez_wallet_module open "$WALLET_CONFIG" "$WALLET_STORAGE"
+logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE"
 
 VC=$(python3 -c "import json; print(json.load(open('fixtures/localnet.json'))['vault_config_account_id'])")
 logoscore call payment_streams_module readVaultConfigDecoded "$VC"

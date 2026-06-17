@@ -1,6 +1,6 @@
 # Logos runtime guide
 
-Build, install, and exercise `lez_wallet_module` and `payment_streams_module` in
+Build, install, and exercise `logos_execution_zone` and `payment_streams_module` in
 `logoscore` (integration plan Steps 7, 9–13; Steps 10–11 for chain fixture and module I/O).
 
 Step 10b operator detail (wallet `open` against Step 10a `.scaffold/wallet`, DoD script):
@@ -12,7 +12,7 @@ Related: [`feature-branch-pins.md`](feature-branch-pins.md),
 
 ## Part 1 — First-time install (Step 7)
 
-Build two `.lgx` packages (`lez_wallet_module`, `payment_streams_module`),
+Build two `.lgx` packages (`logos_execution_zone`, `payment_streams_module`),
 install with `lgpm`, and load them in `logoscore`.
 
 Related in this guide:
@@ -95,8 +95,7 @@ nix build .#payment-streams-ffi
 
 Wallet module is pinned to upstream
 [PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19)
-on LEZ
-[PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491);
+on LEZ `main` ([491 merged](https://github.com/logos-blockchain/logos-execution-zone/pull/491));
 bundle via the patched wrapper flake (see [`feature-branch-pins.md`](feature-branch-pins.md)):
 
 ```bash
@@ -112,7 +111,7 @@ ls -l ./wallet-lgx-out/*.lgx
 
 Expected: one `.lgx` under `wallet-lgx-out/` (symlink to store), e.g.
 `logos-execution-zone-module-dev-with-sdk-api-headers.lgx`.
-Manifest name inside the package is still `lez_wallet_module`.
+Manifest name inside the package is `logos_execution_zone`.
 
 Refresh path exports:
 
@@ -175,15 +174,15 @@ lgpm --modules-dir "$MODULES" install --file "$PS_LGX"
 Check install layout:
 
 ```bash
-test -d "$MODULES/lez_wallet_module" && echo "wallet dir OK"
-test -f "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" && echo "wallet .so OK"
+test -d "$MODULES/logos_execution_zone" && echo "wallet dir OK"
+test -f "$MODULES/logos_execution_zone/logos_execution_zone_plugin.so" && echo "wallet .so OK"
 test -d "$MODULES/payment_streams_module" && echo "ps dir OK"
 test -f "$MODULES/payment_streams_module/payment_streams_module_plugin.so" && echo "ps .so OK"
 
 lgpm --modules-dir "$MODULES" list
 ```
 
-Expected `list` output: two rows — `lez_wallet_module` and `payment_streams_module`,
+Expected `list` output: two rows — `logos_execution_zone` and `payment_streams_module`,
 both `core` / `blockchain`.
 
 Unsigned local packages may print a warning; install still completes.
@@ -221,11 +220,11 @@ Expected: `Status: running`, modules section shows wallet and payment streams as
 `not_loaded` initially, `capability_module` loaded.
 
 ```bash
-logoscore load-module lez_wallet_module
+logoscore load-module logos_execution_zone
 logoscore load-module payment_streams_module
 ```
 
-Expected: `Loaded module: lez_wallet_module` and `Loaded module: payment_streams_module`.
+Expected: `Loaded module: logos_execution_zone` and `Loaded module: payment_streams_module`.
 
 Check:
 
@@ -235,13 +234,13 @@ logoscore status
 ```
 
 Expected: 3 loaded, 0 crashed, 0 not loaded
-(`capability_module`, `lez_wallet_module`, `payment_streams_module`).
+(`capability_module`, `logos_execution_zone`, `payment_streams_module`).
 
 Optional — load on daemon startup next time:
 
 ```bash
 logoscore stop
-logoscore -D -m "$MODULES" -l lez_wallet_module,payment_streams_module -v
+logoscore -D -m "$MODULES" -l logos_execution_zone,payment_streams_module -v
 ```
 
 ---
@@ -258,8 +257,8 @@ Expected: Universal plugin loads; no payment-streams business API until Steps 10
 (only framework or codegen symbols until you add Step 11a methods).
 
 ```bash
-lm methods "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" | rg list_accounts
-lm methods "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" | rg 'send_generic_public_transaction|PAYMENT_STREAMS_GUEST_BIN'
+lm methods "$MODULES/logos_execution_zone/logos_execution_zone_plugin.so" | rg list_accounts
+lm methods "$MODULES/logos_execution_zone/logos_execution_zone_plugin.so" | rg 'send_generic_public_transaction|PAYMENT_STREAMS_GUEST_BIN'
 ```
 
 Expected: `list_accounts`, PR 19 `send_generic_public_transaction`, and (patched 11b build)
@@ -279,7 +278,7 @@ Cross-module Universal to Legacy wallet calls were validated in Step 8
 For operator checks, exercise the wallet directly:
 
 ```bash
-logoscore call lez_wallet_module list_accounts
+logoscore call logos_execution_zone list_accounts
 ```
 
 Expected without LEZ / wallet JSON-RPC: RPC or call failure is normal before localnet.
@@ -300,7 +299,7 @@ Expected: daemon stops; a later `logoscore status` reports not running.
 | Package | Build | `.lgx` location |
 |---------|--------|-----------------|
 | `payment_streams_module` | `nix build ./logos-payment-streams-module#lgx` from `REPO` | `$REPO/result/*.lgx` |
-| `lez_wallet_module` | `nix bundle … .#lib -o ./wallet-lgx-out` in patched flake dir | `…/wallet-lgx-out/*.lgx` |
+| `logos_execution_zone` | `nix bundle … .#lib -o ./wallet-lgx-out` in patched flake dir | `…/wallet-lgx-out/*.lgx` |
 
 | Variable | Purpose |
 |----------|---------|
@@ -321,8 +320,8 @@ Normative decision: integration plan D6.
 | Topic | Choice |
 |-------|--------|
 | Interface | `"interface": "universal"` in `metadata.json` |
-| Wallet in metadata | Empty `dependencies` — do not declare `lez_wallet_module` (Issue 31 / typed wrapper crash in sidecars) |
-| Wallet calls | `modules().api->getClient("lez_wallet_module")->invokeRemoteMethod(...)` |
+| Wallet in metadata | Empty `dependencies` — do not declare `logos_execution_zone` (Issue 31 / typed wrapper crash in sidecars) |
+| Wallet calls | `modules().api->getClient("logos_execution_zone")->invokeRemoteMethod(...)` |
 | Impl class | `PaymentStreamsModuleImpl` extends `LogosModuleContext` |
 | Build | `logos-module-builder` `mkLogosModule` + `lez_payment_streams_ffi` external lib |
 | Wallet `.lgx` | Install separately; use patched flake until upstream aligns module id (Part 1) |
@@ -348,12 +347,12 @@ Step 11a adds wallet read helpers using the `invokeRemoteMethod` pattern in the 
 
 ```cpp
 LogosAPI* api = modules().api;
-LogosAPIClient* client = api->getClient(QStringLiteral("lez_wallet_module"));
+LogosAPIClient* client = api->getClient(QStringLiteral("logos_execution_zone"));
 const QVariant result = client->invokeRemoteMethod(
-    QStringLiteral("lez_wallet_module"), QStringLiteral("list_accounts"));
+    QStringLiteral("logos_execution_zone"), QStringLiteral("list_accounts"));
 ```
 
-Load order: `lez_wallet_module` before `payment_streams_module`. Do not call
+Load order: `logos_execution_zone` before `payment_streams_module`. Do not call
 wallet RPC before the wallet module is loaded.
 
 Pinned SDK: use `invokeRemoteMethod` (same as Legacy modules in practice). Do not
@@ -470,7 +469,7 @@ lgs wallet -- check-health
 
 Expected: localnet running, wallet healthy.
 
-For logoscore, load `lez_wallet_module` then `payment_streams_module`, then
+For logoscore, load `logos_execution_zone` then `payment_streams_module`, then
 `open` with `$REPO/.scaffold/wallet/wallet_config.json` and `storage.json`
 (Step 10b — [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md)).
 
@@ -546,7 +545,7 @@ logoscore stop
 Tab A — daemon:
 
 ```bash
-logoscore -D -m "$MODULES" -l lez_wallet_module,payment_streams_module -v
+logoscore -D -m "$MODULES" -l logos_execution_zone,payment_streams_module -v
 ```
 
 Tab B — client (fresh `nix shell` + exports):
@@ -556,13 +555,13 @@ logoscore status
 logoscore list-modules --loaded
 ```
 
-Expected: 3 loaded, 0 crashed (`capability_module`, `lez_wallet_module`,
+Expected: 3 loaded, 0 crashed (`capability_module`, `logos_execution_zone`,
 `payment_streams_module`).
 
 If you did not use `-l` on startup:
 
 ```bash
-logoscore load-module lez_wallet_module
+logoscore load-module logos_execution_zone
 logoscore load-module payment_streams_module
 ```
 
@@ -662,7 +661,7 @@ lgpm --modules-dir "$MODULES" install --file "$WALLET_LGX"
 Check:
 
 ```bash
-lm methods "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" | rg 'send_generic|sign_public'
+lm methods "$MODULES/logos_execution_zone/logos_execution_zone_plugin.so" | rg 'send_generic|sign_public'
 ```
 
 Then rebuild/reinstall PS if CMake/codegen depended on wallet API headers, and

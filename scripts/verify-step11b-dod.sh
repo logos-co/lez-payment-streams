@@ -31,7 +31,7 @@ else
 fi
 
 PLUGIN="$MODULES/payment_streams_module/payment_streams_module_plugin.so"
-WALLET_PLUGIN="$MODULES/lez_wallet_module/lez_wallet_module_plugin.so"
+WALLET_PLUGIN="$MODULES/logos_execution_zone/logos_execution_zone_plugin.so"
 if [[ ! -f "$PLUGIN" ]]; then
   skip "payment_streams_module not installed (nix build ./logos-payment-streams-module#lgx && lgpm install)"
 else
@@ -85,8 +85,8 @@ if [[ ! -f "$WALLET_STORAGE" ]] && [[ ! -f "${WALLET_E2E_DIR:-$REPO/.scaffold/wa
   skip "logoscore E2E (no wallet storage; will create in e2e dir)"
 fi
 
-if [[ ! -f "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" ]]; then
-  bad "lez_wallet_module not installed (Step 10b)"
+if [[ ! -f "$MODULES/logos_execution_zone/logos_execution_zone_plugin.so" ]]; then
+  bad "logos_execution_zone not installed (Step 10b)"
   echo "=== done (exit $fail) ==="
   exit "$fail"
 fi

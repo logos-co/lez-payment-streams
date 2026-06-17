@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build lez_wallet_module .lgx from the patched PR 19 wrapper flake (Step 10b).
+# Build logos_execution_zone .lgx from the patched PR 19 wrapper flake (Step 10b).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

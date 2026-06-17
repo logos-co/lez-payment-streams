@@ -100,8 +100,8 @@ if ! curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' 
   exit "$fail"
 fi
 
-if [[ ! -f "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" ]]; then
-  bad "lez_wallet_module not installed (Step 10b)"
+if [[ ! -f "$MODULES/logos_execution_zone/logos_execution_zone_plugin.so" ]]; then
+  bad "logos_execution_zone not installed (Step 10b)"
   echo "=== done (exit $fail) ==="
   exit "$fail"
 fi
@@ -135,16 +135,16 @@ timeout "$E2E_TIMEOUT" nix shell github:logos-co/logos-logoscore-cli --command b
   logoscore -D -m \"\$MODULES\" -q &
   DAEMON_PID=\$!
   sleep 3
-  logoscore load-module lez_wallet_module >/dev/null
+  logoscore load-module logos_execution_zone >/dev/null
   logoscore load-module payment_streams_module >/dev/null
   if [[ ! -f \"\$WALLET_STORAGE\" ]]; then
-    logoscore call lez_wallet_module create_new \"\$WALLET_CONFIG\" \"\$WALLET_STORAGE\" \"\$WALLET_E2E_PASSWORD\" 2>/dev/null | tail -1 | sed 's/^/WALLET:/'
+    logoscore call logos_execution_zone create_new \"\$WALLET_CONFIG\" \"\$WALLET_STORAGE\" \"\$WALLET_E2E_PASSWORD\" 2>/dev/null | tail -1 | sed 's/^/WALLET:/'
   else
-    WALLET_LINE=\$(logoscore call lez_wallet_module open \"\$WALLET_CONFIG\" \"\$WALLET_STORAGE\" 2>/dev/null | tail -1)
+    WALLET_LINE=\$(logoscore call logos_execution_zone open \"\$WALLET_CONFIG\" \"\$WALLET_STORAGE\" 2>/dev/null | tail -1)
     echo \"\$WALLET_LINE\" | sed 's/^/WALLET:/'
     if ! python3 -c \"import json,sys; d=json.loads(sys.argv[1]); sys.exit(0 if d.get('result')==0 else 1)\" \"\$WALLET_LINE\" 2>/dev/null; then
       rm -f \"\$WALLET_STORAGE\"
-      logoscore call lez_wallet_module create_new \"\$WALLET_CONFIG\" \"\$WALLET_STORAGE\" \"\$WALLET_E2E_PASSWORD\" 2>/dev/null | tail -1 | sed 's/^/WALLET:/'
+      logoscore call logos_execution_zone create_new \"\$WALLET_CONFIG\" \"\$WALLET_STORAGE\" \"\$WALLET_E2E_PASSWORD\" 2>/dev/null | tail -1 | sed 's/^/WALLET:/'
     fi
   fi
   logoscore call payment_streams_module readVaultConfigDecoded \"\$VC\" 2>/dev/null | tail -1 | sed 's/^/VAULT:/'

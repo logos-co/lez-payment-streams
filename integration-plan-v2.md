@@ -129,15 +129,15 @@ is a Universal Logos Core module (`"interface": "universal"`) that wraps the FFI
 It is built with `logos-module-builder` / `mkLogosModule` and
 `src/payment_streams_module_impl.{h,cpp}` (see Step 9).
 It owns session keys, pending-proposal state, user and provider eligibility flows.
-It does not declare `lez_wallet_module` in `metadata.json`; wallet calls are
+It does not declare `logos_execution_zone` in `metadata.json`; wallet calls are
 dynamic via `invokeRemoteMethod` (D6, Step 8).
 
-`lez_wallet_module`
+`logos_execution_zone`
 is the existing Logos Core module (repo `logos-execution-zone-module`)
 that wraps `wallet_ffi`.
 It is the single point of contact with the LEZ chain.
 Reads of vault, stream, and clock accounts go through `get_account_public`.
-Writes go through `lez_wallet_module` using
+Writes go through `logos_execution_zone` using
 [PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19)
 on LEZ
 [PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491)
@@ -180,7 +180,7 @@ ship on our branches until upstreamed; Store query consumption uses upstream
 is the headless runtime used to load and exercise modules during integration testing.
 The end-to-end demo runs two `logoscore` instances on one host,
 one as user and one as provider,
-each loading `lez_wallet_module`, `payment_streams_module`,
+each loading `logos_execution_zone`, `payment_streams_module`,
 and `delivery_module` built from upstream `master` plus our eligibility-hook branch
 when Step 16 is in progress (see Step 17).
 
@@ -217,7 +217,7 @@ They are transitively available through `logos-module-builder`.
 `logos-rln-module` inside `logos-lez-rln`
 is the closest precedent for `payment_streams_module`.
 It is a `core` module that wraps a Rust FFI crate (`lez-rln-ffi`)
-and calls `lez_wallet_module` for chain reads and writes
+and calls `logos_execution_zone` for chain reads and writes
 via `LogosAPIClient::invokeRemoteMethod`.
 We reuse its file layout,
 cross-module `invokeRemoteMethod` patterns and hex/byte helpers.
@@ -253,7 +253,7 @@ is the LEZ source repo
 This work does not modify it;
 it is a transitive dependency through
 `lez-payment-streams-core`'s Cargo dependencies on `nssa_core` and `clock_core`
-and through `lez_wallet_module`'s wrap of `wallet_ffi`.
+and through `logos_execution_zone`'s wrap of `wallet_ffi`.
 
 LIP-155
 is the protocol specification for payment streams.
@@ -329,17 +329,13 @@ Reproducible flake refs and pin maintenance:
 [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
 This section records integration intent; pin tables live in that doc only.
 
-`payment_streams_module` chain writes go through `lez_wallet_module`, which delegates
+`payment_streams_module` chain writes go through `logos_execution_zone`, which delegates
 to the generic public transaction APIs in `wallet_ffi`.
 
 #### LEZ FFI — PR 491 (canonical)
 
-Upstream work lives in
-[logos-execution-zone PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491)
-(`feat(wallet_ffi): wallet ffi generic transactions`).
-It supersedes the narrower
-[PR 429](https://github.com/logos-blockchain/logos-execution-zone/pull/429)
-(`wallet_ffi_send_public_transaction`); maintainers intend to close 429 after 491 merges.
+Generic public transactions on LEZ `main` ([491 merged](https://github.com/logos-blockchain/logos-execution-zone/pull/491)).
+Deprecated 429/16 wallet JSON path: [`docs/archive/superseded-wallet-pr-429-16.md`](docs/archive/superseded-wallet-pr-429-16.md).
 
 491 exposes (among others):
 
@@ -357,56 +353,44 @@ Private/generic PP paths exist in 491 but are out of scope for the MVP transpare
 Upstream exposes 491 to Logos modules via
 [logos-execution-zone-module PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19)
 (`feat: general transactions flow`, branch `Pravdyvy/generic-transactions-extension`).
-Same author and timeline as PR 491; this is the intended 16 replacement for generic public (and eventually private) execution.
+Same author and timeline as PR 491.
 
-Primary path: pin and build the patched wallet wrapper against PR 19 head + LEZ PR 491 head (see [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md)).
+Primary path: pin and build the patched wallet wrapper against PR 19 head + LEZ `main`
+(491 merged; see [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md)).
 Step 11b submits through PR 19 `send_generic_public_transaction` in the wallet; the Universal
 module uses a repo-specific `send_generic_public_transaction_json` IPC helper (N10). Read PR 19
 for the underlying QList request shape.
 
 Our wallet work (Steps 10b and 11c, reduced scope):
 
-- Step 10b: packaging — `lez_wallet_module` metadata rename, CMake `wallet_ffi.h` include,
-  codegen headers for dependents — keep the local wrapper flake; pin PR 491 + PR 19; do not
-  reimplement generic public send if PR 19 already does. Step 11b adds guest-ELF-from-env and
+- Step 10b: packaging — patched wrapper flake pins PR 491 + PR 19; CMake `wallet_ffi.h` include,
+  codegen headers for dependents, `.lgx` bundle. Module id stays upstream `logos_execution_zone`.
+  Do not reimplement generic public send if PR 19 already does. Step 11b adds guest-ELF-from-env and
   JSON submit patches on the same wrapper (see N10).
 - Step 11c: `sign_public_payload` per [N1](#n1-off-chain-canonical-payload-signing) — not in
   491 or 19; add on our patched wrapper (LEZ FFI + Qt) until upstream ships it.
 
-Do not pin or build against
-[PR 16](https://github.com/logos-blockchain/logos-execution-zone-module/pull/16) (429 JSON wrapper) or
-[PR 429](https://github.com/logos-blockchain/logos-execution-zone/pull/429).
+Do not pin [PR 429 / PR 16](docs/archive/superseded-wallet-pr-429-16.md).
 
 #### Pinning
 
-Pin `logos-execution-zone` to `refs/pull/491/head` and the wallet module upstream input to `refs/pull/19/head`
-until both merge; then pin `main` on both repos.
-See [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
-
-#### Superseded — 429 / 16 JSON shape (reference only)
-
-429 and PR 16 used a single JSON object with lowercase hex, no `0x` prefix:
-
-```json
-{
-  "program_id": "hex",
-  "accounts": ["hex", "hex", ...],
-  "instruction": "hex",
-  "signer_account": "hex"
-}
-```
-
-`logos-rln-module` may still use this shape where deployed; payment streams uses the 491 generic path, not 429.
+Pin `logos-execution-zone` to `main` at the 491 merge revision (see
+[`docs/feature-branch-pins.md`](docs/feature-branch-pins.md)) and the wallet module upstream
+input to `refs/pull/19/head` until PR 19 merges; then pin `main` on the wallet module repo.
+LEZ is no longer pinned to `refs/pull/491/head` in this integration.
 
 ### D4, Wallet module runtime name
 
-Call the loaded wallet module `lez_wallet_module` (patched wrapper `metadata.json`
-and `name()` aligned with operator installs; see Step 7).
+Use the upstream PR 19 Logos module id `logos_execution_zone`
+(`metadata.json` `name`, `LogosExecutionZoneWalletModule::name()`,
+plugin `logos_execution_zone_plugin`). The payment-streams wrapper flake adds
+behavioral patches only (guest ELF from env, JSON submit helper, future
+`sign_public_payload`); it does not rename the module (see Step 7).
 Universal `payment_streams_module` does not list the wallet in `metadata.json`
 (D6); load wallet before payment streams at runtime.
 `logos-rln-module` may still call a wallet plugin registered under the historical
 id `liblogos_execution_zone_wallet_module`.
-That is unrelated to the payment-streams demo, which installs only `lez_wallet_module`
+That is unrelated to the payment-streams demo, which installs `logos_execution_zone`
 from the patched wrapper (D4).
 
 ### D5, New module naming
@@ -423,8 +407,8 @@ Justification.
 The metadata name follows the protocol-named convention of `delivery_module`:
 the module speaks the LIP-155 payment-streams protocol,
 with the LEZ-specific bits behind its FFI.
-A `lez_` prefix would only earn its keep on a concept that is generic across chains
-(as is the case for `lez_wallet_module`).
+The wallet module keeps upstream PR 19 naming (`logos_execution_zone`), not a separate
+`lez_`-prefixed id in this integration.
 Snake_case in the metadata name plus a `-module` kebab-case suffix on the directory
 matches every existing module in the ecosystem.
 Co-locating the module with the SPEL program and the FFI crate
@@ -438,26 +422,26 @@ Build `payment_streams_module` with `"interface": "universal"` and
 Do not restore the Legacy `PluginInterface` shell.
 Archived bootstrap notes live under `docs/archive/`.
 
-Call `lez_wallet_module` at runtime via
-`modules().api->getClient("lez_wallet_module")->invokeRemoteMethod(...)`.
+Call `logos_execution_zone` at runtime via
+`modules().api->getClient("logos_execution_zone")->invokeRemoteMethod(...)`.
 Keep `"dependencies": []`.
 Step 8 validated Universal caller to Legacy callee.
 
 Justification.
 Universal static dependencies exist so codegen can emit typed `modules().<name>` wrappers.
 That assumes every dependency is Universal.
-`lez_wallet_module` is still Legacy, so listing it in `metadata.json` would not produce safe typed calls to its `Q_INVOKABLE` API.
+`logos_execution_zone` is still Legacy, so listing it in `metadata.json` would not produce safe typed calls to its `Q_INVOKABLE` API.
 Dynamic access keeps payment streams on the Universal side (with `delivery_module`) while the wallet stays Legacy.
 We rely on explicit load order and runtime errors if the wallet is absent.
 Revisit a static dependency when the wallet module is Universal upstream and codegen supports it.
 
 ### N1, Off-chain canonical-payload signing
 
-Neither `wallet_ffi` nor `lez_wallet_module` currently exposes
+Neither `wallet_ffi` nor `logos_execution_zone` currently exposes
 a primitive that signs an arbitrary canonical payload with a wallet account's key.
 That primitive is required for `VaultProof.owner_signature`,
 because the vault proof must prove control of the LEZ vault owner key.
-For the MVP, we add `sign_public_payload` to `lez_wallet_module`
+For the MVP, we add `sign_public_payload` to `logos_execution_zone`
 on our branch (see Step 11b wallet write helpers and N8).
 
 No domain parameter is included.
@@ -1097,7 +1081,7 @@ Status: done (wait for upstream only).
 Goal.
 
 Understand how payment-streams artifacts are built with Nix,
-how `.lgx` packages are produced for both `lez_wallet_module` and `payment_streams_module`,
+how `.lgx` packages are produced for both `logos_execution_zone` and `payment_streams_module`,
 how `lgpm` installs them into one `modules/` directory,
 and how `logoscore` loads that directory,
 before treating Step 9 definition-of-done items 2–5 as the operating checklist
@@ -1122,10 +1106,10 @@ Definition of done.
    and `nix bundle --bundler github:logos-co/nix-bundle-lgx .#lib`,
    and produce `payment_streams_module` via `nix build ./logos-payment-streams-module#lgx`.
 3. You use one absolute `modules/` path for both `lgpm --modules-dir` and `logoscore -m`,
-   installing `lez_wallet_module` before `payment_streams_module`,
+   installing `logos_execution_zone` before `payment_streams_module`,
    running `lgpm list` (two modules),
    starting `logoscore -D -m` (daemon plus `capability_module`),
-   then loading wallet and payment streams via `load-module` or `-l lez_wallet_module,payment_streams_module`,
+   then loading wallet and payment streams via `load-module` or `-l logos_execution_zone,payment_streams_module`,
    without ad hoc relative `PATH` hacks
    (prefer `nix shell` in each terminal tab; see operator guide).
 
@@ -1134,19 +1118,19 @@ Definition of done.
 Architectural context:
 Before committing to Universal `payment_streams_module` (D6), we had to determine whether
 `logoscore` can safely route a dynamic call from a Universal module to Legacy
-`lez_wallet_module` without listing the wallet in `metadata.json`.
+`logos_execution_zone` without listing the wallet in `metadata.json`.
 Historical rationale and probe design:
 [`docs/step8-universal-legacy-probe-results.md`](docs/step8-universal-legacy-probe-results.md)
 (appendix references the retired dilemma write-up).
 
 The probe module uses the `logos-module-builder` Universal template.
-It does not add `lez_wallet_module` to `metadata.json` `dependencies`.
+It does not add `logos_execution_zone` to `metadata.json` `dependencies`.
 It calls the wallet via
-`modules().api->getClient("lez_wallet_module")->invokeRemoteMethod(...)`.
+`modules().api->getClient("logos_execution_zone")->invokeRemoteMethod(...)`.
 Compile the probe and run `logoscore`, loading Legacy wallet then Universal probe.
 
 Status: done for Step 8 goal (2026-06-08).
-Validated: Universal caller invokes Legacy `lez_wallet_module` without a static dependency;
+Validated: Universal caller invokes Legacy `logos_execution_zone` without a static dependency;
 daemon stable; `invokeRemoteMethod` dispatch works (empty account list OK for marshaling smoke).
 Not validated in the probe: funded wallet / scaffold storage via module `open` (Pass B storage failure).
 See [`docs/step8-universal-legacy-probe-results.md`](docs/step8-universal-legacy-probe-results.md) and
@@ -1156,10 +1140,10 @@ Decision D6: build `payment_streams_module` as Universal; call the wallet dynami
 `dependencies`.
 
 Components required to run:
-`logoscore`, patched `lez_wallet_module`, probe `.lgx`, optional LEZ for Pass B only.
+`logoscore`, patched `logos_execution_zone`, probe `.lgx`, optional LEZ for Pass B only.
 
 Definition of done:
-probe loads with wallet; `invokeRemoteMethod` reaches `lez_wallet_module` without host crash;
+probe loads with wallet; `invokeRemoteMethod` reaches `logos_execution_zone` without host crash;
 results recorded in the Step 8 doc; D6 recorded in this plan.
 
 ### Step 9, Bootstrap Universal `payment_streams_module`
@@ -1176,7 +1160,7 @@ Pattern decision (D6, Step 8 probe):
 build `payment_streams_module` as Universal (`LogosModuleContext` in
 `payment_streams_module_impl.{h,cpp}`).
 Do not restore the Legacy `PluginInterface` shell.
-Call `lez_wallet_module` at runtime via `invokeRemoteMethod`; keep `"dependencies": []`.
+Call `logos_execution_zone` at runtime via `invokeRemoteMethod`; keep `"dependencies": []`.
 Archived Legacy bootstrap notes:
 [`docs/archive/legacy-module-bootstrap.md`](docs/archive/legacy-module-bootstrap.md).
 
@@ -1232,10 +1216,10 @@ Status: done (Universal skeleton in `logos-payment-streams-module/`).
 Definition of done:
 
 1. `nix build ./logos-payment-streams-module#lgx` produces a valid `.lgx`
-2. `lgpm install` places the module alongside patched `lez_wallet_module`
+2. `lgpm install` places the module alongside patched `logos_execution_zone`
 3. `logoscore` loads the module after explicit `load-module` (wallet first, then payment streams)
 4. `payment_streams_module` reports loaded; daemon shows no crash
-5. `logoscore call lez_wallet_module list_accounts` reaches the wallet RPC (LEZ optional for failure-only smoke)
+5. `logoscore call logos_execution_zone list_accounts` reaches the wallet RPC (LEZ optional for failure-only smoke)
 
 Operator commands:
 [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 1).
@@ -1246,10 +1230,10 @@ Step 10a–10b use scaffold and wallet `.lgx` setup (Part 1 and fixture notes in
 ### Step 10, LEZ fixture and wallet runtime
 
 Architectural context:
-Step 10 prepares local chain state and the patched `lez_wallet_module` artifact.
+Step 10 prepares local chain state and the patched `logos_execution_zone` artifact.
 No `payment_streams_module` chain reads or writes yet (those are Step 11).
 Scaffold CLI (`lgs`) owns localnet lifecycle and program deploy; the wallet `.lgx`
-from the patched wrapper (PR 491 + PR 19) is what logoscore loads as `lez_wallet_module`.
+from the patched wrapper (PR 491 + PR 19) is what logoscore loads as `logos_execution_zone`.
 
 Sub-step order: 10a → 10b before any Step 11 work.
 
@@ -1302,24 +1286,24 @@ Guest alignment already in tree (rebuild + redeploy after changes):
    `program_id_hex` follow ImageID.
 4. If seed fails on deposit, use sequencer logs (execution vs poller); see handoff — do not assume
    a `nssa_core` tag bump removes the vendor or enum encoding.
-5. Run `./scripts/verify-step10a-dod.sh` (vault config, **vault holding**, stream config on chain)
+5. Run `./scripts/verify-step10a-dod.sh` (vault config, vault holding, stream config on chain)
    before Step 10b.
 
 #### Step 10b, Wallet runtime artifact (PR 491 + PR 19)
 
 Goal:
-installable `lez_wallet_module` `.lgx` built from
+installable `logos_execution_zone` `.lgx` built from
 `logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/`
 (upstream [PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19)
-on LEZ [PR 491](https://github.com/logos-blockchain/logos-execution-zone/pull/491)),
-with D4 naming and packaging overrides only — generic public send comes from PR 19,
-not a reimplementation in this repo.
+on LEZ `main` / [491 merged](https://github.com/logos-blockchain/logos-execution-zone/pull/491)),
+with wrapper behavioral patches only (guest ELF, JSON submit, future signing) — generic public
+send comes from PR 19, not a reimplementation in this repo.
 
 Work:
 
 - Pin and build per [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
 - `nix bundle` wallet `.lgx`; `lgpm install` into shared `MODULES`.
-- Document `open` (config + storage + sequencer RPC) so `logoscore call lez_wallet_module …`
+- Document `open` (config + storage + sequencer RPC) so `logoscore call logos_execution_zone …`
   reaches the same localnet as Step 10a (`get_account_public`, `list_accounts`).
 - Step 11b wallet extras (same flake / manual Qt build): `PAYMENT_STREAMS_GUEST_BIN`,
   `send_generic_public_transaction_json` — see [`docs/step11b-chain-writes.md`](docs/step11b-chain-writes.md).
@@ -1332,8 +1316,8 @@ Step 10a localnet (for RPC validation); logoscore + `lgpm` per runtime guide Par
 
 Definition of done:
 
-1. Patched wallet `.lgx` installs as `lez_wallet_module`.
-2. `logoscore load-module lez_wallet_module` succeeds after Step 9 payment streams load order rules.
+1. Patched wallet `.lgx` installs as `logos_execution_zone`.
+2. `logoscore load-module logos_execution_zone` succeeds after Step 9 payment streams load order rules.
 3. Documented `open` path; `get_account_public` returns JSON for a fixture account id from 10a.
 4. `lm methods` confirms PR 19 send surface (names per that PR).
 
@@ -1344,7 +1328,7 @@ Deliverables in tree:
 ### Step 11, Module chain access
 
 Architectural context:
-Step 11 wires `payment_streams_module` to `lez_wallet_module` for reads, writes, and
+Step 11 wires `payment_streams_module` to `logos_execution_zone` for reads, writes, and
 (off-chain) digest signing support. Requires 10a → 10b complete.
 Sub-step order: 11a → 11b → 11c (11c must complete before Step 12 eligibility).
 
@@ -1358,11 +1342,11 @@ Runbook: [`docs/step11a-chain-reads.md`](docs/step11a-chain-reads.md).
 
 This step adds stable read helpers and exercises wallet-backed chain reads end-to-end
 for the first time in `payment_streams_module`.
-`payment_streams_module` calls into `lez_wallet_module`,
+`payment_streams_module` calls into `logos_execution_zone`,
 which uses `wallet_ffi` to reach the LEZ sequencer over JSON-RPC.
 
 Add helpers inside `payment_streams_module` that wrap
-`lez_wallet_module.account_id_from_base58` and `lez_wallet_module.get_account_public`,
+`logos_execution_zone.account_id_from_base58` and `logos_execution_zone.get_account_public`,
 plus a higher-level helper that reads the configured clock account
 (default `CLOCK_10`, see Step 10a fixture)
 and returns the current sequencer time.
@@ -1422,7 +1406,7 @@ Work:
 
 - Implement `sign_public_payload(accountId, canonical_payload_digest_hex) -> QString`.
 - Rebuild and reinstall wallet `.lgx` (same flake as 10b).
-- Smoke via `logoscore call lez_wallet_module …` (no full Store flow required).
+- Smoke via `logoscore call logos_execution_zone …` (no full Store flow required).
 
 Components required to run:
 Step 10b pipeline; logoscore.
@@ -1502,7 +1486,7 @@ decodes it through the FFI,
 folds it at the current clock time,
 and checks that the effective state is `ACTIVE`.
 For `StreamProposal` output,
-the module asks `lez_wallet_module.sign_public_payload`
+the module asks `logos_execution_zone.sign_public_payload`
 to produce `VaultProof.owner_signature` with the vault owner's LEZ key.
 Later `StreamProof`s are signed with the persisted session key.
 
@@ -1594,7 +1578,7 @@ Architectural context:
 this is the provider-side method that `delivery_module` will auto-invoke
 once registered as the inbound eligibility verifier in Step 16.
 Structural checks happen entirely through the Rust FFI;
-chain checks happen via LogosAPI calls to `lez_wallet_module`.
+chain checks happen via LogosAPI calls to `logos_execution_zone`.
 
 Expose a single provider-side `Q_INVOKABLE` method
 `verifyEligibilityForStoreQuery(proofBytes, canonicalRequestBytes, requesterPeerId)`
@@ -1840,7 +1824,7 @@ and direct Store traffic from the user host to the provider host.
 Create a single shell script that
 starts a fresh scaffold workspace,
 deploys `lez_payment_streams`,
-builds `.lgx` packages for `lez_wallet_module` (our branch),
+builds `.lgx` packages for `logos_execution_zone` (our branch),
 `payment_streams_module`,
 and `delivery_module` (upstream `master` with eligibility hooks merged or
 branched as in Step 16; Store query API from upstream only),
@@ -1873,7 +1857,7 @@ Components required to run:
 LEZ sequencer on `127.0.0.1:3040`,
 `lez_payment_streams` program deployed onto it,
 two `logoscore` daemons (one for user, one for provider),
-each daemon hosting `lez_wallet_module`, `payment_streams_module`,
+each daemon hosting `logos_execution_zone`, `payment_streams_module`,
 and `delivery_module`,
 provider `delivery_module` configuration with relay and Store service enabled,
 a SQLite Store archive path,

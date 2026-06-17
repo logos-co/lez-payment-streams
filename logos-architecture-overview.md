@@ -33,7 +33,7 @@ That is `<org>/<repo>`; the repo named there is LEZ.
 
 ### "Wallet module" always means the LEZ wallet
 
-In module-related docs, "wallet module" refers to `lez_wallet_module`
+In module-related docs, "wallet module" refers to `logos_execution_zone`
 in the `logos-execution-zone-module` repo.
 It wraps LEZ's `wallet_ffi`.
 Field values like `"category": "blockchain"`
@@ -105,7 +105,7 @@ See [Module Implementation Patterns](#module-implementation-patterns) for detail
 Three module types matter for this integration:
 
 - `core` is a backend module with no UI.
-  Examples: `lez_wallet_module`, `delivery_module`,
+  Examples: `logos_execution_zone`, `delivery_module`,
   `payment_streams_module` (added by this work).
 - `ui_qml` with a C++ backend has a QML view plus a backend process
   exposing typed remoting via a `.rep` file.
@@ -141,7 +141,7 @@ The `dependencies` array in `metadata.json` declares outbound dependencies,
 what other modules this module needs to call.
 The runtime loads these dependencies before your module.
 
-Example. `payment_streams_module` calls `lez_wallet_module` for chain reads and writes.
+Example. `payment_streams_module` calls `logos_execution_zone` for chain reads and writes.
 It does not list the wallet in `metadata.json` (D6).
 Load the wallet module before payment streams at runtime.
 
@@ -191,7 +191,7 @@ What matters is the resulting binary follows C ABI conventions.
 
 This is per-module and private.
 `delivery_module` calls `liblogosdelivery` (Nim with C ABI).
-`lez_wallet_module` calls `wallet_ffi` (Rust with C ABI).
+`logos_execution_zone` calls `wallet_ffi` (Rust with C ABI).
 `payment_streams_module` will call `lez-payment-streams-ffi` (Rust with C ABI).
 
 Other modules never see this boundary.
@@ -231,8 +231,8 @@ LogosAPI::callModule("other_module", "methodName", {arg1, arg2});
 ```
 
 Payment streams integration (Step 8, D6): a Universal `payment_streams_module`
-calling Legacy `lez_wallet_module` uses the same dispatch as Legacy callers on
-the pinned SDK: `modules().api->getClient("lez_wallet_module")->invokeRemoteMethod(...)`.
+calling Legacy `logos_execution_zone` uses the same dispatch as Legacy callers on
+the pinned SDK: `modules().api->getClient("logos_execution_zone")->invokeRemoteMethod(...)`.
 See [`docs/step8-universal-legacy-probe-results.md`](docs/step8-universal-legacy-probe-results.md).
 
 The called module receives the invocation through Qt's meta-object system.
@@ -251,7 +251,7 @@ Data is copied across process boundaries, not shared.
 (PDA derivation, stream folding, proof canonicalization, instruction encoding).
 
 It uses Boundary B for all external communication.
-Calling `lez_wallet_module` for chain access is Boundary B.
+Calling `logos_execution_zone` for chain access is Boundary B.
 Being called by `delivery_module` as an eligibility verifier is also Boundary B.
 The runtime mediates both directions.
 
@@ -355,7 +355,7 @@ no L1 dependency,
 no indexer,
 no full-stack circuits management.
 `getAccount` against the sequencer at `:3040`
-is the read path used by `lez_wallet_module`,
+is the read path used by `logos_execution_zone`,
 matching `docs/step1-findings-scaffold-rpc.md`.
 
 The LEZ indexer exists in the broader ecosystem but never runs for this integration.
@@ -387,7 +387,7 @@ uses `Q_PLUGIN_METADATA` and `Q_INTERFACES`,
 and exposes methods via `Q_INVOKABLE` using Qt types (`QString`, `QByteArray`, `QVariantMap`).
 Cross-module calls use `LogosAPIClient::invokeRemoteMethod()`.
 
-Used by existing modules: `logos-rln-module`, `logos-delivery-module`, `lez_wallet_module`.
+Used by existing modules: `logos-rln-module`, `logos-delivery-module`, `logos_execution_zone`.
 Documented in `logos-tutorial/logos-developer-guide.md`.
 
 ### Universal Pattern (LogosProviderBase)
@@ -427,7 +427,7 @@ are not interchangeable.
 A runtime that expects one may crash when loading the other.
 Per `logos-ai-skills/skills/logos-core-module-builder/`:
 always confirm partner module patterns before assuming cross-module calls will work.
-For `payment_streams_module`, check `delivery_module` and `lez_wallet_module`
+For `payment_streams_module`, check `delivery_module` and `logos_execution_zone`
 at Step 6 implementation time to decide which pattern to use.
 
 ### Build Infrastructure vs Implementation Pattern

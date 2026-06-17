@@ -33,27 +33,27 @@ else
   bad "missing docs/step10b-wallet-runtime.md"
 fi
 
-if [[ ! -d "$MODULES/lez_wallet_module" ]]; then
-  bad "lez_wallet_module not installed under MODULES=$MODULES"
+if [[ ! -d "$MODULES/logos_execution_zone" ]]; then
+  bad "logos_execution_zone not installed under MODULES=$MODULES"
 else
-  ok "lez_wallet_module install dir"
+  ok "logos_execution_zone install dir"
 fi
 
-if [[ -f "$MODULES/lez_wallet_module/manifest.json" ]]; then
-  META_NAME="$(python3 -c "import json; print(json.load(open('$MODULES/lez_wallet_module/manifest.json'))['name'])")"
-  if [[ "$META_NAME" == "lez_wallet_module" ]]; then
-    ok "installed manifest name lez_wallet_module"
+if [[ -f "$MODULES/logos_execution_zone/manifest.json" ]]; then
+  META_NAME="$(python3 -c "import json; print(json.load(open('$MODULES/logos_execution_zone/manifest.json'))['name'])")"
+  if [[ "$META_NAME" == "logos_execution_zone" ]]; then
+    ok "installed manifest name logos_execution_zone"
   else
     bad "manifest name is $META_NAME (reinstall from patched .lgx)"
   fi
 else
-  bad "missing $MODULES/lez_wallet_module/manifest.json (run lgpm install)"
+  bad "missing $MODULES/logos_execution_zone/manifest.json (run lgpm install)"
 fi
 
-if [[ -f "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" ]]; then
-  ok "lez_wallet_module_plugin.so present"
+if [[ -f "$MODULES/logos_execution_zone/logos_execution_zone_plugin.so" ]]; then
+  ok "logos_execution_zone_plugin.so present"
 else
-  bad "missing lez_wallet_module_plugin.so under MODULES"
+  bad "missing logos_execution_zone_plugin.so under MODULES"
 fi
 
 if [[ -f "$MODULES/payment_streams_module/payment_streams_module_plugin.so" ]]; then
@@ -76,7 +76,7 @@ else
   skip "no $MANIFEST (logoscore RPC checks need Step 10a seed)"
 fi
 
-PLUGIN="$MODULES/lez_wallet_module/lez_wallet_module_plugin.so"
+PLUGIN="$MODULES/logos_execution_zone/logos_execution_zone_plugin.so"
 if nix shell github:logos-co/logos-module#lm --command bash -c "
   set -euo pipefail
   out=\$(lm methods '$PLUGIN')
@@ -123,15 +123,15 @@ timeout "$E2E_TIMEOUT" nix shell github:logos-co/logos-logoscore-cli --command b
   logoscore -D -m \"\$MODULES\" -q &
   DAEMON_PID=\$!
   sleep 3
-  LOAD_W=\$(logoscore load-module lez_wallet_module 2>&1 | tail -1)
+  LOAD_W=\$(logoscore load-module logos_execution_zone 2>&1 | tail -1)
   echo \"LOAD_W:\$LOAD_W\"
   LOAD_P=\$(logoscore load-module payment_streams_module 2>&1 | tail -1)
   echo \"LOAD_P:\$LOAD_P\"
-  logoscore call lez_wallet_module open \"\$WALLET_CONFIG\" \"\$WALLET_STORAGE\" 2>/dev/null | tail -1 | sed 's/^/OPEN:/'
-  HEX=\$(logoscore call lez_wallet_module account_id_from_base58 \"\$FIXTURE_ACCOUNT\" 2>/dev/null | tail -1 \
+  logoscore call logos_execution_zone open \"\$WALLET_CONFIG\" \"\$WALLET_STORAGE\" 2>/dev/null | tail -1 | sed 's/^/OPEN:/'
+  HEX=\$(logoscore call logos_execution_zone account_id_from_base58 \"\$FIXTURE_ACCOUNT\" 2>/dev/null | tail -1 \
     | python3 -c \"import sys,json; print(json.load(sys.stdin).get('result',''))\" || true)
   echo \"HEX:\$HEX\"
-  logoscore call lez_wallet_module get_account_public \"\$HEX\" 2>/dev/null | tail -1 | sed 's/^/ACCT:/'
+  logoscore call logos_execution_zone get_account_public \"\$HEX\" 2>/dev/null | tail -1 | sed 's/^/ACCT:/'
   logoscore stop 2>/dev/null || true
   wait \"\$DAEMON_PID\" 2>/dev/null || true
 " >"$E2E_FILE" 2>&1 || echo E2E_TIMEOUT_OR_FAIL >>"$E2E_FILE"
@@ -145,7 +145,7 @@ LOAD_W_LINE="$(rg '^LOAD_W:' "$E2E_FILE" | tail -1 | sed 's/^LOAD_W://')"
 LOAD_P_LINE="$(rg '^LOAD_P:' "$E2E_FILE" | tail -1 | sed 's/^LOAD_P://')"
 if python3 -c "import json,sys; d=json.loads(sys.argv[1]); sys.exit(0 if d.get('status')=='ok' else 1)" "$LOAD_W_LINE" 2>/dev/null \
   && python3 -c "import json,sys; d=json.loads(sys.argv[1]); sys.exit(0 if d.get('status')=='ok' else 1)" "$LOAD_P_LINE" 2>/dev/null; then
-  ok "logoscore load-module lez_wallet_module then payment_streams_module"
+  ok "logoscore load-module logos_execution_zone then payment_streams_module"
 else
   bad "logoscore load-module failed (wallet=$LOAD_W_LINE ps=$LOAD_P_LINE)"
 fi

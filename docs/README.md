@@ -1,5 +1,10 @@
 # Payment streams integration docs
 
+Operator runbooks (`step*.md`, `logos-runtime-guide.md`) are the commands and verify scripts
+to run today. [`../integration-plan-v2.md`](../integration-plan-v2.md) is the full plan
+(decisions, DoD, architecture); when they disagree, update the runbook and align the plan —
+avoid duplicating long procedural blocks in both places.
+
 | File | Use |
 | --- | --- |
 | [`../logos-architecture-overview.md`](../logos-architecture-overview.md) | Hosts, modules, FFI vs LogosAPI (repo root) |
@@ -15,4 +20,5 @@
 | [`step8-universal-legacy-probe-results.md`](step8-universal-legacy-probe-results.md) | Step 8 probe results (+ historical dilemma appendix) |
 | [`feature-branch-pins.md`](feature-branch-pins.md) | Wallet flake pins (LEZ main + PR 19) |
 | [`archive/legacy-module-bootstrap.md`](archive/legacy-module-bootstrap.md) | Superseded Legacy plugin bootstrap |
+| [`archive/superseded-wallet-pr-429-16.md`](archive/superseded-wallet-pr-429-16.md) | Deprecated PR 429 / 16 wallet JSON API |
 | [`archive/engineering-notes.md`](archive/engineering-notes.md) | Misc engineering notes (FFI, SPEL PDA) |

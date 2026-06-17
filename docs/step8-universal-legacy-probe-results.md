@@ -15,7 +15,7 @@ Automated run: `logos-universal-legacy-probe/scripts/run-e2e-probe.sh`
 
 ## Question
 
-Can a Universal core module call the Legacy `lez_wallet_module` dynamically
+Can a Universal core module call the Legacy `logos_execution_zone` dynamically
 (without listing the wallet in `metadata.json` dependencies)
 without crashing `logoscore`?
 
@@ -34,9 +34,9 @@ Scope limits (same run):
 | Step | Result |
 |------|--------|
 | Build probe + patched wallet `.lgx` | OK (`nix build` / `nix bundle`) |
-| `load-module lez_wallet_module` | `{"status":"ok"}` |
+| `load-module logos_execution_zone` | `{"status":"ok"}` |
 | `load-module universal_legacy_probe` | `{"status":"ok"}` |
-| `call lez_wallet_module list_accounts` | `{"status":"ok","result":[]}` |
+| `call logos_execution_zone list_accounts` | `{"status":"ok","result":[]}` |
 | `call universal_legacy_probe probeStatus` | `{"status":"ok","result":"success:[]"}` |
 
 Load wallet before probe. Calling wallet RPC before `load-module` can destabilize
@@ -65,12 +65,12 @@ Path:
 
 - LEZ rev `c37a3c30…` aligned with logos-execution-zone-module PR 19 HEAD
 - `lez-python-overlay`: `python3` for pyo3, `lez/wallet-ffi/wallet_ffi.h` install
-- Packaging: `lez_wallet_module` id, `PluginInterface::name()` patch, plugin symlink
+- Packaging: `logos_execution_zone` id, `PluginInterface::name()` patch, plugin symlink
 - `nix build .#lib` and `nix bundle … .#lib -o wallet-lgx-out` succeed (Linux x86_64)
 
 ## SDK note
 
-Probe uses `modules().api->getClient("lez_wallet_module")->invokeRemoteMethod`,
+Probe uses `modules().api->getClient("logos_execution_zone")->invokeRemoteMethod`,
 not `LogosAPI::callModule` (not on pinned `logos-cpp-sdk`).
 
 ## Implication for `payment_streams_module`
@@ -114,7 +114,7 @@ The core team's strategic direction is to move all modules to the Universal patt
 We are building a new intermediary module, `payment_streams_module`.
 It sits between two existing modules:
 1.  Upstream: `delivery_module` (Universal pattern, explicitly declares `"interface": "universal"`).
-2.  Downstream: `lez_wallet_module` (Legacy pattern, omits the `interface` field).
+2.  Downstream: `logos_execution_zone` (Legacy pattern, omits the `interface` field).
 
 ### The Upstream Constraint (Dynamic Invocation)
 
@@ -124,8 +124,8 @@ This means the upstream call will use the Universal dynamic API (`LogosAPI::call
 
 ### The Downstream Constraint (Legacy Target)
 
-Our `payment_streams_module` must call `lez_wallet_module` to read and write to the blockchain.
-Because `lez_wallet_module` is still on the Legacy pattern, we cannot use the safe, typed Universal wrapper (`modules().lez_wallet_module`) because the code generator assumes all targets in `metadata.json` are also Universal.
+Our `payment_streams_module` must call `logos_execution_zone` to read and write to the blockchain.
+Because `logos_execution_zone` is still on the Legacy pattern, we cannot use the safe, typed Universal wrapper (`modules().logos_execution_zone`) because the code generator assumes all targets in `metadata.json` are also Universal.
 
 ## The Core Problem: Mixing Patterns
 
@@ -144,7 +144,7 @@ We have two approaches, both with significant trade-offs.
 Build `payment_streams_module` using the deprecated Legacy pattern.
 
 *   How it works: `delivery_module` (Universal) calls `payment_streams_module` (Legacy) dynamically.
-    `payment_streams_module` (Legacy) calls `lez_wallet_module` (Legacy) via `invokeRemoteMethod`.
+    `payment_streams_module` (Legacy) calls `logos_execution_zone` (Legacy) via `invokeRemoteMethod`.
 *   Pros:
     *   Proven Downstream: The Legacy -> Legacy call to the wallet is battle-tested and guaranteed to work.
     *   Isolates Risk: If the integration fails, we know exactly where to look: the upstream Universal -> Legacy dynamic call from the delivery module.
@@ -157,7 +157,7 @@ Build `payment_streams_module` using the deprecated Legacy pattern.
 Build `payment_streams_module` using the new Universal pattern.
 
 *   How it works: `delivery_module` (Universal) calls `payment_streams_module` (Universal) dynamically.
-    `payment_streams_module` (Universal) calls `lez_wallet_module` (Legacy) dynamically via `LogosAPI::callModule()`.
+    `payment_streams_module` (Universal) calls `logos_execution_zone` (Legacy) dynamically via `LogosAPI::callModule()`.
 *   Pros:
     *   Strategic Alignment: Aligns with the core team's vision.
         No migration debt later.

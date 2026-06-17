@@ -33,7 +33,7 @@ sync_wallet() {
     -d '{"jsonrpc":"2.0","id":1,"method":"getBlockHeight","params":[]}' \
     | python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get("result"); print(r if isinstance(r,int) else (r or ""))' 2>/dev/null || true)
   if [[ -n "$height" ]]; then
-    logoscore call lez_wallet_module sync_to_block "$height" 2>/dev/null >/dev/null || true
+    logoscore call logos_execution_zone sync_to_block "$height" 2>/dev/null >/dev/null || true
   fi
   sleep 3
 }
@@ -76,16 +76,16 @@ sleep 2
 logoscore -D -m "$MODULES" -q &
 DAEMON_PID=$!
 sleep 3
-logoscore load-module lez_wallet_module >/dev/null
+logoscore load-module logos_execution_zone >/dev/null
 logoscore load-module payment_streams_module >/dev/null
 
 if [[ ! -f "$WALLET_STORAGE" ]]; then
-  OPEN_LINE=$(logoscore call lez_wallet_module create_new "$WALLET_CONFIG" "$WALLET_STORAGE" "$WALLET_E2E_PASSWORD" 2>/dev/null | tail -1)
+  OPEN_LINE=$(logoscore call logos_execution_zone create_new "$WALLET_CONFIG" "$WALLET_STORAGE" "$WALLET_E2E_PASSWORD" 2>/dev/null | tail -1)
 else
-  OPEN_LINE=$(logoscore call lez_wallet_module open "$WALLET_CONFIG" "$WALLET_STORAGE" 2>/dev/null | tail -1)
+  OPEN_LINE=$(logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE" 2>/dev/null | tail -1)
   if ! python3 -c 'import json,sys; d=json.loads(sys.argv[1]); sys.exit(0 if d.get("result")==0 else 1)' "$OPEN_LINE" 2>/dev/null; then
     rm -f "$WALLET_STORAGE"
-    OPEN_LINE=$(logoscore call lez_wallet_module create_new "$WALLET_CONFIG" "$WALLET_STORAGE" "$WALLET_E2E_PASSWORD" 2>/dev/null | tail -1)
+    OPEN_LINE=$(logoscore call logos_execution_zone create_new "$WALLET_CONFIG" "$WALLET_STORAGE" "$WALLET_E2E_PASSWORD" 2>/dev/null | tail -1)
   fi
 fi
 echo "WALLET:$OPEN_LINE"
@@ -94,12 +94,12 @@ if ! python3 -c 'import json,sys; d=json.loads(sys.argv[1]); sys.exit(0 if d.get
   logoscore stop 2>/dev/null || true
   exit 1
 fi
-logoscore call lez_wallet_module save 2>/dev/null >/dev/null || true
+logoscore call logos_execution_zone save 2>/dev/null >/dev/null || true
 
 to_base58() {
   local hex_id=$1
   local line b58
-  line=$(logoscore call lez_wallet_module account_id_to_base58 "$hex_id" 2>/dev/null | tail -1)
+  line=$(logoscore call logos_execution_zone account_id_to_base58 "$hex_id" 2>/dev/null | tail -1)
   b58=$(python3 -c 'import json,sys; o=json.loads(sys.argv[1]); r=o.get("result",""); print(r if isinstance(r,str) else "")' "$line" 2>/dev/null || true)
   if [[ -n "$b58" ]]; then
     echo "$b58"
@@ -114,7 +114,7 @@ m=json.load(open('${MANIFEST:?}'))
 print(m.get('owner_account_id',''), m.get('provider_account_id',''))
 ")"
 
-ACCOUNTS_LINE=$(logoscore call lez_wallet_module list_accounts 2>/dev/null | tail -1)
+ACCOUNTS_LINE=$(logoscore call logos_execution_zone list_accounts 2>/dev/null | tail -1)
 OWNER="$MANIFEST_OWNER"
 PROVIDER="$MANIFEST_PROVIDER"
 
@@ -150,7 +150,7 @@ if [[ ${#OWNER} -eq 64 ]]; then
 fi
 
 if [[ -z "$PROVIDER" ]]; then
-PROVIDER_LINE=$(logoscore call lez_wallet_module create_account_public 2>/dev/null | tail -1)
+PROVIDER_LINE=$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)
 PROVIDER=$(python3 -c '
 import json,sys
 outer=json.loads(sys.argv[1])
@@ -172,7 +172,7 @@ if [[ -z "$PROVIDER" ]]; then
 elif [[ ${#PROVIDER} -eq 64 ]]; then
   PROVIDER=$(to_base58 "$PROVIDER")
 fi
-logoscore call lez_wallet_module save 2>/dev/null >/dev/null || true
+logoscore call logos_execution_zone save 2>/dev/null >/dev/null || true
 
 LEZ_PIN=$(grep -A2 '\[repos.lez\]' "$REPO/scaffold.toml" | grep '^pin' | sed 's/.*"\([^"]*\)".*/\1/')
 SCAFFOLD_WALLET="$HOME/.cache/logos-scaffold/repos/lez/${LEZ_PIN}/target/release/wallet"

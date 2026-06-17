@@ -30,7 +30,7 @@
 //! ASCII hex (`[0-9a-f]`) for the raw 32-byte [`AccountId`], **no** `0x` prefix, **no** separators.
 //! Example (64 characters): `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`.
 //! This matches the `accounts` array style used by `logos-rln-module` when building
-//! `send_public_transaction` JSON for `lez_wallet_module`.
+//! `send_public_transaction` JSON for `logos_execution_zone`.
 //!
 //! ## Error detail
 //!

@@ -36,14 +36,14 @@ LogosAPIClient* walletClientOrNull(LogosAPI* api) {
     if (api == nullptr) {
         return nullptr;
     }
-    return api->getClient(QStringLiteral("lez_wallet_module"));
+    return api->getClient(QStringLiteral("logos_execution_zone"));
 }
 
 QString invokeWalletString(LogosAPIClient* client, const char* method, const QVariant& arg = {}) {
     if (client == nullptr) {
         return {};
     }
-    const QString moduleName = QStringLiteral("lez_wallet_module");
+    const QString moduleName = QStringLiteral("logos_execution_zone");
     const QString methodName = QString::fromUtf8(method);
     QVariant result;
     if (arg.isValid() && !arg.isNull()) {
@@ -251,7 +251,7 @@ QString decodeClockPayload(LogosAPIClient* client, const QString& accountIdBase5
 QString PaymentStreamsModuleImpl::accountIdHexFromBase58(const QVariant& accountIdBase58) {
     LogosAPIClient* client = walletClientOrNull(modules().api);
     if (client == nullptr) {
-        return makeErrorJson(QStringLiteral("lez_wallet_module client unavailable (load wallet first)"));
+        return makeErrorJson(QStringLiteral("logos_execution_zone client unavailable (load wallet first)"));
     }
     const QString base58 = accountIdBase58.toString();
     const QString hex = walletAccountIdHexFromBase58(client, base58);
@@ -266,7 +266,7 @@ QString PaymentStreamsModuleImpl::accountIdHexFromBase58(const QVariant& account
 QString PaymentStreamsModuleImpl::readVaultConfigDecoded(const QVariant& vaultConfigAccountIdBase58) {
     LogosAPIClient* client = walletClientOrNull(modules().api);
     if (client == nullptr) {
-        return makeErrorJson(QStringLiteral("lez_wallet_module client unavailable (load wallet first)"));
+        return makeErrorJson(QStringLiteral("logos_execution_zone client unavailable (load wallet first)"));
     }
     return decodeVaultConfigPayload(client, vaultConfigAccountIdBase58.toString());
 }
@@ -274,7 +274,7 @@ QString PaymentStreamsModuleImpl::readVaultConfigDecoded(const QVariant& vaultCo
 QString PaymentStreamsModuleImpl::readVaultHoldingDecoded(const QVariant& vaultHoldingAccountIdBase58) {
     LogosAPIClient* client = walletClientOrNull(modules().api);
     if (client == nullptr) {
-        return makeErrorJson(QStringLiteral("lez_wallet_module client unavailable (load wallet first)"));
+        return makeErrorJson(QStringLiteral("logos_execution_zone client unavailable (load wallet first)"));
     }
     return decodeVaultHoldingPayload(client, vaultHoldingAccountIdBase58.toString());
 }
@@ -282,7 +282,7 @@ QString PaymentStreamsModuleImpl::readVaultHoldingDecoded(const QVariant& vaultH
 QString PaymentStreamsModuleImpl::readStreamConfigDecoded(const QVariant& streamConfigAccountIdBase58) {
     LogosAPIClient* client = walletClientOrNull(modules().api);
     if (client == nullptr) {
-        return makeErrorJson(QStringLiteral("lez_wallet_module client unavailable (load wallet first)"));
+        return makeErrorJson(QStringLiteral("logos_execution_zone client unavailable (load wallet first)"));
     }
     return decodeStreamConfigPayload(client, streamConfigAccountIdBase58.toString());
 }
@@ -290,7 +290,7 @@ QString PaymentStreamsModuleImpl::readStreamConfigDecoded(const QVariant& stream
 QString PaymentStreamsModuleImpl::readClockDecoded(const QVariant& clockAccountIdBase58) {
     LogosAPIClient* client = walletClientOrNull(modules().api);
     if (client == nullptr) {
-        return makeErrorJson(QStringLiteral("lez_wallet_module client unavailable (load wallet first)"));
+        return makeErrorJson(QStringLiteral("logos_execution_zone client unavailable (load wallet first)"));
     }
     return decodeClockPayload(client, clockAccountIdBase58.toString());
 }

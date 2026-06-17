@@ -1,6 +1,6 @@
 # Step 10b — wallet runtime artifact (PR 491 + PR 19)
 
-Installable `lez_wallet_module` `.lgx` for `logoscore`, aligned with the Step 10a
+Installable `logos_execution_zone` `.lgx` for `logoscore`, aligned with the Step 10a
 local chain fixture (sequencer `http://127.0.0.1:3040`, wallet under `.scaffold/wallet`).
 
 Pins and flake layout: [`feature-branch-pins.md`](feature-branch-pins.md).
@@ -60,13 +60,16 @@ lgpm --modules-dir "$MODULES" install --file "$PS_LGX"
 lgpm --modules-dir "$MODULES" list
 ```
 
-Expected: `lez_wallet_module` and `payment_streams_module` under `$MODULES`, metadata name
-`lez_wallet_module`, plugin `lez_wallet_module_plugin.so`.
+Expected: `logos_execution_zone` and `payment_streams_module` under `$MODULES`, metadata name
+`logos_execution_zone`, plugin `logos_execution_zone_plugin.so`.
+
+If `$MODULES/lez_wallet_module` remains from an older install, remove it and reinstall the
+patched wallet `.lgx` so the install dir matches upstream module id `logos_execution_zone`.
 
 ## PR 19 method surface (offline check)
 
 ```bash
-lm methods "$MODULES/lez_wallet_module/lez_wallet_module_plugin.so" \
+lm methods "$MODULES/logos_execution_zone/logos_execution_zone_plugin.so" \
   | rg 'send_generic_public_transaction|get_account_public|^int open'
 ```
 
@@ -80,7 +83,7 @@ Expected invokables include:
 
 Patched 11b builds also load guest ELF from `PAYMENT_STREAMS_GUEST_BIN` inside
 `send_generic_public_transaction` when program bytes are empty. Verify with
-`rg -F PAYMENT_STREAMS_GUEST_BIN` on `lez_wallet_module_plugin.so`.
+`rg -F PAYMENT_STREAMS_GUEST_BIN` on `logos_execution_zone_plugin.so`.
 
 If `nix bundle … .#lib` fails on `wallet-ffi-deps` / `pol` download, use the Qt-aligned manual
 build documented in [`step11b-chain-writes.md`](step11b-chain-writes.md) until offline
@@ -118,9 +121,9 @@ logoscore -D -m "$MODULES" -v
 Tab B — client (same `nix shell` + exports):
 
 ```bash
-logoscore load-module lez_wallet_module
+logoscore load-module logos_execution_zone
 logoscore load-module payment_streams_module
-logoscore call lez_wallet_module open "$WALLET_CONFIG" "$WALLET_STORAGE"
+logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE"
 ```
 
 Expected: `"status":"ok"` on `open` (return value `0` when the wallet handle is ready).
@@ -130,9 +133,9 @@ Read a Step 10a on-chain PDA via the module (manifest field `vault_config_accoun
 
 ```bash
 VC=$(python3 -c "import json; print(json.load(open('fixtures/localnet.json'))['vault_config_account_id'])")
-HEX=$(logoscore call lez_wallet_module account_id_from_base58 "$VC" | python3 -c \
+HEX=$(logoscore call logos_execution_zone account_id_from_base58 "$VC" | python3 -c \
   "import sys,json; print(json.load(sys.stdin)['result'])")
-logoscore call lez_wallet_module get_account_public "$HEX"
+logoscore call logos_execution_zone get_account_public "$HEX"
 ```
 
 Expected: `"status":"ok"` and a `result` string containing JSON with non-empty `data` and
@@ -153,7 +156,7 @@ logoscore stop
 Checks:
 
 1. Patched `.lgx` built (or `WALLET_LGX` set).
-2. `lez_wallet_module` installed with correct metadata and plugin name.
+2. `logos_execution_zone` installed with correct metadata and plugin name.
 3. `wallet_config` sequencer URL matches Step 10a.
 4. `lm methods` includes `send_generic_public_transaction`.
 5. With localnet up and fixture manifest: load order, `open`, `get_account_public` on fixture PDA.
@@ -171,7 +174,7 @@ VERIFY_LOGOSCORE=0 ./scripts/verify-step10b-dod.sh
 | `lm` shows `send_public_transaction` only | Reinstall from `./scripts/build-wallet-lgx.sh` output |
 | `open` fails / return non-zero | Confirm `storage.json` is 491 encrypted layout; reinit wallet + re-seed 10a |
 | `get_account_public` empty `data` | Re-run Step 10a seed; PDA not initialized on chain |
-| Replica timeout on wallet call | Load `lez_wallet_module` before other modules; restart daemon |
+| Replica timeout on wallet call | Load `logos_execution_zone` before other modules; restart daemon |
 | Wrong chain | Foreign process on `:3040` — see Step 10a troubleshooting |
 
 ## Next step

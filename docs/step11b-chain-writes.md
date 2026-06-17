@@ -31,8 +31,9 @@ argument) because QList-shaped IPC from the Universal module to Legacy wallet is
 
 Wallet patches live under
 `logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/`
-(`wallet-guest-elf-from-env.patch` plus the JSON submit helper in the manual/Qt-aligned build
-tree used for 11b until Nix wallet bundle works with offline `pol`).
+(`wallet-guest-elf-from-env.patch` is applied in the wrapper flake `postPatch`).
+`send_generic_public_transaction_json` is not in that patch file yet; it lives in the
+Qt-aligned manual wallet build tree used for 11b until Nix bundle works with offline `pol`.
 
 Run logoscore from repo root so relative paths resolve.
 
@@ -53,7 +54,7 @@ Step 11a read helpers consume five slots; chain I/O uses one router:
 There are no separate public `initializeVault`, `deposit`, or `getVaultStatus` invokables.
 Use `logoscore call payment_streams_module chainAction <operation> '<json>'`.
 
-`accountIdHexFromBase58` is not exported (call `lez_wallet_module.account_id_from_base58`
+`accountIdHexFromBase58` is not exported (call `logos_execution_zone.account_id_from_base58`
 directly if needed).
 
 ### `chainAction(operation, paramsJson)`
@@ -89,7 +90,7 @@ Status helpers derive vault/stream PDAs from fixture `program_id_hex`, owner bas
 - Uses manifest `owner_account_id` and `provider_account_id` (base58)
 - Default `vault_id = 1`, `stream_id = 0` (demo vault `0` remains for Step 11a decode)
 - Sets `PAYMENT_STREAMS_GUEST_BIN` on the daemon
-- Calls `lez_wallet_module sync_to_block` when sequencer height is reachable, then sleeps
+- Calls `logos_execution_zone sync_to_block` when sequencer height is reachable, then sleeps
 - Runs INIT → DEPOSIT → CREATE → PAUSE → RESUME → TOPUP → CLAIM via `chainAction`
 - Polls `getVaultStatus` / `getStreamStatus` via `chainAction` with retries
 
