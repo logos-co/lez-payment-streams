@@ -10,6 +10,8 @@ public:
     PaymentStreamsModuleImpl() = default;
     ~PaymentStreamsModuleImpl() override = default;
 
+    void onContextReady() override;
+
     QString readVaultConfigDecoded(const QVariant& vaultConfigAccountIdBase58);
     QString readVaultHoldingDecoded(const QVariant& vaultHoldingAccountIdBase58);
     QString readStreamConfigDecoded(const QVariant& streamConfigAccountIdBase58);
@@ -17,6 +19,11 @@ public:
     QString readClock10Decoded();
 
     QString chainAction(const QVariant& operation, const QVariant& paramsJson);
+
+    QString registerProviderMapping(const QVariant& providerPeerId, const QVariant& providerAccountIdBase58);
+    QString prepareEligibilityForStoreQuery(const QVariant& canonicalRequestHex, const QVariant& providerPeerId);
+    QString listMyStreams(const QVariant& vaultId);
+    QString rediscoverStreams(const QVariant& vaultId);
 
 private:
     QString accountIdHexFromBase58(const QVariant& accountIdBase58);

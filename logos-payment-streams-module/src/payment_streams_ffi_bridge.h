@@ -204,6 +204,57 @@ uint32_t ps_ffi_plan_claim(const uint8_t program_id_bytes[32],
                            size_t accounts_hex_out_cap,
                            size_t* accounts_hex_out_len);
 
+typedef struct PsFfiStreamParams {
+    uint64_t rate;
+    uint64_t allocation_lo;
+    uint64_t allocation_hi;
+    uint64_t create_stream_deadline;
+    uint32_t service_id_len;
+    uint32_t _padding;
+    uint8_t service_id_bytes[128];
+} PsFfiStreamParams;
+
+typedef struct PsFfiDecodedVaultProof {
+    uint64_t vault_id;
+    uint8_t provider_id[32];
+    uint8_t owner_public_key[32];
+    uint8_t owner_signature[64];
+} PsFfiDecodedVaultProof;
+
+typedef struct PsFfiDecodedStreamProposal {
+    PsFfiDecodedVaultProof vault_proof;
+    PsFfiStreamParams params;
+    uint8_t session_public_key[32];
+} PsFfiDecodedStreamProposal;
+
+uint32_t ps_ffi_generate_session_keypair(uint8_t out_secret_key_32[32], uint8_t out_public_key_32[32]);
+uint32_t ps_ffi_store_eligibility_digest_from_n8_wire(const uint8_t* n8_wire,
+                                                      size_t n8_wire_len,
+                                                      uint8_t out_digest_32[32]);
+uint32_t ps_ffi_vault_owner_auth_digest_from_decoded_proposal(const PsFfiDecodedStreamProposal* proposal,
+                                                              uint8_t out_digest_32[32]);
+uint32_t ps_ffi_serialize_stream_proposal_decoded(const PsFfiDecodedStreamProposal* proposal,
+                                                  uint8_t* out_ptr,
+                                                  size_t out_cap,
+                                                  size_t* out_len);
+uint32_t ps_ffi_serialize_stream_proof_for_n8_wire(uint64_t stream_id,
+                                                   const uint8_t secret_key_32[32],
+                                                   const uint8_t* n8_wire,
+                                                   size_t n8_wire_len,
+                                                   uint8_t* out_ptr,
+                                                   size_t out_cap,
+                                                   size_t* out_len);
+uint32_t ps_ffi_serialize_eligibility_proof_stream_proposal(const uint8_t* inner_ptr,
+                                                            size_t inner_len,
+                                                            uint8_t* out_ptr,
+                                                            size_t out_cap,
+                                                            size_t* out_len);
+uint32_t ps_ffi_serialize_eligibility_proof_stream_proof(const uint8_t* inner_ptr,
+                                                         size_t inner_len,
+                                                         uint8_t* out_ptr,
+                                                         size_t out_cap,
+                                                         size_t* out_len);
+
 #ifdef __cplusplus
 }
 #endif

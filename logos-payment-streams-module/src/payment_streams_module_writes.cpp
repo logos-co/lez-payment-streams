@@ -1,4 +1,5 @@
 #include "payment_streams_module_impl.h"
+#include "payment_streams_module_inventory.h"
 
 #include <QDir>
 #include <QFile>
@@ -874,7 +875,17 @@ QString PaymentStreamsModuleImpl::createStream(const QVariant& signerAccountIdBa
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, false, &err);
+    const QString submitResult = buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, false, &err);
+    QJsonParseError submitParse{};
+    const QJsonDocument submitDoc = QJsonDocument::fromJson(submitResult.toUtf8(), &submitParse);
+    if (submitParse.error == QJsonParseError::NoError && submitDoc.isObject()) {
+        const QJsonObject submitObj = submitDoc.object();
+        if (submitObj.value(QStringLiteral("status")).toString() == QLatin1String("ok") &&
+            submitObj.value(QStringLiteral("success")).toBool()) {
+            paymentStreamsModuleRecordStreamInventory(vid, sid);
+        }
+    }
+    return submitResult;
 }
 
 QString PaymentStreamsModuleImpl::pauseStream(const QVariant& signerAccountIdBase58,

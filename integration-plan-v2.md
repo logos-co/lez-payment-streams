@@ -56,7 +56,7 @@ only (no Store query on `delivery_module`).
    Step 6 records the closed Store-query decision; Step 8 (probe) is done; Step 9
    bootstraps the Universal module; Steps 10–11 (fixture, wallet runtime, module chain I/O)
    precede eligibility in Steps 12–13.
-   Definitions of done, decisions (D1–D6), and notes (N1–N10).
+   Definitions of done, decisions (D1–D6), and notes (N1–N11).
    Supporting doc index: [`docs/README.md`](docs/README.md).
 2. `logos-architecture-overview.md` in this directory.
    Architectural facts about hosts versus modules,
@@ -314,6 +314,11 @@ not from our retired `queryStore` PR branch.
 The bridge validates the named module's surface at registration time
 via the auto-generated `getPluginMethods` introspection.
 Both layers stay payment-streams-agnostic.
+On the eligibility hooks, opaque bytes mean the complete serialized protobuf `EligibilityProof`
+(D1) as carried on `StoreQueryRequest` tag `30`: the registered module produces and parses that
+blob; Delivery forwards it without interpreting `stream_proposal`, `stream_proof`, or other
+extension fields. Future eligibility mechanisms can register a different module or populate
+other `EligibilityProof` arms without changing that hook contract.
 For outbound Store queries,
 `delivery_module` passes the target provider's libp2p `PeerId`
 as `providerPeerId` to the eligibility provider hook.
@@ -511,11 +516,13 @@ that fits the existing Store handler shape.
 ### N4, Persistence policy
 
 `payment_streams_module` persists pending-proposal state and per-stream session keys
-as a flat JSON file in `instancePersistencePath`, atomically written.
+as a flat JSON file `payment_streams_state.json` in `instancePersistencePath`, atomically written.
 If persistence fails (disk full, permissions), the module logs the error
 and continues with in-memory state only.
-Stale proposals are evicted on a timer and on cold start.
-A hardened build would encrypt session keys through a wallet-rooted KDF
+Stale proposals are evicted on cold start and when eligibility/inventory APIs run, by comparing
+stored `create_stream_deadline` to clock-10 (no background timer required for the MVP demo).
+Session private keys are stored as lowercase hex in that JSON for the demo; treat the persistence
+directory as sensitive. A hardened build would encrypt session keys through a wallet-rooted KDF
 or keep them ephemeral.
 
 ### N5, Provider identity mapping
@@ -638,6 +645,13 @@ This mirrors the `hash_public_pinned` test
 in `nssa/src/public_transaction/message.rs`
 that spells out the expected Borsh encoding byte by byte.
 
+Step 12 demos and `./scripts/verify-step12-dod.sh` use the same field values via Rust:
+`cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex` prints lowercase hex of the
+full `canonical_payload` (32-byte domain prefix + Borsh body, 177 bytes for the reference
+fixture). LogosAPI `canonicalRequestBytes` must be that full wire, not Borsh-only bytes.
+Digest checks use `store_eligibility_digest_matches_n8_reference_fixture` in
+`lez-payment-streams-core/src/off_chain/canonical.rs`.
+
 ### N9, Step 10a local chain fixture (decisions)
 
 Scaffold config and runtime layout
@@ -721,8 +735,8 @@ Wallet submit and module shape
   `authenticated_transfer_elf()` as a dependency when deps are empty. Bundling guest ELF inside
   the PS `.lgx` remains a follow-on.
 - Nine write operations plus two status queries are implemented on the impl class; a single
-  public `chainAction(operation, paramsJson)` router exposes them (Universal codegen limit: eight
-  public methods — five Step 11a reads plus `chainAction`). `signing_requirements` are derived
+  public `chainAction(operation, paramsJson)` router exposes them on the LogosAPI surface
+  (see [N11](#n11-universal-module-public-api)). `signing_requirements` are derived
   from the signer vs the FFI-planned account list.
 - Submit-level JSON only (`success`, `tx_hash`, `error`) from writes. Callers and
   `./scripts/verify-step11b-dod.sh` use wallet `sync_to_block` when sequencer height is
@@ -746,6 +760,19 @@ Fixture and config (H)
   `CLOCK_10` from the manifest when needed.
 - Wallet sequencer RPC comes from `wallet_config.json` (`sequencer_addr`). Manifest
   `sequencer_url` documents the expected endpoint for operators and verify scripts.
+
+### N11, Universal module public API
+
+Universal modules (`"interface": "universal"`) export every `public:` method on
+`PaymentStreamsModuleImpl` through `logos-cpp-generator --from-header` (plugin
+`callMethod` / `getMethods`). There is no fixed cap on method count. Reserved
+`LogosModuleContext` hooks (`onContextReady`, `modules`, `modulePath`, `instanceId`,
+`instancePersistencePath`) are not exported.
+
+Step 11b uses a `chainAction` router to keep write/status operations behind one
+Logos entry point; that is an API ergonomics choice, not a codegen limit. Step 12
+adds named eligibility methods; Step 16 registration must match those names exactly
+(for example `prepareEligibilityForStoreQuery`).
 
 ## Integration Steps
 
@@ -1342,9 +1369,10 @@ Step 11 wires `payment_streams_module` to `logos_execution_zone` for reads, writ
 (off-chain) digest signing support. Requires 10a → 10b complete.
 Sub-step order: 11a → 11b → 11c (11c must complete before Step 12 eligibility).
 
-Universal modules: at most eight public methods from codegen. Step 11a/11b share
-`PaymentStreamsModuleImpl` — five read helpers plus one `chainAction` router for all writes
-and status (see N10 and [`docs/step11b-chain-writes.md`](docs/step11b-chain-writes.md)).
+Universal module surface: all public methods on `PaymentStreamsModuleImpl` are exported
+([N11](#n11-universal-module-public-api)). Step 11a/11b use five read helpers plus one
+`chainAction` router for writes and status (see N10 and
+[`docs/step11b-chain-writes.md`](docs/step11b-chain-writes.md)).
 
 #### Step 11a, Wire chain reads from the module
 
@@ -1464,12 +1492,17 @@ it just produces opaque bytes when asked.
 Requires Step 11c (`sign_public_payload`) and the Step 11a read path;
 user flows that open streams on-chain use Step 11b (`chainAction` / `createStream`).
 
+Runbook (demo vault, API encoding):
+[`docs/step12-user-eligibility.md`](docs/step12-user-eligibility.md).
+Local fixture age and reset policy:
+[`docs/demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
+
 #### Quick reference
 
 | Method | Purpose | Called by |
 |--------|---------|-----------|
-| `prepareEligibilityForStoreQuery` | Returns `StreamProposal` or `StreamProof` | `delivery_module` (auto) |
-| `registerProviderMapping` | Maps `PeerId` to `providerId` | Host application |
+| `prepareEligibilityForStoreQuery` | Returns serialized `EligibilityProof` (stream proposal or proof arm) | `delivery_module` (auto) |
+| `registerProviderMapping` | Maps `PeerId` to LEZ payee account (base58) | Host application |
 | `listMyStreams` | Lists streams for a vault | Host application |
 | `rediscoverStreams` | Re-enumerates streams from chain | Host application (recovery) |
 
@@ -1479,12 +1512,12 @@ The intended sequence for a new provider relationship is:
 
 1. Host application calls `registerProviderMapping`
    to bind the provider's libp2p `PeerId`
-   to its generic `providerId` and LEZ account ID.
+   to its LEZ stream payee account (base58; module derives LIP-155 `provider_id` bytes per N5).
 2. User issues a Store query.
    `delivery_module` invokes `prepareEligibilityForStoreQuery`.
    The module has no established stream for this `(vault, provider)` pair,
    so it generates a session keypair, persists it,
-   and returns a `StreamProposal`.
+   and returns an `EligibilityProof` byte string (opaque to Delivery; `stream_proposal` arm).
 3. Provider accepts the proposal and serves the first request.
 4. User explicitly calls `chainAction` with operation `createStream`
    (Step 11b) to open the stream on-chain.
@@ -1494,12 +1527,14 @@ The intended sequence for a new provider relationship is:
    `delivery_module` invokes `prepareEligibilityForStoreQuery` again.
    The module queries `get_account_public` for the `StreamConfig` PDA,
    confirms it exists and is `ACTIVE`,
-   and returns a `StreamProof` signed by the session key.
+   and returns an `EligibilityProof` byte string (`stream_proof` arm).
 
 #### Session and stream state management
 
 Add session-keypair management inside `payment_streams_module`,
-backed by atomic JSON in `instancePersistencePath` (see [N4](#n4-persistence-policy)).
+backed by `payment_streams_state.json` in `instancePersistencePath` (see [N4](#n4-persistence-policy)).
+Generate session keypairs via `lez-payment-streams-ffi` (see [FFI session keypair](#ffi-session-keypair-step-12-deliverable));
+sign proofs with existing Step 4 FFI helpers. Persist keys as plaintext hex for the demo.
 The persisted state per `(vault_id, provider_id)` includes:
 the `stream_id` (allocated locally, used as the PDA seed on-chain),
 the session keypair,
@@ -1509,14 +1544,40 @@ and the last known on-chain stream state.
 The module maintains a local inventory of stream IDs per vault.
 Every `create_stream` call records the new `stream_id` in the inventory.
 This inventory is the backing store for `listMyStreams`.
-Stale proposals are evicted on a timer and on cold start.
+Stale proposals are evicted on cold start and on eligibility/inventory API calls (deadline vs clock-10).
+
+#### FFI session keypair (Step 12 deliverable)
+
+Step 4 exports sign/verify with caller-supplied 32-byte NSSA secrets only; it does not generate
+session keypairs. Step 12 adds keygen in the same `payment_streams_ffi_*` naming family as
+`payment_streams_ffi_sign_canonical_payload_digest` (`lez-payment-streams-ffi/src/proof_abi.rs`;
+implement core logic in `lez-payment-streams-core`, no separate session ABI file).
+
+Add in `lez-payment-streams-core` (unit-tested) and expose:
+
+```c
+PaymentStreamsFfiStatus payment_streams_ffi_generate_session_keypair(
+    uint8_t *out_secret_key_32,
+    uint8_t *out_public_key_32);
+```
+
+Both outputs are 32 bytes (NSSA `PrivateKey` / public key bytes used elsewhere in proof FFI).
+Use a CSPRNG; return `PaymentStreamsFfiStatus` on null pointers or generation failure. Regenerate
+`cbindgen` output (`lez_payment_streams_ffi.h`); wire through `payment_streams_ffi_bridge` if the
+Qt module calls via the existing C bridge pattern.
+
+Step 12 definition of done includes a Rust unit test in `proof_abi.rs`: generate, sign a digest
+with `payment_streams_ffi_sign_canonical_payload_digest`, verify with
+`payment_streams_ffi_verify_canonical_payload_digest`.
 
 #### Exposed methods
 
 `prepareEligibilityForStoreQuery(canonicalRequestBytes, providerPeerId) -> QString`
-returns either a `StreamProposal` or a `StreamProof` byte string
-depending on whether the stream for the `(vault, provider)` pair
-has been established on-chain.
+LogosAPI passes `canonicalRequestBytes` as lowercase hex of the N8 `canonical_payload` (see
+runbook). Returns compact JSON whose `bytes_hex` is the serialized protobuf `EligibilityProof` for
+Store tag `30` (D1, D2). Set `stream_proposal` or `stream_proof` (mutually exclusive) with
+nested serialized `StreamProposal` or `StreamProof` per LIP-155, depending on whether the
+stream for the `(vault, provider)` pair has been established on-chain.
 Before returning a `StreamProof`,
 the module reads the `StreamConfig` PDA via `get_account_public`,
 decodes it through the FFI,
@@ -1530,8 +1591,10 @@ to produce `VaultProof.owner_signature` with the vault owner's LEZ key,
 and reads the 64-byte signature from the `result` field of the JSON response.
 Later `StreamProof`s are signed with the persisted session key.
 
-`registerProviderMapping(providerPeerId, providerId, providerAccountId) -> LogosResult`
+`registerProviderMapping(providerPeerId, providerAccountId) -> QString`
 lets the host configure the identity mapping (see [N5](#n5-provider-identity-mapping)).
+Returns compact JSON (`status` ok/error). `providerAccountId` is base58; the module derives
+32-byte `provider_id` for proofs and persistence.
 
 `listMyStreams(vaultId) -> QString`
 returns a JSON array of stream statuses
@@ -1569,8 +1632,8 @@ and a human-readable description.
 - `PROPOSAL_EXPIRED`:
   the pending proposal's `create_stream_deadline` has passed
   without stream creation.
-  The module evicts the stale proposal.
-  The next call generates a fresh `StreamProposal`.
+  The module evicts the stale proposal and returns this error on that call;
+  a subsequent call may issue a fresh `StreamProposal`.
 - `STREAM_NOT_CONFIRMED`:
   user called `create_stream` but the `StreamConfig` PDA
   does not yet exist on-chain.
@@ -1584,6 +1647,10 @@ and a human-readable description.
 - `STREAM_CLOSED`:
   stream has been closed (by user or provider).
   User must open a new stream to this provider.
+- When chain state is `ACTIVE` for the `(vault_id, provider_id)` pair,
+  `prepareEligibilityForStoreQuery` returns a `stream_proof` (not an error).
+  Duplicate on-chain `createStream` for an occupied `stream_id` is rejected by the chain, not a
+  separate module error code.
 - `WALLET_SIGNING_FAILED`:
   `sign_public_payload` returned `{"status":"error",...}` or IPC failed.
   Error includes upstream details from the `error` field.
@@ -1605,6 +1672,7 @@ After code changes, rebuild and reload via
 
 The module produces a syntactically valid eligibility proof byte string
 for fixed inputs;
+`payment_streams_ffi_generate_session_keypair` is implemented and covered by FFI tests;
 restarts cleanly with state intact;
 the FFI structural verifier accepts the proof format;
 `listMyStreams` returns correct folded status for locally known streams;
@@ -1627,6 +1695,8 @@ runs structural checks through the FFI,
 queries chain state through the wallet module,
 folds stream state at the current sequencer time,
 and returns a structured verdict mapping to LIP-155 outcomes.
+`proofBytes` are the same opaque serialized `EligibilityProof` from the Store request (D2);
+the module unwraps `stream_proposal` / `stream_proof` before FFI checks.
 
 #### Provider-side verdicts
 
@@ -1748,7 +1818,7 @@ with a wrapper that:
 1. Extracts `eligibility_proof` from the decoded request.
 2. If present and `paidStoreMode` is enabled,
    produces `canonicalRequestBytes` from the request (see below),
-   then calls the verifier callback with the proof bytes,
+   then calls the verifier callback with the serialized `eligibility_proof` bytes (opaque `EligibilityProof` protobuf, D2),
    the canonical bytes, and the requester `PeerId`.
 3. On failure, returns early with `BAD_REQUEST` status code (400),
    the `eligibility_status` object populated with the verdict,

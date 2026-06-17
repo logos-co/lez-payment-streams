@@ -112,6 +112,14 @@ pub fn sign_stream_proposal_vault_proof(
     Ok(proposal)
 }
 
+/// Generate a fresh NSSA session keypair (32-byte secret and x-only public key bytes).
+pub fn generate_session_keypair() -> ([u8; 32], [u8; 32]) {
+    let secret_key = PrivateKey::new_os_random();
+    let public_key = *PublicKey::new_from_private_key(&secret_key).value();
+    let secret_bytes = *secret_key.value();
+    (secret_bytes, public_key)
+}
+
 /// Builds a `StreamProofWire` for a store query using the session private key (paired with proposal public key).
 pub fn sign_stream_proof_for_store_query(
     stream_id: u64,

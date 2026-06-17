@@ -45,6 +45,9 @@ mod field_numbers {
     pub const STREAM_PROPOSAL_VAULT: u32 = 1;
     pub const STREAM_PROPOSAL_PARAMS: u32 = 2;
     pub const STREAM_PROPOSAL_SESSION_PUBLIC_KEY: u32 = 3;
+
+    pub const ELIGIBILITY_STREAM_PROPOSAL: u32 = 2;
+    pub const ELIGIBILITY_STREAM_PROOF: u32 = 3;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -444,6 +447,51 @@ pub fn serialize_stream_proposal(proposal: &StreamProposalWire) -> Result<Vec<u8
         &proposal.session_public_key,
     );
     Ok(out)
+}
+
+/// Incentivization `EligibilityProof` (LIP-155): exactly one of `stream_proposal` or `stream_proof`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EligibilityProofWire {
+    StreamProposal(Vec<u8>),
+    StreamProof(Vec<u8>),
+}
+
+pub fn parse_eligibility_proof(bytes: &[u8]) -> Result<EligibilityProofWire, WireError> {
+    let mut proposal: Option<Vec<u8>> = None;
+    let mut proof: Option<Vec<u8>> = None;
+    let mut cursor = 0_usize;
+    while let Some((field, wire)) = read_tag(&mut cursor, bytes)? {
+        match (field, wire) {
+            (field_numbers::ELIGIBILITY_STREAM_PROPOSAL, WIRE_LEN_DELIM) => {
+                proposal = Some(read_len_delim(&mut cursor, bytes)?.to_vec());
+            }
+            (field_numbers::ELIGIBILITY_STREAM_PROOF, WIRE_LEN_DELIM) => {
+                proof = Some(read_len_delim(&mut cursor, bytes)?.to_vec());
+            }
+            (_, _) => skip_field(&mut cursor, bytes, wire)?,
+        }
+    }
+    if cursor != bytes.len() {
+        return Err(WireError::InvalidWireFrame);
+    }
+    match (proposal, proof) {
+        (Some(inner), None) => Ok(EligibilityProofWire::StreamProposal(inner)),
+        (None, Some(inner)) => Ok(EligibilityProofWire::StreamProof(inner)),
+        _ => Err(WireError::InvalidWireFrame),
+    }
+}
+
+pub fn serialize_eligibility_proof(arm: &EligibilityProofWire) -> Vec<u8> {
+    let mut out = Vec::new();
+    match arm {
+        EligibilityProofWire::StreamProposal(inner) => {
+            write_len_delim_bytes(&mut out, field_numbers::ELIGIBILITY_STREAM_PROPOSAL, inner);
+        }
+        EligibilityProofWire::StreamProof(inner) => {
+            write_len_delim_bytes(&mut out, field_numbers::ELIGIBILITY_STREAM_PROOF, inner);
+        }
+    }
+    out
 }
 
 #[cfg(test)]

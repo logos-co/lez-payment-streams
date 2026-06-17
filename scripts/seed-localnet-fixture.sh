@@ -89,4 +89,5 @@ cargo run --quiet --manifest-path examples/Cargo.toml --bin seed_localnet_fixtur
   --write-manifest "$MANIFEST"
 
 echo "Done. Manifest: $MANIFEST"
-echo "Reset chain state: lgs localnet stop && rm -rf .scaffold/state/ && rm -f $STATE_FILE $PROVIDER_FILE $MANIFEST"
+echo "Fresh blank slate: ./scripts/demo-localnet-fresh.sh"
+echo "Reset chain only: lgs localnet stop && rm -rf .scaffold/state/ && rm -f $STATE_FILE $PROVIDER_FILE $MANIFEST"

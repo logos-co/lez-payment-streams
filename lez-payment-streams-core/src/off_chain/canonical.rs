@@ -124,6 +124,22 @@ pub fn store_eligibility_canonical_payload_digest(
     lez_canonical_payload_digest(&STORE_ELIGIBILITY_DOMAIN_PREFIX, &canonical_payload)
 }
 
+/// Digest from the full N8 wire bytes (`STORE_ELIGIBILITY_DOMAIN_PREFIX` || Borsh body).
+pub fn store_eligibility_canonical_payload_digest_from_n8_wire(
+    wire: &[u8],
+) -> Result<[u8; 32], super::wire_error::WireError> {
+    if wire.len() < STORE_ELIGIBILITY_DOMAIN_PREFIX.len()
+        || wire[..STORE_ELIGIBILITY_DOMAIN_PREFIX.len()] != STORE_ELIGIBILITY_DOMAIN_PREFIX
+    {
+        return Err(super::wire_error::WireError::InvalidWireFrame);
+    }
+    let body = &wire[STORE_ELIGIBILITY_DOMAIN_PREFIX.len()..];
+    Ok(lez_canonical_payload_digest(
+        &STORE_ELIGIBILITY_DOMAIN_PREFIX,
+        body,
+    ))
+}
+
 /// Build the vault-owner canonical payload bytes covered by `VaultProof.owner_signature`.
 pub fn vault_owner_auth_canonical_payload(
     vault_id: u64,

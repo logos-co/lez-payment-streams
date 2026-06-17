@@ -333,3 +333,68 @@ uint32_t ps_ffi_plan_claim(const uint8_t program_id_bytes[32],
         accounts_hex_out_cap,
         accounts_hex_out_len));
 }
+
+uint32_t ps_ffi_generate_session_keypair(uint8_t out_secret_key_32[32], uint8_t out_public_key_32[32]) {
+    return map_status(payment_streams_ffi_generate_session_keypair(out_secret_key_32, out_public_key_32));
+}
+
+uint32_t ps_ffi_store_eligibility_digest_from_n8_wire(const uint8_t* n8_wire,
+                                                      size_t n8_wire_len,
+                                                      uint8_t out_digest_32[32]) {
+    return map_status(payment_streams_ffi_store_eligibility_canonical_payload_digest_from_n8_wire_bytes(
+        n8_wire, n8_wire_len, out_digest_32));
+}
+
+uint32_t ps_ffi_vault_owner_auth_digest_from_decoded_proposal(const PsFfiDecodedStreamProposal* proposal,
+                                                              uint8_t out_digest_32[32]) {
+    if (proposal == NULL) {
+        return map_status(PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_NULL_POINTER);
+    }
+    PaymentStreamsFfiPaymentStreamsFfiDecodedStreamProposal ffi_proposal;
+    memcpy(&ffi_proposal, proposal, sizeof(ffi_proposal));
+    return map_status(
+        payment_streams_ffi_vault_owner_auth_canonical_payload_digest_from_decoded_proposal(
+            &ffi_proposal, out_digest_32));
+}
+
+uint32_t ps_ffi_serialize_stream_proposal_decoded(const PsFfiDecodedStreamProposal* proposal,
+                                                  uint8_t* out_ptr,
+                                                  size_t out_cap,
+                                                  size_t* out_len) {
+    if (proposal == NULL || out_len == NULL) {
+        return map_status(PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_NULL_POINTER);
+    }
+    PaymentStreamsFfiPaymentStreamsFfiDecodedStreamProposal ffi_proposal;
+    memcpy(&ffi_proposal, proposal, sizeof(ffi_proposal));
+    return map_status(payment_streams_ffi_serialize_stream_proposal_bytes(
+        &ffi_proposal, out_ptr, out_cap, out_len));
+}
+
+uint32_t ps_ffi_serialize_stream_proof_for_n8_wire(uint64_t stream_id,
+                                                   const uint8_t secret_key_32[32],
+                                                   const uint8_t* n8_wire,
+                                                   size_t n8_wire_len,
+                                                   uint8_t* out_ptr,
+                                                   size_t out_cap,
+                                                   size_t* out_len) {
+    return map_status(payment_streams_ffi_serialize_stream_proof_for_n8_wire(
+        stream_id, secret_key_32, n8_wire, n8_wire_len, out_ptr, out_cap, out_len));
+}
+
+uint32_t ps_ffi_serialize_eligibility_proof_stream_proposal(const uint8_t* inner_ptr,
+                                                            size_t inner_len,
+                                                            uint8_t* out_ptr,
+                                                            size_t out_cap,
+                                                            size_t* out_len) {
+    return map_status(payment_streams_ffi_serialize_eligibility_proof_stream_proposal_bytes(
+        inner_ptr, inner_len, out_ptr, out_cap, out_len));
+}
+
+uint32_t ps_ffi_serialize_eligibility_proof_stream_proof(const uint8_t* inner_ptr,
+                                                         size_t inner_len,
+                                                         uint8_t* out_ptr,
+                                                         size_t out_cap,
+                                                         size_t* out_len) {
+    return map_status(payment_streams_ffi_serialize_eligibility_proof_stream_proof_bytes(
+        inner_ptr, inner_len, out_ptr, out_cap, out_len));
+}

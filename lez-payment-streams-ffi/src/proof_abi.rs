@@ -3,11 +3,13 @@
 use core::slice;
 
 use lez_payment_streams_core::{
-    parse_stream_proof, parse_stream_proposal, serialize_stream_proof, serialize_stream_proposal,
-    sign_canonical_payload_digest, vault_owner_auth_canonical_payload_digest,
-    verify_canonical_payload_digest, verify_stream_proof_for_store_query,
-    verify_stream_proposal_vault_proof, CanonicalStoreQueryParts, OffChainError, StreamProofWire,
-    StreamProposalWire, VaultProofWire, WireError,
+    generate_session_keypair, parse_stream_proof, parse_stream_proposal, serialize_eligibility_proof,
+    serialize_stream_proof, serialize_stream_proposal,
+    sign_canonical_payload_digest, store_eligibility_canonical_payload_digest_from_n8_wire,
+    vault_owner_auth_canonical_payload_digest, verify_canonical_payload_digest,
+    verify_stream_proof_for_store_query, verify_stream_proposal_vault_proof, CanonicalStoreQueryParts,
+    EligibilityProofWire, OffChainError, StreamProofWire, StreamProposalWire, VaultProofWire,
+    WireError,
 };
 
 use nssa::PrivateKey;
@@ -586,12 +588,175 @@ pub unsafe extern "C" fn payment_streams_ffi_verify_canonical_payload_digest(
     }
 }
 
+/// Generate a 32-byte NSSA session secret and matching 32-byte public key (x-only).
+#[no_mangle]
+pub unsafe extern "C" fn payment_streams_ffi_generate_session_keypair(
+    out_secret_key_32: *mut u8,
+    out_public_key_32: *mut u8,
+) -> PaymentStreamsFfiStatus {
+    if out_secret_key_32.is_null() || out_public_key_32.is_null() {
+        return PaymentStreamsFfiStatus::NullPointer;
+    }
+    let (secret, public) = generate_session_keypair();
+    slice::from_raw_parts_mut(out_secret_key_32, 32).copy_from_slice(&secret);
+    slice::from_raw_parts_mut(out_public_key_32, 32).copy_from_slice(&public);
+    PaymentStreamsFfiStatus::Success
+}
+
+/// Write SHA-256 digest for full N8 wire bytes (`domain prefix` || Borsh body).
+#[no_mangle]
+pub unsafe extern "C" fn payment_streams_ffi_store_eligibility_canonical_payload_digest_from_n8_wire_bytes(
+    n8_wire_ptr: *const u8,
+    n8_wire_len: usize,
+    out_digest_32: *mut u8,
+) -> PaymentStreamsFfiStatus {
+    if out_digest_32.is_null() {
+        return PaymentStreamsFfiStatus::NullPointer;
+    }
+    let wire = match borrow_input(n8_wire_ptr, n8_wire_len) {
+        Err(status) => return status,
+        Ok(slice) => slice,
+    };
+    let digest = match store_eligibility_canonical_payload_digest_from_n8_wire(wire) {
+        Ok(value) => value,
+        Err(err) => return map_wire_err(err),
+    };
+    slice::from_raw_parts_mut(out_digest_32, 32).copy_from_slice(&digest);
+    PaymentStreamsFfiStatus::Success
+}
+
+/// Build inner `StreamProof` protobuf bytes for a session key and N8 canonical wire payload.
+#[no_mangle]
+pub unsafe extern "C" fn payment_streams_ffi_serialize_stream_proof_for_n8_wire(
+    stream_id: u64,
+    secret_key_32: *const u8,
+    n8_wire_ptr: *const u8,
+    n8_wire_len: usize,
+    out_ptr: *mut u8,
+    out_cap: usize,
+    out_len: *mut usize,
+) -> PaymentStreamsFfiStatus {
+    if out_len.is_null() {
+        return PaymentStreamsFfiStatus::NullPointer;
+    }
+    *out_len = 0;
+
+    let secret = match borrow_input(secret_key_32, 32) {
+        Err(status) => return status,
+        Ok(slice) => slice,
+    };
+    let secret_arr: [u8; 32] = match secret.try_into() {
+        Err(_) => return PaymentStreamsFfiStatus::Malformed,
+        Ok(value) => value,
+    };
+    let key = match PrivateKey::try_new(secret_arr) {
+        Ok(value) => value,
+        Err(_) => return PaymentStreamsFfiStatus::Malformed,
+    };
+
+    let wire = match borrow_input(n8_wire_ptr, n8_wire_len) {
+        Err(status) => return status,
+        Ok(slice) => slice,
+    };
+    let digest = match store_eligibility_canonical_payload_digest_from_n8_wire(wire) {
+        Ok(value) => value,
+        Err(err) => return map_wire_err(err),
+    };
+
+    let proof = StreamProofWire {
+        stream_id,
+        signature: sign_canonical_payload_digest(&key, &digest),
+    };
+    let encoded = serialize_stream_proof(&proof);
+    unsafe {
+        *out_len = encoded.len();
+    }
+    if out_ptr.is_null() {
+        return PaymentStreamsFfiStatus::Success;
+    }
+    if out_cap < encoded.len() {
+        return PaymentStreamsFfiStatus::Malformed;
+    }
+    slice::from_raw_parts_mut(out_ptr, encoded.len()).copy_from_slice(&encoded);
+    PaymentStreamsFfiStatus::Success
+}
+
+fn write_eligibility_wrapper(
+    arm: &EligibilityProofWire,
+    out_ptr: *mut u8,
+    out_cap: usize,
+    out_len: *mut usize,
+) -> PaymentStreamsFfiStatus {
+    if out_len.is_null() {
+        return PaymentStreamsFfiStatus::NullPointer;
+    }
+    unsafe {
+        *out_len = 0;
+    }
+    let encoded = serialize_eligibility_proof(arm);
+    unsafe {
+        *out_len = encoded.len();
+    }
+    if out_ptr.is_null() {
+        return PaymentStreamsFfiStatus::Success;
+    }
+    if out_cap < encoded.len() {
+        return PaymentStreamsFfiStatus::Malformed;
+    }
+    unsafe {
+        slice::from_raw_parts_mut(out_ptr, encoded.len()).copy_from_slice(&encoded);
+    }
+    PaymentStreamsFfiStatus::Success
+}
+
+/// Serialize `EligibilityProof { stream_proposal: inner }`.
+#[no_mangle]
+pub unsafe extern "C" fn payment_streams_ffi_serialize_eligibility_proof_stream_proposal_bytes(
+    inner_proposal_ptr: *const u8,
+    inner_proposal_len: usize,
+    out_ptr: *mut u8,
+    out_cap: usize,
+    out_len: *mut usize,
+) -> PaymentStreamsFfiStatus {
+    let inner = match borrow_input(inner_proposal_ptr, inner_proposal_len) {
+        Err(status) => return status,
+        Ok(slice) => slice,
+    };
+    write_eligibility_wrapper(
+        &EligibilityProofWire::StreamProposal(inner.to_vec()),
+        out_ptr,
+        out_cap,
+        out_len,
+    )
+}
+
+/// Serialize `EligibilityProof { stream_proof: inner }`.
+#[no_mangle]
+pub unsafe extern "C" fn payment_streams_ffi_serialize_eligibility_proof_stream_proof_bytes(
+    inner_proof_ptr: *const u8,
+    inner_proof_len: usize,
+    out_ptr: *mut u8,
+    out_cap: usize,
+    out_len: *mut usize,
+) -> PaymentStreamsFfiStatus {
+    let inner = match borrow_input(inner_proof_ptr, inner_proof_len) {
+        Err(status) => return status,
+        Ok(slice) => slice,
+    };
+    write_eligibility_wrapper(
+        &EligibilityProofWire::StreamProof(inner.to_vec()),
+        out_ptr,
+        out_cap,
+        out_len,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use lez_payment_streams_core::{
-        sign_stream_proof_for_store_query, sign_stream_proposal_vault_proof, StreamParams,
-        VaultProofWire,
+        generate_session_keypair, parse_eligibility_proof, sign_stream_proof_for_store_query,
+        sign_stream_proposal_vault_proof, StreamParams, VaultProofWire,
     };
     use nssa::PublicKey;
 
@@ -742,5 +907,67 @@ mod tests {
             },
             PaymentStreamsFfiStatus::Success
         );
+    }
+
+    #[test]
+    fn ffi_generate_session_keypair_sign_verify_round_trip() {
+        let mut secret = [0_u8; 32];
+        let mut public = [0_u8; 32];
+        assert_eq!(
+            unsafe {
+                payment_streams_ffi_generate_session_keypair(
+                    secret.as_mut_ptr(),
+                    public.as_mut_ptr(),
+                )
+            },
+            PaymentStreamsFfiStatus::Success
+        );
+        let digest = [7_u8; 32];
+        let mut sig = [0_u8; 64];
+        assert_eq!(
+            unsafe {
+                payment_streams_ffi_sign_canonical_payload_digest(
+                    secret.as_ptr(),
+                    digest.as_ptr(),
+                    sig.as_mut_ptr(),
+                )
+            },
+            PaymentStreamsFfiStatus::Success
+        );
+        assert_eq!(
+            unsafe {
+                payment_streams_ffi_verify_canonical_payload_digest(
+                    public.as_ptr(),
+                    digest.as_ptr(),
+                    sig.as_ptr(),
+                )
+            },
+            PaymentStreamsFfiStatus::Success
+        );
+    }
+
+    #[test]
+    fn ffi_eligibility_proof_wrapper_round_trip() {
+        let inner = b"inner-proposal-bytes".to_vec();
+        let mut out_len = 0_usize;
+        let mut buf = vec![0_u8; 256];
+        assert_eq!(
+            unsafe {
+                payment_streams_ffi_serialize_eligibility_proof_stream_proposal_bytes(
+                    inner.as_ptr(),
+                    inner.len(),
+                    buf.as_mut_ptr(),
+                    buf.len(),
+                    &mut out_len,
+                )
+            },
+            PaymentStreamsFfiStatus::Success
+        );
+        buf.truncate(out_len);
+        let parsed = parse_eligibility_proof(&buf).expect("parses");
+        match parsed {
+            EligibilityProofWire::StreamProposal(bytes) => assert_eq!(bytes, inner),
+            _ => panic!("expected proposal arm"),
+        }
     }
 }

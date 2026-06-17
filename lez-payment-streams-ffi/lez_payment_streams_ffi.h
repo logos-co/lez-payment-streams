@@ -866,4 +866,46 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_verify_canonical_pa
                                                                                              const uint8_t *canonical_payload_digest,
                                                                                              const uint8_t *signature);
 
+/**
+ * Generate a 32-byte NSSA session secret and matching 32-byte public key (x-only).
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_generate_session_keypair(uint8_t *out_secret_key_32,
+                                                                                      uint8_t *out_public_key_32);
+
+/**
+ * Write SHA-256 digest for full N8 wire bytes (`domain prefix` || Borsh body).
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_store_eligibility_canonical_payload_digest_from_n8_wire_bytes(const uint8_t *n8_wire_ptr,
+                                                                                                                           uintptr_t n8_wire_len,
+                                                                                                                           uint8_t *out_digest_32);
+
+/**
+ * Build inner `StreamProof` protobuf bytes for a session key and N8 canonical wire payload.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_stream_proof_for_n8_wire(uint64_t stream_id,
+                                                                                                const uint8_t *secret_key_32,
+                                                                                                const uint8_t *n8_wire_ptr,
+                                                                                                uintptr_t n8_wire_len,
+                                                                                                uint8_t *out_ptr,
+                                                                                                uintptr_t out_cap,
+                                                                                                uintptr_t *out_len);
+
+/**
+ * Serialize `EligibilityProof { stream_proposal: inner }`.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_eligibility_proof_stream_proposal_bytes(const uint8_t *inner_proposal_ptr,
+                                                                                                               uintptr_t inner_proposal_len,
+                                                                                                               uint8_t *out_ptr,
+                                                                                                               uintptr_t out_cap,
+                                                                                                               uintptr_t *out_len);
+
+/**
+ * Serialize `EligibilityProof { stream_proof: inner }`.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_eligibility_proof_stream_proof_bytes(const uint8_t *inner_proof_ptr,
+                                                                                                            uintptr_t inner_proof_len,
+                                                                                                            uint8_t *out_ptr,
+                                                                                                            uintptr_t out_cap,
+                                                                                                            uintptr_t *out_len);
+
 #endif  /* LEZ_PAYMENT_STREAMS_FFI_H */

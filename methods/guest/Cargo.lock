@@ -1645,6 +1645,7 @@ version = "0.1.0"
 dependencies = [
  "borsh",
  "clock_core",
+ "hex",
  "nssa_core",
  "risc0-zkvm",
  "serde",

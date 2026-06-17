@@ -51,6 +51,20 @@ Search `.scaffold/logs/sequencer.log` for the failing tx hash from seed stdout.
 
 ### Clean reset + re-verify
 
+Preferred one-shot entry for demos:
+
+```bash
+./scripts/demo-localnet-fresh.sh
+```
+
+Wallet storage parse errors or deploy failures:
+
+```bash
+REINIT_WALLET=1 ./scripts/demo-localnet-fresh.sh
+```
+
+Manual equivalent:
+
 ```bash
 lgs localnet stop
 rm -rf .scaffold/state/
@@ -62,6 +76,8 @@ make build idl deploy
 ./scripts/seed-localnet-fixture.sh
 ./scripts/verify-step10a-dod.sh
 ```
+
+See also [`demo-localnet-recovery.md`](demo-localnet-recovery.md).
 
 Foreign localnet on `:3040`, wallet home drift, and sequencer config symlink: runbook
 [Troubleshooting](step10a-local-chain-fixture.md#troubleshooting).

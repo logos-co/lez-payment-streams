@@ -18,6 +18,7 @@ logos_module(
     src/payment_streams_module_writes.cpp
     src/payment_streams_ffi_bridge.c
     src/payment_streams_ffi_bridge_writes.c
+    src/payment_streams_module_eligibility.cpp
   EXTERNAL_LIBS
     lez_payment_streams_ffi
 )

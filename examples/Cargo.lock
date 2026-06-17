@@ -3580,6 +3580,7 @@ version = "0.1.0"
 dependencies = [
  "borsh",
  "clock_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2)",
+ "hex",
  "nssa",
  "nssa_core",
  "risc0-zkvm",

@@ -37,10 +37,10 @@ Qt-aligned manual wallet build tree used for 11b until Nix bundle works with off
 
 Run logoscore from repo root so relative paths resolve.
 
-## Public LogosAPI surface (Universal codegen)
+## Public LogosAPI surface (Universal)
 
-`logos-cpp-generator` exposes at most eight public methods on `PaymentStreamsModuleImpl`.
-Step 11a read helpers consume five slots; chain I/O uses one router:
+Exported methods come from `payment_streams_module_impl.h` via codegen ([N11](../integration-plan-v2.md#n11-universal-module-public-api)).
+Writes and status use one router instead of separate invokables per operation:
 
 | Method | Purpose |
 | --- | --- |
