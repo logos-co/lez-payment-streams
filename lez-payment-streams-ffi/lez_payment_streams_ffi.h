@@ -24,7 +24,11 @@
  * Rust-only helpers also use this as the `E` in `Result<T, E>` for recoverable failures (`Success`
  * is never used in `Err`).
  */
-enum PaymentStreamsFfiPaymentStreamsFfiStatus {
+enum PaymentStreamsFfiPaymentStreamsFfiStatus
+#if __STDC_VERSION__ >= 202311L
+  : uint32_t
+#endif // __STDC_VERSION__ >= 202311L
+ {
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_SUCCESS = 0,
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_NULL_POINTER = 1,
   /**
@@ -48,14 +52,26 @@ enum PaymentStreamsFfiPaymentStreamsFfiStatus {
    */
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_STATUS_PROOF_INVALID = 6,
 };
+#if __STDC_VERSION__ >= 202311L
+typedef enum PaymentStreamsFfiPaymentStreamsFfiStatus PaymentStreamsFfiPaymentStreamsFfiStatus;
+#else
 typedef uint32_t PaymentStreamsFfiPaymentStreamsFfiStatus;
+#endif // __STDC_VERSION__ >= 202311L
 
-enum PaymentStreamsFfiClockAccountChoice {
+enum PaymentStreamsFfiClockAccountChoice
+#if __STDC_VERSION__ >= 202311L
+  : uint32_t
+#endif // __STDC_VERSION__ >= 202311L
+ {
   PAYMENT_STREAMS_FFI_CLOCK_ACCOUNT_CHOICE_CLOCK01 = 0,
   PAYMENT_STREAMS_FFI_CLOCK_ACCOUNT_CHOICE_CLOCK10 = 1,
   PAYMENT_STREAMS_FFI_CLOCK_ACCOUNT_CHOICE_CLOCK50 = 2,
 };
+#if __STDC_VERSION__ >= 202311L
+typedef enum PaymentStreamsFfiClockAccountChoice PaymentStreamsFfiClockAccountChoice;
+#else
 typedef uint32_t PaymentStreamsFfiClockAccountChoice;
+#endif // __STDC_VERSION__ >= 202311L
 
 /**
  * Stable policy rejection codes for FFI consumers.
@@ -68,7 +84,11 @@ typedef uint32_t PaymentStreamsFfiClockAccountChoice;
  * most predicate outcomes map to `PARAMS_REJECTED`, `StreamNotActive` maps to `STREAM_NOT_ACTIVE`,
  * and proof-layer failures use `PROOF_INVALID`. Until a host defines finer rules, treat `Unknown` like `PARAMS_REJECTED`.
  */
-enum PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason {
+enum PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason
+#if __STDC_VERSION__ >= 202311L
+  : uint32_t
+#endif // __STDC_VERSION__ >= 202311L
+ {
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_RATE_BELOW_POLICY_MIN = 0,
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_ALLOCATION_BELOW_POLICY_MIN = 1,
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_CREATE_STREAM_DEADLINE_INVALID = 2,
@@ -83,7 +103,11 @@ enum PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason {
    */
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_UNKNOWN = 9,
 };
+#if __STDC_VERSION__ >= 202311L
+typedef enum PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason;
+#else
 typedef uint32_t PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason;
+#endif // __STDC_VERSION__ >= 202311L
 
 /**
  * Decoded `VaultConfig` fields exposed across the C ABI boundary.
