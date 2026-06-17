@@ -3,8 +3,8 @@
 Canonical short index for the Logos payment-streams Store demo. Agents: repo root
 [`AGENTS.md`](AGENTS.md), then [`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md). Operators: step runbooks in [`docs/README.md`](docs/README.md).
 
-The full pre-split plan lives in [`docs/archive/integration-plan-v2-full.md`](docs/archive/integration-plan-v2-full.md).
-[`integration-plan-v2.md`](integration-plan-v2.md) redirects here.
+The full pre-split plan lives in [`docs/archive/integration-plan-full.md`](docs/archive/integration-plan-full.md).
+[`integration-plan.md`](integration-plan.md) redirects here.
 
 ## Task summary
 
@@ -90,7 +90,7 @@ Doc index: [`docs/README.md`](docs/README.md). Plan layout: [`docs/plan/README.m
 ## Completed steps (summary)
 
 Steps 1–11: landed in tree; verify via `make verify-step10a` … `verify-step12` and step runbooks.
-Historical step prose: [archive](docs/archive/integration-plan-v2-full.md#integration-steps).
+Historical step prose: [archive](docs/archive/integration-plan-full.md#integration-steps).
 
 ### Step 12 — User eligibility (complete)
 

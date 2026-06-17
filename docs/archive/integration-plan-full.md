@@ -1,6 +1,6 @@
 > Historical snapshot. Canonical index: [integration-index.md](../../integration-index.md). Agents: [AGENT-BRIEF.md](../AGENT-BRIEF.md).
 
-# Payment Streams Integration Plan v2
+# Payment Streams integration plan
 
 ## Task Summary
 
@@ -52,7 +52,7 @@ only (no Store query on `delivery_module`).
 
 ### Recommended reading order
 
-1. This file (`integration-plan-v2.md`).
+1. [`integration-index.md`](../../integration-index.md) (short index). Full text: this archive file.
    Steps 1–5 (Rust FFI), Steps 6–18 (integration and demo).
    Step 3 splits into 3a (core) and 3b (FFI).
    Step 6 records the closed Store-query decision; Step 8 (probe) is done; Step 9

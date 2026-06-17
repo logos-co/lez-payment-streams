@@ -41,7 +41,7 @@ Blocked: Step 16–17 Store query path until upstream `delivery_module` exposes 
 
 ## Historical depth (load on demand)
 
-- [archive/integration-plan-v2-full.md](archive/integration-plan-v2-full.md) — full pre-split plan
+- [archive/integration-plan-full.md](archive/integration-plan-full.md) — full pre-split plan
 - [reference/decisions-and-notes.md](reference/decisions-and-notes.md) — D1–D6, N1–N11
 - [plan/completed/step-12-normative.md](plan/completed/step-12-normative.md), [step-13-normative.md](plan/completed/step-13-normative.md)
 

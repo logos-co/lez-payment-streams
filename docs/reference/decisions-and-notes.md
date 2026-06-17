@@ -2,7 +2,7 @@
 
 Normative decisions (D1–D6) and carry-forward notes (N1–N11) for payment-streams integration.
 Index: [integration-index.md](../../integration-index.md). Cross-step APIs: [integration-contracts.md](../integration-contracts.md).
-Full historical plan: [integration-plan-v2-full.md](../archive/integration-plan-v2-full.md).
+Full historical plan: [integration-plan-full.md](../archive/integration-plan-full.md).
 
 ## Decisions and Notes
 

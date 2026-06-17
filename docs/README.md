@@ -16,8 +16,8 @@ long procedural blocks in both places.
 | [`integration-contracts.md`](integration-contracts.md) | LogosAPI names, encodings, wire tags |
 | [`context-manifest.json`](context-manifest.json) | Machine read-order manifest |
 | [`../integration-index.md`](../integration-index.md) | Master index (steps, status, verify scripts) |
-| [`../integration-plan-v2.md`](../integration-plan-v2.md) | Redirect to integration index + archives |
-| [`archive/integration-plan-v2-full.md`](archive/integration-plan-v2-full.md) | Full historical Store integration plan |
+| [`../integration-plan.md`](../integration-plan.md) | Redirect to integration index + archives |
+| [`archive/integration-plan-full.md`](archive/integration-plan-full.md) | Full historical Store integration plan |
 | [`archive/implementation-plan-on-chain.md`](archive/implementation-plan-on-chain.md) | Archived on-chain SPEL guest milestone list |
 | [`plan/README.md`](plan/README.md) | Completed vs upcoming plan excerpts |
 | [`../logos-architecture-overview.md`](../logos-architecture-overview.md) | Hosts, modules, FFI vs LogosAPI |
