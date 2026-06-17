@@ -442,7 +442,17 @@ a primitive that signs an arbitrary canonical payload with a wallet account's ke
 That primitive is required for `VaultProof.owner_signature`,
 because the vault proof must prove control of the LEZ vault owner key.
 For the MVP, we add `sign_public_payload` to `logos_execution_zone`
-on our branch (see Step 11b wallet write helpers and N8).
+on our branch (see Step 11c; patch delivery uses `lez-wallet-ffi-patched`).
+
+Decided call convention (Step 11c):
+`sign_public_payload(account_id_hex: QString, digest_hex: QString) -> QString`
+where `account_id_hex` is the 64-char hex account ID (same format as
+`get_account_public` and `get_public_account_key`; convert base58 with
+`account_id_from_base58` first if needed),
+`digest_hex` is the 64-char hex SHA-256 digest (32 bytes),
+and the return is a JSON envelope `{"status":"ok","result":"<128-char hex>"}`.
+Verification uses `smoke_verify` from `lez-payment-streams-ffi`
+(same `verify_canonical_payload_digest` path as the Step 13 provider FFI).
 
 No domain parameter is included.
 The NSSA wallet avoids exposing generic signing entirely
@@ -1205,7 +1215,7 @@ Implementor hints (FFI from Step 5, no extra Qt surface yet):
 
 Pin `logos-module-builder` recent enough for Universal glue (same band as
 `logos-universal-legacy-probe`). Wallet LEZ rev aligned with patched wallet flake
-(module PR 19 + LEZ pin via `lez-python-overlay`; see feature-branch pins).
+(module PR 19 + LEZ pin via `lez-wallet-ffi-patched`; see feature-branch pins).
 
 Components required to run:
 `logoscore` host (first step needing a running Logos host).
@@ -1404,17 +1414,44 @@ expose digest signing for `VaultProof.owner_signature` (N1) on the patched wrapp
 
 Work:
 
-- Implement `sign_public_payload(accountId, canonical_payload_digest_hex) -> QString`.
+- Add `wallet_ffi_sign_public_payload(handle, account_id, digest_32, out_sig_64)`
+  to `lez/wallet-ffi/src/keys.rs` in the LEZ source,
+  following the pattern of `wallet_ffi_get_public_account_key`:
+  retrieve the `PrivateKey` via `wallet.get_account_public_signing_key(account_id)`,
+  call `Signature::new(private_key, digest)` (BIP-340 Schnorr, 64 bytes out).
+  Add the corresponding declaration to `lez/wallet-ffi/wallet_ffi.h`.
+  Deliver as `lez-rust-sign-public-payload.patch` in
+  `logos-execution-zone-module-patched/` applied via `postPatch` in
+  `lez-wallet-ffi-patched/flake.nix`.
+- Add `Q_INVOKABLE QString sign_public_payload(const QString& account_id_hex,
+  const QString& digest_hex)` to `logos_execution_zone_wallet_module.{h,cpp}`.
+  Deliver as `wallet-qt-sign-public-payload.patch` in
+  `logos-execution-zone-module-patched/` applied alongside
+  `wallet-qt-guest-elf-from-env.patch` in `patchWalletInclude`.
+- Signature for callers:
+  - `account_id_hex`: 64-char hex account ID (same format as `get_account_public`
+    and `get_public_account_key`; call `account_id_from_base58` first if the
+    caller holds a base58 value).
+  - `digest_hex`: 64-char hex SHA-256 digest (32 bytes).
+  - Return: `{"status":"ok","result":"<128-char hex signature>"}` on success;
+    `{"status":"error","error":"..."}` on failure.
+    Consistent with all other wallet Qt methods.
 - Rebuild and reinstall wallet `.lgx` (same flake as 10b).
 - Smoke via `logoscore call logos_execution_zone …` (no full Store flow required).
 
 Components required to run:
-Step 10b pipeline; logoscore.
+Step 10b pipeline; logoscore; `smoke_verify` binary from
+`lez-payment-streams-ffi` (built as part of Step 4; Step 11c DoD uses it).
 
 Definition of done:
 
-1. `lm methods` lists `sign_public_payload` (or chosen name).
-2. Sign-then-verify smoke against a test digest with a funded public key from Step 10a.
+1. `lm methods` lists `sign_public_payload`.
+2. Sign-then-verify smoke with a hex account ID from Step 10a fixture
+   (`owner_account_id` converted via `account_id_from_base58`):
+   call `sign_public_payload` with a known 32-byte test digest,
+   extract `result` from the JSON response,
+   retrieve the matching public key via `get_public_account_key`,
+   run `./target/debug/smoke_verify <pubkey_hex> <digest_hex> <sig_hex>` and assert exit 0.
 3. Step 12 may depend on this method without further wallet feature work.
 
 ### Step 12, Session keys and user-side proof construction
@@ -1486,8 +1523,11 @@ decodes it through the FFI,
 folds it at the current clock time,
 and checks that the effective state is `ACTIVE`.
 For `StreamProposal` output,
-the module asks `logos_execution_zone.sign_public_payload`
-to produce `VaultProof.owner_signature` with the vault owner's LEZ key.
+the module calls `logos_execution_zone.account_id_from_base58` to convert
+the configured vault owner base58 account ID to hex,
+then asks `logos_execution_zone.sign_public_payload(account_id_hex, digest_hex)`
+to produce `VaultProof.owner_signature` with the vault owner's LEZ key,
+and reads the 64-byte signature from the `result` field of the JSON response.
 Later `StreamProof`s are signed with the persisted session key.
 
 `registerProviderMapping(providerPeerId, providerId, providerAccountId) -> LogosResult`
@@ -1545,8 +1585,8 @@ and a human-readable description.
   stream has been closed (by user or provider).
   User must open a new stream to this provider.
 - `WALLET_SIGNING_FAILED`:
-  `sign_public_payload` call to wallet module failed.
-  Error includes upstream details.
+  `sign_public_payload` returned `{"status":"error",...}` or IPC failed.
+  Error includes upstream details from the `error` field.
 - `CHAIN_READ_FAILED`:
   `get_account_public` call failed.
   Error includes upstream details.

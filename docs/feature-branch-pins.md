@@ -22,7 +22,7 @@ Do not pin [PR 429 / PR 16](archive/superseded-wallet-pr-429-16.md) in this inte
 ### Flake refs
 
 - LEZ: pin `logos-execution-zone` to `main` at merge rev `a8c81f5445166b22672a614b159a1c38a5907a65`
-  (`scaffold.toml`, `nix/payment-streams-ffi.nix`, wallet `lez-python-overlay`).
+  (`scaffold.toml`, `nix/payment-streams-ffi.nix`, wallet `lez-wallet-ffi-patched`).
 - Patched wallet wrapper `upstream` =
   `github:logos-blockchain/logos-execution-zone-module?ref=refs/pull/19/head`
   with `upstream.inputs.logos-execution-zone.follows` the same LEZ input as payment streams.
@@ -34,7 +34,7 @@ After PR 19 merges, pin `main` on the wallet module repo and drop pull-request r
 We use the local wrapper flake for payment-streams wallet behavior (guest ELF from env,
 JSON submit helper, future `sign_public_payload`) and build fixes (codegen API headers,
 `.lgx` metadata for bundler). Logos module id matches upstream PR 19: **`logos_execution_zone`**.
-`cmake-wallet-ffi-include.patch` in the same directory is optional (Qt include propagation);
+`wallet-qt-cmake-ffi-include.patch` in the same directory is optional (Qt include propagation);
 wire it in `postPatch` if the wallet plugin fails to find `wallet_ffi.h`.
 If `nix bundle` fails after a pin bump, adjust
 `logos-execution-zone-module-patched/flake.nix` against current PR 19 packages.

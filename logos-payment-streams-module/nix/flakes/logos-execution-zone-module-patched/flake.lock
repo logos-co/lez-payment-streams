@@ -976,11 +976,11 @@
         ]
       },
       "locked": {
-        "path": "./lez-python-overlay",
+        "path": "./lez-wallet-ffi-patched",
         "type": "path"
       },
       "original": {
-        "path": "./lez-python-overlay",
+        "path": "./lez-wallet-ffi-patched",
         "type": "path"
       },
       "parent": []

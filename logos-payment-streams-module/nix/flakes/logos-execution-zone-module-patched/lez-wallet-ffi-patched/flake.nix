@@ -1,5 +1,5 @@
 {
-  description = "logos-execution-zone: python3 for pyo3 + correct wallet_ffi.h install path";
+  description = "logos-execution-zone wallet-ffi patched: python3 for pyo3 + wallet_ffi.h install path + payment-streams Rust patches";
 
   inputs.lez.url = "github:logos-blockchain/logos-execution-zone?rev=a8c81f5445166b22672a614b159a1c38a5907a65";
   inputs.nixpkgs.follows = "lez/nixpkgs";

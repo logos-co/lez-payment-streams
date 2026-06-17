@@ -64,7 +64,7 @@ Path:
 `logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/`
 
 - LEZ rev `c37a3c30…` aligned with logos-execution-zone-module PR 19 HEAD
-- `lez-python-overlay`: `python3` for pyo3, `lez/wallet-ffi/wallet_ffi.h` install
+- `lez-wallet-ffi-patched`: `python3` for pyo3, `lez/wallet-ffi/wallet_ffi.h` install
 - Packaging: `logos_execution_zone` id, `PluginInterface::name()` patch, plugin symlink
 - `nix build .#lib` and `nix bundle … .#lib -o wallet-lgx-out` succeed (Linux x86_64)
 

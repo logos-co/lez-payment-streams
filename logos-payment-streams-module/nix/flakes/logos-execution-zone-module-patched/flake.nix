@@ -3,7 +3,7 @@
 
   inputs = {
     # pyo3-build-config in wallet-ffi-deps needs a Python interpreter in nativeBuildInputs.
-    logos-execution-zone.url = "path:./lez-python-overlay";
+    logos-execution-zone.url = "path:./lez-wallet-ffi-patched";
 
     upstream.url = "github:logos-blockchain/logos-execution-zone-module?ref=refs/pull/19/head";
     upstream.inputs.logos-execution-zone.follows = "logos-execution-zone";
@@ -32,7 +32,7 @@
         postPatch =
           (old.postPatch or "")
           + ''
-            patch -p1 --forward < ${./wallet-guest-elf-from-env.patch}
+            patch -p1 --forward < ${./wallet-qt-guest-elf-from-env.patch}
           '';
         postInstall =
           (old.postInstall or "")

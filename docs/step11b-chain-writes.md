@@ -31,7 +31,7 @@ argument) because QList-shaped IPC from the Universal module to Legacy wallet is
 
 Wallet patches live under
 `logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/`
-(`wallet-guest-elf-from-env.patch` is applied in the wrapper flake `postPatch`).
+(`wallet-qt-guest-elf-from-env.patch` is applied in the wrapper flake `postPatch`).
 `send_generic_public_transaction_json` is not in that patch file yet; it lives in the
 Qt-aligned manual wallet build tree used for 11b until Nix bundle works with offline `pol`.
 
