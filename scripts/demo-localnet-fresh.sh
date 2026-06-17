@@ -12,6 +12,8 @@ export LEE_WALLET_HOME_DIR="${LEE_WALLET_HOME_DIR:-$REPO_ROOT/.scaffold/wallet}"
 
 echo "=== demo localnet fresh (blank slate) ==="
 
+"$REPO_ROOT/scripts/ensure-scaffold-lez-layout.sh"
+
 if command -v lgs >/dev/null 2>&1; then
   lgs localnet stop 2>/dev/null || true
 else
@@ -37,7 +39,10 @@ else
 fi
 
 echo "--- seed localnet fixture ---"
-"$REPO_ROOT/scripts/seed-localnet-fixture.sh"
+if ! "$REPO_ROOT/scripts/seed-localnet-fixture.sh"; then
+  echo "HINT: if deploy failed on storage.json, run REINIT_WALLET=1 ./scripts/demo-localnet-fresh.sh" >&2
+  exit 1
+fi
 
 if [[ "$SKIP_VERIFY" == "1" ]]; then
   echo "SKIP_VERIFY=1 — skipping verify-step10a-dod.sh"
@@ -47,5 +52,7 @@ else
 fi
 
 echo "=== done ==="
-echo "Next: logoscore with a fresh --persistence-path, then Step 12 or ./scripts/verify-step12-dod.sh"
+echo "Next: logoscore with a fresh --persistence-path, then Step 12 verify:"
 echo "  export PERSIST_DIR=\"$REPO_ROOT/.scaffold/step12-persist-\$(date +%s)\""
+echo "  export PAYMENT_STREAMS_GUEST_BIN=\"$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin\""
+echo "  REQUIRE_STREAM_PROOF=1 ./scripts/verify-step12-dod.sh"

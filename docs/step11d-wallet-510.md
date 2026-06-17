@@ -1,8 +1,9 @@
 # Step 11d — wallet runtime at LEZ PR 510
 
 Status: landed in tree (pins, wrapper patches, `./scripts/verify-step11d-dod.sh`).
-Strict 11b E2E and Step 12 `stream_proof` hardening may still need a fresh fixture and
-reinstalled `.lgx` after `lgs setup`.
+Strict 11b E2E on a fresh fixture may still need `REINIT_WALLET=1` and reinstalled `.lgx` after
+`lgs setup`. Step 12 strict verify uses `REQUIRE_STREAM_PROOF=1` (see
+[`step12-user-eligibility.md`](step12-user-eligibility.md)).
 
 Upgrade reference: payment-streams moved the wallet stack from the earlier 491-era pin to LEZ `main` at
 [PR 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510) merge
@@ -18,8 +19,8 @@ pins LEZ 510, rebuilds the patched `logos_execution_zone` `.lgx`, and adds
 
 Pins and flake layout: [`feature-branch-pins.md`](feature-branch-pins.md).
 Prerequisites: Step 10a fixture, Step 10b wallet install pattern.
-Step 12 eligibility is independent of 11d; honest logoscore `stream_proof` smoke improves
-after 11b writes succeed on a fresh fixture.
+Step 12 eligibility does not require 11d for offline DoD; logoscore `stream_proof` with
+`REQUIRE_STREAM_PROOF=1` expects 11b writes and a funded stream (top-up helper in verify script).
 
 ## Pin bump
 
@@ -99,5 +100,5 @@ Then Step 12 with a new persistence dir (see [`demo-localnet-recovery.md`](demo-
 1. Patched wallet `.lgx` builds against LEZ ≥ 510; `lm methods` lists deploy + JSON public submit.
 2. `./scripts/verify-step11d-dod.sh` exits 0 (offline checks; logoscore section when localnet is up).
 3. Re-run 10b / 11b verifies on the upgraded stack after `lgs setup` and reinstalling `.lgx` files.
-4. Step 12 verification hardening (`REQUIRE_STREAM_PROOF=1` on fresh fixture) is a follow-up once
-   `chainAction` writes are green without `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF`.
+4. Step 12 strict verify: `REQUIRE_STREAM_PROOF=1 ./scripts/verify-step12-dod.sh` (or `make verify-step12`
+   with env set) after fresh fixture when localnet is up.

@@ -13,6 +13,8 @@ MANIFEST="${FIXTURE_MANIFEST:-fixtures/localnet.json}"
 VERIFY_LOGOSCORE="${VERIFY_LOGOSCORE:-1}"
 PERSIST_DIR="${PERSIST_DIR:-$REPO/.scaffold/step12-persist}"
 REQUIRE_STREAM_PROOF="${REQUIRE_STREAM_PROOF:-0}"
+GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+LOGOSCORE_E2E_TIMEOUT="${LOGOSCORE_E2E_TIMEOUT:-240}"
 
 fail=0
 ok() { echo "PASS: $*"; }
@@ -93,8 +95,50 @@ if [[ ! -f "$MANIFEST" ]]; then
   exit "$fail"
 fi
 
+if ! curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"getBlockHeight","params":[]}' >/dev/null; then
+  skip "logoscore smoke (sequencer not reachable; ./scripts/demo-localnet-fresh.sh)"
+  echo "=== done (exit $fail) ==="
+  exit "$fail"
+fi
+
+if [[ -z "$N8_WIRE_HEX" ]]; then
+  bad "prepareEligibility smoke (missing N8 wire hex)"
+  echo "=== done (exit $fail) ==="
+  exit "$fail"
+fi
+
 if [[ ! -f "$WALLET_CONFIG" || ! -f "$WALLET_STORAGE" ]]; then
   skip "logoscore smoke (wallet config/storage missing)"
+  echo "=== done (exit $fail) ==="
+  exit "$fail"
+fi
+
+if [[ ! -f "$GUEST_BIN" ]]; then
+  bad "guest ELF missing at PAYMENT_STREAMS_GUEST_BIN=$GUEST_BIN (make build)"
+  echo "=== done (exit $fail) ==="
+  exit "$fail"
+fi
+
+rm -rf "$PERSIST_DIR"
+mkdir -p "$PERSIST_DIR"
+
+if [[ "$REQUIRE_STREAM_PROOF" == "1" ]]; then
+  echo "--- logoscore stream_proof (via step12-topup-and-prepare.sh) ---"
+  if MODULES="$MODULES" WALLET_CONFIG="$WALLET_CONFIG" WALLET_STORAGE="$WALLET_STORAGE" \
+    PAYMENT_STREAMS_GUEST_BIN="$GUEST_BIN" PERSIST_DIR="$PERSIST_DIR" MANIFEST="$MANIFEST" \
+    TRY_TOPUP=1 PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF=0 \
+    "$REPO_ROOT/scripts/step12-topup-and-prepare.sh" >/tmp/step12-verify-topup.log 2>&1; then
+    ok "registerProviderMapping + topUpStream + prepareEligibility stream_proof"
+  else
+    bad "stream_proof path failed (see /tmp/step12-verify-topup.log)"
+    tail -15 /tmp/step12-verify-topup.log >&2 || true
+  fi
+  if find "$PERSIST_DIR" -name payment_streams_state.json 2>/dev/null | grep -q .; then
+    ok "persistence file written under instance path"
+  else
+    bad "missing payment_streams_state.json under $PERSIST_DIR"
+  fi
   echo "=== done (exit $fail) ==="
   exit "$fail"
 fi
@@ -102,59 +146,105 @@ fi
 PROVIDER_PEER_ID="${PROVIDER_PEER_ID:-step12-demo-provider-peer}"
 PROVIDER_B58="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['provider_account_id'])")"
 
-rm -rf "$PERSIST_DIR"
-mkdir -p "$PERSIST_DIR"
+SMOKE_FILE="$(mktemp)"
+trap 'rm -f "$SMOKE_FILE"' EXIT
 
-if ! command -v logoscore >/dev/null 2>&1; then
-  skip "logoscore not in PATH"
-  echo "=== done (exit $fail) ==="
-  exit "$fail"
-fi
+timeout "$LOGOSCORE_E2E_TIMEOUT" nix shell github:logos-co/logos-logoscore-cli --command bash -c "
+  set -uo pipefail
+  export MODULES='$MODULES'
+  export PAYMENT_STREAMS_GUEST_BIN='$GUEST_BIN'
+  logoscore stop 2>/dev/null || true
+  sleep 2
+  logoscore -D -m \"\$MODULES\" --persistence-path '$PERSIST_DIR' -q &
+  sleep 4
+  logoscore load-module logos_execution_zone || true
+  logoscore load-module payment_streams_module || true
+  logoscore call logos_execution_zone open '$WALLET_CONFIG' '$WALLET_STORAGE' || true
+  height=\$(curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
+    -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getBlockHeight\",\"params\":[]}' \
+    | python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get(\"result\"); print(r if isinstance(r,int) else (r or \"\"))' 2>/dev/null || true)
+  if [[ -n \"\$height\" ]]; then
+    logoscore call logos_execution_zone sync_to_block \"\$height\" >/dev/null 2>&1 || true
+    sleep 2
+  fi
+  echo REG:\$(logoscore call payment_streams_module registerProviderMapping '$PROVIDER_PEER_ID' '$PROVIDER_B58' 2>&1 | tail -1)
+  TOPUP_JSON=\$(python3 -c \"import json; m=json.load(open('$MANIFEST')); print(json.dumps({'signer': m['owner_account_id'], 'vault_id': int(m['vault_id']), 'stream_id': int(m['stream_id']), 'increase_lo': 50, 'increase_hi': 0}))\")
+  echo TOPUP:\$(logoscore call payment_streams_module chainAction topUpStream \"\$TOPUP_JSON\" 2>&1 | tail -1)
+  height=\$(curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
+    -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getBlockHeight\",\"params\":[]}' \
+    | python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get(\"result\"); print(r if isinstance(r,int) else (r or \"\"))' 2>/dev/null || true)
+  if [[ -n \"\$height\" ]]; then
+    logoscore call logos_execution_zone sync_to_block \"\$height\" >/dev/null 2>&1 || true
+  fi
+  sleep 5
+  echo PREP:\$(logoscore call payment_streams_module prepareEligibilityForStoreQuery '$N8_WIRE_HEX' '$PROVIDER_PEER_ID' 2>&1 | tail -1)
+  echo LIST:\$(logoscore call payment_streams_module listMyStreams \"\$(python3 -c \"import json; print(json.load(open('$MANIFEST'))['vault_id'])\")\" 2>&1 | tail -1)
+  logoscore stop 2>/dev/null || true
+" >"$SMOKE_FILE" 2>&1 || echo LOGOSCORE_TIMEOUT >>"$SMOKE_FILE"
 
-logoscore -D -m "$MODULES" --persistence-path "$PERSIST_DIR" -q &
-LC_PID=$!
-cleanup() { logoscore stop 2>/dev/null || kill "$LC_PID" 2>/dev/null || true; }
-trap cleanup EXIT
-sleep 3
-
-logoscore load-module logos_execution_zone
-logoscore load-module payment_streams_module
-logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE"
-
-REG_JSON="$(logoscore call payment_streams_module registerProviderMapping "$PROVIDER_PEER_ID" "$PROVIDER_B58")"
-if echo "$REG_JSON" | grep -q '"status":"ok"'; then
-  ok "registerProviderMapping"
+if rg -q 'LOGOSCORE_TIMEOUT' "$SMOKE_FILE" 2>/dev/null; then
+  bad "logoscore eligibility smoke timed out (${LOGOSCORE_E2E_TIMEOUT}s)"
+  tail -25 "$SMOKE_FILE" >&2 || true
 else
-  bad "registerProviderMapping: $REG_JSON"
-fi
+  REG_LINE="$(rg '^REG:' "$SMOKE_FILE" | tail -1 | sed 's/^REG://')"
+  if echo "$REG_LINE" | grep -q '"status":"ok"'; then
+    ok "registerProviderMapping"
+  else
+    bad "registerProviderMapping failed"
+    tail -15 "$SMOKE_FILE" >&2 || true
+  fi
 
-if [[ -z "$N8_WIRE_HEX" ]]; then
-  bad "prepareEligibility (missing N8 wire hex)"
-else
-  PREP_JSON="$(logoscore call payment_streams_module prepareEligibilityForStoreQuery "$N8_WIRE_HEX" "$PROVIDER_PEER_ID")"
-  if echo "$PREP_JSON" | grep -qE 'stream_proof|\\\"kind\\\":\\\"stream_proof\\\"'; then
+  PREP_LINE="$(rg '^PREP:' "$SMOKE_FILE" | tail -1 | sed 's/^PREP://')"
+  TOPUP_LINE="$(rg '^TOPUP:' "$SMOKE_FILE" | tail -1 | sed 's/^TOPUP://' || true)"
+  if echo "$TOPUP_LINE" | python3 -c "
+import json,sys
+line=sys.stdin.read().strip()
+if not line: sys.exit(1)
+outer=json.loads(line)
+inner=json.loads(outer.get('result','{}'))
+sys.exit(0 if inner.get('success') else 1)
+" 2>/dev/null; then
+    ok "chainAction topUpStream (restore unaccrued for stream_proof smoke)"
+  else
+    skip "chainAction topUpStream (optional; needed when seeded stream 0 is fully accrued)"
+  fi
+
+  if echo "$PREP_LINE" | python3 -c "
+import json,sys
+line=sys.stdin.read().strip()
+outer=json.loads(line)
+inner=json.loads(outer.get('result','{}'))
+if inner.get('status')=='ok' and inner.get('kind')=='stream_proof':
+  sys.exit(0)
+if inner.get('code')=='STREAM_DEPLETED':
+  sys.exit(2)
+sys.exit(1)
+" 2>/dev/null; then
     ok "prepareEligibilityForStoreQuery stream_proof (seeded stream)"
-  elif echo "$PREP_JSON" | grep -q 'STREAM_DEPLETED'; then
+  elif echo "$PREP_LINE" | grep -q 'STREAM_DEPLETED' || echo "$PREP_LINE" | python3 -c "
+import json,sys
+line=sys.stdin.read().strip()
+outer=json.loads(line)
+inner=json.loads(outer.get('result','{}'))
+sys.exit(0 if inner.get('code')=='STREAM_DEPLETED' else 1)
+" 2>/dev/null; then
     if [[ "$REQUIRE_STREAM_PROOF" == "1" ]]; then
       bad "prepareEligibilityForStoreQuery STREAM_DEPLETED (run ./scripts/demo-localnet-fresh.sh)"
     else
-      skip "prepareEligibilityForStoreQuery (stream 0 depleted; ./scripts/demo-localnet-fresh.sh then retry or REQUIRE_STREAM_PROOF=1)"
+      skip "prepareEligibilityForStoreQuery (stream 0 depleted; ./scripts/demo-localnet-fresh.sh then REQUIRE_STREAM_PROOF=1)"
     fi
   else
-    bad "prepareEligibilityForStoreQuery: $PREP_JSON"
+    bad "prepareEligibilityForStoreQuery failed"
+    echo "$PREP_LINE" >&2
   fi
-fi
 
-VAULT_ID="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['vault_id'])")"
-LIST_JSON="$(logoscore call payment_streams_module listMyStreams "$VAULT_ID")"
-if echo "$LIST_JSON" | grep -qE 'streams|\\\"streams\\\"'; then
-  if echo "$LIST_JSON" | grep -qE '"status":"ok"|\\\"status\\\":\\\"ok\\\"'; then
+  LIST_LINE="$(rg '^LIST:' "$SMOKE_FILE" | tail -1 | sed 's/^LIST://')"
+  if echo "$LIST_LINE" | grep -qE 'streams|\\\"streams\\\"' && echo "$LIST_LINE" | grep -qE '"status":"ok"|\\\"status\\\":\\\"ok\\\"'; then
     ok "listMyStreams"
   else
-    bad "listMyStreams: $LIST_JSON"
+    bad "listMyStreams failed"
+    echo "$LIST_LINE" >&2
   fi
-else
-  bad "listMyStreams: $LIST_JSON"
 fi
 
 if find "$PERSIST_DIR" -name payment_streams_state.json 2>/dev/null | grep -q .; then
@@ -162,9 +252,6 @@ if find "$PERSIST_DIR" -name payment_streams_state.json 2>/dev/null | grep -q .;
 else
   bad "missing payment_streams_state.json under $PERSIST_DIR"
 fi
-
-logoscore stop
-trap - EXIT
 
 echo "=== done (exit $fail) ==="
 exit "$fail"

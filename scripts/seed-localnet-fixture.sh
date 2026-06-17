@@ -28,6 +28,8 @@ require_cmd() {
 require_cmd lgs
 require_cmd wallet
 
+"$REPO_ROOT/scripts/ensure-scaffold-lez-layout.sh"
+
 if ! lgs localnet status 2>/dev/null | grep -qi running; then
   echo "Starting localnet (lgs init/setup as needed)…"
   lgs init 2>/dev/null || true

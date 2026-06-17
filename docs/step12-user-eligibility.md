@@ -1,10 +1,14 @@
 # Step 12 — user-side eligibility
 
+Status: complete for integration DoD (feature in tree, `./scripts/verify-step12-dod.sh`,
+strict localnet path with `REQUIRE_STREAM_PROOF=1`). Step 16 delivery hook and Step 13
+provider cross-test are follow-ons, not blockers for this step.
+
 Session keys, persisted negotiation state, and Store `EligibilityProof` bytes (LIP-155
 `stream_proposal` / `stream_proof` arms) for the paid Store demo. Step 12 in
 [`integration-plan-v2.md`](../integration-plan-v2.md).
 
-This file is a runbook sketch for implementors. Behavior matches the plan.
+Runbook for operators and implementors. Behavior matches the plan.
 
 Prerequisites: Step 11c green (`./scripts/verify-step11c-dod.sh`), Step 11a reads, Step 11b
 `chainAction` for manual `createStream`, Step 10b wallet with `sign_public_payload`.
@@ -123,7 +127,7 @@ After Step 10a seed, vault holding is `100` and `total_allocated` is `80`, so un
 `createStream` via `chainAction` must use the same `vault_id`, `stream_id`, provider, rate,
 and allocation as the persisted proposal.
 
-## New module methods (planned)
+## Module methods (logoscore)
 
 Same conventions as Step 11a/11b ([`step11a-chain-reads.md`](step11a-chain-reads.md),
 [`step11b-chain-writes.md`](step11b-chain-writes.md)): every method returns one compact JSON
@@ -366,10 +370,8 @@ logoscore stop
 ## Definition of done
 
 Recovery policy: [`demo-localnet-recovery.md`](demo-localnet-recovery.md). If logoscore smoke
-skips `stream_proof` due to `STREAM_DEPLETED`, run `./scripts/demo-localnet-fresh.sh` and retry.
-Strict proof hardening: integration plan Step 12
-[verification follow-up](../integration-plan-v2.md#verification-follow-up-after-step-11d)
-(after Step 11d pin bump).
+skips `stream_proof` due to `STREAM_DEPLETED`, run `./scripts/demo-localnet-fresh.sh` and retry
+with `REQUIRE_STREAM_PROOF=1` (runs top-up then prepare).
 
 ```bash
 ./scripts/verify-step12-dod.sh
@@ -391,23 +393,31 @@ Skip live chain:
 VERIFY_LOGOSCORE=0 ./scripts/verify-step12-dod.sh
 ```
 
-## Planning notes (critique triage)
+Strict `stream_proof` on localnet (after `./scripts/demo-localnet-fresh.sh` and wallet `.lgx` reinstall):
+
+```bash
+export PAYMENT_STREAMS_GUEST_BIN="$REPO/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"
+REQUIRE_STREAM_PROOF=1 ./scripts/verify-step12-dod.sh
+```
+
+Uses `./scripts/step12-topup-and-prepare.sh` internally (`topUpStream` then `prepareEligibilityForStoreQuery`).
+Seeded stream `0` is often fully accrued on LEZ 510 clock units until top-up; that is expected for smoke mode.
+
+If `lgs localnet start` fails with missing `sequencer/service/configs/debug/sequencer_config.json`, run
+`./scripts/ensure-scaffold-lez-layout.sh` after `lgs setup` (LEZ 510 nests `sequencer` under `lez/`).
+
+## Runbook notes
 
 Addressed in this runbook: wallet env, `PROPOSAL_EXPIRED` + eviction, N8 pin via
-`n8_canonical_wire_hex` (full 177-byte wire), local recovery
-[`demo-localnet-recovery.md`](demo-localnet-recovery.md),
+`n8_canonical_wire_hex` (full 177-byte wire), LEZ 510 clock ms normalization in FFI fold,
+local recovery [`demo-localnet-recovery.md`](demo-localnet-recovery.md),
 `listMyStreams` refresh behavior, stream id allocation, persistence schema v1, keygen in
-`proof_abi.rs`, path selection without `STREAM_ALREADY_EXISTS`.
+`proof_abi.rs`, path selection without `STREAM_ALREADY_EXISTS`, strict verify via
+`REQUIRE_STREAM_PROOF=1` + `step12-topup-and-prepare.sh`.
 
-Left as-is (simplicity / already covered elsewhere):
+Left as-is (simplicity / elsewhere):
 
-- LogosAPI hex for `canonical_request_hex` is already in [LogosAPI encoding](#logosapi-encoding);
-  no separate encoding scheme.
-- `registerProviderMapping(provider_peer_id, provider_account_id_base58)` vs internal
-  `provider_id` bytes: naming is intentional (routing vs LIP-155); table under
-  `registerProviderMapping` is the contract.
-- No `STREAM_ALREADY_EXISTS` code: active stream → proof path; pending → `PROPOSAL_PENDING`;
-  chain rejects duplicate `createStream`.
-- Step 13 cross-test stays recommended, not required, so Step 12 DoD can run before Step 13 lands.
-- Outer `EligibilityProof` protobuf wrap is Step 12 implementation work (inner types exist in
-  Step 4); wire shape is fixed by D1/D2.
+- LogosAPI hex for `canonical_request_hex` is in [LogosAPI encoding](#logosapi-encoding).
+- `registerProviderMapping` argument naming (routing vs LIP-155 bytes) is intentional.
+- No `STREAM_ALREADY_EXISTS` code: active stream → proof path; pending → `PROPOSAL_PENDING`.
+- Step 13 provider cross-test is recommended, not required for Step 12 DoD.

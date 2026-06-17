@@ -453,7 +453,7 @@ pub unsafe extern "C" fn payment_streams_ffi_decode_stream_config_bytes(
     }
 }
 
-/// Decode serialized `ClockAccountData` (`block_id` + timestamp seconds).
+/// Decode serialized `ClockAccountData` (`block_id` + timestamp; LEZ 510+ uses milliseconds, normalized to seconds for fold).
 ///
 /// `clock_decoded` is Borsh core payload; fills `ffi_out_decoded*`.
 ///
@@ -478,7 +478,8 @@ pub unsafe extern "C" fn payment_streams_ffi_decode_clock_account_data_bytes(
                 None => PaymentStreamsFfiStatus::NullPointer,
                 Some(ffi_out_decoded_mut) => {
                     ffi_out_decoded_mut.block_id = clock_decoded.block_id;
-                    ffi_out_decoded_mut.timestamp = clock_decoded.timestamp;
+                    ffi_out_decoded_mut.timestamp =
+                        crate::policy_abi::chain_timestamp_to_fold_seconds(clock_decoded.timestamp);
                     PaymentStreamsFfiStatus::Success
                 }
             },

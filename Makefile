@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d
+.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -38,6 +38,7 @@ help: ## Show this help
 	@echo "  make verify-step10b Run Step 10b DoD script"
 	@echo "  make verify-step11a Run Step 11a DoD script"
 	@echo "  make verify-step11d Run Step 11d DoD script (LEZ 510 wallet)"
+	@echo "  make verify-step12  Run Step 12 DoD script"
 	@echo "  make clean       Remove saved state"
 	@echo ""
 	@echo "Example:"
@@ -58,7 +59,7 @@ idl: ## Generate IDL JSON from program source
 cli: ## Run the IDL-driven CLI (ARGS="...")
 	cargo run --manifest-path examples/Cargo.toml --bin lez_payment_streams_cli -- -i $(IDL_FILE) $(ARGS)
 
-deploy: ## Deploy program to sequencer (491 wallet; set LEE_WALLET_HOME_DIR)
+deploy: ## Deploy program to sequencer (pinned LEZ wallet; set LEE_WALLET_HOME_DIR)
 	@test -n "$$LEE_WALLET_HOME_DIR" || (echo "ERROR: set LEE_WALLET_HOME_DIR (see docs/step10a-local-chain-fixture.md)"; exit 1)
 	@test -f "$(PROGRAM_BIN)" || (echo "ERROR: Binary not found. Run 'make build' first."; exit 1)
 	wallet deploy-program $(PROGRAM_BIN)
@@ -107,5 +108,9 @@ verify-step11a: ## Step 11a definition of done (scripts/verify-step11a-dod.sh)
 	./scripts/verify-step11a-dod.sh
 
 verify-step11d: ## Step 11d definition of done (scripts/verify-step11d-dod.sh)
-	chmod +x scripts/verify-step11d-dod.sh scripts/deploy-program-logoscore.sh
+	chmod +x scripts/verify-step11d-dod.sh scripts/deploy-program-logoscore.sh scripts/ensure-scaffold-lez-layout.sh
 	./scripts/verify-step11d-dod.sh
+
+verify-step12: ## Step 12 definition of done (scripts/verify-step12-dod.sh)
+	chmod +x scripts/verify-step12-dod.sh scripts/step12-topup-and-prepare.sh scripts/ensure-scaffold-lez-layout.sh
+	./scripts/verify-step12-dod.sh

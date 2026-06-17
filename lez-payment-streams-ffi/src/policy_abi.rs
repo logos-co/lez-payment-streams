@@ -24,6 +24,17 @@ pub(crate) fn balance_from_lo_hi(lo: u64, hi: u64) -> Balance {
     Balance::from(lo) | (Balance::from(hi) << 64)
 }
 
+/// LEZ 510+ on-chain clock and stream checkpoints use millisecond timestamps; core fold uses seconds.
+#[must_use]
+pub(crate) fn chain_timestamp_to_fold_seconds(ts: u64) -> u64 {
+    const MS_EPOCH_THRESHOLD: u64 = 1_000_000_000_000;
+    if ts >= MS_EPOCH_THRESHOLD {
+        ts / 1000
+    } else {
+        ts
+    }
+}
+
 #[must_use]
 fn guest_error_repr(code: ErrorCode) -> u32 {
     code as u32
@@ -111,7 +122,7 @@ fn stream_config_from_ffi(
         allocation: balance_from_lo_hi(decoded.allocation_lo, decoded.allocation_hi),
         accrued: balance_from_lo_hi(decoded.accrued_lo, decoded.accrued_hi),
         state,
-        accrued_as_of: decoded.accrued_as_of,
+        accrued_as_of: chain_timestamp_to_fold_seconds(decoded.accrued_as_of),
     })
 }
 
@@ -181,7 +192,9 @@ pub unsafe extern "C" fn payment_streams_ffi_fold_stream(
 
     match stream_config_from_ffi(&*ffi_decoded_stream) {
         Err(err_status) => err_status,
-        Ok(stream_config_snapshot) => match fold_stream(&stream_config_snapshot, as_of) {
+        Ok(stream_config_snapshot) => {
+            let as_of_seconds = chain_timestamp_to_fold_seconds(as_of);
+            match fold_stream(&stream_config_snapshot, as_of_seconds) {
             Ok(stream_fold_snapshot) => {
                 let accrued_parts = crate::balance_pair(stream_fold_snapshot.accrued);
                 let unaccrued_parts = crate::balance_pair(stream_fold_snapshot.unaccrued);
@@ -204,7 +217,8 @@ pub unsafe extern "C" fn payment_streams_ffi_fold_stream(
                 }
                 PaymentStreamsFfiStatus::StreamFoldFailed
             }
-        },
+            }
+        }
     }
 }
 
@@ -401,5 +415,16 @@ pub unsafe extern "C" fn payment_streams_ffi_response_within_policy(
             *ffi_out_policy_reject = map_policy_rejection(reason);
             PaymentStreamsFfiStatus::PolicyRejected
         }
+    }
+}
+
+#[cfg(test)]
+mod timestamp_tests {
+    use super::chain_timestamp_to_fold_seconds;
+
+    #[test]
+    fn lez_510_ms_clock_normalized_to_seconds() {
+        assert_eq!(chain_timestamp_to_fold_seconds(1_781_710_693_910), 1_781_710_693);
+        assert_eq!(chain_timestamp_to_fold_seconds(105), 105);
     }
 }

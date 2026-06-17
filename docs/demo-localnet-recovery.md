@@ -67,6 +67,8 @@ Optional wipe on full blank slate:
 Signals to jump to step 3:
 
 - `./scripts/verify-step10a-dod.sh` fails.
+- `lgs localnet start` fails with missing `sequencer/service/configs/debug/sequencer_config.json`
+  after Step 11d pin bump — run `./scripts/ensure-scaffold-lez-layout.sh` (links `sequencer` → `lez/sequencer` in the LEZ cache).
 - `prepareEligibilityForStoreQuery` returns `STREAM_DEPLETED` on manifest stream `0` and you
   need an honest `stream_proof` without bypass.
 - `make deploy` or `storage.json` parse errors.
@@ -93,9 +95,10 @@ Skip Step 10a verify at the end (faster, after you trust seed):
 SKIP_VERIFY=1 ./scripts/demo-localnet-fresh.sh
 ```
 
-Then Step 12 smoke:
+Then Step 12 smoke (set `PAYMENT_STREAMS_GUEST_BIN` to the built guest `.bin`):
 
 ```bash
+export PAYMENT_STREAMS_GUEST_BIN="$PWD/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"
 export PERSIST_DIR="$PWD/.scaffold/step12-persist-$(date +%s)"
 ./scripts/verify-step12-dod.sh
 ```
@@ -118,7 +121,8 @@ VERIFY_LOGOSCORE=0 ./scripts/verify-step12-dod.sh
 | --- | --- |
 | `scripts/demo-localnet-fresh.sh` | Blank-slate chain + seed + optional wallet reinit + 10a verify |
 | `scripts/clear-demo-module-persist.sh` | Remove known Step 12 logoscore persist dirs under `.scaffold/` |
-| `scripts/reinit-scaffold-wallet.sh` | Recreate 491 wallet storage (does not reset sequencer state alone) |
+| `scripts/reinit-scaffold-wallet.sh` | Recreate scaffold wallet storage (does not reset sequencer state alone) |
+| `scripts/ensure-scaffold-lez-layout.sh` | Symlink `sequencer` for LEZ 510+ layout after `lgs setup` |
 | `scripts/seed-localnet-fixture.sh` | Idempotent on-chain seed when chain is already up |
 
 ## Testnet contrast

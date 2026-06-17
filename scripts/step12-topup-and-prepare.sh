@@ -40,6 +40,13 @@ nix shell github:logos-co/logos-logoscore-cli --command bash -c "
   logoscore load-module logos_execution_zone >/dev/null
   logoscore load-module payment_streams_module >/dev/null
   logoscore call logos_execution_zone open \"\$WALLET_CONFIG\" \"\$WALLET_STORAGE\" >/dev/null
+  height=\$(curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
+    -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getBlockHeight\",\"params\":[]}' \
+    | python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get(\"result\"); print(r if isinstance(r,int) else (r or \"\"))' 2>/dev/null || true)
+  if [[ -n \"\$height\" ]]; then
+    logoscore call logos_execution_zone sync_to_block \"\$height\" >/dev/null 2>&1 || true
+    sleep 2
+  fi
 
   logoscore call payment_streams_module registerProviderMapping '$PROVIDER_PEER_ID' '$PROVIDER_B58' >/dev/null
 

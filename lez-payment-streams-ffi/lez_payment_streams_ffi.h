@@ -336,7 +336,7 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_decode_stream_confi
                                                                                         struct PaymentStreamsFfiPaymentStreamsFfiDecodedStreamConfig *ffi_out_decoded);
 
 /**
- * Decode serialized `ClockAccountData` (`block_id` + timestamp seconds).
+ * Decode serialized `ClockAccountData` (`block_id` + timestamp; LEZ 510+ uses milliseconds, normalized to seconds for fold).
  *
  * `clock_decoded` is Borsh core payload; fills `ffi_out_decoded*`.
  *
