@@ -1,0 +1,21 @@
+{
+  "default_read_order": [
+    "docs/AGENT-BRIEF.md",
+    "docs/integration-contracts.md",
+    "integration-index.md"
+  ],
+  "active_steps": [14, 15, 16, 17],
+  "step_packets": {
+    "14": "docs/plan/upcoming/step-14.md",
+    "15": "docs/plan/upcoming/step-15.md",
+    "16": "docs/plan/upcoming/step-16.md",
+    "17": "docs/plan/upcoming/step-17.md",
+    "18": "docs/plan/upcoming/step-18.md"
+  },
+  "completed_normative": {
+    "12": "docs/plan/completed/step-12-normative.md",
+    "13": "docs/plan/completed/step-13-normative.md"
+  },
+  "reference": "docs/reference/decisions-and-notes.md",
+  "full_archive": "docs/archive/integration-plan-v2-full.md"
+}

@@ -7,7 +7,7 @@ Prerequisites: Step 10a fixture, Step 10b wallet plugin, load order wallet then 
 streams, wallet `open` with storage that includes the fixture owner (copy from
 `.scaffold/wallet/storage.json` after seed — see E2E below).
 
-Decisions: integration plan [N10](../integration-plan-v2.md#n10-step-11b-module-writes-decisions).
+Decisions: integration plan [N10](../reference/decisions-and-notes.md#n10-step-11b-module-writes-decisions).
 
 Related: [Step 11a reads](step11a-chain-reads.md), [Step 10b wallet](step10b-wallet-runtime.md).
 
@@ -44,7 +44,7 @@ Run logoscore from repo root so relative paths resolve.
 
 ## Public LogosAPI surface (Universal)
 
-Exported methods come from `payment_streams_module_impl.h` via codegen ([N11](../integration-plan-v2.md#n11-universal-module-public-api)).
+Exported methods come from `payment_streams_module_impl.h` via codegen ([N11](../reference/decisions-and-notes.md#n11-universal-module-public-api)).
 Writes and status use one router instead of separate invokables per operation:
 
 | Method | Purpose |

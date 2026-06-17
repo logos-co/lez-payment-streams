@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify Step 13 definition of done (integration-plan-v2.md Step 13).
+# Verify Step 13 definition of done (integration-index.md Step 13).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

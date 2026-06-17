@@ -41,7 +41,7 @@ Logos runtime (install, module, dev loop): [`docs/logos-runtime-guide.md`](docs/
 (integration plan Steps 7, 9–11). See [`docs/README.md`](docs/README.md) for all integration docs.
 
 Logos stack integration (LIP-155 demo, Store eligibility, module wiring) is planned in
-[`integration-plan-v2.md`](integration-plan-v2.md) with context in [`handoff.md`](handoff.md).
+[`integration-index.md`](integration-index.md) with context in [`handoff.md`](handoff.md).
 Store queries through `delivery_module` are blocked on upstream `queryStore` landing on
 `master`; this repo does not ship or pin our own `queryStore` FFI PR branch.
 

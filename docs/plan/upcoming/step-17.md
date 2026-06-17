@@ -1,0 +1,67 @@
+# Step 17 — plan excerpt
+
+Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
+
+### Step 17, End-to-end demo wiring
+
+Blocked on Step 16 / upstream Store query (N6).
+
+Architectural context:
+this is the only step that exercises every layer at once:
+two Logos hosts (`logoscore` daemons),
+all three backend modules in each host,
+the LEZ sequencer for chain reads and writes,
+and direct Store traffic from the user host to the provider host.
+
+Create a single shell script that
+starts a fresh scaffold workspace,
+deploys `lez_payment_streams`,
+builds `.lgx` packages for `logos_execution_zone` (our branch),
+`payment_streams_module`,
+and `delivery_module` (upstream `master` with eligibility hooks merged or
+branched as in Step 16; Store query API from upstream only),
+installs them with `lgpm` into two module directories,
+launches two `logoscore` instances loaded with all three modules
+on disjoint `portsShift` values
+(per the workaround documented in
+[`logos-delivery-module#18`](https://github.com/logos-co/logos-delivery-module/issues/18)
+and used by `logos-delivery-demo`;
+example: user `portsShift: 0`, provider `portsShift: 100`),
+starts the provider `delivery_module` with relay and Store service enabled,
+backed by a SQLite archive and a demo retention policy,
+starts the user `delivery_module` with Store client support
+and the provider's explicit peer address configured as the Store target,
+drives the user flow from vault initialization through Store query,
+and drives a manual claim on the provider side.
+The script captures structured logs at each phase.
+
+The first smoke path uses two nodes:
+the provider archives messages and the user queries the provider directly.
+For the fastest integration smoke test,
+the user may publish a message that the provider archives
+and then issue a paid Store query for it.
+If time allows,
+the demo should add a third publisher node
+that publishes messages for the provider to archive,
+so the user retrieves historical messages it did not originate.
+
+Components required to run:
+LEZ sequencer on `127.0.0.1:3040`,
+`lez_payment_streams` program deployed onto it
+(**Step 11d** complete, or documented CLI deploy from Step 10a on a clean workspace),
+two `logoscore` daemons (one for user, one for provider),
+each daemon hosting `logos_execution_zone`, `payment_streams_module`,
+and `delivery_module`,
+provider `delivery_module` configuration with relay and Store service enabled,
+a SQLite Store archive path,
+a retention policy such as `capacity:10000`,
+user `delivery_module` configuration with the provider's explicit peer address
+as the Store target,
+and direct network reachability between the two local hosts.
+
+Definition of done:
+the script runs to completion against a clean workspace
+and produces a log artifact that documents
+every chain transaction, every Store request,
+and the eligibility outcomes observed on both ends.
+

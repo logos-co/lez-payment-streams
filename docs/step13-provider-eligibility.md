@@ -4,8 +4,8 @@ Status: complete for integration DoD (feature in tree, `./scripts/verify-step13-
 `make verify-step13`). Logoscore prepare → verify cross-test needs a fresh or recently seeded
 localnet when stream `0` is not fully accrued (same recovery story as Step 12).
 
-Provider inbound verifier for Store eligibility bytes. Normative design:
-[`integration-plan-v2.md`](../integration-plan-v2.md) Step 13 implementor approach.
+Provider inbound verifier for Store eligibility bytes. Normative design: [plan/completed/step-13-normative.md](plan/completed/step-13-normative.md).
+Index: [integration-index.md](../integration-index.md).
 
 Prerequisites: Step 12 user path green (`./scripts/verify-step12-dod.sh`), Steps 10a–11b chain
 fixture, Step 11c signing, installed `payment_streams_module` `.lgx`, guest ELF

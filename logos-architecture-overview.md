@@ -1,7 +1,7 @@
 # Logos Architecture Overview
 
 This document records the architectural facts about the Logos ecosystem
-that are prerequisites for understanding `integration-plan-v2.md`.
+that are prerequisites for understanding `integration-index.md`.
 It is not a substitute for the official references,
 in particular `logos-tutorial/logos-developer-guide.md`,
 `logos-liblogos/README.md`,

@@ -4,7 +4,7 @@ Reproducible localnet with deployed `lez_payment_streams`, a funded public owner
 and on-chain demo vault `vault_id = 0` plus stream `stream_id = 0`.
 PDAs in the manifest match `lez-payment-streams-core` / FFI derivation (not SPEL CLI PDA helpers).
 
-Decisions: integration plan [N9](../integration-plan-v2.md#n9-step-10a-local-chain-fixture-decisions).
+Decisions: integration plan [N9](../reference/decisions-and-notes.md#n9-step-10a-local-chain-fixture-decisions).
 Progress and sequencer follow-up: [`step10a-handoff-and-follow-up.md`](step10a-handoff-and-follow-up.md).
 Scaffold RPC detail: [`step1-findings-scaffold-rpc.md`](step1-findings-scaffold-rpc.md).
 

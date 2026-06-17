@@ -7,16 +7,16 @@ hook is a follow-on, not a blocker for this step.
 
 Session keys, persisted negotiation state, and Store `EligibilityProof` bytes (LIP-155
 `stream_proposal` / `stream_proof` arms) for the paid Store demo. Step 12 in
-[`integration-plan-v2.md`](../integration-plan-v2.md).
+[`integration-index.md`](../integration-index.md).
 
 Runbook for operators and implementors. Behavior matches the plan.
 
 Prerequisites: Step 11c green (`./scripts/verify-step11c-dod.sh`), Step 11a reads, Step 11b
 `chainAction` for manual `createStream`, Step 10b wallet with `sign_public_payload`.
 
-Related: [N4 persistence](../integration-plan-v2.md#n4-persistence-policy),
-[N5 provider mapping](../integration-plan-v2.md#n5-provider-identity-mapping),
-[N8 canonical Store bytes](../integration-plan-v2.md#n8-canonical-store-request-bytes-format),
+Related: [N4 persistence](../reference/decisions-and-notes.md#n4-persistence-policy),
+[N5 provider mapping](../reference/decisions-and-notes.md#n5-provider-identity-mapping),
+[N8 canonical Store bytes](../reference/decisions-and-notes.md#n8-canonical-store-request-bytes-format),
 [Step 11b writes](step11b-chain-writes.md).
 
 Runtime loop: [`logos-runtime-guide.md`](logos-runtime-guide.md) Part 3.
@@ -31,7 +31,7 @@ Show the user path for payment-stream Store eligibility on one local LEZ + two l
 3. Provider accepts; user opens stream on-chain via `chainAction` `createStream` (not automatic).
 4. Next query → `EligibilityProof` with `stream_proof` over the same canonical Store request bytes.
 
-Step 16 attaches opaque `eligibility_proof` bytes from this module to Store traffic ([D2](../integration-plan-v2.md#d2-delivery-module-hook-design)); Step 12 can be tested with logoscore + FFI only.
+Step 16 attaches opaque `eligibility_proof` bytes from this module to Store traffic ([D2](../reference/decisions-and-notes.md#d2-delivery-module-hook-design)); Step 12 can be tested with logoscore + FFI only.
 
 ## Environment
 
@@ -151,7 +151,7 @@ Logoscore passes each argument as a separate string (Universal `QVariant` → `Q
 | Method | Arguments (logoscore order) | Success JSON (extra fields) |
 | --- | --- | --- |
 | `registerProviderMapping` | `provider_peer_id`, `provider_account_id_base58` | `"status":"ok"` only |
-| `prepareEligibilityForStoreQuery` | `canonical_request_hex`, `provider_peer_id` | `"kind"`: `"stream_proposal"` or `"stream_proof"`; `"bytes_hex"`: serialized protobuf `EligibilityProof` ([D1](../integration-plan-v2.md#d1-store-wire-format)); optional `"stream_id"`, `"vault_id"` for demo scripts |
+| `prepareEligibilityForStoreQuery` | `canonical_request_hex`, `provider_peer_id` | `"kind"`: `"stream_proposal"` or `"stream_proof"`; `"bytes_hex"`: serialized protobuf `EligibilityProof` ([D1](../reference/decisions-and-notes.md#d1-store-wire-format)); optional `"stream_id"`, `"vault_id"` for demo scripts |
 | `listMyStreams` | `vault_id` | `"streams"`: array of per-stream objects (inventory + folded status fields) |
 | `rediscoverStreams` | `vault_id` | `"streams"`: array; `"discovered_count"` |
 
@@ -204,7 +204,7 @@ Maps libp2p `provider_peer_id` (Store routing) to the LEZ stream payee. Two argu
 
 The module converts base58 to 32 bytes and uses that everywhere LIP-155 and LEZ need
 `provider_id`: `VaultProof.provider_id`, `createStream` provider binding, persistence and
-pending-proposal keys `(vault_id, provider_id)` ([N5](../integration-plan-v2.md#n5-provider-identity-mapping)).
+pending-proposal keys `(vault_id, provider_id)` ([N5](../reference/decisions-and-notes.md#n5-provider-identity-mapping)).
 
 | Name | Source |
 | --- | --- |
@@ -216,7 +216,7 @@ One peer maps to one LEZ payee for the MVP. Multiple payees per peer is a later 
 ### `prepareEligibilityForStoreQuery`
 
 Builds the incentivization envelope, not bare `StreamProposal` / `StreamProof` messages alone.
-Per [D2](../integration-plan-v2.md#d2-delivery-module-hook-design), Delivery treats
+Per [D2](../reference/decisions-and-notes.md#d2-delivery-module-hook-design), Delivery treats
 eligibility as opaque bytes on the provider/verifier hooks: copy `bytes_hex` decoded to
 `StoreQueryRequest.eligibility_proof` (tag `30`) without parsing `stream_proposal` or
 `stream_proof`. The streams module owns that protobuf shell and the nested LIP-155 messages
@@ -253,7 +253,7 @@ Errors (machine-readable `code` in JSON): `UNKNOWN_PROVIDER`, `NO_ELIGIBLE_VAULT
 
 ### Persistence (N4)
 
-Demo policy ([N4](../integration-plan-v2.md#n4-persistence-policy)):
+Demo policy ([N4](../reference/decisions-and-notes.md#n4-persistence-policy)):
 
 | Item | Value |
 | --- | --- |
@@ -261,7 +261,7 @@ Demo policy ([N4](../integration-plan-v2.md#n4-persistence-policy)):
 | Format | Single JSON object, `schema_version`: `1`, atomic write (temp + rename) |
 | Failure | Log error; continue in-memory only |
 | Eviction | No background timer. On load and on each `prepareEligibilityForStoreQuery` / `listMyStreams`, drop pending rows when clock-10 ≥ stored `create_stream_deadline` |
-| Clock-10 fold | LEZ clock account timestamp is milliseconds; fold and deadline checks use `ms / 1000` (truncate). See Step 13 implementor notes in [`integration-plan-v2.md`](../integration-plan-v2.md) |
+| Clock-10 fold | LEZ clock account timestamp is milliseconds; fold and deadline checks use `ms / 1000` (truncate). See [step-13-normative.md](plan/completed/step-13-normative.md) |
 | Session keys | Plaintext `session_private_key_hex` / `session_public_key_hex` (lowercase hex) in JSON; treat instance dir as sensitive |
 
 `provider_id_hex` in negotiations is lowercase hex of the 32-byte LEZ account id (same bytes as
@@ -305,7 +305,7 @@ Vault owner signing stays on the wallet (`sign_public_payload`); session keys ar
 LEZ account keys.
 
 Step 12 adds keygen in the plan as
-[`payment_streams_ffi_generate_session_keypair`](../integration-plan-v2.md#ffi-session-keypair-step-12-deliverable)
+[`payment_streams_ffi_generate_session_keypair`](../reference/decisions-and-notes.md#ffi-session-keypair-step-12-deliverable)
 (same `payment_streams_ffi_*` family as `payment_streams_ffi_sign_canonical_payload_digest`).
 Implement generation in `lez-payment-streams-core`; C ABI in `proof_abi.rs` only (no separate
 session ABI module). Refresh `cbindgen` / module C bridge as needed.

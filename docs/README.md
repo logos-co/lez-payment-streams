@@ -1,14 +1,25 @@
 # Payment streams integration docs
 
 Operator runbooks (`step*.md`, `logos-runtime-guide.md`) are the commands and verify scripts
-to run today. [`../integration-plan-v2.md`](../integration-plan-v2.md) is the full plan
-(decisions, DoD, architecture); when they disagree, update the runbook and align the plan —
-avoid duplicating long procedural blocks in both places.
+to run today. [`integration-index.md`](../integration-index.md) is the short step map and status.
+[`integration-contracts.md`](integration-contracts.md) and
+[`reference/decisions-and-notes.md`](reference/decisions-and-notes.md) hold cross-step rules.
+Agents: [`AGENT-BRIEF.md`](AGENT-BRIEF.md) first; repo root [`AGENTS.md`](../AGENTS.md) for tooling entry.
+
+When a runbook and the index disagree, update the runbook and align the index — avoid duplicating
+long procedural blocks in both places.
 
 | File | Use |
 | --- | --- |
-| [`../logos-architecture-overview.md`](../logos-architecture-overview.md) | Hosts, modules, FFI vs LogosAPI (repo root) |
-| [`../integration-plan-v2.md`](../integration-plan-v2.md) | Master plan (Steps 10–11: fixture, wallet, module chain I/O) |
+| [`../AGENTS.md`](../AGENTS.md) | Repo-root agent context (vendor-neutral) |
+| [`AGENT-BRIEF.md`](AGENT-BRIEF.md) | Agent read order and active-step packets |
+| [`integration-contracts.md`](integration-contracts.md) | LogosAPI names, encodings, wire tags |
+| [`context-manifest.json`](context-manifest.json) | Machine read-order manifest |
+| [`../integration-index.md`](../integration-index.md) | Master index (steps, status, verify scripts) |
+| [`../integration-plan-v2.md`](../integration-index.md) | Redirect to index + archive |
+| [`archive/integration-plan-v2-full.md`](archive/integration-plan-v2-full.md) | Full historical plan |
+| [`plan/README.md`](plan/README.md) | Completed vs upcoming plan excerpts |
+| [`../logos-architecture-overview.md`](../logos-architecture-overview.md) | Hosts, modules, FFI vs LogosAPI |
 | [`logos-runtime-guide.md`](logos-runtime-guide.md) | Build `.lgx`, install, logoscore, Steps 7/9/11a–13 loop |
 | [`step1-findings-scaffold-rpc.md`](step1-findings-scaffold-rpc.md) | LEZ localnet, deploy, scaffold RPC findings |
 | [`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md) | Step 10a seed script, manifest, reset, wallet re-init |
@@ -19,10 +30,11 @@ avoid duplicating long procedural blocks in both places.
 | [`step11c-sign-public-payload.md`](step11c-sign-public-payload.md) | Step 11c `sign_public_payload` Rust FFI + Qt patch + verify script |
 | [`step11d-wallet-510.md`](step11d-wallet-510.md) | Step 11d LEZ 510 wallet pin bump, deploy FFI, verify script |
 | [`step12-user-eligibility.md`](step12-user-eligibility.md) | Step 12 user eligibility (`verify-step12-dod.sh`) |
-| [`step13-provider-eligibility.md`](step13-provider-eligibility.md) | Step 13 provider verify (complete; `verify-step13-dod.sh`) |
+| [`step13-provider-eligibility.md`](step13-provider-eligibility.md) | Step 13 provider verify (`verify-step13-dod.sh`) |
 | [`step3-policy-and-implementor-notes.md`](step3-policy-and-implementor-notes.md) | Step 3a policy and implementor detail |
 | [`step8-universal-legacy-probe-results.md`](step8-universal-legacy-probe-results.md) | Step 8 probe results (+ historical dilemma appendix) |
 | [`feature-branch-pins.md`](feature-branch-pins.md) | Wallet flake pins (LEZ 510 + PR 19 wrapper) |
+| [`demo-localnet-recovery.md`](demo-localnet-recovery.md) | Blank-slate localnet policy |
 | [`archive/legacy-module-bootstrap.md`](archive/legacy-module-bootstrap.md) | Superseded Legacy plugin bootstrap |
 | [`archive/superseded-wallet-pr-429-16.md`](archive/superseded-wallet-pr-429-16.md) | Deprecated PR 429 / 16 wallet JSON API |
 | [`archive/engineering-notes.md`](archive/engineering-notes.md) | Misc engineering notes (FFI, SPEL PDA) |

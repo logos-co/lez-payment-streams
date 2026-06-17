@@ -3,7 +3,7 @@
 You are picking up work on integrating LIP-155 payment streams
 into the Logos stack as a demo.
 
-Start with `integration-plan-v2.md` in this directory.
+Start with `integration-index.md` in this directory.
 It contains the full plan, onboarding reading order,
 prerequisites, component overview, decisions, notes,
 and numbered integration steps (Step 3 splits into 3a/3b; Steps 6–18 after Rust FFI) with definitions of done.
@@ -33,7 +33,7 @@ decision, Steps 7–15 including Universal module bootstrap in Step 9).
 Step 6 in the integration plan records no local Store query exposure
 (done, won't fix).
 
-See integration-plan-v2.md (N6, D3 for wallet 491 + 19, and the component overview for
+See integration-index.md (N6, D3 for wallet 491 + 19, and the component overview for
 `logos-delivery-module`) and docs/feature-branch-pins.md for wallet pins.
 
 Doc index: [`docs/README.md`](docs/README.md).

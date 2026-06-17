@@ -20,7 +20,7 @@ Status: fixture tooling and LEZ guest alignment are in tree. Step 10a DoD is gre
   targets the pinned LEZ tree; other `cargo test -p lez-payment-streams-core --lib` tests still run.
 
 Long-term cleanup when SPEL targets LEE: integration plan
-[N9 SPEL-on-LEE cleanup](../integration-plan-v2.md#n9-step-10a-local-chain-fixture-decisions).
+[N9 SPEL-on-LEE cleanup](../reference/decisions-and-notes.md#n9-step-10a-local-chain-fixture-decisions).
 
 ## When verify fails
 
