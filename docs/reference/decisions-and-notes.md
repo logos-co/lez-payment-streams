@@ -50,9 +50,9 @@ The `eligibility_proof` field carries a protobuf `EligibilityProof`.
 No new status codes are added to the Store `StatusCode` enum.
 
 No protocol-ID version bump and no codec migration is required for the demo.
-Confirm tag `30` is unused in `waku/waku_store/rpc_codec.nim` before implementation.
+Confirm tag `30` is unused in `logos_delivery/waku/waku_store/rpc_codec.nim` before implementation.
 
-Step 14 implementation uses `waku/waku_store/common.nim` and `rpc_codec.nim` only.
+Step 14 implementation uses `logos_delivery/waku/waku_store/common.nim` and `rpc_codec.nim` only.
 `waku/incentivization/` (RFC 73–linked proof-of-payment POC) is unrelated wire and must not
 be imported for Store tag `30`.
 

@@ -111,6 +111,7 @@ requires active folded stream state for `OK` on the `stream_proof` arm.
 
 ## Handoff
 
-Step 14–15 extend Store wire and `liblogosdelivery` in the delivery repos. Step 16 wires
-`delivery_module` to call this method on inbound Store queries. Step 17 two-host E2E builds on
-Steps 12–13 plus delivery integration.
+Step 14 (Store tag `30`) is complete on `logos-delivery` branch
+`feat/payment-streams-store-eligibility`. Step 15 extends `liblogosdelivery` on the same branch.
+Step 16 wires `delivery_module` to call this method on inbound Store queries. Step 17 two-host E2E builds on
+Steps 12–14 plus delivery integration.

@@ -1,6 +1,10 @@
-# Step 14 — plan excerpt
+# Step 14 — normative plan excerpt
 
-Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
+Status: complete on `logos-delivery` branch `feat/payment-streams-store-eligibility`
+(commit `d033a493`). Verify: `nimble buildTest tests/waku_store/test_rpc_codec.nim` and run
+the test binary in that repo.
+
+Agents on Step 15+ should read [integration-contracts.md](../integration-contracts.md) instead.
 
 ### Step 14, Extend the Store wire format in `logos-delivery`
 
@@ -22,7 +26,7 @@ membership bytes); payment streams is another flavor, not named explicitly in RF
 In `logos-delivery`, `waku/incentivization/` holds an older proof-of-payment POC on a stale
 shape (`proofOfPayment` only).
 It is not the Store tag `30` carrier.
-Implement Store eligibility in `waku/waku_store/` only; do not reuse or merge
+Implement Store eligibility in `logos_delivery/waku/waku_store/` only; do not reuse or merge
 `waku/incentivization/rpc_codec.nim` for Step 14.
 The shared names `EligibilityProof` / `EligibilityStatus` follow RFC 73 vocabulary on the
 Store side; they are separate Nim modules from the POC types.
@@ -32,14 +36,14 @@ add an optional opaque `eligibility_proof` field to `StoreQueryRequest` (tag `30
 and an optional `eligibility_status` object to `StoreQueryResponse` (tag `30`),
 together with an enumeration of eligibility status codes
 distinct from Store status codes.
-Update the codec in `waku/waku_store/rpc_codec.nim` and the typed surfaces in
-`waku/waku_store/common.nim`.
+Update the codec in `logos_delivery/waku/waku_store/rpc_codec.nim` and the typed surfaces in
+`logos_delivery/waku/waku_store/common.nim`.
 Ship on our branch; no protocol-ID version bump.
-Branch from upstream `logos-delivery` `master` ([integration branches](../../../integration-index.md#delivery-integration-branches)).
+Branch from upstream `logos-delivery` `master` ([integration branches](../../integration-index.md#delivery-integration-branches)).
 
 #### Wire types (normative)
 
-Add to `waku/waku_store/common.nim`:
+Add to `logos_delivery/waku/waku_store/common.nim`:
 
 ```nim
 EligibilityStatusCode* {.pure, size: sizeof(uint32).} = enum
@@ -89,6 +93,5 @@ Definition of done:
 extend `tests/waku_store/test_rpc_codec.nim` so encode → decode round-trips preserve the new
 fields when present,
 behaviour is unchanged when both fields are absent,
-and existing Store codec coverage continues to pass (`make test` in `logos-delivery`).
+and existing Store codec coverage continues to pass (`nimble buildTest` in `logos-delivery`).
 Client/server Store tests are not required for Step 14.
-

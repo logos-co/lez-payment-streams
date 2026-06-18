@@ -4,9 +4,8 @@
     "docs/integration-contracts.md",
     "integration-index.md"
   ],
-  "active_steps": [14, 15, 16, 17],
+  "active_steps": [15, 16, 17],
   "step_packets": {
-    "14": "docs/plan/upcoming/step-14.md",
     "15": "docs/plan/upcoming/step-15.md",
     "16": "docs/plan/upcoming/step-16.md",
     "17": "docs/plan/upcoming/step-17.md",
@@ -14,8 +13,14 @@
   },
   "completed_normative": {
     "12": "docs/plan/completed/step-12-normative.md",
-    "13": "docs/plan/completed/step-13-normative.md"
+    "13": "docs/plan/completed/step-13-normative.md",
+    "14": "docs/plan/completed/step-14-normative.md"
   },
   "reference": "docs/reference/decisions-and-notes.md",
-  "plan_layout": "docs/plan/README.md"
+  "plan_layout": "docs/plan/README.md",
+  "delivery_integration_branch": {
+    "repo": "logos-delivery",
+    "branch": "feat/payment-streams-store-eligibility",
+    "step_14_commit": "d033a493"
+  }
 }

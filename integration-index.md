@@ -107,13 +107,13 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 11 | Module chain I/O | 11a–d runbooks; [N10](docs/reference/decisions-and-notes.md#n10-step-11b-module-writes-decisions) |
 | 12 | User eligibility | Complete — [step12](docs/step12-user-eligibility.md), `verify-step12-dod.sh` |
 | 13 | Provider verify | Complete — [step13](docs/step13-provider-eligibility.md), `verify-step13-dod.sh` |
-| 14 | Store wire (`logos-delivery`) | Upcoming — [step-14.md](docs/plan/upcoming/step-14.md) |
+| 14 | Store wire (`logos-delivery`) | Complete — branch `feat/payment-streams-store-eligibility` (`d033a493`); [step-14-normative.md](docs/plan/completed/step-14-normative.md) |
 | 15 | `liblogosdelivery` hooks | Upcoming — [step-15.md](docs/plan/upcoming/step-15.md) |
 | 16 | `delivery_module` routing | Upcoming — [step-16.md](docs/plan/upcoming/step-16.md) |
 | 17 | E2E demo | Upcoming — [step-17.md](docs/plan/upcoming/step-17.md) |
 | 18 | Basecamp UI | Optional — [step-18.md](docs/plan/upcoming/step-18.md) |
 
-Execution order: Steps 12, 11d, and 13 are complete. Next: 14 → 15 → 16 → 17 on delivery forks
+Execution order: Steps 12, 11d, 13, and 14 are complete. Next: 15 → 16 → 17 on delivery forks
 ([`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md)). Local demos:
 [`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 
@@ -133,11 +133,18 @@ DoD: `prepareEligibilityForStoreQuery`, session keys, N8 canonical bytes, persis
 DoD: `verifyEligibilityForStoreQuery`, FFI `parse_eligibility_proof_bytes`, persistence v2
 `provider_acceptances`, `verify-step13-dod.sh`. Normative excerpt: [step-13-normative.md](docs/plan/completed/step-13-normative.md).
 
+### Step 14 — Store wire (complete)
+
+DoD: Store tag `30` on `StoreQueryRequest` / `StoreQueryResponse` in
+`logos_delivery/waku/waku_store/` on `logos-delivery` branch
+`feat/payment-streams-store-eligibility`. Verify:
+`nimble buildTest tests/waku_store/test_rpc_codec.nim` in that repo.
+Normative excerpt: [step-14-normative.md](docs/plan/completed/step-14-normative.md).
+
 ## Upcoming steps (pointers)
 
 Do not duplicate full DoD here — read the packet:
 
-- [Step 14](docs/plan/upcoming/step-14.md) — `logos-delivery` codec
 - [Step 15](docs/plan/upcoming/step-15.md) — C verifier/provider callbacks
 - [Step 16](docs/plan/upcoming/step-16.md) — `setEligibilityVerifier` / `setEligibilityProvider`
 - [Step 17](docs/plan/upcoming/step-17.md) — two logical hosts, paid Store mode
