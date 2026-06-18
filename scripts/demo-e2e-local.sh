@@ -61,7 +61,7 @@ run_e2e_body() {
   python3 "$REPO/scripts/e2e/run_local_e2e.py" \
     --repo "$REPO" \
     --phase "$E2E_PHASE" \
-    --artifact "$ARTIFACT"
+    --artifact "$ARTIFACT" || exit 1
 
   echo "=== done ==="
   cat "$ARTIFACT"
@@ -77,7 +77,7 @@ ensure_fixture() {
   if [[ ! -f "$FIXTURE_MANIFEST" ]]; then
     need_seed=1
   elif ! curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
-    -d '{"jsonrpc":"2.0","id":1,"method":"getBlockHeight","params":[]}' >/dev/null; then
+    -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}' >/dev/null; then
     need_seed=1
   elif ! "$REPO/scripts/verify-step10a-dod.sh" >/dev/null 2>&1; then
     need_seed=1

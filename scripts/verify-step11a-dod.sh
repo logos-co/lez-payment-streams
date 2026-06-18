@@ -94,7 +94,7 @@ else
 fi
 
 if ! curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"getBlockHeight","params":[]}' >/dev/null; then
+  -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}' >/dev/null; then
   skip "logoscore E2E (sequencer not reachable)"
   echo "=== done (exit $fail) ==="
   exit "$fail"

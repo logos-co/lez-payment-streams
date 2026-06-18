@@ -72,7 +72,7 @@ if [[ ! -f "$MANIFEST" ]]; then
 fi
 
 if ! curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"getBlockHeight","params":[]}' >/dev/null; then
+  -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}' >/dev/null; then
   skip "logoscore smoke (sequencer not reachable)"
   echo "=== done (exit $fail) ==="
   exit "$fail"
@@ -114,7 +114,7 @@ timeout "$LOGOSCORE_E2E_TIMEOUT" nix shell github:logos-co/logos-logoscore-cli -
   logoscore load-module payment_streams_module || true
   logoscore call logos_execution_zone open '$WALLET_CONFIG' '$WALLET_STORAGE' || true
   height=\$(curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
-    -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getBlockHeight\",\"params\":[]}' \
+    -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getLastBlockId\",\"params\":[]}' \
     | python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get(\"result\"); print(r if isinstance(r,int) else (r or \"\"))' 2>/dev/null || true)
   if [[ -n \"\$height\" ]]; then
     logoscore call logos_execution_zone sync_to_block \"\$height\" >/dev/null 2>&1 || true
@@ -124,7 +124,7 @@ timeout "$LOGOSCORE_E2E_TIMEOUT" nix shell github:logos-co/logos-logoscore-cli -
   TOPUP_JSON=\$(python3 -c \"import json; m=json.load(open('$MANIFEST')); print(json.dumps({'signer': m['owner_account_id'], 'vault_id': int(m['vault_id']), 'stream_id': int(m['stream_id']), 'increase_lo': 50, 'increase_hi': 0})))\")
   echo TOPUP:\$(logoscore call payment_streams_module chainAction topUpStream \"\$TOPUP_JSON\" 2>&1 | tail -1)
   height=\$(curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
-    -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getBlockHeight\",\"params\":[]}' \
+    -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getLastBlockId\",\"params\":[]}' \
     | python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get(\"result\"); print(r if isinstance(r,int) else (r or \"\"))' 2>/dev/null || true)
   if [[ -n \"\$height\" ]]; then
     logoscore call logos_execution_zone sync_to_block \"\$height\" >/dev/null 2>&1 || true

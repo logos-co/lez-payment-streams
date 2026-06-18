@@ -30,7 +30,7 @@ WALLET_STORAGE="$WALLET_E2E_DIR/storage.json"
 sync_wallet() {
   local height
   height=$(curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
-    -d '{"jsonrpc":"2.0","id":1,"method":"getBlockHeight","params":[]}' \
+    -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}' \
     | python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get("result"); print(r if isinstance(r,int) else (r or ""))' 2>/dev/null || true)
   if [[ -n "$height" ]]; then
     logoscore call logos_execution_zone sync_to_block "$height" 2>/dev/null >/dev/null || true
