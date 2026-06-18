@@ -4,9 +4,8 @@
     "docs/integration-contracts.md",
     "integration-index.md"
   ],
-  "active_steps": [15, 16, 17],
+  "active_steps": [16, 17],
   "step_packets": {
-    "15": "docs/plan/upcoming/step-15.md",
     "16": "docs/plan/upcoming/step-16.md",
     "17": "docs/plan/upcoming/step-17.md",
     "18": "docs/plan/upcoming/step-18.md"
@@ -14,13 +13,22 @@
   "completed_normative": {
     "12": "docs/plan/completed/step-12-normative.md",
     "13": "docs/plan/completed/step-13-normative.md",
-    "14": "docs/plan/completed/step-14-normative.md"
+    "14": "docs/plan/completed/step-14-normative.md",
+    "15": "docs/plan/completed/step-15-normative.md"
   },
   "reference": "docs/reference/decisions-and-notes.md",
   "plan_layout": "docs/plan/README.md",
   "delivery_integration_branch": {
     "repo": "logos-delivery",
     "branch": "feat/payment-streams-store-eligibility",
-    "step_14_commit": "d033a493"
+    "step_14_commit": "d033a493",
+    "step_15_commit": "e59319d8"
+  },
+  "delivery_module_flake": {
+    "repo": "logos-delivery-module",
+    "flake_input": "logos-delivery",
+    "branch_ref": "feat/payment-streams-store-eligibility",
+    "flake_nix": "flake.nix",
+    "locked_rev": "e59319d8648c3c3ea9384c592728d5738f623a13"
   }
 }

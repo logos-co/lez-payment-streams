@@ -345,9 +345,10 @@ upstream N6. Step 17 E2E depends on Step 16 completing on those forks, not on up
 
 Branch workflow: fork from upstream `master` (not module release tags); default shared
 branch name `feat/payment-streams-store-eligibility` on both delivery repos; Steps 14–15 on
-`logos-delivery`, Step 16 on `logos-delivery-module` with flake input locked to that delivery
-rev; do not reuse `feat/liblogosdelivery-query-store`. Pin table:
-[`feature-branch-pins.md`](feature-branch-pins.md) (delivery revs added at Step 17).
+`logos-delivery`, Step 16 on `logos-delivery-module` with `flake.nix` input
+`ref=feat/payment-streams-store-eligibility`; do not reuse `feat/liblogosdelivery-query-store`.
+Pin table:
+[`feature-branch-pins.md`](feature-branch-pins.md) (flake lock rev documented there).
 Summary: [integration-index.md](../../integration-index.md#delivery-integration-branches).
 
 `logos-chat` is not a reusable Store path.
@@ -431,7 +432,7 @@ This 32-byte `canonical_payload_digest` is what `StreamProof.signature` signs.
 
 #### Cross-language test vector
 
-The definition of done for Step 15 requires a pinned test vector:
+The definition of done for Step 15 required a pinned test vector:
 construct a `StoreQueryRequest` with fixed known field values,
 produce canonical bytes from the Nim serializer and the Rust serializer independently,
 and assert byte-level equality.
@@ -449,9 +450,8 @@ Digest checks use `store_eligibility_digest_matches_n8_reference_fixture` in
 Step 15 Nim parity test lives in `logos-delivery` beside the Store codec tests:
 `tests/waku_store/test_store_eligibility_canonical.nim`, comparing lowercase hex to
 `cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex` for the N8 reference
-fixture. C ABI smoke follows the `library/examples/logosdelivery_example.c` pattern
-(`make logosdelivery_example`); add `library/tests/test_eligibility_hooks.c` and a matching
-Make/nimble target when implementing Step 15 (not a script in this repo).
+fixture. C ABI smoke: `library/tests/test_eligibility_hooks.c`, target
+`make logosdelivery_eligibility_smoke` in `logos-delivery` (not a script in this repo).
 
 ### N9, Step 10a local chain fixture (decisions)
 

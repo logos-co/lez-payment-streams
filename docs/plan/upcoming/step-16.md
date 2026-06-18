@@ -20,8 +20,10 @@ and add a `storeQuery(...)` LogosAPI method that calls `logosdelivery_store_quer
 (added on our fork of `logos-delivery` in Step 15).
 Do not wait on upstream N6 for the Store query API;
 the method is added entirely within our fork.
-Point the flake `logos-delivery` input at the Step 15 fork rev
-([delivery integration branches](../../../integration-index.md#delivery-integration-branches)).
+The `logos-delivery` flake input is pinned to branch
+`feat/payment-streams-store-eligibility` in `logos-delivery-module/flake.nix`
+([delivery integration branches](../../../integration-index.md#delivery-integration-branches),
+[feature-branch-pins.md](../../feature-branch-pins.md)).
 Implement the bridge that translates the new `liblogosdelivery` callbacks
 into `LogosAPIClient` calls on the named module
 (`verifyEligibilityForStoreQuery`, `prepareEligibilityForStoreQuery`).

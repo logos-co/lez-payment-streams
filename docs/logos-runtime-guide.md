@@ -679,7 +679,8 @@ repeat [PS restart loop](#repeat-loop--after-ps-or-rust-ffi-edits-steps-10-13) f
 | Step | Where to work | How to test |
 |------|----------------|-------------|
 | 14 | `logos-delivery` (`logos_delivery/waku/waku_store/`) | Done on branch `feat/payment-streams-store-eligibility`: `nimble buildTest tests/waku_store/test_rpc_codec.nim` |
-| 15 | `liblogosdelivery` C ABI | C smoke test in delivery repo; no logoscore |
+| 15 | `liblogosdelivery` C ABI | Done on same branch; see [step-15-normative.md](plan/completed/step-15-normative.md) |
+| 16 prep | `logos-delivery-module/flake.nix` | `logos-delivery` input → `ref=feat/payment-streams-store-eligibility` ([feature-branch-pins.md](feature-branch-pins.md)) |
 
 Revisit this document when Step 16 mounts `delivery_module` beside wallet + PS.
 

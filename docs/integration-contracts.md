@@ -97,4 +97,4 @@ File: `payment_streams_state.json` under logoscore `instancePersistencePath`.
 
 `canonical_payload = PREFIX || borsh(CanonicalStoreRequest)`; `StreamProof.signature` signs
 `SHA-256(canonical_payload)`. Nim (Step 15) and Rust (Step 4) must byte-match; pinned tests in
-core and Step 15 DoD.
+core and the Step 15 Nim parity test on the delivery fork.

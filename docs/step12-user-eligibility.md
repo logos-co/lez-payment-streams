@@ -312,8 +312,10 @@ session ABI module). Refresh `cbindgen` / module C bridge as needed.
 
 ### Canonical request bytes (N8)
 
-Until Step 15 (Nim serializer), DoD uses a pinned Rust fixture, not a live Store query from
-`delivery_module`. Field values match the integration plan N8 cross-language vector and
+Step 12 demos and `./scripts/verify-step12-dod.sh` use the same field values via Rust.
+Nim parity is covered in Step 15 (`test_store_eligibility_canonical.nim` on the delivery fork).
+DoD scripts use a pinned Rust fixture, not a live Store query from `delivery_module`.
+Field values match the integration plan N8 cross-language vector and
 `store_eligibility_digest_matches_n8_reference_fixture` in
 [`lez-payment-streams-core/src/off_chain/canonical.rs`](../lez-payment-streams-core/src/off_chain/canonical.rs).
 
@@ -334,7 +336,8 @@ Body-only input (~145 bytes) fails in the module FFI path
 (`store_eligibility_canonical_payload_digest_from_n8_wire` → `InvalidWireFrame`; sizing helpers
 return non-success status such as `Malformed` / status 2).
 
-The digest literal in the Rust N8 test remains the cross-check for Step 15 Nim parity.
+Cross-check: `cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex` and the Step 15
+Nim test on the delivery fork (see [N8](reference/decisions-and-notes.md#n8-canonical-store-request-bytes-format)).
 
 ## Intended demo sequence (logoscore)
 
