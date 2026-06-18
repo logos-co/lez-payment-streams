@@ -205,4 +205,4 @@ Step 15 DoD is verified in the `logos-delivery` fork only
 | `./scripts/demo-e2e-local.sh` | 17 (dual-host Store E2E) |
 
 `make verify-step12`, `make verify-step13` wrap the Step 12–13 scripts.
-Step 17: `make verify-step17` → [scripts/demo-e2e-local.sh](scripts/demo-e2e-local.sh) (see [step17-e2e-local.md](docs/step17-e2e-local.md)). Uses delivery bundle + optional `liblogosdelivery` overlay ([N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
+Step 17: `make verify-step17` → [scripts/demo-e2e-local.sh](scripts/demo-e2e-local.sh) (see [step17-e2e-local.md](docs/step17-e2e-local.md)). Installs all modules via nix `#lgx` + `lgpm`; optional `liblogosdelivery` overlay or hermetic `SKIP_LIBLOGOSDELIVERY_OVERLAY=1` ([N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [hermetic run](docs/step17-e2e-local.md#hermetic-run-hand-off)).

@@ -398,10 +398,10 @@ end-to-end Store and eligibility outcomes described in the former monolithic Ste
 
 ### N13, Step 17 `liblogosdelivery` bundle vs local overlay (2026-06-18)
 
-Step 17 installs `delivery_module` by copying the nix output of
-`logos-delivery-module#packages.x86_64-linux.default` (`delivery_module_plugin.so` plus bundled
-`liblogosdelivery.so`). Paid Store E2E failed when only the plugin was refreshed while an older
-`liblogosdelivery.so` remained, and also when the locked nix library still contained a bug in
+Step 17 installs `delivery_module` via `nix build …#lgx` and `lgpm install` (plugin plus bundled
+`liblogosdelivery.so` and runtime deps from the module flake). Paid Store E2E failed when only
+the plugin was refreshed while an older `liblogosdelivery.so` remained, and also when the locked
+nix library still contained a bug in
 `logosdelivery_store_query` that cleared `eligibilityProof` immediately after JSON parse
 (`storeQueryRequest.eligibilityProof = none(seq[byte])`), so outbound queries never carried
 tag-30 proof and the provider verifier saw empty `proofBytes`.
@@ -413,17 +413,17 @@ on the same host still passed because proof and N8 were supplied on the CLI path
 
 Mitigations (demo script [`scripts/demo-e2e-local.sh`](../scripts/demo-e2e-local.sh)):
 
-- After nix copy, run `make liblogosdelivery` in sibling `logos-delivery`
-  (`LOGOS_DELIVERY_ROOT`, default `../logos-delivery`) and overlay
-  `build/liblogosdelivery.so` onto both E2E module trees.
-- Build the delivery plugin with `nix build … --impure` only while
-  `logos-delivery-module` has uncommitted C++ bridge changes; push module commits and rely on
-  a clean nix build once the tree is clean.
+- Default: after `lgpm install` of the delivery `.lgx`, optionally overlay
+  `make liblogosdelivery` from sibling `logos-delivery` (`LOGOS_DELIVERY_ROOT`) unless
+  `SKIP_LIBLOGOSDELIVERY_OVERLAY=1`.
+- Hermetic path: set `SKIP_LIBLOGOSDELIVERY_OVERLAY=1`, use `DELIVERY_MODULE_ROOT` with
+  `flake.lock` at `logos-delivery` ≥ `39b467ec`; see
+  [step17-e2e-local.md](../step17-e2e-local.md#hermetic-run-hand-off).
 
 Clean nix-only path: push the `logos-delivery` fix (retain JSON `eligibilityProofHex` through
 `logosdelivery_store_query`), run `nix flake update logos-delivery` in `logos-delivery-module`,
-commit `flake.lock`, update [feature-branch-pins.md](../feature-branch-pins.md), then re-run E2E
-without the overlay and drop the overlay step when nix-only installs pass.
+commit `flake.lock`, update [feature-branch-pins.md](../feature-branch-pins.md), re-run E2E with
+`SKIP_LIBLOGOSDELIVERY_OVERLAY=1`, then drop the default overlay from the script when stable.
 
 Inbound bridge (`delivery_module` → `payment_streams_module` during Store handling) must invoke
 `LogosAPIClient` on the client object's thread (`runOnOwnerThread`); see [N3a](#n3a-step-16-threading--approach-a-experiment-2025-06-18).

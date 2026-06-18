@@ -128,24 +128,15 @@ build_and_install() {
     exit 1
   fi
   echo "--- build delivery_module from $DELIVERY_MODULE_ROOT ---"
-  local dm_out
-  dm_out="$(nix build "$DELIVERY_MODULE_ROOT#packages.x86_64-linux.default" -L --no-link --print-out-paths | tail -1)"
-  mkdir -p "$MODULES_USER/delivery_module" "$MODULES_PROVIDER/delivery_module"
-  cp -f "$dm_out/lib/delivery_module_plugin.so" "$MODULES_USER/delivery_module/"
-  cp -f "$dm_out/lib/liblogosdelivery.so" "$MODULES_USER/delivery_module/"
-  cp -f "$dm_out/lib/delivery_module_plugin.so" "$MODULES_PROVIDER/delivery_module/"
-  cp -f "$dm_out/lib/liblogosdelivery.so" "$MODULES_PROVIDER/delivery_module/"
-  for aux in librln.so libpq.so libpq.so.5; do
-    if [[ -f "$dm_out/lib/$aux" ]]; then
-      cp -f "$dm_out/lib/$aux" "$MODULES_USER/delivery_module/"
-      cp -f "$dm_out/lib/$aux" "$MODULES_PROVIDER/delivery_module/"
-    fi
-  done
+  local dm_lgx_out
+  dm_lgx_out="$(nix build "$DELIVERY_MODULE_ROOT#lgx" -L --no-link --print-out-paths | tail -1)"
+  install_lgx "$dm_lgx_out"/*.lgx "$MODULES_USER"
+  install_lgx "$dm_lgx_out"/*.lgx "$MODULES_PROVIDER"
 
   # Nix-cached liblogosdelivery can lag the sibling logos-delivery tree (eligibility
   # JSON / protobuf must match the plugin). Prefer a fresh local build when available.
   if [[ "${SKIP_LIBLOGOSDELIVERY_OVERLAY:-0}" == "1" ]]; then
-    echo "SKIP_LIBLOGOSDELIVERY_OVERLAY=1 — using nix-bundled liblogosdelivery.so only"
+    echo "SKIP_LIBLOGOSDELIVERY_OVERLAY=1 — using liblogosdelivery.so from delivery .lgx"
   else
   LOGOS_DELIVERY_ROOT="${LOGOS_DELIVERY_ROOT:-$REPO/../logos-delivery}"
   if [[ -d "$LOGOS_DELIVERY_ROOT" && -f "$LOGOS_DELIVERY_ROOT/Makefile" ]]; then

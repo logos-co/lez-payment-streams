@@ -6,9 +6,15 @@ Operator runbook: [step17-e2e-local.md](../../step17-e2e-local.md).
 Checkpoint (2026-06-18): local dual-host gate is green via `make verify-step17`
 (`scripts/demo-e2e-local.sh` + `scripts/e2e/run_local_e2e.py`). Paid `storeQuery`, missing-proof
 failure, and provider claim phases write JSON-lines artifacts under `.scaffold/e2e/artifacts/`.
-Delivery install uses nix bundle plus `liblogosdelivery` overlay until the locked nix library
-includes the outbound proof fix ([N13](../../reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
+Delivery install uses `nix build …#lgx` + `lgpm install` for all three modules; optional
+`liblogosdelivery` overlay from sibling `logos-delivery` when not using hermetic mode
+([N13](../../reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18),
+runbook [Hermetic run](../../step17-e2e-local.md#hermetic-run-hand-off)).
 Module bridge invokes eligibility on the `LogosAPIClient` thread ([N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
+
+Remaining before Step 17 “Complete” in the index: drop default overlay once hermetic installs
+are routine; align delivery `.lgx` layout with `logoscore` if `MODULE_LOAD_FAILED` appears on
+clean machines only.
 
 ### Step 17, End-to-end demo wiring
 

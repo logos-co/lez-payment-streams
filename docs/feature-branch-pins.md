@@ -43,18 +43,29 @@ After each push to `logos-delivery`, run `nix flake update logos-delivery` in
 `logos-delivery-module` and commit the lock. Record the resolved `rev` in this table when
 Step 17 E2E is re-verified nix-only.
 
-### Step 17 `liblogosdelivery` overlay (demo)
+### Step 17 delivery install and `liblogosdelivery` overlay
 
-Nix bundles `liblogosdelivery.so` from the locked `logos-delivery` input. Until a lock bump
-includes the fix that stops clearing `eligibilityProof` after JSON parse ([N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)),
-`scripts/demo-e2e-local.sh` overlays a fresh `make liblogosdelivery` from
-`LOGOS_DELIVERY_ROOT` (default `../logos-delivery`) onto both E2E install trees after copying
-the nix delivery bundle. Symptom without overlay or fix: paid `storeQuery` → provider
-`BAD_REQUEST`, empty inbound proof on the verifier hook.
+E2E installs `delivery_module` via `nix build "$DELIVERY_MODULE_ROOT#lgx"` and
+`lgpm install` (same as payment streams and wallet modules). Bundled
+`liblogosdelivery.so` comes from the locked `logos-delivery` flake input inside
+`logos-delivery-module`.
 
-Remove the overlay from the script once `make verify-step17` passes with nix-only libs (no
-local `make liblogosdelivery`). Verified 2026-06-18 with
-`SKIP_LIBLOGOSDELIVERY_OVERLAY=1` after `logos-delivery` `39b467ec`.
+The outbound-proof bug (clearing `eligibilityProof` after JSON parse) is fixed at
+`logos-delivery` rev `39b467ec` and above ([N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
+Symptom on an older library: paid `storeQuery` → provider `BAD_REQUEST`, empty inbound proof.
+
+Optional overlay (default when sibling repo exists): unless
+`SKIP_LIBLOGOSDELIVERY_OVERLAY=1`, the demo script runs `make liblogosdelivery` in
+`LOGOS_DELIVERY_ROOT` (default `../logos-delivery`) and copies `build/liblogosdelivery.so`
+into each `delivery_module/` install — useful while editing `logos-delivery` without re-locking
+the module flake.
+
+Hermetic verification (no overlay): `SKIP_LIBLOGOSDELIVERY_OVERLAY=1 make verify-step17` with
+`DELIVERY_MODULE_ROOT` pointing at a module checkout whose `flake.lock` resolves
+`logos-delivery` to `39b467ec` or newer. Full checklist:
+[step17-e2e-local.md](step17-e2e-local.md#hermetic-run-hand-off). Verified 2026-06-18.
+
+Remove the overlay step from the script once every operator relies on hermetic installs only.
 
 Pin table dates are when the row was last updated. Decision subsection titles in
 [decisions-and-notes.md](reference/decisions-and-notes.md) use their own `(YYYY-MM-DD)` record dates;

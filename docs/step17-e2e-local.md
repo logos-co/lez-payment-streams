@@ -23,6 +23,13 @@ identity off-band (mimicked by a file). Missing-proof Store requests are rejecte
 | `FIXTURE_MANIFEST` | `fixtures/localnet.json` | Chain ids |
 | `PAYMENT_STREAMS_GUEST_BIN` | guest `.bin` path | Both daemons |
 | `E2E_PROVIDER_AD` | `.scaffold/e2e/provider-advertisement.json` | Off-band mimic (written by script) |
+| `DELIVERY_MODULE_ROOT` | `../logos-delivery-module` | Checkout for `nix build …#lgx` |
+| `LOGOS_DELIVERY_ROOT` | `../logos-delivery` | Optional overlay source (see below) |
+| `SKIP_LIBLOGOSDELIVERY_OVERLAY` | `0` | Set `1` for hermetic nix-only `liblogosdelivery` |
+| `E2E_PHASE` | `all` | `core`, `claim`, or `all` |
+| `SKIP_BUILD` | `0` | `1` to reuse installed modules |
+| `SKIP_SEED` | `1` with existing manifest | Skip fixture re-check when manifest present |
+| `N8_WIRE_HEX` | (computed) | Host `cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex` if unset |
 
 Wallet (demo): both hosts may `open` the same Step 10a
 `.scaffold/wallet/wallet_config.json` and `storage.json` (owner + provider keys from seed).
@@ -70,19 +77,79 @@ make verify-step17
 ```
 
 The script (`SKIP_BUILD=1` to reuse installed modules) builds/installs from `REPO` using pins in
-[feature-branch-pins.md](feature-branch-pins.md):
+[feature-branch-pins.md](feature-branch-pins.md). Implementation:
+[`scripts/demo-e2e-local.sh`](../scripts/demo-e2e-local.sh).
 
-1. `nix build ./logos-payment-streams-module#lgx` → `lgpm install` to both module dirs.
-2. Patched wallet `.lgx` → both dirs.
-3. `nix build "$DELIVERY_MODULE_ROOT#packages.x86_64-linux.default"` (add `--impure` while the
-   module checkout has uncommitted C++ changes) → copy `delivery_module_plugin.so` and bundled
-   `liblogosdelivery.so` into each `…/delivery_module/` tree (not `.lgx` for the demo layout).
-4. Overlay: `make liblogosdelivery` in `LOGOS_DELIVERY_ROOT` (default `../logos-delivery`) and
-   copy `build/liblogosdelivery.so` over both delivery module dirs until nix-only installs include
-   the outbound proof fix ([N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
+1. `nix build ./logos-payment-streams-module#lgx` → `lgpm install --force` into
+   `MODULES_USER` and `MODULES_PROVIDER`.
+2. Patched wallet `.lgx` from `scripts/build-wallet-lgx.sh` (built on first run if missing) →
+   both module dirs via `lgpm`.
+3. `nix build "$DELIVERY_MODULE_ROOT#lgx"` → `lgpm install` into both module dirs. The bundle
+   includes `delivery_module_plugin.so`, `liblogosdelivery.so`, and runtime deps (`librln`,
+   `libpq`) from the module flake `postInstall` ([logos-delivery-module](https://github.com/logos-co/logos-delivery-module)
+   integration branch).
+4. Optional overlay (default when sibling tree exists): if `SKIP_LIBLOGOSDELIVERY_OVERLAY` is not
+   `1` and `LOGOS_DELIVERY_ROOT` contains a Makefile, run `make liblogosdelivery` there and copy
+   `build/liblogosdelivery.so` over each `…/delivery_module/` install. Use this while iterating on
+   `logos-delivery` without bumping `logos-delivery-module/flake.lock`. For reproducible nix-only
+   libs, set `SKIP_LIBLOGOSDELIVERY_OVERLAY=1` ([N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
 
 Orchestration: `scripts/e2e/run_local_e2e.py` (dual hosts, JSON-lines artifact under
 `.scaffold/e2e/artifacts/`). Optional probe: `scripts/e2e/debug_happy_path.py`.
+
+## Hermetic run (hand-off)
+
+A hermetic Step 17 run uses only nix-built artifacts and committed flake locks — no local
+`make liblogosdelivery` overlay and no copying `.so` files by hand. Use this to verify pins
+after pushing delivery repos or before marking Step 17 complete.
+
+Prerequisites:
+
+- This repo (`lez-payment-streams`) at the integration branch you intend to ship.
+- Sibling checkout `logos-delivery-module` at `DELIVERY_MODULE_ROOT` with committed
+  `flake.lock` pinning `logos-delivery` at rev `39b467ec` or newer (outbound
+  `eligibilityProof` retained in `logosdelivery_store_query`). See
+  [feature-branch-pins.md](feature-branch-pins.md).
+- You do not need a sibling `logos-delivery` tree for the run itself when overlay is skipped.
+- Host Rust toolchain (script computes `N8_WIRE_HEX` via `cargo run` before the nix tooling
+  shell).
+- Guest ELF: `make build` once if `PAYMENT_STREAMS_GUEST_BIN` is missing.
+- Local LEZ sequencer on `127.0.0.1:3040` (script calls `demo-localnet-fresh.sh` when fixture
+  checks fail).
+- Patched wallet `.lgx` inputs resolve via nix (`build-wallet-lgx.sh` on first run).
+
+Command (from repo root):
+
+```bash
+export DELIVERY_MODULE_ROOT="${DELIVERY_MODULE_ROOT:-$PWD/../logos-delivery-module}"
+export SKIP_LIBLOGOSDELIVERY_OVERLAY=1
+make verify-step17
+```
+
+What “hermetic” does not mean here:
+
+- The script still uses the host `cargo` binary for N8 and `python3` for the orchestrator.
+- `lgpm` and `logoscore` come from a ephemeral `nix shell` (not a single locked devShell for
+  the whole repo).
+- Both hosts may share the Step 10a wallet files under `.scaffold/wallet/` (demo policy).
+
+After `lgpm install`, each `…/modules/delivery_module/` tree must load at runtime. If
+`delivery_module` fails with `MODULE_LOAD_FAILED`, inspect that directory for
+`liblogosdelivery.so` and bundled deps next to the plugin; compare with the store path from
+`nix build "$DELIVERY_MODULE_ROOT#lgx" --print-out-paths` and the unpacked `.lgx` layout.
+
+Failure triage without overlay:
+
+| Symptom | Likely cause |
+| --- | --- |
+| Provider `BAD_REQUEST`, empty inbound proof | Stale `liblogosdelivery.so` (lock below `39b467ec`) or wrong file in `delivery_module/` |
+| `verify` / prepare → `STREAM_NOT_ACTIVE` | Fixture stream `0` depleted; run `./scripts/demo-localnet-fresh.sh` or fresh `PERSIST_*` |
+| `MODULE_LOAD_FAILED` for `delivery_module` | Incomplete `lgpm` install or missing bundled `.so` in module dir |
+
+Default developer path (overlay on): omit `SKIP_LIBLOGOSDELIVERY_OVERLAY` when
+`../logos-delivery` is present — local gate documented as green 2026-06-18 with
+`make verify-step17`. Hermetic path verified same date with `SKIP_LIBLOGOSDELIVERY_OVERLAY=1`
+and `logos-delivery` `39b467ec` in the module lock.
 
 After user `prepareEligibilityForStoreQuery`, run `scripts/e2e/seed_provider_acceptance.py` to
 copy `session_public_key_hex` into provider `provider_acceptances` (dual-host warm-up), then

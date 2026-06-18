@@ -46,7 +46,7 @@ Summary:
 | Delivery / Store wire (16+) | This brief → [integration-contracts.md](integration-contracts.md) → step packet → [D1](reference/decisions-and-notes.md#d1-store-wire-format) / [D2](reference/decisions-and-notes.md#d2-delivery-module-hook-design). Steps 14–16: [step-14-normative.md](plan/completed/step-14-normative.md), [step-15-normative.md](plan/completed/step-15-normative.md), [step-16.md](plan/completed/step-16.md). |
 | Module eligibility bugfix | [step12-user-eligibility.md](step12-user-eligibility.md) or [step13-provider-eligibility.md](step13-provider-eligibility.md) + contracts |
 | Localnet / verify failure | [demo-localnet-recovery.md](demo-localnet-recovery.md) + relevant `verify-step*-dod.sh` |
-| Step 17 E2E dual-host | [step17-e2e-local.md](step17-e2e-local.md) + [plan/upcoming/step-17.md](plan/upcoming/step-17.md) |
+| Step 17 E2E dual-host | [step17-e2e-local.md](step17-e2e-local.md) (incl. [hermetic run](step17-e2e-local.md#hermetic-run-hand-off)) + [plan/upcoming/step-17.md](plan/upcoming/step-17.md) + [N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18) |
 | Rust FFI / policy only | `lez-payment-streams-core` tests + [step3-policy-and-implementor-notes.md](step3-policy-and-implementor-notes.md) |
 | LIP on-chain spec (19) | [step-19-lip155-onchain-spec.md](plan/upcoming/step-19-lip155-onchain-spec.md) + [architecture.md](../architecture.md) |
 | Doc packet (20 / 22) | Step packet + [logos-docs doc packet template](https://github.com/logos-co/logos-docs/blob/main/resources/templates/doc-packet.md) |
