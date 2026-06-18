@@ -13,6 +13,8 @@ plus non-blocking notes carried forward into the demo.
 
 RFC 73 defines the general pattern: eligibility proof on the request, eligibility status on
 the response, with extensible proof types.
+Spec: [RFC 73](https://rfc.vac.dev/spec/73/) (general incentivization pattern; this demo applies
+it to Store at tag `30` with LIP-155 bytes).
 This demo binds that pattern to Store RPC at tag `30`: opaque LIP-155 payment-stream
 `EligibilityProof` bytes on the request and a nested payment-stream verdict object on the
 response.

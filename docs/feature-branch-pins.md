@@ -39,7 +39,11 @@ Workflow detail: [integration-index.md](../integration-index.md#delivery-integra
 | Artifact | Branch ref | Locked rev (2026-06-18) |
 | --- | --- | --- |
 | `logos-delivery` flake input | `feat/payment-streams-store-eligibility` | `e59319d8648c3c3ea9384c592728d5738f623a13` (Step 15; Step 14 at `d033a493`) |
-| `logos-delivery-module` integration branch | `feat/payment-streams-store-eligibility` | `bf104a6` (Step 16 bridge; thread probe at `ef64fa0`) |
+| `logos-delivery-module` integration branch | `feat/payment-streams-store-eligibility` | `bf104a6bfde35ce4fcae5081278d1996ebf5e3c1` (Step 16 bridge; thread probe at `ef64fa0`) |
+
+Pin table dates are when the row was last updated. Decision subsection titles in
+[decisions-and-notes.md](reference/decisions-and-notes.md) use their own `(YYYY-MM-DD)` record dates;
+those need not match the pin table calendar day.
 
 Module repo: same branch name on `logos-delivery-module` (`flake.nix` + `flake.lock` at
 `e59319d…` for the `logos-delivery` input). Push target may be org fork or personal fork

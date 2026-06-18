@@ -4,7 +4,7 @@ Active-work packet for agents. Index: [integration-index.md](../../../integratio
 
 ### Step 17, End-to-end demo wiring
 
-Blocked on Step 16 bridge ([N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18);
+Prerequisite: Step 16 bridge complete ([N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18);
 `storeQuery` and eligibility routing on our delivery forks; see [N6](../../reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)).
 
 Architectural context:
@@ -14,7 +14,7 @@ all three backend modules in each host,
 the LEZ sequencer for chain reads and writes,
 and direct Store traffic from the user host to the provider host.
 
-Step 16 lands eligibility routing and async `storeQuery` on `delivery_module` only.
+Step 16 landed eligibility routing and async `storeQuery` on `delivery_module`.
 This step owns full-stack verification: paid Store query across two hosts, eligibility
 outcomes on user and provider, and inbound Store `BAD_REQUEST` when verification fails
 ([N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).

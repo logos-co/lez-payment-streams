@@ -28,7 +28,8 @@ Steps 16–17 need Store query on our delivery forks, not on upstream `master` (
 `logos-delivery-module` (Step 16). Upstream N6 is no longer a gate for Steps 14–17.
 Step 14 (wire) and Step 15 (C hooks + `logosdelivery_store_query`) are complete on the
 `logos-delivery` fork; Step 16 (bridge on `logos-delivery-module`) is complete on the module
-fork (`bf104a6` on `feat/payment-streams-store-eligibility`). Step 17 owns full-stack E2E
+fork (`bf104a6bfde35ce4fcae5081278d1996ebf5e3c1` on `feat/payment-streams-store-eligibility`).
+Step 17 owns full-stack E2E
 ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
 
 We do not maintain the retired exploratory PR branch
@@ -111,13 +112,13 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 11 | Module chain I/O | 11a–d runbooks; [N10](docs/reference/decisions-and-notes.md#n10-step-11b-module-writes-decisions) |
 | 12 | User eligibility | Complete — [step12](docs/step12-user-eligibility.md), `verify-step12-dod.sh` |
 | 13 | Provider verify | Complete — [step13](docs/step13-provider-eligibility.md), `verify-step13-dod.sh` |
-| 14 | Store wire (`logos-delivery`) | Complete — branch `feat/payment-streams-store-eligibility` (`d033a493`); [step-14-normative.md](docs/plan/completed/step-14-normative.md) |
-| 15 | `liblogosdelivery` hooks | Complete — branch `feat/payment-streams-store-eligibility` (`e59319d8`); [step-15-normative.md](docs/plan/completed/step-15-normative.md) |
-| 16 | `delivery_module` routing | Upcoming — bridge only [step-16.md](docs/plan/upcoming/step-16.md) ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)) |
+| 14 | Store wire (`logos-delivery`) | Complete — `d033a49364f1dda4ee4e5467d828738d01eb7d4c`; [step-14-normative.md](docs/plan/completed/step-14-normative.md) |
+| 15 | `liblogosdelivery` hooks | Complete — `e59319d8648c3c3ea9384c592728d5738f623a13`; [step-15-normative.md](docs/plan/completed/step-15-normative.md) |
+| 16 | `delivery_module` routing | Complete — `bf104a6bfde35ce4fcae5081278d1996ebf5e3c1`; [step-16.md](docs/plan/upcoming/step-16.md) ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)) |
 | 17 | E2E demo | Upcoming — full stack script [step-17.md](docs/plan/upcoming/step-17.md) |
 | 18 | Basecamp UI | Optional — [step-18.md](docs/plan/upcoming/step-18.md) |
 
-Execution order: Steps 12, 11d, 13, 14, and 15 are complete. Next: 16 → 17 on delivery forks
+Execution order: Steps 12, 11d, 13, 14, 15, and 16 are complete. Next: 17 on delivery forks
 ([`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md)). Local demos:
 [`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 
@@ -139,11 +140,8 @@ DoD: `verifyEligibilityForStoreQuery`, FFI `parse_eligibility_proof_bytes`, pers
 
 ### Step 14 — Store wire (complete)
 
-DoD: Store tag `30` on `StoreQueryRequest` / `StoreQueryResponse` in
-`logos_delivery/waku/waku_store/` on `logos-delivery` branch
-`feat/payment-streams-store-eligibility`. Verify:
-`nimble buildTest tests/waku_store/test_rpc_codec.nim` in that repo.
-Normative excerpt: [step-14-normative.md](docs/plan/completed/step-14-normative.md).
+Normative excerpt and DoD: [step-14-normative.md](docs/plan/completed/step-14-normative.md).
+Branch pin: [feature-branch-pins.md](docs/feature-branch-pins.md).
 
 ### Step 15 — `liblogosdelivery` hooks (complete)
 
@@ -152,11 +150,17 @@ DoD: C verifier/provider registration, inbound wrapper, N8 Nim serializer parity
 `logos-delivery` branch `feat/payment-streams-store-eligibility`.
 Verify: [step-15-normative.md](docs/plan/completed/step-15-normative.md).
 
+### Step 16 — `delivery_module` bridge (complete)
+
+DoD: eligibility routing, async `storeQuery`, registration introspection; unit tests on
+`logos-delivery-module` branch `feat/payment-streams-store-eligibility`.
+Agent packet (decision table + bridge DoD): [step-16.md](docs/plan/upcoming/step-16.md).
+Branch pin: [feature-branch-pins.md](docs/feature-branch-pins.md).
+
 ## Upcoming steps (pointers)
 
 Do not duplicate full DoD here — read the packet:
 
-- [Step 16](docs/plan/upcoming/step-16.md) — bridge routing (unit / logoscore); not full two-host E2E
 - [Step 17](docs/plan/upcoming/step-17.md) — two logical hosts, paid Store mode, demo script ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18))
 - [Step 18](docs/plan/upcoming/step-18.md) — optional `ui_qml` plugin
 

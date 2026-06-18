@@ -11,11 +11,10 @@ orchestrates wallet I/O; `logos-delivery` gains opaque wire fields and hooks (St
 
 ## Active work (execution order)
 
-Steps 1–13, 11d, and Steps 14–15 on `logos-delivery` are complete. Implement next:
+Steps 1–13, 11d, and Steps 14–16 on the delivery forks are complete. Implement next:
 
 | Step | Repo / area | Agent packet |
 | --- | --- | --- |
-| 16 | `logos-delivery-module` routing | [plan/upcoming/step-16.md](plan/upcoming/step-16.md) |
 | 17 | E2E demo wiring | [plan/upcoming/step-17.md](plan/upcoming/step-17.md) |
 | 18 | Basecamp UI (optional) | [plan/upcoming/step-18.md](plan/upcoming/step-18.md) |
 
@@ -33,7 +32,7 @@ Summary:
 
 | Task | Files (in order) |
 | --- | --- |
-| Delivery / Store wire (16+) | This brief → [integration-contracts.md](integration-contracts.md) → step packet → [D1](reference/decisions-and-notes.md#d1-store-wire-format) / [D2](reference/decisions-and-notes.md#d2-delivery-module-hook-design). Steps 14–15: [step-14-normative.md](plan/completed/step-14-normative.md), [step-15-normative.md](plan/completed/step-15-normative.md). |
+| Delivery / Store wire (16+) | This brief → [integration-contracts.md](integration-contracts.md) → step packet → [D1](reference/decisions-and-notes.md#d1-store-wire-format) / [D2](reference/decisions-and-notes.md#d2-delivery-module-hook-design). Steps 14–16: [step-14-normative.md](plan/completed/step-14-normative.md), [step-15-normative.md](plan/completed/step-15-normative.md), [step-16.md](plan/upcoming/step-16.md). |
 | Module eligibility bugfix | [step12-user-eligibility.md](step12-user-eligibility.md) or [step13-provider-eligibility.md](step13-provider-eligibility.md) + contracts |
 | Localnet / verify failure | [demo-localnet-recovery.md](demo-localnet-recovery.md) + relevant `verify-step*-dod.sh` |
 | Rust FFI / policy only | `lez-payment-streams-core` tests + [step3-policy-and-implementor-notes.md](step3-policy-and-implementor-notes.md) |

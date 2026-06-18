@@ -7,7 +7,8 @@ Operator commands stay in `step*.md` runbooks.
 
 ## Store wire (Step 14 — D1)
 
-RFC 73 pattern on Store: proof on request, status on response.
+RFC 73 pattern on Store: proof on request, status on response
+([RFC 73](https://rfc.vac.dev/spec/73/)).
 Proof bytes are LIP-155 payment-stream `EligibilityProof` (not the legacy
 `waku/incentivization` proof-of-payment POC).
 
@@ -105,6 +106,7 @@ File: `payment_streams_state.json` under logoscore `instancePersistencePath`.
 
 ## Canonical payload (N8 summary)
 
+Full specification: [N8](reference/decisions-and-notes.md#n8-canonical-store-request-bytes-format).
 `canonical_payload = PREFIX || borsh(CanonicalStoreRequest)`; `StreamProof.signature` signs
 `SHA-256(canonical_payload)`. Nim (Step 15) and Rust (Step 4) must byte-match; pinned tests in
 core and the Step 15 Nim parity test on the delivery fork.
