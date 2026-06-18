@@ -10,15 +10,16 @@ Store query for the demo ships on our `logos-delivery` / `logos-delivery-module`
 (Steps 15–16, [D2](reference/decisions-and-notes.md#d2-delivery-module-hook-design),
 [N6](reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)). Step 15 is
 complete on the delivery fork (verify commands in
-[step-15-normative.md](plan/completed/step-15-normative.md)). The module flake pins
-`logos-delivery` to the integration branch; locked rev in the table below.
+[step-15-normative.md](plan/completed/step-15-normative.md)). Step 16 (eligibility bridge,
+async `storeQuery`) is complete on the module fork. The module flake pins `logos-delivery` to
+the integration branch; locked revs in the table below.
 
 ## Delivery integration branches (Steps 14–17)
 
 Branch from upstream `master` in each delivery repo; avoid release-tag baselines and the
 retired `feat/liblogosdelivery-query-store` branch. Default shared name:
 `feat/payment-streams-store-eligibility` on `logos-delivery` (Steps 14–15 complete) and
-`logos-delivery-module` (Step 16); alternatives if needed:
+`logos-delivery-module` (Step 16 complete); alternatives if needed:
 `feat/lip155-store-eligibility`, `integration/payment-streams-store`.
 Point the module flake's `logos-delivery` input at the integration branch (same name on
 `logos-messaging/logos-delivery`). Configured in `logos-delivery-module/flake.nix`:
@@ -35,13 +36,15 @@ Workflow detail: [integration-index.md](../integration-index.md#delivery-integra
 
 ### Delivery flake lock (logos-delivery-module)
 
-| Input | Branch ref | Locked rev (2026-06-18) |
+| Artifact | Branch ref | Locked rev (2026-06-18) |
 | --- | --- | --- |
-| `logos-delivery` | `feat/payment-streams-store-eligibility` | `e59319d8648c3c3ea9384c592728d5738f623a13` (Step 15; Step 14 at `d033a493`) |
+| `logos-delivery` flake input | `feat/payment-streams-store-eligibility` | `e59319d8648c3c3ea9384c592728d5738f623a13` (Step 15; Step 14 at `d033a493`) |
+| `logos-delivery-module` integration branch | `feat/payment-streams-store-eligibility` | `bf104a6` (Step 16 bridge; thread probe at `ef64fa0`) |
 
 Module repo: same branch name on `logos-delivery-module` (`flake.nix` + `flake.lock` at
 `e59319d…` for the `logos-delivery` input). Push target may be org fork or personal fork
-until the integration branch lands on `logos-co/logos-delivery-module`.
+(`s-tikhomirov/logos-delivery-module`) until the integration branch lands on
+`logos-co/logos-delivery-module`.
 
 Re-run `nix flake update logos-delivery` in `logos-delivery-module` after pushing new commits to
 that branch, then commit the updated `flake.lock`. Step 17 E2E may pin this rev explicitly in

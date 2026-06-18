@@ -27,8 +27,9 @@ Steps 16–17 need Store query on our delivery forks, not on upstream `master` (
 `logosdelivery_store_query` in `logos-delivery` (Step 15) and `storeQuery(...)` on
 `logos-delivery-module` (Step 16). Upstream N6 is no longer a gate for Steps 14–17.
 Step 14 (wire) and Step 15 (C hooks + `logosdelivery_store_query`) are complete on the
-`logos-delivery` fork; Step 16 (bridge on `logos-delivery-module`) is next. Step 17 owns
-full-stack E2E ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+`logos-delivery` fork; Step 16 (bridge on `logos-delivery-module`) is complete on the module
+fork (`bf104a6` on `feat/payment-streams-store-eligibility`). Step 17 owns full-stack E2E
+([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
 
 We do not maintain the retired exploratory PR branch
 (`feat/liblogosdelivery-query-store` / old `queryStore` exposure) in payment-streams flakes.
@@ -48,12 +49,12 @@ If that name is taken on a remote, use `feat/lip155-store-eligibility` or
 | Repo | Steps | Scope |
 | --- | --- | --- |
 | `logos-delivery` | 14–15 (done) | Store codec (tag `30`), `liblogosdelivery` hooks, `logosdelivery_store_query` |
-| `logos-delivery-module` | 16 | `storeQuery`, eligibility routing; `flake.nix` pins `logos-delivery` to `feat/payment-streams-store-eligibility` ([feature-branch-pins.md](docs/feature-branch-pins.md)) |
+| `logos-delivery-module` | 16 (done) | `storeQuery`, eligibility routing; `flake.nix` pins `logos-delivery` to `feat/payment-streams-store-eligibility` ([feature-branch-pins.md](docs/feature-branch-pins.md)) |
 
 Suggested workflow: Steps 14–15 are on `logos-delivery` branch
-`feat/payment-streams-store-eligibility`. Implement Step 16 on
-`logos-delivery-module` (same branch name recommended) — the module repo already points its
-flake `logos-delivery` input at that branch; commit `flake.lock` when the delivery branch moves.
+`feat/payment-streams-store-eligibility`. Step 16 is on `logos-delivery-module` (same branch
+name). The module repo points its flake `logos-delivery` input at that branch; commit
+`flake.lock` when the delivery branch moves.
 Optional explicit rev rows in [`feature-branch-pins.md`](docs/feature-branch-pins.md) for Step 17
 needs reproducible `lgpm` installs. Wallet pins in that doc are unchanged.
 
