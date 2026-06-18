@@ -93,7 +93,7 @@ We ship this on our branches and do not negotiate spec changes.
 Step 16 bridge and verification (normative): threading and async `storeQuery` ([N3a](#n3a-step-16-threading--approach-a-experiment-2025-06-18)),
 hook lifecycle ([N3b](#n3b-step-16-hook-registration-lifecycle-2025-06-18)), NULL inbound proof ([N3c](#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)),
 scope vs Step 17 E2E ([N12](#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
-Agent summary table: [step-16.md](../plan/upcoming/step-16.md#resolved-implementation-decisions-2025-06-18).
+Agent summary table: [step-16.md](../plan/completed/step-16.md#resolved-implementation-decisions-2025-06-18).
 
 Inbound `eligibility_status.desc` on the Store wire (D1) is filled by `liblogosdelivery`
 after the verifier callback returns:
@@ -433,7 +433,7 @@ roadmap item is independent of this integration.
 
 Active path ([D2](#d2-delivery-module-hook-design)): add `logosdelivery_store_query` on our
 `logos-delivery` fork (Step 15) and `storeQuery(...)` on our `logos-delivery-module` fork
-(Step 16), wired to eligibility hooks and `payment_streams_module`. Steps 14–17 do not wait on
+(Step 16), wired to eligibility hooks and `payment_streams_module`. Steps 14–20 do not wait on
 upstream N6. Step 17 E2E depends on Step 16 bridge landing on those forks ([N12](#n12-step-16-vs-step-17-verification-scope-2025-06-18)), not on upstream
 `master`.
 

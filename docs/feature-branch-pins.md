@@ -14,13 +14,11 @@ complete on the delivery fork (verify commands in
 async `storeQuery`) is complete on the module fork. The module flake pins `logos-delivery` to
 the integration branch; locked revs in the table below.
 
-## Delivery integration branches (Steps 14–17)
+## Delivery integration branches (Steps 14–18)
 
 Branch from upstream `master` in each delivery repo; avoid release-tag baselines and the
-retired `feat/liblogosdelivery-query-store` branch. Default shared name:
-`feat/payment-streams-store-eligibility` on `logos-delivery` (Steps 14–15 complete) and
-`logos-delivery-module` (Step 16 complete); alternatives if needed:
-`feat/lip155-store-eligibility`, `integration/payment-streams-store`.
+retired `feat/liblogosdelivery-query-store` branch. Branch name priority:
+[integration-index.md](../integration-index.md#delivery-integration-branches).
 Point the module flake's `logos-delivery` input at the integration branch (same name on
 `logos-messaging/logos-delivery`). Configured in `logos-delivery-module/flake.nix`:
 
@@ -30,7 +28,7 @@ logos-delivery.url =
 ```
 
 Commit `flake.lock` after changing the input; the lock file records the resolved `rev` at update
-time (branch tip moves until you re-lock). Step 17 E2E scripts may cite the locked rev
+time (branch tip moves until you re-lock). Steps 17–18 E2E may cite the locked rev
 explicitly; wallet pins follow the table in the next section.
 Workflow detail: [integration-index.md](../integration-index.md#delivery-integration-branches).
 
@@ -51,7 +49,7 @@ Module repo: same branch name on `logos-delivery-module` (`flake.nix` + `flake.l
 `logos-co/logos-delivery-module`.
 
 Re-run `nix flake update logos-delivery` in `logos-delivery-module` after pushing new commits to
-that branch, then commit the updated `flake.lock`. Step 17 E2E may pin this rev explicitly in
+that branch, then commit the updated `flake.lock`. Steps 17–18 E2E may pin this rev explicitly in
 scripts; until then the branch ref in `flake.nix` plus a committed lock is the source of truth.
 
 ## Wallet — primary path (510 on main + PR 19)

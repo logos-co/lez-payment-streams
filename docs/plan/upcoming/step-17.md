@@ -8,43 +8,35 @@ Prerequisite: Step 16 bridge complete ([N12](../../reference/decisions-and-notes
 `storeQuery` and eligibility routing on our delivery forks; see [N6](../../reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)).
 
 Architectural context:
-this is the only step that exercises every layer at once:
-two Logos hosts (`logoscore` daemons),
-all three backend modules in each host,
-the LEZ sequencer for chain reads and writes,
-and direct Store traffic from the user host to the provider host.
+this step exercises every layer at once (two `logoscore` hosts, three backend modules each,
+local LEZ, cross-host Store). Scope boundary: [N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)
+(Step 16 proved the bridge; Step 17 proves full-stack paid Store and eligibility on the wire).
 
-Step 16 landed eligibility routing and async `storeQuery` on `delivery_module`.
-This step owns full-stack verification: paid Store query across two hosts, eligibility
-outcomes on user and provider, and inbound Store `BAD_REQUEST` when verification fails
-([N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+The host application must call `registerProviderMapping` on the streams module before outbound
+Store queries in this demo.
 
-Note that the host application is responsible for calling
-`registerProviderMapping` on the streams module before outbound Store queries in the Step 17 demo.
+Create `scripts/demo-e2e-local.sh` that:
 
-Create a single shell script that
-starts a fresh scaffold workspace,
-deploys `lez_payment_streams`,
-builds `.lgx` packages for `logos_execution_zone` (our branch),
-`payment_streams_module`,
-and `delivery_module` built from our `logos-delivery-module` integration branch (Step 16),
-linking `liblogosdelivery` from the matching `logos-delivery` fork rev
-([delivery integration branches](../../../integration-index.md#delivery-integration-branches),
-[D2](../../reference/decisions-and-notes.md#d2-delivery-module-hook-design)),
-installs them with `lgpm` into two module directories,
-launches two `logoscore` instances loaded with all three modules
-on disjoint `portsShift` values
-(per the workaround documented in
-[`logos-delivery-module#18`](https://github.com/logos-co/logos-delivery-module/issues/18)
-and used by `logos-delivery-demo`;
-example: user `portsShift: 0`, provider `portsShift: 100`),
-starts the provider `delivery_module` with relay and Store service enabled,
-backed by a SQLite archive and a demo retention policy,
-starts the user `delivery_module` with Store client support
-and the provider's explicit peer address configured as the Store target,
-drives the user flow from vault initialization through Store query,
-and drives a manual claim on the provider side.
-The script captures structured logs at each phase.
+- starts a fresh scaffold workspace,
+- deploys `lez_payment_streams`,
+- builds `.lgx` packages for `logos_execution_zone` (our branch),
+  `payment_streams_module`,
+  and `delivery_module` built from our `logos-delivery-module` integration branch (Step 16),
+  linking `liblogosdelivery` from the matching `logos-delivery` fork rev
+  ([delivery integration branches](../../../integration-index.md#delivery-integration-branches),
+  [D2](../../reference/decisions-and-notes.md#d2-delivery-module-hook-design)),
+- installs them with `lgpm` into two module directories,
+- launches two `logoscore` instances loaded with all three modules
+  on disjoint `portsShift` values
+  (per [`logos-delivery-module#18`](https://github.com/logos-co/logos-delivery-module/issues/18)
+  and `logos-delivery-demo`; example: user `portsShift: 0`, provider `portsShift: 100`),
+- starts the provider `delivery_module` with relay and Store service enabled,
+  backed by a SQLite archive and a demo retention policy,
+- starts the user `delivery_module` with Store client support
+  and the provider's explicit peer address as the Store target,
+- drives the user flow from vault initialization through Store query,
+- drives a manual claim on the provider side,
+- captures structured logs at each phase.
 
 The first smoke path uses two nodes:
 the provider archives messages and the user queries the provider directly.
@@ -72,20 +64,17 @@ and direct network reachability between the two local hosts.
 
 Definition of done:
 
-The Step 16 bridge is installed from the integration branch and both hosts register
-`payment_streams_module` as eligibility verifier and provider where the demo requires it.
+1. Bridge and hooks: Step 16 integration branch installed; both hosts register
+   `payment_streams_module` as eligibility verifier and provider where the demo requires it.
+2. Success path: user-initiated `delivery_module.storeQuery` against the provider peer returns a
+   successful Store outcome when chain state and proofs are valid, including provider inbound
+   eligibility OK.
+3. Failure path: when provider eligibility fails (including missing proof in paid mode — [N3c](../../reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)),
+   provider sees Store `BAD_REQUEST` (400), populated `eligibility_status` (verdict and `desc`),
+   and an empty messages list.
+4. Artifact: `scripts/demo-e2e-local.sh` runs to completion on a clean workspace and writes a
+   log artifact covering every chain transaction, Store request, and eligibility outcomes on both
+   ends.
 
-A user-initiated Store query through `delivery_module.storeQuery` against the provider peer
-returns a successful Store outcome when chain state and proofs are valid, including successful
-eligibility on the provider inbound path.
-
-When eligibility checks fail on the provider (including Store requests with no proof while
-paid mode expects one — see [N3c](../../reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)),
-the provider observes `BAD_REQUEST` (400), a populated `eligibility_status` object with
-verdict and `desc`, and an empty messages list.
-
-The script runs to completion against a clean workspace
-and produces a log artifact that documents
-every chain transaction, every Store request,
-and the eligibility outcomes observed on both ends.
-
+Follow-on: Step 18 (testnet), Step 19 (LIP on-chain), Step 20 (developer journey); optional
+Steps 21–22 (UI). See [integration-index.md](../../../integration-index.md#program-outcomes).

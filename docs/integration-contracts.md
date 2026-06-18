@@ -2,7 +2,7 @@
 
 Cross-step APIs and wire shapes. Normative detail: [reference/decisions-and-notes.md](reference/decisions-and-notes.md)
 (D1, D2, N3a–N3c, N8, N11, N12). Step 16 bridge summary:
-[plan/upcoming/step-16.md](plan/upcoming/step-16.md#resolved-implementation-decisions-2025-06-18).
+[plan/completed/step-16.md](plan/completed/step-16.md#resolved-implementation-decisions-2025-06-18).
 Operator commands stay in `step*.md` runbooks.
 
 ## Store wire (Step 14 — D1)

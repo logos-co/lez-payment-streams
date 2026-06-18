@@ -17,15 +17,26 @@ Crypto and policy live in Rust (`lez-payment-streams-core`,
 `lez-payment-streams-ffi`); orchestration in Universal `payment_streams_module`; Store wire and
 `liblogosdelivery` hooks in the delivery repos (Steps 14–16).
 
-MVP scope: LIP-155 transparent vaults, single user and single provider on one local sequencer,
-paid Store mode on the provider. The on-chain SPEL program and core crate are a separate concern;
-see [architecture.md](architecture.md).
+MVP scope: LIP-155 transparent vaults, single user and single provider, paid Store mode on the
+provider. Step 17 uses a local LEZ sequencer; Step 18 targets public testnet v0.2 for the operator
+demo. The on-chain guest is documented in Step 19 (`rfc-index`); see [architecture.md](architecture.md).
+
+## Program outcomes
+
+| Outcome | Steps |
+| --- | --- |
+| Runnable demo (CLI) | 17 local integration gate; 18 testnet variant |
+| LIP-155 on-chain spec on `main` | 19 |
+| Developer journey (logos-docs doc packet) | 20 |
+| Basecamp UI + UI journey (optional) | 21–22 |
+
+Details in step packets under [`docs/plan/upcoming/`](docs/plan/upcoming/); do not duplicate DoD here.
 
 ### Store query dependency
 
-Steps 16–17 need Store query on our delivery forks, not on upstream `master` ([D2](docs/reference/decisions-and-notes.md#d2-delivery-module-hook-design), [N6](docs/reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)):
+Steps 16–20 need Store query on our delivery forks, not on upstream `master` ([D2](docs/reference/decisions-and-notes.md#d2-delivery-module-hook-design), [N6](docs/reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)):
 `logosdelivery_store_query` in `logos-delivery` (Step 15) and `storeQuery(...)` on
-`logos-delivery-module` (Step 16). Upstream N6 is no longer a gate for Steps 14–17.
+`logos-delivery-module` (Step 16). Upstream N6 is no longer a gate for Steps 14–20.
 Step 14 (wire) and Step 15 (C hooks + `logosdelivery_store_query`) are complete on the
 `logos-delivery` fork; Step 16 (bridge on `logos-delivery-module`) is complete on the module
 fork (`bf104a6bfde35ce4fcae5081278d1996ebf5e3c1` on `feat/payment-streams-store-eligibility`).
@@ -42,10 +53,15 @@ Store eligibility work ships on integration branches forked from current upstrea
 `logos-delivery-module/v0.1.1` used by `logos-delivery-demo`); tags lag the wire and ABI
 changes in Steps 14–16.
 
-Default branch name (use the same string in both repos):
-`feat/payment-streams-store-eligibility`.
-If that name is taken on a remote, use `feat/lip155-store-eligibility` or
-`integration/payment-streams-store` instead, but keep both delivery repos aligned on one name.
+Default branch name (use the same string in both repos), in priority order if the name is taken
+on a remote:
+
+1. `feat/payment-streams-store-eligibility` (preferred)
+2. `feat/lip155-store-eligibility`
+3. `integration/payment-streams-store`
+
+Record the chosen name in [`feature-branch-pins.md`](docs/feature-branch-pins.md) when creating
+the branch. Both delivery repos must use the same string.
 
 | Repo | Steps | Scope |
 | --- | --- | --- |
@@ -65,7 +81,8 @@ needs reproducible `lgpm` installs. Wallet pins in that doc are unchanged.
 
 1. [`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md)
 2. [`docs/integration-contracts.md`](docs/integration-contracts.md)
-3. Step packet: [`docs/plan/upcoming/step-N.md`](docs/plan/upcoming/) or completed runbook under `docs/step*.md`
+3. Step packet: [`docs/plan/upcoming/step-N.md`](docs/plan/upcoming/) or
+   [`docs/plan/completed/step-N.md`](docs/plan/completed/) (Step 16) or runbook under `docs/step*.md`
 4. [`logos-architecture-overview.md`](logos-architecture-overview.md) when boundaries are unclear
 
 ### Full (first time in repo)
@@ -114,12 +131,17 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 13 | Provider verify | Complete — [step13](docs/step13-provider-eligibility.md), `verify-step13-dod.sh` |
 | 14 | Store wire (`logos-delivery`) | Complete — `d033a49364f1dda4ee4e5467d828738d01eb7d4c`; [step-14-normative.md](docs/plan/completed/step-14-normative.md) |
 | 15 | `liblogosdelivery` hooks | Complete — `e59319d8648c3c3ea9384c592728d5738f623a13`; [step-15-normative.md](docs/plan/completed/step-15-normative.md) |
-| 16 | `delivery_module` routing | Complete — `bf104a6bfde35ce4fcae5081278d1996ebf5e3c1`; [step-16.md](docs/plan/upcoming/step-16.md) ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)) |
-| 17 | E2E demo | Upcoming — full stack script [step-17.md](docs/plan/upcoming/step-17.md) |
-| 18 | Basecamp UI | Optional — [step-18.md](docs/plan/upcoming/step-18.md) |
+| 16 | `delivery_module` routing | Complete — `bf104a6…`; [step-16.md](docs/plan/completed/step-16.md) |
+| 17 | E2E demo (local LEZ) | Upcoming — [step-17.md](docs/plan/upcoming/step-17.md) |
+| 18 | Public testnet demo | Upcoming — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
+| 19 | LIP-155 on-chain spec | Upcoming — [step-19-lip155-onchain-spec.md](docs/plan/upcoming/step-19-lip155-onchain-spec.md) |
+| 20 | Developer journey doc packet | Upcoming — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
+| 21 | Basecamp UI | Optional — [step-21-basecamp-ui.md](docs/plan/upcoming/step-21-basecamp-ui.md) |
+| 22 | UI journey doc packet | Optional — [step-22-ui-journey.md](docs/plan/upcoming/step-22-ui-journey.md) |
 
-Execution order: Steps 12, 11d, 13, 14, 15, and 16 are complete. Next: 17 on delivery forks
-([`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md)). Local demos:
+Execution order: Steps 12, 11d, 13, 14, 15, and 16 are complete. Next: 17, then 18–20 in order;
+19 may parallel 17–18. Optional 21–22 after 20 if shipping UI docs. Entry:
+[`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md). Local demos:
 [`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 
 Doc index: [`docs/README.md`](docs/README.md). Plan layout: [`docs/plan/README.md`](docs/plan/README.md).
@@ -154,15 +176,19 @@ Verify: [step-15-normative.md](docs/plan/completed/step-15-normative.md).
 
 DoD: eligibility routing, async `storeQuery`, registration introspection; unit tests on
 `logos-delivery-module` branch `feat/payment-streams-store-eligibility`.
-Agent packet (decision table + bridge DoD): [step-16.md](docs/plan/upcoming/step-16.md).
-Branch pin: [feature-branch-pins.md](docs/feature-branch-pins.md).
+Agent packet: [step-16.md](docs/plan/completed/step-16.md). Locked rev:
+[feature-branch-pins.md](docs/feature-branch-pins.md).
 
 ## Upcoming steps (pointers)
 
 Do not duplicate full DoD here — read the packet:
 
-- [Step 17](docs/plan/upcoming/step-17.md) — two logical hosts, paid Store mode, demo script ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18))
-- [Step 18](docs/plan/upcoming/step-18.md) — optional `ui_qml` plugin
+- [Step 17](docs/plan/upcoming/step-17.md) — two hosts, local LEZ, paid Store script ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18))
+- [Step 18](docs/plan/upcoming/step-18-public-testnet-demo.md) — testnet v0.2 operator demo
+- [Step 19](docs/plan/upcoming/step-19-lip155-onchain-spec.md) — on-chain LIP on `main`
+- [Step 20](docs/plan/upcoming/step-20-developer-journey.md) — logos-docs developer journey
+- [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) — optional `ui_qml` plugin
+- [Step 22](docs/plan/upcoming/step-22-ui-journey.md) — optional UI journey doc packet
 
 ## Verify scripts (logoscore path)
 

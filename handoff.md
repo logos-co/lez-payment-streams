@@ -6,35 +6,22 @@ into the Logos stack as a demo.
 Start with `integration-index.md` in this directory.
 It contains the full plan, onboarding reading order,
 prerequisites, component overview, decisions, notes,
-and numbered integration steps (Step 3 splits into 3a/3b; Steps 6–18 after Rust FFI) with definitions of done.
+and numbered integration steps (Step 3 splits into 3a/3b; Steps 6–22 after Rust FFI) with definitions of done.
+See [integration-index.md](integration-index.md#program-outcomes) for demo, spec, and journey steps 17–22.
 
-LIP-155 is normative in `rfc-index`; LEZ wire bindings are in
-`rfc-index/docs/ift-ts/raw/payment-streams.md` (LEZ off-chain integration).
-
+On-chain normative text merges in Step 19 (`feat/payment-streams-onchain-part` → `main`).
 `logos-architecture-overview.md` in this directory
 covers the architectural context
 (hosts vs. modules, FFI boundaries, Qt roles, LEZ chain side).
 
 ## Store access via `delivery_module`
 
-Paid Store demo steps (Step 16 onward) need a supported way to issue Store
-queries through `logos-delivery-module` (for example `queryStore` on upstream
-`master` once the Delivery team lands their roadmap design).
+Paid Store demo uses our delivery forks: `logosdelivery_store_query` (Step 15) and
+`delivery_module.storeQuery` (Step 16) on branch `feat/payment-streams-store-eligibility`.
+See [integration-index.md](integration-index.md#store-query-dependency) and [N6](docs/reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure).
+Do not pin the retired `feat/liblogosdelivery-query-store` / early `queryStore` PR stack.
 
-We do not integrate against our own `logosdelivery_query_store` /
-`queryStore` PR stack. That approach is superseded by the upstream plan.
-Open PRs against `logos-delivery` and `logos-delivery-module` may remain for
-reference but must not be pinned in flakes, forked locally, or treated as the
-integration path.
-
-Until upstream Store query exposure is on `master`, continue work that does not
-call `delivery_module` for Store retrieval (Rust FFI Steps 1–5, Step 6 closed
-decision, Steps 7–15 including Universal module bootstrap in Step 9).
-Step 6 in the integration plan records no local Store query exposure
-(done, won't fix).
-
-See integration-index.md (N6, D3 for wallet 491 + 19, and the component overview for
-`logos-delivery-module`) and docs/feature-branch-pins.md for wallet pins.
+Wallet pins: [docs/feature-branch-pins.md](docs/feature-branch-pins.md).
 
 Doc index: [`docs/README.md`](docs/README.md).
 

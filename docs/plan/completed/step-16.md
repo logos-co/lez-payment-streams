@@ -1,7 +1,7 @@
 # Step 16 — plan excerpt
 
 Status: complete on `logos-delivery-module` (`bf104a6bfde35ce4fcae5081278d1996ebf5e3c1`).
-Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
+Completed agent packet. Index: [integration-index.md](../../../integration-index.md).
 Normative bridge policy: [Resolved implementation decisions](#resolved-implementation-decisions-2025-06-18)
 and [integration-contracts.md](../../integration-contracts.md).
 
@@ -54,12 +54,12 @@ Detail: [N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--appr
 | `storeQuery` args | `(queryJson, providerAddr)` per [integration-contracts.md](../../integration-contracts.md). |
 | Registration | `setEligibilityVerifier` / `setEligibilityProvider`; `getPluginMethods` before commit; failed set leaves prior registration. |
 | Hook lifecycle | [N3b](../../reference/decisions-and-notes.md#n3b-step-16-hook-registration-lifecycle-2025-06-18) (within [N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18) threading constraints). |
-| Verification scope | Bridge only in Step 16; two-host paid Store and demo script in Step 17 ([N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)). |
+| Verification scope | [N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18): bridge only in Step 16; full stack in Step 17+. |
 | Tests | Unit mocks for new FFI; `tests/test_approach_a_thread_probe.cpp`; logoscore registration checks. |
 
 Components required to run:
 `logoscore` with `delivery_module` suffices for registration and misconfiguration tests.
-Full Store exchange is Step 17 ([N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+Full Store exchange: [N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18) (Step 17+).
 
 Definition of done (Step 16 — bridge only):
 
@@ -69,6 +69,5 @@ Definition of done (Step 16 — bridge only):
 - Provider enabled ⇒ async `storeQuery` without owner-thread deadlock ([N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
 - Unit tests and logoscore checks cover the wiring described above.
 
-Not in Step 16 scope ([N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)):
-two-host paid Store success, relay and archive setup, inbound wire-level 400 /
-`eligibility_status` outcomes, demo script and log artifact — see [step-17.md](step-17.md).
+Out of scope per [N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18):
+[step-17.md](../upcoming/step-17.md), [step-18-public-testnet-demo.md](../upcoming/step-18-public-testnet-demo.md).
