@@ -17,5 +17,5 @@
     "13": "docs/plan/completed/step-13-normative.md"
   },
   "reference": "docs/reference/decisions-and-notes.md",
-  "full_archive": "docs/archive/integration-plan-full.md"
+  "plan_layout": "docs/plan/README.md"
 }

@@ -6,7 +6,21 @@ and what changed in each repo to make that pin reproducible with Nix.
 The overarching goal is to run the payment-streams demo stack against wallet APIs
 that are not yet on upstream default branches.
 
-Store querying through `delivery_module`: integration plan N6 and Step 6 (not pinned here).
+Store query for the demo ships on our `logos-delivery` / `logos-delivery-module` forks
+(Steps 15–16, [D2](reference/decisions-and-notes.md#d2-delivery-module-hook-design),
+[N6](reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)). Those delivery
+revs are not pinned in this doc yet (wallet-only pins).
+
+## Delivery integration branches (Steps 14–17)
+
+Branch from upstream `master` in each delivery repo; avoid release-tag baselines and the
+retired `feat/liblogosdelivery-query-store` branch. Default shared name:
+`feat/payment-streams-store-eligibility` on `logos-delivery` (Steps 14–15) and
+`logos-delivery-module` (Step 16); alternatives if needed:
+`feat/lip155-store-eligibility`, `integration/payment-streams-store`.
+Point the module flake's `logos-delivery` input at the fork rev that built `liblogosdelivery`.
+When Step 17 adds flake pins here, record branch names and commit SHAs like the wallet table below.
+Workflow detail: [integration-index.md](../integration-index.md#delivery-integration-branches).
 
 ## Wallet — primary path (510 on main + PR 19)
 

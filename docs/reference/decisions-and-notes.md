@@ -2,7 +2,7 @@
 
 Normative decisions (D1–D6) and carry-forward notes (N1–N11) for payment-streams integration.
 Index: [integration-index.md](../../integration-index.md). Cross-step APIs: [integration-contracts.md](../integration-contracts.md).
-Full historical plan: [integration-plan-full.md](../archive/integration-plan-full.md).
+Plan excerpts: [plan/README.md](../plan/README.md).
 
 ## Decisions and Notes
 
@@ -10,6 +10,15 @@ Items resolved before implementation starts,
 plus non-blocking notes carried forward into the demo.
 
 ### D1, Store wire format
+
+RFC 73 defines the general pattern: eligibility proof on the request, eligibility status on
+the response, with extensible proof types.
+This demo binds that pattern to Store RPC at tag `30`: opaque LIP-155 payment-stream
+`EligibilityProof` bytes on the request and a nested payment-stream verdict object on the
+response.
+That is a third concrete proof flavor relative to RFC 73’s examples (for example
+proof-of-payment TXID, optional membership bytes), specified here via LIP-155 rather than by
+extending the old `waku/incentivization/` POC in-tree.
 
 Add an optional opaque `eligibility_proof` field on `StoreQueryRequest`
 and an optional opaque `eligibility_status` object on `StoreQueryResponse`.
@@ -43,16 +52,24 @@ No new status codes are added to the Store `StatusCode` enum.
 No protocol-ID version bump and no codec migration is required for the demo.
 Confirm tag `30` is unused in `waku/waku_store/rpc_codec.nim` before implementation.
 
+Step 14 implementation uses `waku/waku_store/common.nim` and `rpc_codec.nim` only.
+`waku/incentivization/` (RFC 73–linked proof-of-payment POC) is unrelated wire and must not
+be imported for Store tag `30`.
+
 ### D2, Delivery module hook design
 
-`liblogosdelivery` gains a generic registration entry point
-that takes a verifier callback (called for inbound Store requests carrying an `eligibility_proof`)
-and a path for attaching opaque eligibility-proof bytes to outbound Store queries.
-`logos-delivery-module` (our branch for eligibility hooks) gains
-`setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`
-plus a `paidStoreMode` configuration toggle.
-Store query on the module surface comes from upstream `master` (N6),
-not from our retired `queryStore` PR branch.
+`liblogosdelivery` gains two C ABI registration entry points:
+`logosdelivery_set_eligibility_verifier` (inbound Store requests)
+and `logosdelivery_set_eligibility_provider` (outbound Store queries, symmetric).
+Both take synchronous blocking C function pointers per N3.
+The verifier is invoked for every inbound Store request;
+`proof_hex` is NULL when no proof field is present,
+giving the callback full control over whether to accept unauthenticated requests.
+There is no `eligibilityRequired` flag; gating policy is expressed entirely in the callback body.
+`logos-delivery-module` (our fork for eligibility hooks) gains
+`setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`,
+and adds a `storeQuery(...)` LogosAPI method backed by `logosdelivery_store_query`
+(added on our fork of `logos-delivery`; does not depend on upstream N6).
 The bridge validates the named module's surface at registration time
 via the auto-generated `getPluginMethods` introspection.
 Both layers stay payment-streams-agnostic.
@@ -283,20 +300,25 @@ while fixing the bytes used in proofs and on-chain streams.
 
 ### N6, Delivery module Store query exposure
 
-Store retrieval through `delivery_module` is an upstream deliverable on the
-Delivery roadmap, not something this integration implements locally (Step 6,
-abandoned; done, won't fix).
+Step 6 closed the old integration stance: do not block the demo on upstream
+Store query landing on `logos-delivery` / `logos-delivery-module` `master`, and do not
+pin or maintain the retired exploratory branch
+(`feat/liblogosdelivery-query-store`, early `logosdelivery_query_store` / `queryStore` PRs)
+in payment-streams flakes. Upstream may still ship Store access on its own timeline; that
+roadmap item is independent of this integration.
 
-We opened exploratory PRs (`logosdelivery_query_store` /
-`queryStore`) that exposed existing `liblogosdelivery` Store query hooks.
-Those PRs are not the integration path: upstream is implementing Store access
-with a different design. We wait for that work on `logos-delivery` and
-`logos-delivery-module` `master` and do not pin, fork, or maintain our PR
-branch (`feat/liblogosdelivery-query-store`) in payment-streams flakes.
+Active path ([D2](#d2-delivery-module-hook-design)): add `logosdelivery_store_query` on our
+`logos-delivery` fork (Step 15) and `storeQuery(...)` on our `logos-delivery-module` fork
+(Step 16), wired to eligibility hooks and `payment_streams_module`. Steps 14–17 do not wait on
+upstream N6. Step 17 E2E depends on Step 16 completing on those forks, not on upstream
+`master`.
 
-Steps 16–17 assume an upstream module method with the same call shape planned
-for the demo (`queryStore(jsonQuery, peerAddr, timeoutMs)` or whatever name
-ships on `master`). Until then, all other integration steps proceed in parallel.
+Branch workflow: fork from upstream `master` (not module release tags); default shared
+branch name `feat/payment-streams-store-eligibility` on both delivery repos; Steps 14–15 on
+`logos-delivery`, Step 16 on `logos-delivery-module` with flake input locked to that delivery
+rev; do not reuse `feat/liblogosdelivery-query-store`. Pin table:
+[`feature-branch-pins.md`](feature-branch-pins.md) (delivery revs added at Step 17).
+Summary: [integration-index.md](../../integration-index.md#delivery-integration-branches).
 
 `logos-chat` is not a reusable Store path.
 We checked it at `origin/main` (`3a5f508`) and at the `logos-chat-module`
@@ -304,7 +326,7 @@ flake pin (`53302e4`): the embedded delivery node mounts only metadata,
 filter, and relay (`src/chat/delivery/waku_client.nim`), issues no Store query,
 and exposes no Store method.
 Chat fetches messages live over relay/filter, so it neither uses nor
-re-exports the Store protocol and does not shortcut the upstream dependency above.
+re-exports the Store protocol and does not replace the delivery fork Store API ([D2](#d2-delivery-module-hook-design)).
 
 ### N7, Session key concurrency
 

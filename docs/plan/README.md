@@ -10,7 +10,6 @@ Split from the monolithic `integration-plan.md` to keep agent context small.
 | [completed/](completed/) | Normative excerpts for finished steps (12–13) |
 | [upcoming/](upcoming/) | Active packets for Steps 14–18 |
 | [../reference/decisions-and-notes.md](../reference/decisions-and-notes.md) | D1–D6, N1–N11 |
-| [../archive/integration-plan-full.md](../archive/integration-plan-full.md) | Full historical Store integration plan |
 | [../archive/implementation-plan-on-chain.md](../archive/implementation-plan-on-chain.md) | On-chain SPEL guest milestones (archived) |
 
 Runbooks (`step10a` … `step13`) hold operator commands; do not duplicate procedures in plan excerpts.

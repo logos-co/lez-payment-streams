@@ -1,11 +1,11 @@
 # Agent brief — payment streams integration
 
-Read this file first for integration work in `lez-payment-streams`. Do not load the full
-historical plan unless you need audit-level detail.
+Read this file first for integration work in `lez-payment-streams`. Use the split doc set below; the old monolithic plan was removed.
 
 ## Goal
 
-Paid Store queries carry an LIP-155 `EligibilityProof`; the provider verifies against LEZ chain
+Paid Store queries carry an LIP-155 `EligibilityProof` (RFC 73 pattern on Store: proof on
+request, eligibility status on response); the provider verifies against LEZ chain
 state and serves only when valid. Rust/FFI holds crypto and policy; `payment_streams_module`
 orchestrates wallet I/O; `logos-delivery` gains opaque wire fields and hooks (Steps 14–16).
 
@@ -21,14 +21,20 @@ Steps 1–13 and 11d are complete in tree. Implement next:
 | 17 | E2E demo wiring | [plan/upcoming/step-17.md](plan/upcoming/step-17.md) |
 | 18 | Basecamp UI (optional) | [plan/upcoming/step-18.md](plan/upcoming/step-18.md) |
 
-Blocked: Step 16–17 Store query path until upstream `delivery_module` exposes Store query on
-`master` ([N6](reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)).
+N6 unblocked: `storeQuery` is added directly on our fork of `logos-delivery-module` (Step 16);
+upstream N6 is no longer a prerequisite for steps 16–17.
+
+Delivery branches: fork `logos-delivery` and `logos-delivery-module` from upstream
+`master` (not release tags); default shared branch name
+`feat/payment-streams-store-eligibility`. Steps 14–15 on the Nim repo, Step 16 on the module
+with flake input aligned to that fork. Summary:
+[integration-index.md](../integration-index.md#delivery-integration-branches).
 
 ## Read order by task
 
 | Task | Files (in order) |
 | --- | --- |
-| Delivery / Store wire (14–16) | This brief → [integration-contracts.md](integration-contracts.md) → step packet → [D1](reference/decisions-and-notes.md#d1-store-wire-format) / [D2](reference/decisions-and-notes.md#d2-delivery-module-hook-design) |
+| Delivery / Store wire (14–16) | This brief → [integration-contracts.md](integration-contracts.md) → step packet → [D1](reference/decisions-and-notes.md#d1-store-wire-format) / [D2](reference/decisions-and-notes.md#d2-delivery-module-hook-design). Step 14: RFC 73 pattern, `waku_store` only (not `waku/incentivization` POC). |
 | Module eligibility bugfix | [step12-user-eligibility.md](step12-user-eligibility.md) or [step13-provider-eligibility.md](step13-provider-eligibility.md) + contracts |
 | Localnet / verify failure | [demo-localnet-recovery.md](demo-localnet-recovery.md) + relevant `verify-step*-dod.sh` |
 | Rust FFI / policy only | `lez-payment-streams-core` tests + [step3-policy-and-implementor-notes.md](step3-policy-and-implementor-notes.md) |
@@ -41,9 +47,9 @@ Blocked: Step 16–17 Store query path until upstream `delivery_module` exposes 
 
 ## Historical depth (load on demand)
 
-- [archive/integration-plan-full.md](archive/integration-plan-full.md) — full pre-split plan
 - [reference/decisions-and-notes.md](reference/decisions-and-notes.md) — D1–D6, N1–N11
 - [plan/completed/step-12-normative.md](plan/completed/step-12-normative.md), [step-13-normative.md](plan/completed/step-13-normative.md)
+- Step runbooks and policy notes under [docs/README.md](README.md)
 
 ## Machine manifest
 

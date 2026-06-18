@@ -5,8 +5,12 @@ Cross-step APIs and wire shapes. Normative detail: [reference/decisions-and-note
 
 ## Store wire (Step 14 — D1)
 
+RFC 73 pattern on Store: proof on request, status on response.
+Proof bytes are LIP-155 payment-stream `EligibilityProof` (not the legacy
+`waku/incentivization` proof-of-payment POC).
+
 - Request tag `30`: opaque `eligibility_proof` (protobuf `EligibilityProof`)
-- Response tag `30`: opaque `eligibility_status` (eligibility verdict object)
+- Response tag `30`: nested `eligibility_status` (payment-stream verdict: `code` + `desc`)
 - On eligibility failure: Store `BAD_REQUEST` (400), empty messages; verdict only in tag `30`
 - Store-visible eligibility codes: `OK`, `PARAMS_REJECTED`, `PROOF_INVALID`, `STREAM_NOT_ACTIVE`
 - No new Store `StatusCode` enum values for eligibility

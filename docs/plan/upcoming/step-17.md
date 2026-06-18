@@ -4,7 +4,7 @@ Active-work packet for agents. Index: [integration-index.md](../../../integratio
 
 ### Step 17, End-to-end demo wiring
 
-Blocked on Step 16 / upstream Store query (N6).
+Blocked on Step 16 (`storeQuery` and eligibility routing on our delivery forks; see [N6](../../reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)).
 
 Architectural context:
 this is the only step that exercises every layer at once:
@@ -18,8 +18,10 @@ starts a fresh scaffold workspace,
 deploys `lez_payment_streams`,
 builds `.lgx` packages for `logos_execution_zone` (our branch),
 `payment_streams_module`,
-and `delivery_module` (upstream `master` with eligibility hooks merged or
-branched as in Step 16; Store query API from upstream only),
+and `delivery_module` built from our `logos-delivery-module` integration branch (Step 16),
+linking `liblogosdelivery` from the matching `logos-delivery` fork rev
+([delivery integration branches](../../../integration-index.md#delivery-integration-branches),
+[D2](../../reference/decisions-and-notes.md#d2-delivery-module-hook-design)),
 installs them with `lgpm` into two module directories,
 launches two `logoscore` instances loaded with all three modules
 on disjoint `portsShift` values
@@ -48,7 +50,7 @@ so the user retrieves historical messages it did not originate.
 Components required to run:
 LEZ sequencer on `127.0.0.1:3040`,
 `lez_payment_streams` program deployed onto it
-(**Step 11d** complete, or documented CLI deploy from Step 10a on a clean workspace),
+(Step 11d complete, or documented CLI deploy from Step 10a on a clean workspace),
 two `logoscore` daemons (one for user, one for provider),
 each daemon hosting `logos_execution_zone`, `payment_streams_module`,
 and `delivery_module`,

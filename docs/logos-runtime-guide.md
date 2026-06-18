@@ -678,7 +678,7 @@ repeat [PS restart loop](#repeat-loop--after-ps-or-rust-ffi-edits-steps-10-13) f
 
 | Step | Where to work | How to test |
 |------|----------------|-------------|
-| 14 | `logos-delivery` Store codec | Nim unit / round-trip tests in that repo; no logoscore |
+| 14 | `logos-delivery` Store codec | `make test tests/waku_store/test_rpc_codec.nim` in that repo; no logoscore |
 | 15 | `liblogosdelivery` C ABI | C smoke test in delivery repo; no logoscore |
 
 Revisit this document when Step 16 mounts `delivery_module` beside wallet + PS.
