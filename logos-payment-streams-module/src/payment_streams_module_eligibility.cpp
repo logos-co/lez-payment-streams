@@ -1578,7 +1578,7 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
         return makeVerifyEligibilityError(QStringLiteral("STREAM_NOT_ACTIVE"),
                                           QStringLiteral("stream not active"));
     }
-    if view.fold.unaccrued_lo == 0 && view.fold.unaccrued_hi == 0) {
+    if (view.fold.unaccrued_lo == 0 && view.fold.unaccrued_hi == 0) {
         return makeVerifyEligibilityError(QStringLiteral("STREAM_NOT_ACTIVE"),
                                           QStringLiteral("stream depleted"));
     }

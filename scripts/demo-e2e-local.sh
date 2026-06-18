@@ -129,21 +129,31 @@ build_and_install() {
   fi
   echo "--- build delivery_module from $DELIVERY_MODULE_ROOT ---"
   local dm_out
-  dm_out="$(nix build "$DELIVERY_MODULE_ROOT#packages.x86_64-linux.default" --impure -L --no-link --print-out-paths | tail -1)"
+  dm_out="$(nix build "$DELIVERY_MODULE_ROOT#packages.x86_64-linux.default" -L --no-link --print-out-paths | tail -1)"
   mkdir -p "$MODULES_USER/delivery_module" "$MODULES_PROVIDER/delivery_module"
   cp -f "$dm_out/lib/delivery_module_plugin.so" "$MODULES_USER/delivery_module/"
   cp -f "$dm_out/lib/liblogosdelivery.so" "$MODULES_USER/delivery_module/"
   cp -f "$dm_out/lib/delivery_module_plugin.so" "$MODULES_PROVIDER/delivery_module/"
   cp -f "$dm_out/lib/liblogosdelivery.so" "$MODULES_PROVIDER/delivery_module/"
+  for aux in librln.so libpq.so libpq.so.5; do
+    if [[ -f "$dm_out/lib/$aux" ]]; then
+      cp -f "$dm_out/lib/$aux" "$MODULES_USER/delivery_module/"
+      cp -f "$dm_out/lib/$aux" "$MODULES_PROVIDER/delivery_module/"
+    fi
+  done
 
   # Nix-cached liblogosdelivery can lag the sibling logos-delivery tree (eligibility
   # JSON / protobuf must match the plugin). Prefer a fresh local build when available.
+  if [[ "${SKIP_LIBLOGOSDELIVERY_OVERLAY:-0}" == "1" ]]; then
+    echo "SKIP_LIBLOGOSDELIVERY_OVERLAY=1 — using nix-bundled liblogosdelivery.so only"
+  else
   LOGOS_DELIVERY_ROOT="${LOGOS_DELIVERY_ROOT:-$REPO/../logos-delivery}"
   if [[ -d "$LOGOS_DELIVERY_ROOT" && -f "$LOGOS_DELIVERY_ROOT/Makefile" ]]; then
     echo "--- overlay liblogosdelivery from $LOGOS_DELIVERY_ROOT (make liblogosdelivery) ---"
     (cd "$LOGOS_DELIVERY_ROOT" && make liblogosdelivery)
     cp -f "$LOGOS_DELIVERY_ROOT/build/liblogosdelivery.so" "$MODULES_USER/delivery_module/"
     cp -f "$LOGOS_DELIVERY_ROOT/build/liblogosdelivery.so" "$MODULES_PROVIDER/delivery_module/"
+  fi
   fi
 
   log_phase build 1 "$(python3 -c "import json,os; print(json.dumps({'modules_user': os.environ['MODULES_USER']}))")"
@@ -172,6 +182,7 @@ nix shell \
     export PAYMENT_STREAMS_GUEST_BIN='$PAYMENT_STREAMS_GUEST_BIN' E2E_PROVIDER_AD='$E2E_PROVIDER_AD'
     export PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF='${PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF:-0}'
     export DELIVERY_MODULE_ROOT='${DELIVERY_MODULE_ROOT:-$REPO/../logos-delivery-module}'
+    export SKIP_LIBLOGOSDELIVERY_OVERLAY='${SKIP_LIBLOGOSDELIVERY_OVERLAY:-0}'
     export N8_WIRE_HEX='$N8_WIRE_HEX' FIXTURE_MANIFEST='$FIXTURE_MANIFEST'
     $(declare -f run_e2e_body ensure_fixture install_lgx build_and_install log_phase)
     run_e2e_body

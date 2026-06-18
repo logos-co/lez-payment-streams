@@ -53,7 +53,8 @@ the nix delivery bundle. Symptom without overlay or fix: paid `storeQuery` → p
 `BAD_REQUEST`, empty inbound proof on the verifier hook.
 
 Remove the overlay from the script once `make verify-step17` passes with nix-only libs (no
-local `make liblogosdelivery`).
+local `make liblogosdelivery`). Verified 2026-06-18 with
+`SKIP_LIBLOGOSDELIVERY_OVERLAY=1` after `logos-delivery` `39b467ec`.
 
 Pin table dates are when the row was last updated. Decision subsection titles in
 [decisions-and-notes.md](reference/decisions-and-notes.md) use their own `(YYYY-MM-DD)` record dates;
