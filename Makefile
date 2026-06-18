@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13
+.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-step17
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -40,6 +40,7 @@ help: ## Show this help
 	@echo "  make verify-step11d Run Step 11d DoD script (LEZ 510 wallet)"
 	@echo "  make verify-step12  Run Step 12 DoD script"
 	@echo "  make verify-step13  Run Step 13 DoD script"
+	@echo "  make verify-step17  Run Step 17 local E2E demo script"
 	@echo "  make clean       Remove saved state"
 	@echo ""
 	@echo "Example:"
@@ -119,3 +120,7 @@ verify-step12: ## Step 12 definition of done (scripts/verify-step12-dod.sh)
 verify-step13: ## Step 13 definition of done (scripts/verify-step13-dod.sh)
 	chmod +x scripts/verify-step13-dod.sh scripts/step12-topup-and-prepare.sh
 	./scripts/verify-step13-dod.sh
+
+verify-step17: ## Step 17 local dual-host Store E2E (scripts/demo-e2e-local.sh)
+	chmod +x scripts/demo-e2e-local.sh scripts/e2e/*.py
+	./scripts/demo-e2e-local.sh

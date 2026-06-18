@@ -26,8 +26,7 @@ but you still need to show proof bytes. It is not the normal local demo path.
 | Smoke | Mapping, reads, `stream_proof` on seeded stream `0` | Reuse if Step 10a verify passes and stream `0` has unaccrued balance | New `--persistence-path` each run |
 | Full arc | Proposal, `createStream`, proof; Step 13 prepare → verify | Fresh seed recommended | Always wipe before the arc |
 
-Stream `0` on a long-lived localnet accrues until `STREAM_DEPLETED`. That is correct policy,
-not a product bug. Recovery is reset and re-seed, not depleted bypass by default.
+Stream `0` on a long-lived localnet accrues until `STREAM_DEPLETED`. Default seed uses rate `1` and allocation `80` so repeated demos stay funded longer; recovery after depletion is still reset and re-seed, not depleted bypass by default.
 
 ## What to keep vs wipe
 

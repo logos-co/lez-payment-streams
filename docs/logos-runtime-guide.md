@@ -682,7 +682,21 @@ repeat [PS restart loop](#repeat-loop--after-ps-or-rust-ffi-edits-steps-10-13) f
 | 15 | `liblogosdelivery` C ABI | Done on same branch; see [step-15-normative.md](plan/completed/step-15-normative.md) |
 | 16 prep | `logos-delivery-module/flake.nix` | `logos-delivery` input → `ref=feat/payment-streams-store-eligibility` ([feature-branch-pins.md](feature-branch-pins.md)) |
 
-Revisit this document when Step 16 mounts `delivery_module` beside wallet + PS.
+Step 16+ also loads `delivery_module` beside wallet + PS. Step 17 dual-host detail:
+[step17-e2e-local.md](step17-e2e-local.md).
+
+### Step 17 — two logoscore hosts on one machine
+
+Use separate `--config-dir`, `--persistence-path`, and `lgpm` install roots per role
+(`MODULES_USER`, `MODULES_PROVIDER` under `.scaffold/e2e/` — see runbook). Start provider
+then user; pass the same `--config-dir` to `call`, `watch`, and `stop` for that daemon.
+
+Delivery nodes must use different `portsShift` in each host's `createNode` JSON. The user
+host dials the provider via `staticnode` and the multiaddr written to
+`.scaffold/e2e/provider-advertisement.json` (off-band mimic).
+
+Async Store queries: `delivery_module.storeQuery` completes on `storeQueryCompleted`; use
+`logoscore watch delivery_module` with a timeout (runbook).
 
 ---
 

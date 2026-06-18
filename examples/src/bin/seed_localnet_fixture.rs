@@ -32,7 +32,8 @@ use wallet::WalletCore;
 const DEFAULT_SEQUENCER: &str = "http://127.0.0.1:3040";
 /// Local pinata topup is well below 500 on typical scaffold localnets; keep deposit + allocation within one claim.
 const DEFAULT_DEPOSIT: Balance = 100;
-const DEFAULT_STREAM_RATE: TokensPerSecond = 10;
+/// Slow accrual so stream `0` stays non-depleted across repeated local demos (same terms as testnet table in step12).
+const DEFAULT_STREAM_RATE: TokensPerSecond = 1;
 const DEFAULT_STREAM_ALLOCATION: Balance = 80;
 
 #[derive(Parser)]

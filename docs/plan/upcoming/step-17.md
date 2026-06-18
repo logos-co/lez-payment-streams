@@ -1,6 +1,14 @@
 # Step 17 — plan excerpt
 
 Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
+Operator runbook: [step17-e2e-local.md](../../step17-e2e-local.md).
+
+Checkpoint (2026-06-18): local dual-host gate is green via `make verify-step17`
+(`scripts/demo-e2e-local.sh` + `scripts/e2e/run_local_e2e.py`). Paid `storeQuery`, missing-proof
+failure, and provider claim phases write JSON-lines artifacts under `.scaffold/e2e/artifacts/`.
+Delivery install uses nix bundle plus `liblogosdelivery` overlay until the locked nix library
+includes the outbound proof fix ([N13](../../reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
+Module bridge invokes eligibility on the `LogosAPIClient` thread ([N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
 
 ### Step 17, End-to-end demo wiring
 
@@ -12,69 +20,100 @@ this step exercises every layer at once (two `logoscore` hosts, three backend mo
 local LEZ, cross-host Store). Scope boundary: [N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)
 (Step 16 proved the bridge; Step 17 proves full-stack paid Store and eligibility on the wire).
 
-The host application must call `registerProviderMapping` on the streams module before outbound
-Store queries in this demo.
+Paid Store demo policy:
+the provider operates in paid mode only (eligibility verifier registered for the whole demo).
+Real users learn the provider libp2p identity from off-band service advertisement; the script
+mimics that with a small advertisement artifact (see runbook). Inbound requests with no
+LIP-155 proof must fail per [N3c](../../reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18).
+
+The user host must call `registerProviderMapping` on `payment_streams_module` before legitimate
+outbound Store queries (PeerId from the advertisement file → manifest payee base58).
+
+#### Localized chain fixture (DoD helper)
+
+Do not require a full proposal → `createStream` arc on every run. The script should:
+
+- detect whether the Step 10a fixture is usable (`fixtures/localnet.json`, sequencer up, stream
+  `0` eligible for `stream_proof` or recover via top-up),
+- if not, run the same blank-slate / seed path as [`demo-localnet-fresh.sh`](../../../scripts/demo-localnet-fresh.sh) (deploy program, seed manifest).
+
+Reuse seeded stream `0` for the happy-path Store query when chain state allows.
+
+#### Dual hosts on one machine
+
+Use **separate install and runtime trees** per role (future-proof for testnet and different
+wallet homes later):
+
+| Role | Env (convention) | Purpose |
+| --- | --- | --- |
+| User | `MODULES_USER`, `LOGOSCORE_CONFIG_USER`, `PERSIST_USER` | Client logoscore + modules |
+| Provider | `MODULES_PROVIDER`, `LOGOSCORE_CONFIG_PROVIDER`, `PERSIST_PROVIDER` | Store provider logoscore + modules |
+
+Two daemons on one machine are supported: give each `-D` process its own `--config-dir`
+(and `--persistence-path`, `-m`). Point CLI `call` / `watch` / `stop` at the same
+`--config-dir` as the daemon you target. Delivery P2P ports must not collide — use disjoint
+`portsShift` on each `createNode` (example: user `0`, provider `100`).
+
+Default layout under repo `.scaffold/e2e/` is documented in the runbook.
+
+Build and install `.lgx` packages for `logos_execution_zone` (patched wrapper),
+`payment_streams_module`, and `delivery_module` from the Step 16 integration branch into
+**both** module directories (same artifacts, two install roots).
 
 Create `scripts/demo-e2e-local.sh` that:
 
-- starts a fresh scaffold workspace,
-- deploys `lez_payment_streams`,
-- builds `.lgx` packages for `logos_execution_zone` (our branch),
-  `payment_streams_module`,
-  and `delivery_module` built from our `logos-delivery-module` integration branch (Step 16),
-  linking `liblogosdelivery` from the matching `logos-delivery` fork rev
-  ([delivery integration branches](../../../integration-index.md#delivery-integration-branches),
-  [D2](../../reference/decisions-and-notes.md#d2-delivery-module-hook-design)),
-- installs them with `lgpm` into two module directories,
-- launches two `logoscore` instances loaded with all three modules
-  on disjoint `portsShift` values
-  (per [`logos-delivery-module#18`](https://github.com/logos-co/logos-delivery-module/issues/18)
-  and `logos-delivery-demo`; example: user `portsShift: 0`, provider `portsShift: 100`),
-- starts the provider `delivery_module` with relay and Store service enabled,
-  backed by a SQLite archive and a demo retention policy,
-- starts the user `delivery_module` with Store client support
-  and the provider's explicit peer address as the Store target,
-- drives the user flow from vault initialization through Store query,
-- drives a manual claim on the provider side,
-- captures structured logs at each phase.
+- ensures local LEZ + program + fixture (seed-if-needed above),
+- builds/installs modules into `MODULES_USER` and `MODULES_PROVIDER`,
+- starts provider then user `logoscore` with disjoint config and delivery `portsShift`,
+- writes provider service advertisement (peer id + dial multiaddr) for the user host to consume,
+- configures provider `delivery_module` with relay + Store service, SQLite archive, retention
+  `capacity:10000` (defaults in runbook),
+- configures user `delivery_module` as relay-capable Store **client** with static dial to provider,
+- registers eligibility hooks (`setEligibilityVerifier` on provider, `setEligibilityProvider`
+  on user for happy path),
+- runs publish → archive → paid `storeQuery` success path,
+- runs missing-proof failure (user issues Store without outbound proof while provider verifier
+  stays enabled — see runbook),
+- captures a structured log artifact (format in runbook).
 
-The first smoke path uses two nodes:
-the provider archives messages and the user queries the provider directly.
-For the fastest integration smoke test,
-the user may publish a message that the provider archives
-and then issue a paid Store query for it.
-If time allows,
-the demo should add a third publisher node
-that publishes messages for the provider to archive,
-so the user retrieves historical messages it did not originate.
+Optional later: third publisher node for messages the user did not originate (not DoD).
+
+#### Phase B — provider claim (required)
+
+After accrual from served Store traffic (or existing stream balance), the provider host submits
+`chainAction` `claim` for the demo vault/stream. This is required for Step 17 completion.
+
+If implementation scope is too large for one change set, split delivery:
+
+| Phase | Artifact | Scope |
+| --- | --- | --- |
+| 17A | `scripts/demo-e2e-local.sh` (or `--phase core`) | Dual host, hooks, Store success + missing-proof failure, logs |
+| 17B | same script `--phase claim` or follow-up commit | Provider `claim` + log lines for chain txs |
+
+Do not renumber Steps 18–22; 17B is a sub-phase of Step 17 only.
 
 Components required to run:
 LEZ sequencer on `127.0.0.1:3040`,
-`lez_payment_streams` program deployed onto it
-(Step 11d complete, or documented CLI deploy from Step 10a on a clean workspace),
-two `logoscore` daemons (one for user, one for provider),
-each daemon hosting `logos_execution_zone`, `payment_streams_module`,
-and `delivery_module`,
-provider `delivery_module` configuration with relay and Store service enabled,
-a SQLite Store archive path,
-a retention policy such as `capacity:10000`,
-user `delivery_module` configuration with the provider's explicit peer address
-as the Store target,
-and direct network reachability between the two local hosts.
+deployed `lez_payment_streams`,
+two `logoscore` daemons (user + provider),
+each with `logos_execution_zone`, `payment_streams_module`, `delivery_module`,
+provider Store + SQLite archive,
+user Store client targeting provider multiaddr,
+shared or role-specific wallet files (demo may reuse seeded `.scaffold/wallet` on both hosts).
 
 Definition of done:
 
-1. Bridge and hooks: Step 16 integration branch installed; both hosts register
-   `payment_streams_module` as eligibility verifier and provider where the demo requires it.
-2. Success path: user-initiated `delivery_module.storeQuery` against the provider peer returns a
-   successful Store outcome when chain state and proofs are valid, including provider inbound
-   eligibility OK.
-3. Failure path: when provider eligibility fails (including missing proof in paid mode — [N3c](../../reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)),
-   provider sees Store `BAD_REQUEST` (400), populated `eligibility_status` (verdict and `desc`),
-   and an empty messages list.
-4. Artifact: `scripts/demo-e2e-local.sh` runs to completion on a clean workspace and writes a
-   log artifact covering every chain transaction, Store request, and eligibility outcomes on both
-   ends.
+1. Bridge and hooks: Step 16 branch installed on both hosts; provider registers
+   `payment_streams_module` as **verifier**; user registers it as **provider** for outbound
+   paid queries.
+2. Success path: user `delivery_module.storeQuery` against provider multiaddr returns success
+   with valid chain state and proofs; provider inbound eligibility OK.
+3. Failure path: with provider verifier enabled, an inbound Store request **without** proof yields
+   `BAD_REQUEST` (400), populated `eligibility_status`, empty messages ([N3c](../../reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)).
+4. Claim (phase B): provider `chainAction` `claim` succeeds for manifest vault/stream when
+   preconditions are met (document in artifact).
+5. Artifact: script exits 0 on a clean workspace and writes
+   `.scaffold/e2e/artifacts/demo-e2e-local-<timestamp>.log` (JSON-lines phases; see runbook).
 
 Follow-on: Step 18 (testnet), Step 19 (LIP on-chain), Step 20 (developer journey); optional
 Steps 21–22 (UI). See [integration-index.md](../../../integration-index.md#program-outcomes).

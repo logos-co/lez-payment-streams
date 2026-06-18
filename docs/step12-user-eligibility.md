@@ -108,7 +108,7 @@ only if the demo script changes (inventory is already keyed by `vault_id`).
 Normative demo numbers for Step 12, Step 13 local verifier, and `verify-step12-dod.sh`.
 Align with [`fixtures/localnet.json`](../fixtures/localnet.json) and
 [`seed_localnet_fixture.rs`](../examples/src/bin/seed_localnet_fixture.rs). One pinata topup is
-~150 tokens; deposit `100` plus stream `0` allocation `80` fits a single claim with fee headroom.
+~150 tokens; deposit `100` plus stream `0` allocation `80` at rate `1` fits a single claim with fee headroom and accrues slowly on a long-lived localnet.
 
 Demo provider policy (localnet):
 
@@ -122,9 +122,9 @@ Demo provider policy (localnet):
 
 | Path | `stream_id` | `rate` | `allocation` | `create_stream_deadline` |
 | --- | --- | --- | --- | --- |
-| Proof-only on Step 10a seed | `0` (on-chain) | `10` | `80` (on-chain) | n/a |
+| Proof-only on Step 10a seed | `0` (on-chain) | `1` | `80` (on-chain) | n/a |
 | Full arc on same seeded vault | next free (e.g. `1`) | `10` | `15` | `clock10_timestamp + 600` |
-| Fresh vault (testnet one-shot) | `0` | `10` | `80` | `clock10_timestamp + 600` |
+| Fresh vault (testnet one-shot) | `0` | `1` | `80` | `clock10_timestamp + 600` |
 
 After Step 10a seed, vault holding is `100` and `total_allocated` is `80`, so unallocated is
 `20`; the full-arc allocation `15` stays within solvency.
@@ -360,7 +360,9 @@ logoscore load-module logos_execution_zone
 logoscore load-module payment_streams_module
 logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE"
 
-# 1) mapping — provider PeerId string chosen for Step 17 demo
+# 1) mapping — use provider PeerId from off-band advertisement (Step 17 E2E writes
+#    .scaffold/e2e/provider-advertisement.json). Single-host Step 12 verify may use a
+#    placeholder string such as step12-demo-provider-peer when only prepare is tested.
 logoscore call payment_streams_module registerProviderMapping \
   '<provider_peer_id>' "$(python3 -c "import json; print(json.load(open('fixtures/localnet.json'))['provider_account_id'])")"
 

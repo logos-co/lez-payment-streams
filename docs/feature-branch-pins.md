@@ -36,8 +36,24 @@ Workflow detail: [integration-index.md](../integration-index.md#delivery-integra
 
 | Artifact | Branch ref | Locked rev (2026-06-18) |
 | --- | --- | --- |
-| `logos-delivery` flake input | `feat/payment-streams-store-eligibility` | `e59319d8648c3c3ea9384c592728d5738f623a13` (Step 15; Step 14 at `d033a493`) |
-| `logos-delivery-module` integration branch | `feat/payment-streams-store-eligibility` | `bf104a6bfde35ce4fcae5081278d1996ebf5e3c1` (Step 16 bridge; thread probe at `ef64fa0`) |
+| `logos-delivery` flake input | `feat/payment-streams-store-eligibility` | `39b467ecf44344728cb5101e18c836089746c57d` (retain outbound `eligibilityProof`; after `ed41c826` JSON parse fix) |
+| `logos-delivery-module` integration branch | `feat/payment-streams-store-eligibility` | `9361e49` on fork `s-tikhomirov/logos-delivery-module` (verifier threading + lock above) |
+
+After each push to `logos-delivery`, run `nix flake update logos-delivery` in
+`logos-delivery-module` and commit the lock. Record the resolved `rev` in this table when
+Step 17 E2E is re-verified nix-only.
+
+### Step 17 `liblogosdelivery` overlay (demo)
+
+Nix bundles `liblogosdelivery.so` from the locked `logos-delivery` input. Until a lock bump
+includes the fix that stops clearing `eligibilityProof` after JSON parse ([N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)),
+`scripts/demo-e2e-local.sh` overlays a fresh `make liblogosdelivery` from
+`LOGOS_DELIVERY_ROOT` (default `../logos-delivery`) onto both E2E install trees after copying
+the nix delivery bundle. Symptom without overlay or fix: paid `storeQuery` → provider
+`BAD_REQUEST`, empty inbound proof on the verifier hook.
+
+Remove the overlay from the script once `make verify-step17` passes with nix-only libs (no
+local `make liblogosdelivery`).
 
 Pin table dates are when the row was last updated. Decision subsection titles in
 [decisions-and-notes.md](reference/decisions-and-notes.md) use their own `(YYYY-MM-DD)` record dates;

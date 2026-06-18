@@ -39,7 +39,7 @@ Steps 16–20 need Store query on our delivery forks, not on upstream `master` (
 `logos-delivery-module` (Step 16). Upstream N6 is no longer a gate for Steps 14–20.
 Step 14 (wire) and Step 15 (C hooks + `logosdelivery_store_query`) are complete on the
 `logos-delivery` fork; Step 16 (bridge on `logos-delivery-module`) is complete on the module
-fork (`bf104a6bfde35ce4fcae5081278d1996ebf5e3c1` on `feat/payment-streams-store-eligibility`).
+fork (`9361e49` on `feat/payment-streams-store-eligibility`; eligibility bridge threading for Step 17).
 Step 17 owns full-stack E2E
 ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
 
@@ -132,7 +132,7 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 14 | Store wire (`logos-delivery`) | Complete — `d033a49364f1dda4ee4e5467d828738d01eb7d4c`; [step-14-normative.md](docs/plan/completed/step-14-normative.md) |
 | 15 | `liblogosdelivery` hooks | Complete — `e59319d8648c3c3ea9384c592728d5738f623a13`; [step-15-normative.md](docs/plan/completed/step-15-normative.md) |
 | 16 | `delivery_module` routing | Complete — `bf104a6…`; [step-16.md](docs/plan/completed/step-16.md) |
-| 17 | E2E demo (local LEZ) | Upcoming — [step-17.md](docs/plan/upcoming/step-17.md) |
+| 17 | E2E demo (local LEZ) | In progress (local gate green) — [step-17.md](docs/plan/upcoming/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md), [N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18) |
 | 18 | Public testnet demo | Upcoming — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
 | 19 | LIP-155 on-chain spec | Upcoming — [step-19-lip155-onchain-spec.md](docs/plan/upcoming/step-19-lip155-onchain-spec.md) |
 | 20 | Developer journey doc packet | Upcoming — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
@@ -183,7 +183,7 @@ Agent packet: [step-16.md](docs/plan/completed/step-16.md). Locked rev:
 
 Do not duplicate full DoD here — read the packet:
 
-- [Step 17](docs/plan/upcoming/step-17.md) — two hosts, local LEZ, paid Store script ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18))
+- [Step 17](docs/plan/upcoming/step-17.md) — two hosts, local LEZ, paid Store script ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)); runbook [step17-e2e-local.md](docs/step17-e2e-local.md)
 - [Step 18](docs/plan/upcoming/step-18-public-testnet-demo.md) — testnet v0.2 operator demo
 - [Step 19](docs/plan/upcoming/step-19-lip155-onchain-spec.md) — on-chain LIP on `main`
 - [Step 20](docs/plan/upcoming/step-20-developer-journey.md) — logos-docs developer journey
@@ -202,5 +202,7 @@ Step 15 DoD is verified in the `logos-delivery` fork only
 | `./scripts/verify-step11a-dod.sh` … `11d` | 11a–d |
 | `./scripts/verify-step12-dod.sh` | 12 (`REQUIRE_STREAM_PROOF=1` strict) |
 | `./scripts/verify-step13-dod.sh` | 13 (`VERIFY_LOGOSCORE=1` cross-test) |
+| `./scripts/demo-e2e-local.sh` | 17 (dual-host Store E2E) |
 
 `make verify-step12`, `make verify-step13` wrap the Step 12–13 scripts.
+Step 17: `make verify-step17` → [scripts/demo-e2e-local.sh](scripts/demo-e2e-local.sh) (see [step17-e2e-local.md](docs/step17-e2e-local.md)). Uses delivery bundle + optional `liblogosdelivery` overlay ([N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).

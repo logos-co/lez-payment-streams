@@ -19,7 +19,7 @@ Steps 1–13, 11d, and Steps 14–16 on the delivery forks are complete. Impleme
 
 | Step | Repo / area | Agent packet |
 | --- | --- | --- |
-| 17 | E2E demo (local LEZ) | [plan/upcoming/step-17.md](plan/upcoming/step-17.md) |
+| 17 | E2E demo (local LEZ) | [plan/upcoming/step-17.md](plan/upcoming/step-17.md), runbook [step17-e2e-local.md](step17-e2e-local.md) |
 | 18 | Public testnet demo | [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) |
 | 19 | LIP-155 on-chain spec | [plan/upcoming/step-19-lip155-onchain-spec.md](plan/upcoming/step-19-lip155-onchain-spec.md) |
 | 20 | Developer journey doc packet | [plan/upcoming/step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md) |
@@ -46,6 +46,7 @@ Summary:
 | Delivery / Store wire (16+) | This brief → [integration-contracts.md](integration-contracts.md) → step packet → [D1](reference/decisions-and-notes.md#d1-store-wire-format) / [D2](reference/decisions-and-notes.md#d2-delivery-module-hook-design). Steps 14–16: [step-14-normative.md](plan/completed/step-14-normative.md), [step-15-normative.md](plan/completed/step-15-normative.md), [step-16.md](plan/completed/step-16.md). |
 | Module eligibility bugfix | [step12-user-eligibility.md](step12-user-eligibility.md) or [step13-provider-eligibility.md](step13-provider-eligibility.md) + contracts |
 | Localnet / verify failure | [demo-localnet-recovery.md](demo-localnet-recovery.md) + relevant `verify-step*-dod.sh` |
+| Step 17 E2E dual-host | [step17-e2e-local.md](step17-e2e-local.md) + [plan/upcoming/step-17.md](plan/upcoming/step-17.md) |
 | Rust FFI / policy only | `lez-payment-streams-core` tests + [step3-policy-and-implementor-notes.md](step3-policy-and-implementor-notes.md) |
 | LIP on-chain spec (19) | [step-19-lip155-onchain-spec.md](plan/upcoming/step-19-lip155-onchain-spec.md) + [architecture.md](../architecture.md) |
 | Doc packet (20 / 22) | Step packet + [logos-docs doc packet template](https://github.com/logos-co/logos-docs/blob/main/resources/templates/doc-packet.md) |
@@ -58,7 +59,7 @@ Summary:
 
 ## Historical depth (load on demand)
 
-- [reference/decisions-and-notes.md](reference/decisions-and-notes.md) — D1–D6, N1–N12 (Step 16: N3a–N3c, N12 scope)
+- [reference/decisions-and-notes.md](reference/decisions-and-notes.md) — D1–D6, N1–N13 (Step 16: N3a–N3c; Step 17: N13 lib overlay)
 - [plan/completed/step-12-normative.md](plan/completed/step-12-normative.md), [step-13-normative.md](plan/completed/step-13-normative.md), [step-14-normative.md](plan/completed/step-14-normative.md), [step-15-normative.md](plan/completed/step-15-normative.md)
 - Step runbooks and policy notes under [docs/README.md](README.md)
 

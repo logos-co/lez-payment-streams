@@ -396,6 +396,38 @@ inner Store handler to run; a module verdict failure yields Store 400 with
 Do not block Step 16 merge on the Step 17 script. Step 17 is the integration gate for
 end-to-end Store and eligibility outcomes described in the former monolithic Step 16 DoD.
 
+### N13, Step 17 `liblogosdelivery` bundle vs local overlay (2026-06-18)
+
+Step 17 installs `delivery_module` by copying the nix output of
+`logos-delivery-module#packages.x86_64-linux.default` (`delivery_module_plugin.so` plus bundled
+`liblogosdelivery.so`). Paid Store E2E failed when only the plugin was refreshed while an older
+`liblogosdelivery.so` remained, and also when the locked nix library still contained a bug in
+`logosdelivery_store_query` that cleared `eligibilityProof` immediately after JSON parse
+(`storeQueryRequest.eligibilityProof = none(seq[byte])`), so outbound queries never carried
+tag-30 proof and the provider verifier saw empty `proofBytes`.
+
+Symptoms on the provider: inbound eligibility hook with `proof_len=0`, verify JSON
+`proofBytes and canonicalRequestBytes must be non-empty even-length hex`, Store response
+`BAD_REQUEST` (400). Direct `logoscore call payment_streams_module verifyEligibilityForStoreQuery`
+on the same host still passed because proof and N8 were supplied on the CLI path.
+
+Mitigations (demo script [`scripts/demo-e2e-local.sh`](../scripts/demo-e2e-local.sh)):
+
+- After nix copy, run `make liblogosdelivery` in sibling `logos-delivery`
+  (`LOGOS_DELIVERY_ROOT`, default `../logos-delivery`) and overlay
+  `build/liblogosdelivery.so` onto both E2E module trees.
+- Build the delivery plugin with `nix build … --impure` only while
+  `logos-delivery-module` has uncommitted C++ bridge changes; push module commits and rely on
+  a clean nix build once the tree is clean.
+
+Clean nix-only path: push the `logos-delivery` fix (retain JSON `eligibilityProofHex` through
+`logosdelivery_store_query`), run `nix flake update logos-delivery` in `logos-delivery-module`,
+commit `flake.lock`, update [feature-branch-pins.md](../feature-branch-pins.md), then re-run E2E
+without the overlay and drop the overlay step when nix-only installs pass.
+
+Inbound bridge (`delivery_module` → `payment_streams_module` during Store handling) must invoke
+`LogosAPIClient` on the client object's thread (`runOnOwnerThread`); see [N3a](#n3a-step-16-threading--approach-a-experiment-2025-06-18).
+
 ### N4, Persistence policy
 
 `payment_streams_module` persists pending-proposal state and per-stream session keys

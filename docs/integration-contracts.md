@@ -83,6 +83,8 @@ Success shapes use `"status":"ok"` inside `result` with `"kind":"stream_proposal
 - Caller fault: `{"status":"error","message":"…"}` without `eligibility`
 - Missing proof on inbound Store: Step 16 passes empty `proofBytes`; paid demo expects a
   verdict failure, not OK ([N3c](reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18))
+- Step 17 demo: provider runs paid-only (verifier always on); users learn provider PeerId
+  off-band ([step17-e2e-local.md](step17-e2e-local.md))
 
 ## Fixture and provider payee
 
