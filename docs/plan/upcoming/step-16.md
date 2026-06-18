@@ -25,6 +25,11 @@ Point the flake `logos-delivery` input at the Step 15 fork rev
 Implement the bridge that translates the new `liblogosdelivery` callbacks
 into `LogosAPIClient` calls on the named module
 (`verifyEligibilityForStoreQuery`, `prepareEligibilityForStoreQuery`).
+The verifier bridge runs inside the blocking `EligibilityVerifierCb` ([N3](../../reference/decisions-and-notes.md#n3-provider-side-verification-latency-and-blocking-hooks)):
+map JSON `eligibility` to the integer status code for the C return value, and copy JSON
+`message` into `out_desc` when the module returns a verdict failure (truncate to buffer size;
+NUL-terminate). Leave `out_desc` empty on OK so inbound success responses omit
+`eligibility_status` from the inner handler path as today.
 Method names, argument shapes, and return shapes for these calls are specified in
 [integration-contracts.md](../../integration-contracts.md).
 Note that the host application is responsible for calling

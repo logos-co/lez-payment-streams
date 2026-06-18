@@ -87,6 +87,22 @@ as `requesterPeerId` to the eligibility verifier hook.
 It does not interpret either value or know about LEZ account IDs.
 We ship this on our branches and do not negotiate spec changes.
 
+Inbound `eligibility_status.desc` on the Store wire (D1) is filled by `liblogosdelivery`
+after the verifier callback returns:
+
+- If the callback writes a non-empty UTF-8 string into `out_desc`, that string is used
+  (Step 16 copies `verifyEligibilityForStoreQuery` JSON `message` here on verdict failures).
+- Otherwise `liblogosdelivery` uses the default phrase for the returned
+  `EligibilityStatusCode` (same short strings as Step 14 normative:
+  `"ok"`, `"proof invalid"`, `"stream not active"`, and `"params rejected"` for
+  `PARAMS_REJECTED`). Callback return `-1` maps to `PROOF_INVALID` with default
+  `"proof invalid"`.
+
+`liblogosdelivery.h` has no separate ABI version symbol today; “bump the ABI” on our fork
+means **additive** C exports in that header plus rebuilding `liblogosdelivery` and every
+consumer (`logos-delivery-module`, C smoke tests). Do not remove or change existing
+`logosdelivery_*` signatures without coordinating downstream.
+
 ### D3, Wallet write path
 
 Reproducible flake refs and pin maintenance:
@@ -264,13 +280,27 @@ without distinguishing live sequencer state from indexer-finalized state.
 The MVP treats it as authoritative for hot-path eligibility verification,
 which is acceptable on a local sequencer where finality lag is small.
 
-### N3, Provider-side verification latency
+### N3, Provider-side verification latency and blocking hooks
 
 Routing eligibility verification from Nim through `liblogosdelivery` to `delivery_module`
 to `payment_streams_module` adds two IPC hops per Store request,
 plus wallet-module chain reads inside the verifier.
-The MVP accepts this; the hook is implemented as a synchronous `Future`-returning callback
-that fits the existing Store handler shape.
+The MVP accepts that cost.
+
+Step 15 fixes the hook contract at the C ABI (see [D2](#d2-delivery-module-hook-design)):
+
+- `EligibilityVerifierCb` and `EligibilityProviderCb` are **synchronous blocking**
+  function pointers. The registered implementation runs to completion before the call returns.
+- On the inbound Store path, `liblogosdelivery` invokes the verifier from its async Store
+  handler and **awaits** the hook; the handler thread is held until the C callback returns.
+  Implementations must not re-enter `liblogosdelivery` from inside the callback.
+- Step 16’s `delivery_module` bridge blocks inside those callbacks while it performs
+  synchronous `LogosAPI` calls into the named eligibility module.
+
+That matches the existing Store handler shape (one eligibility decision per request before
+the inner `requestHandler` runs) without introducing a second async completion channel on
+the MVP ABI. Production traffic that needs non-blocking hooks uses the versioned async ABI
+described in the Step 15 migration note (`result_cb` trailing parameters), not N3’s MVP path.
 
 ### N4, Persistence policy
 
@@ -415,6 +445,13 @@ full `canonical_payload` (32-byte domain prefix + Borsh body, 177 bytes for the 
 fixture). LogosAPI `canonicalRequestBytes` must be that full wire, not Borsh-only bytes.
 Digest checks use `store_eligibility_digest_matches_n8_reference_fixture` in
 `lez-payment-streams-core/src/off_chain/canonical.rs`.
+
+Step 15 Nim parity test lives in `logos-delivery` beside the Store codec tests:
+`tests/waku_store/test_store_eligibility_canonical.nim`, comparing lowercase hex to
+`cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex` for the N8 reference
+fixture. C ABI smoke follows the `library/examples/logosdelivery_example.c` pattern
+(`make logosdelivery_example`); add `library/tests/test_eligibility_hooks.c` and a matching
+Make/nimble target when implementing Step 15 (not a script in this repo).
 
 ### N9, Step 10a local chain fixture (decisions)
 

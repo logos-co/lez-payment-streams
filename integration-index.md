@@ -108,7 +108,7 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 12 | User eligibility | Complete — [step12](docs/step12-user-eligibility.md), `verify-step12-dod.sh` |
 | 13 | Provider verify | Complete — [step13](docs/step13-provider-eligibility.md), `verify-step13-dod.sh` |
 | 14 | Store wire (`logos-delivery`) | Complete — branch `feat/payment-streams-store-eligibility` (`d033a493`); [step-14-normative.md](docs/plan/completed/step-14-normative.md) |
-| 15 | `liblogosdelivery` hooks | Upcoming — [step-15.md](docs/plan/upcoming/step-15.md) |
+| 15 | `liblogosdelivery` hooks | Upcoming — [step-15.md](docs/plan/upcoming/step-15.md); verify in `logos-delivery` (N8 Nim test + C ABI smoke, see step packet) |
 | 16 | `delivery_module` routing | Upcoming — [step-16.md](docs/plan/upcoming/step-16.md) |
 | 17 | E2E demo | Upcoming — [step-17.md](docs/plan/upcoming/step-17.md) |
 | 18 | Basecamp UI | Optional — [step-18.md](docs/plan/upcoming/step-18.md) |
@@ -151,6 +151,10 @@ Do not duplicate full DoD here — read the packet:
 - [Step 18](docs/plan/upcoming/step-18.md) — optional `ui_qml` plugin
 
 ## Verify scripts (logoscore path)
+
+Step 15 definition of done is verified in the `logos-delivery` fork
+(`tests/waku_store/test_store_eligibility_canonical.nim` and C ABI smoke under
+`library/tests/` — see [step-15.md](docs/plan/upcoming/step-15.md)), not via a script in this repo.
 
 | Script | Step |
 | --- | --- |

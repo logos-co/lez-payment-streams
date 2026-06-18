@@ -8,8 +8,9 @@ that are not yet on upstream default branches.
 
 Store query for the demo ships on our `logos-delivery` / `logos-delivery-module` forks
 (Steps 15–16, [D2](reference/decisions-and-notes.md#d2-delivery-module-hook-design),
-[N6](reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)). Those delivery
-revs are not pinned in this doc yet (wallet-only pins).
+[N6](reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)). Step 15 DoD
+tests live in `logos-delivery` (N8 Nim test + C eligibility-hook smoke); delivery commit SHAs
+are recorded here when Step 17 needs reproducible installs (wallet-only pins below until then).
 
 ## Delivery integration branches (Steps 14–17)
 

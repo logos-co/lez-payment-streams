@@ -23,7 +23,7 @@ Existing behaviour is preserved when no callback is registered.
 Per N3, both callbacks are synchronous blocking C function pointers;
 the Nim async handler awaits their result while the calling thread is held.
 This is the MVP design; see Migration note below before productionising.
-Bump the `liblogosdelivery` ABI on our branch.
+Extend `liblogosdelivery.h` with the new exports on our fork (additive ABI bump per [D2](../../reference/decisions-and-notes.md#d2-delivery-module-hook-design)).
 
 ##### C ABI types
 
@@ -44,6 +44,11 @@ Add to `liblogosdelivery.h`:
  * canonical_hex   – lowercase hex of the N8 canonical_payload produced
  *                   by liblogosdelivery after clearing eligibility_proof
  * requester_peer_id – UTF-8 libp2p PeerId of the requesting peer
+ * out_desc          – caller-supplied buffer; callback writes a UTF-8 eligibility
+ *                     description for the Store response (may be empty).
+ *                     When empty after return, liblogosdelivery uses the default
+ *                     phrase for the returned code (see D2).
+ * out_desc_len      – size of out_desc in bytes; must be >= 512
  * user_data       – opaque pointer supplied at registration
  *
  * Returns an EligibilityStatusCode value (0–3).
@@ -54,6 +59,8 @@ typedef int (*EligibilityVerifierCb)(
     const char *proof_hex,
     const char *canonical_hex,
     const char *requester_peer_id,
+    char       *out_desc,
+    size_t      out_desc_len,
     void       *user_data);
 
 /*
@@ -98,8 +105,12 @@ int logosdelivery_set_eligibility_provider(
 /*
  * Issue a Store query to the given provider.  Added on our fork of logos-delivery.
  *
- * queryJson    – JSON object with StoreQueryRequest fields
- *               (contentTopics, timeFilter, paginationCursor, pageSize, etc.)
+ * queryJson    – JSON object with Store query fields using the same camelCase keys as
+ *               `library/kernel_api/protocols/store_api.nim` `fromJsonNode`
+ *               (required: `requestId`, `includeData`, `paginationForward`;
+ *               optional: `contentTopics`, `pubsubTopic`, `messageHashes`,
+ *               `timeStart`, `timeEnd`, `paginationCursor`, `paginationLimit`).
+ *               Do not send `eligibilityProof`; the provider callback attaches it.
  * providerAddr – multiaddr string of the target Store provider peer
  *
  * The full StoreQueryResponse (messages list and, when present, eligibility_status)
@@ -143,10 +154,12 @@ with a wrapper that:
 2. Produces `canonicalRequestBytes` from the request
    (see Canonical Store request bytes below).
 3. Calls the verifier callback with the hex-encoded `eligibility_proof` bytes
-   (NULL when no proof is present), the canonical bytes hex, and the requester `PeerId`.
+   (NULL when no proof is present), the canonical bytes hex, the requester `PeerId`,
+   and the `out_desc` buffer.
 4. On failure (`EligibilityStatusCode` != `OK` or callback returns -1),
    returns early with `BAD_REQUEST` status code (400),
-   the `eligibility_status` object populated with the verdict code and desc,
+   the `eligibility_status` object populated with the verdict code and `desc`
+   (from `out_desc` when non-empty, otherwise the default phrase for that code per D2),
    and an empty `messages` list.
    The inner `requestHandler` is never called.
 5. On success, delegates to the inner `requestHandler`.
@@ -160,7 +173,10 @@ The provider callback is symmetric with the verifier callback
 on the outbound side.
 When a provider callback is registered,
 `liblogosdelivery`'s `logosdelivery_store_query` function
-(added on our fork of `logos-delivery`):
+(added on our fork of `logos-delivery`; implement by adapting
+`library/kernel_api/protocols/store_api.nim` `waku_store_query` — same JSON parsing,
+`wakuStoreClient.query`, and hex JSON response — plus eligibility provider injection
+before send and registration on the stable `liblogosdelivery.h` surface):
 
 1. Builds the `StoreQueryRequest` from the caller-supplied parameters,
    without `eligibility_proof`.
@@ -203,6 +219,13 @@ identical to the Rust serializer in Step 4.
 
 None beyond a Nim test rig and a small C consumer
 linking against the new `liblogosdelivery`.
+
+#### Verification (logos-delivery repo)
+
+- N8 cross-language vector: `tests/waku_store/test_store_eligibility_canonical.nim`
+  (hex must match `n8_canonical_wire_hex` in `lez-payment-streams-core`).
+- C ABI smoke: `library/tests/test_eligibility_hooks.c`, built like
+  `library/examples/logosdelivery_example.c` (`make logosdelivery_example` precedent).
 
 #### Definition of done
 

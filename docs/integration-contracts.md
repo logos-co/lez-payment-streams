@@ -17,10 +17,22 @@ Proof bytes are LIP-155 payment-stream `EligibilityProof` (not the legacy
 
 ## Delivery hooks (Steps 15–16 — D2)
 
+- MVP hooks are synchronous blocking C function pointers ([N3](reference/decisions-and-notes.md#n3-provider-side-verification-latency-and-blocking-hooks))
 - Opaque bytes on the hook are the full serialized `EligibilityProof` (not inner arms alone)
 - Outbound: `delivery_module` passes provider libp2p `PeerId` to the eligibility provider module
 - Inbound: passes requester `PeerId` to the verifier module (logged / abuse only in MVP)
+- Inbound Store `eligibility_status.desc`: verifier callback writes UTF-8 into `out_desc`
+  when present; Step 16 copies `verifyEligibilityForStoreQuery` JSON `message` there on failures.
+  Empty `out_desc` → default phrase for the returned code (D2)
 - Registration must expose exact LogosAPI method names (introspection via `getPluginMethods`)
+
+## logosdelivery_store_query JSON (Step 15)
+
+`queryJson` uses the same camelCase keys as
+`logos-delivery/library/kernel_api/protocols/store_api.nim` `fromJsonNode`:
+required `requestId`, `includeData`, `paginationForward`; optional `contentTopics`,
+`pubsubTopic`, `messageHashes`, `timeStart`, `timeEnd`, `paginationCursor`, `paginationLimit`.
+Omit `eligibilityProof`; the registered provider callback attaches proof bytes before send.
 
 ## payment_streams_module — LogosAPI methods (Step 16 must match)
 
