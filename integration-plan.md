@@ -12,7 +12,7 @@ The integration doc set was split to reduce context size for agents and operator
 | Agent entry | [`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md) |
 | Repo-root agent context | [`AGENTS.md`](AGENTS.md) |
 | Cross-step APIs | [`docs/integration-contracts.md`](docs/integration-contracts.md) |
-| D1–D6, N1–N11 | [`docs/reference/decisions-and-notes.md`](docs/reference/decisions-and-notes.md) |
+| D1–D6, N1–N12 | [`docs/reference/decisions-and-notes.md`](docs/reference/decisions-and-notes.md) |
 | Step packets (14–18), normative 12–13 | [`docs/plan/README.md`](docs/plan/README.md) |
 
 Step runbooks remain under [`docs/README.md`](docs/README.md).

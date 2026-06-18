@@ -1,71 +1,73 @@
 # Step 16 — plan excerpt
 
 Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
+Normative bridge policy: [Resolved implementation decisions](#resolved-implementation-decisions-2025-06-18)
+and [integration-contracts.md](../../integration-contracts.md).
 
 ### Step 16, Generic eligibility routing in `logos-delivery-module`
 
 Architectural context:
 this step modifies the C++ Qt-plugin shell of `delivery_module`.
-It bridges the Step 15 C callbacks into LogosAPI calls
+It bridges the Step 15 C callbacks into `LogosAPI` `callModule` invocations
 on a configurable named module
 (`payment_streams_module` in our demo;
 any module with the same method names in the future).
-The registration uses the auto-generated `getPluginMethods`
-introspection surface every Logos module already exposes.
 
 On our fork of `logos-delivery-module`,
 extend the `delivery_module` interface with
 `setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`,
-and add a `storeQuery(...)` LogosAPI method that calls `logosdelivery_store_query`
-(added on our fork of `logos-delivery` in Step 15).
-Do not wait on upstream N6 for the Store query API;
-the method is added entirely within our fork.
-The `logos-delivery` flake input is pinned to branch
-`feat/payment-streams-store-eligibility` in `logos-delivery-module/flake.nix`
+and add `storeQuery(queryJson, providerAddr)` backed by `logosdelivery_store_query`
+(Step 15 on `logos-delivery`).
+Do not wait on upstream N6; the API is added on our forks only.
+Pin the `logos-delivery` flake input to
+`feat/payment-streams-store-eligibility`
 ([delivery integration branches](../../../integration-index.md#delivery-integration-branches),
 [feature-branch-pins.md](../../feature-branch-pins.md)).
-Implement the bridge that translates the new `liblogosdelivery` callbacks
-into `LogosAPIClient` calls on the named module
-(`verifyEligibilityForStoreQuery`, `prepareEligibilityForStoreQuery`).
-The verifier bridge runs inside the blocking `EligibilityVerifierCb` ([N3](../../reference/decisions-and-notes.md#n3-provider-side-verification-latency-and-blocking-hooks)):
-map JSON `eligibility` to the integer status code for the C return value, and copy JSON
-`message` into `out_desc` when the module returns a verdict failure (truncate to buffer size;
-NUL-terminate). Leave `out_desc` empty on OK so inbound success responses omit
-`eligibility_status` from the inner handler path as today.
-Method names, argument shapes, and return shapes for these calls are specified in
-[integration-contracts.md](../../integration-contracts.md).
-Note that the host application is responsible for calling
-`registerProviderMapping` on the streams module before initiating queries.
-On registration, the bridge calls the named module's auto-generated
-`getPluginMethods` and rejects the registration with a structured error
-if the expected method names are not present,
-so misconfiguration surfaces at setup time rather than on the first Store request.
+
+Implement trampolines that call
+`verifyEligibilityForStoreQuery` and `prepareEligibilityForStoreQuery`
+on the registered module ([N3](../../reference/decisions-and-notes.md#n3-provider-side-verification-latency-and-blocking-hooks),
+[N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
+Map verify JSON to the C return code and copy failure `message` into `out_desc`
+(truncate, NUL-terminate). Leave `out_desc` empty on OK.
+
+On registration, validate the target module via `getPluginMethods`; reject with a
+structured error if required method names are missing, leaving the previous registration
+in place ([N3b](../../reference/decisions-and-notes.md#n3b-step-16-hook-registration-lifecycle-2025-06-18)).
+
+### Resolved implementation decisions (2025-06-18)
+
+Agents should treat the following as fixed unless this section is updated.
+Detail: [N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18),
+[N3b](../../reference/decisions-and-notes.md#n3b-step-16-hook-registration-lifecycle-2025-06-18),
+[N3c](../../reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18),
+[N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18).
+
+| Topic | Decision |
+| --- | --- |
+| Integration branch | `feat/payment-streams-store-eligibility` on `logos-delivery-module`; flake input `logos-delivery` on the same branch ([feature-branch-pins.md](../../feature-branch-pins.md)). |
+| Bridge IPC | Approach A: `LogosAPI` / `LogosModules` from universal `onInit`; `callModule` from Step 15 C trampolines. |
+| Inbound verifier | Sync `callModule` from the verifier trampoline (liblogosdelivery async thread; owner not blocked on store-query sem). |
+| NULL `proof_hex` | Always delegate to the module with empty `proofBytes` ([N3c](../../reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)). |
+| Outbound `storeQuery` | Async like `start` / `stop`: dispatch FFI, complete on typed event with StoreQueryResponse JSON ([N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)). |
+| `storeQuery` args | `(queryJson, providerAddr)` per [integration-contracts.md](../../integration-contracts.md). |
+| Registration | `setEligibilityVerifier` / `setEligibilityProvider`; `getPluginMethods` before commit; failed set leaves prior registration. |
+| Hook lifecycle | [N3b](../../reference/decisions-and-notes.md#n3b-step-16-hook-registration-lifecycle-2025-06-18). |
+| Verification scope | Bridge only in Step 16; two-host paid Store and demo script in Step 17 ([N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)). |
+| Tests | Unit mocks for new FFI; `tests/test_approach_a_thread_probe.cpp`; logoscore registration checks. |
 
 Components required to run:
-the unit-level checks (no verifier registered, structured error on misregistration)
-needs only a `logoscore` daemon with `delivery_module` loaded.
-The full Store query exchange is the Step 17 demo
-and requires the full stack documented there.
+`logoscore` with `delivery_module` suffices for registration and misconfiguration tests.
+Full Store exchange is Step 17 ([N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
 
-Note on `storeQuery` return shape:
-`storeQuery` returns a JSON-serialised `StoreQueryResponse` via the standard LogosAPI
-callback mechanism, including the messages list and, when present, the `eligibilityStatus`
-object (with `code` and `desc` fields).
-How consuming modules display or act on `eligibilityStatus` is outside this step's scope.
+Definition of done (Step 16 — bridge only):
 
-Definition of done:
-Without any verifier registered,
-`delivery_module` behaves exactly as it did at the pre-eligibility baseline.
-Registering a module that does not expose the expected methods
-returns a structured error and leaves the previous registration in place.
-Store queries can be issued through `delivery_module`'s `storeQuery` method
-against an explicit provider peer address.
-With `payment_streams_module` registered as both verifier and provider,
-an end-to-end Store query produced by the user
-returns a successful Store outcome
-and a successful eligibility outcome on the provider side.
-Requests failing eligibility checks immediately return
-a `BAD_REQUEST` (400) Store status code,
-a populated `eligibility_status` object with the specific verdict and desc,
-and an empty messages list.
+- No verifier at FFI layer ⇒ pre-eligibility inbound baseline ([N3b](../../reference/decisions-and-notes.md#n3b-step-16-hook-registration-lifecycle-2025-06-18)).
+- Bad registration ⇒ structured error; prior registration unchanged.
+- Verifier enabled ⇒ trampoline invokes module; NULL `proof_hex` ⇒ empty `proofBytes` ([N3c](../../reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)).
+- Provider enabled ⇒ async `storeQuery` without owner-thread deadlock ([N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
+- Unit tests and logoscore checks cover wiring above.
 
+Not in Step 16 scope ([N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)):
+two-host paid Store success, relay and archive setup, inbound wire-level 400 /
+`eligibility_status` outcomes, demo script and log artifact — see [step-17.md](step-17.md).

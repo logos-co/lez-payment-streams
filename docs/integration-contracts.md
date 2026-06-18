@@ -1,7 +1,9 @@
 # Integration contracts
 
 Cross-step APIs and wire shapes. Normative detail: [reference/decisions-and-notes.md](reference/decisions-and-notes.md)
-(D1, D2, N8, N11). Operator commands stay in `step*.md` runbooks.
+(D1, D2, N3a–N3c, N8, N11, N12). Step 16 bridge summary:
+[plan/upcoming/step-16.md](plan/upcoming/step-16.md#resolved-implementation-decisions-2025-06-18).
+Operator commands stay in `step*.md` runbooks.
 
 ## Store wire (Step 14 — D1)
 
@@ -17,14 +19,16 @@ Proof bytes are LIP-155 payment-stream `EligibilityProof` (not the legacy
 
 ## Delivery hooks (Steps 15–16 — D2)
 
-- MVP hooks are synchronous blocking C function pointers ([N3](reference/decisions-and-notes.md#n3-provider-side-verification-latency-and-blocking-hooks))
+- MVP hooks are synchronous blocking C function pointers at the liblogosdelivery boundary ([N3](reference/decisions-and-notes.md#n3-provider-side-verification-latency-and-blocking-hooks))
 - Opaque bytes on the hook are the full serialized `EligibilityProof` (not inner arms alone)
-- Outbound: `delivery_module` passes provider libp2p `PeerId` to the eligibility provider module
-- Inbound: passes requester `PeerId` to the verifier module (logged / abuse only in MVP)
-- Inbound Store `eligibility_status.desc`: verifier callback writes UTF-8 into `out_desc`
-  when present; Step 16 copies `verifyEligibilityForStoreQuery` JSON `message` there on failures.
-  Empty `out_desc` → default phrase for the returned code (D2)
-- Registration must expose exact LogosAPI method names (introspection via `getPluginMethods`)
+- Outbound: provider libp2p `PeerId` to `prepareEligibilityForStoreQuery`
+- Inbound: requester `PeerId` to `verifyEligibilityForStoreQuery` (logged only in MVP)
+- Inbound `out_desc`: Step 16 copies verify JSON `message` on failure; empty ⇒ default phrase (D2)
+- Registration introspection: exact method names via `getPluginMethods` (D2)
+- Step 16 bridge policy: [N3a](reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18),
+  [N3b](reference/decisions-and-notes.md#n3b-step-16-hook-registration-lifecycle-2025-06-18),
+  [N3c](reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18),
+  [N12](reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)
 
 ## logosdelivery_store_query JSON (Step 15)
 
@@ -34,13 +38,17 @@ required `requestId`, `includeData`, `paginationForward`; optional `contentTopic
 `pubsubTopic`, `messageHashes`, `timeStart`, `timeEnd`, `paginationCursor`, `paginationLimit`.
 Omit `eligibilityProof`; the registered provider callback attaches proof bytes before send.
 
+Step 16 `delivery_module.storeQuery(queryJson, providerAddr)` uses this shape.
+Dispatch is asynchronous when a provider is registered; response JSON arrives on a typed
+completion event ([N3a](reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
+
 ## payment_streams_module — LogosAPI methods (Step 16 must match)
 
 | Method | Role |
 | --- | --- |
 | `prepareEligibilityForStoreQuery` | User / outbound: returns `bytes_hex` (`EligibilityProof`) |
 | `verifyEligibilityForStoreQuery` | Provider / inbound: returns `eligibility` verdict |
-| `registerProviderMapping` | User routing: `PeerId` → payee base58 (not provider self-id for verify) |
+| `registerProviderMapping` | User routing: `PeerId` → payee base58 (host before outbound queries; Step 17 demo) |
 | `listMyStreams`, `rediscoverStreams` | Inventory / refresh |
 | `chainAction` | On-chain writes (Step 11b router) |
 
@@ -72,6 +80,8 @@ Success shapes use `"status":"ok"` inside `result` with `"kind":"stream_proposal
 - OK: `{"status":"ok","eligibility":"OK"}`
 - Verdict: `{"status":"error","eligibility":"<PARAMS_REJECTED|PROOF_INVALID|STREAM_NOT_ACTIVE>","message":"…"}`
 - Caller fault: `{"status":"error","message":"…"}` without `eligibility`
+- Missing proof on inbound Store: Step 16 passes empty `proofBytes`; paid demo expects a
+  verdict failure, not OK ([N3c](reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18))
 
 ## Fixture and provider payee
 

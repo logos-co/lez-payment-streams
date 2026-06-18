@@ -46,7 +46,7 @@ Summary:
 
 ## Historical depth (load on demand)
 
-- [reference/decisions-and-notes.md](reference/decisions-and-notes.md) — D1–D6, N1–N11
+- [reference/decisions-and-notes.md](reference/decisions-and-notes.md) — D1–D6, N1–N12 (Step 16: N3a–N3c, N12 scope)
 - [plan/completed/step-12-normative.md](plan/completed/step-12-normative.md), [step-13-normative.md](plan/completed/step-13-normative.md), [step-14-normative.md](plan/completed/step-14-normative.md), [step-15-normative.md](plan/completed/step-15-normative.md)
 - Step runbooks and policy notes under [docs/README.md](README.md)
 

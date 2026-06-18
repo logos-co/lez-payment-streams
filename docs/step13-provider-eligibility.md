@@ -113,5 +113,6 @@ requires active folded stream state for `OK` on the `stream_proof` arm.
 
 Step 14 (Store tag `30`) and Step 15 (`liblogosdelivery` hooks) are complete on
 `logos-delivery` branch `feat/payment-streams-store-eligibility`.
-Step 16 wires `delivery_module` to call this method on inbound Store queries. Step 17 two-host E2E builds on
-Steps 12–14 plus delivery integration.
+Step 16 wires `delivery_module` to call this method on inbound Store queries (bridge only;
+[N12](../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+Step 17 two-host E2E builds on Steps 12–16 plus delivery integration.

@@ -1,6 +1,6 @@
 # Decisions and notes
 
-Normative decisions (D1–D6) and carry-forward notes (N1–N11) for payment-streams integration.
+Normative decisions (D1–D6) and carry-forward notes (N1–N12) for payment-streams integration.
 Index: [integration-index.md](../../integration-index.md). Cross-step APIs: [integration-contracts.md](../integration-contracts.md).
 Plan excerpts: [plan/README.md](../plan/README.md).
 
@@ -65,7 +65,8 @@ Both take synchronous blocking C function pointers per N3.
 The verifier is invoked for every inbound Store request;
 `proof_hex` is NULL when no proof field is present,
 giving the callback full control over whether to accept unauthenticated requests.
-There is no `eligibilityRequired` flag; gating policy is expressed entirely in the callback body.
+There is no `eligibilityRequired` flag; gating policy is expressed in the registered module
+after the Step 16 bridge forwards the hook (see [N3c](#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)).
 `logos-delivery-module` (our fork for eligibility hooks) gains
 `setEligibilityVerifier(moduleName)` and `setEligibilityProvider(moduleName)`,
 and adds a `storeQuery(...)` LogosAPI method backed by `logosdelivery_store_query`
@@ -87,6 +88,11 @@ as `requesterPeerId` to the eligibility verifier hook.
 It does not interpret either value or know about LEZ account IDs.
 We ship this on our branches and do not negotiate spec changes.
 
+Step 16 bridge and verification (normative): threading and async `storeQuery` ([N3a](#n3a-step-16-threading--approach-a-experiment-2025-06-18)),
+hook lifecycle ([N3b](#n3b-step-16-hook-registration-lifecycle-2025-06-18)), NULL inbound proof ([N3c](#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)),
+scope vs Step 17 E2E ([N12](#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+Agent summary table: [step-16.md](../plan/upcoming/step-16.md#resolved-implementation-decisions-2025-06-18).
+
 Inbound `eligibility_status.desc` on the Store wire (D1) is filled by `liblogosdelivery`
 after the verifier callback returns:
 
@@ -99,7 +105,7 @@ after the verifier callback returns:
   `"proof invalid"`.
 
 `liblogosdelivery.h` has no separate ABI version symbol today; “bump the ABI” on our fork
-means **additive** C exports in that header plus rebuilding `liblogosdelivery` and every
+means additive C exports in that header plus rebuilding `liblogosdelivery` and every
 consumer (`logos-delivery-module`, C smoke tests). Do not remove or change existing
 `logosdelivery_*` signatures without coordinating downstream.
 
@@ -289,18 +295,104 @@ The MVP accepts that cost.
 
 Step 15 fixes the hook contract at the C ABI (see [D2](#d2-delivery-module-hook-design)):
 
-- `EligibilityVerifierCb` and `EligibilityProviderCb` are **synchronous blocking**
+- `EligibilityVerifierCb` and `EligibilityProviderCb` are synchronous blocking
   function pointers. The registered implementation runs to completion before the call returns.
 - On the inbound Store path, `liblogosdelivery` invokes the verifier from its async Store
-  handler and **awaits** the hook; the handler thread is held until the C callback returns.
+  handler and awaits the hook; the handler thread is held until the C callback returns.
   Implementations must not re-enter `liblogosdelivery` from inside the callback.
-- Step 16’s `delivery_module` bridge blocks inside those callbacks while it performs
-  synchronous `LogosAPI` calls into the named eligibility module.
+- Step 16’s `delivery_module` bridge performs synchronous `LogosAPI` calls into the named
+  eligibility module from inside those callbacks where threading allows (see
+  [N3a](#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
 
 That matches the existing Store handler shape (one eligibility decision per request before
 the inner `requestHandler` runs) without introducing a second async completion channel on
 the MVP ABI. Production traffic that needs non-blocking hooks uses the versioned async ABI
 described in the Step 15 migration note (`result_cb` trailing parameters), not N3’s MVP path.
+
+### N3a, Step 16 threading — Approach A experiment (2025-06-18)
+
+Chosen bridge shape: store `LogosAPI` / `LogosModules` from universal `onInit` and invoke
+`callModule` directly from the Step 15 C trampolines (no custom Qt hop inside
+`delivery_module` beyond what the C++ SDK already does).
+
+Verified with `logos-delivery-module` unit tests
+`tests/test_approach_a_thread_probe.cpp` (mirrors `logos-cpp-sdk`
+`logos_thread_marshal.h` / `LogosAPI::callModule`):
+
+- When the module owner thread blocks on a semaphore the way `callApiRetValue` does
+  without calling `QCoreApplication::processEvents`, a worker thread that invokes
+  `runOnOwnerThread` (`Qt::BlockingQueuedConnection`) does not complete within 400ms
+  (deadlock class).
+- The same worker call completes in milliseconds if the owner thread pumps Qt events
+  while waiting.
+
+Implications for Step 16:
+
+- Inbound verifier (`EligibilityVerifierCb` from liblogosdelivery’s Store handler):
+  the hook runs on liblogosdelivery’s chronos/async thread while the module owner thread is
+  not held on the store-query semaphore. Direct `callModule` from the trampoline is
+  feasible (SDK marshals onto the owner thread; the host process event loop can run).
+- Outbound `storeQuery` with a registered provider: sync
+  `callApiRetValue` plus `logosdelivery_store_query` blocks the same owner thread that
+  must service `runOnOwnerThread` for `prepareEligibilityForStoreQuery`. Direct
+  `callModule` inside the provider C callback is not feasible on that sync path.
+- Mitigation for outbound (still Approach A): implement `storeQuery` like `start` /
+  `stop` — return once the FFI call is dispatched and complete via a typed event (or another
+  non-blocking completion channel). Do not rely on pumping `processEvents` in the wait loop
+  (fragile; not recommended for production).
+
+Do not re-enter `liblogosdelivery` from inside eligibility callbacks (unchanged from N3).
+
+### N3b, Step 16 hook registration lifecycle (2025-06-18)
+
+Normative policy for `setEligibilityVerifier` / `setEligibilityProvider` in
+`logos-delivery-module` (implements Step 16 DoD and Step 15 `NULL` clear semantics).
+
+- Require `createNode` before any set call (same gate as `send` / `subscribe`).
+- Use fixed C trampolines on `DeliveryModuleImpl` with `user_data = this`, mirroring
+  `logosdelivery_set_event_callback` after `createNode`.
+- Trampolines read the current target module name and `LogosAPI` / `callModule` state at
+  invoke time.
+- Call `logosdelivery_set_eligibility_verifier` / `logosdelivery_set_eligibility_provider`
+  when enabling (non-empty module name after introspection succeeds) and pass `NULL` cb when
+  clearing, so Nim removes the inbound handler wrapper and skips outbound provider attach
+  when disabled.
+- When changing the module name while already enabled, update C++ state only; do not
+  re-register FFI if the same trampoline pointer is already installed.
+- Before any successful registration change, call the target module’s `getPluginMethods`
+  (or equivalent introspection) and require
+  `verifyEligibilityForStoreQuery` / `prepareEligibilityForStoreQuery` as applicable.
+  On failure, return a structured error and leave the previous registration unchanged.
+- Verifier and provider registrations are independent (two LogosAPI methods, two FFI hooks).
+- Before `logosdelivery_destroy`, clear both hooks with `NULL` when `deliveryCtx` is set.
+- Do not auto-clear registration when the target module unloads; MVP failures surface at
+  `callModule` time.
+
+### N3c, Inbound missing proof (NULL proof_hex) (2025-06-18)
+
+When Step 15 calls the verifier with `proof_hex == NULL` (no tag-30 proof on the Store request),
+Step 16’s bridge does not short-circuit in `delivery_module`. It always delegates to
+`verifyEligibilityForStoreQuery` with empty lowercase hex for `proofBytes` (same encoding
+rules as Step 12–13), plus `canonicalRequestBytes` and `requesterPeerId`.
+
+Eligibility policy for unauthenticated Store requests lives in the registered module, not in
+Delivery. For the LIP-155 paid Store demo, `payment_streams_module` rejects empty proof with a
+verdict failure JSON (`status: error`, non-OK `eligibility`, and `message`), which the bridge
+maps to the C status code and `out_desc` per integration contracts.
+
+Inbound wire semantics and Step 15 wrapper behavior are unchanged: a module OK allows the
+inner Store handler to run; a module verdict failure yields Store 400 with
+`eligibility_status`.
+
+### N12, Step 16 vs Step 17 verification scope (2025-06-18)
+
+| Step | Repo / focus | Prove |
+| --- | --- | --- |
+| 16 | `logos-delivery-module` | Eligibility bridge, hook lifecycle (N3b), threading (N3a), async `storeQuery`, registration introspection, unit mocks and logoscore registration checks. |
+| 17 | Demo script + two hosts | Full stack: sequencer, wallet, both `logoscore` instances, relay and Store archive, paid outbound query, inbound verify including failed eligibility on the wire, structured log artifact. |
+
+Do not block Step 16 merge on the Step 17 script. Step 17 is the integration gate for
+end-to-end Store and eligibility outcomes described in the former monolithic Step 16 DoD.
 
 ### N4, Persistence policy
 
@@ -340,7 +432,7 @@ roadmap item is independent of this integration.
 Active path ([D2](#d2-delivery-module-hook-design)): add `logosdelivery_store_query` on our
 `logos-delivery` fork (Step 15) and `storeQuery(...)` on our `logos-delivery-module` fork
 (Step 16), wired to eligibility hooks and `payment_streams_module`. Steps 14–17 do not wait on
-upstream N6. Step 17 E2E depends on Step 16 completing on those forks, not on upstream
+upstream N6. Step 17 E2E depends on Step 16 bridge landing on those forks ([N12](#n12-step-16-vs-step-17-verification-scope-2025-06-18)), not on upstream
 `master`.
 
 Branch workflow: fork from upstream `master` (not module release tags); default shared
@@ -534,7 +626,7 @@ Wallet submit and module shape
 - Guest ELF: Step 10a `lez_payment_streams.bin` with `PAYMENT_STREAMS_GUEST_BIN` on the daemon;
   the PS module omits the ELF blob from IPC when that env var is set. Deposit uses wallet
   `authenticated_transfer_elf()` as a dependency when deps are empty. Bundling guest ELF inside
-  the PS `.lgx` remains a follow-on. **Step 11d** ([LEZ PR 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510))
+  the PS `.lgx` remains a follow-on. Step 11d ([LEZ PR 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510))
   should replace or narrow this env-var path once deploy and program ELF are registered through
   `wallet_ffi` and exposed on `logos_execution_zone`.
 - Nine write operations plus two status queries are implemented on the impl class; a single

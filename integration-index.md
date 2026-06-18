@@ -27,7 +27,8 @@ Steps 16–17 need Store query on our delivery forks, not on upstream `master` (
 `logosdelivery_store_query` in `logos-delivery` (Step 15) and `storeQuery(...)` on
 `logos-delivery-module` (Step 16). Upstream N6 is no longer a gate for Steps 14–17.
 Step 14 (wire) and Step 15 (C hooks + `logosdelivery_store_query`) are complete on the
-`logos-delivery` fork; Step 16 is next on `logos-delivery-module`.
+`logos-delivery` fork; Step 16 (bridge on `logos-delivery-module`) is next. Step 17 owns
+full-stack E2E ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
 
 We do not maintain the retired exploratory PR branch
 (`feat/liblogosdelivery-query-store` / old `queryStore` exposure) in payment-streams flakes.
@@ -47,7 +48,7 @@ If that name is taken on a remote, use `feat/lip155-store-eligibility` or
 | Repo | Steps | Scope |
 | --- | --- | --- |
 | `logos-delivery` | 14–15 (done) | Store codec (tag `30`), `liblogosdelivery` hooks, `logosdelivery_store_query` |
-| `logos-delivery-module` | 16 | `storeQuery`, eligibility routing; **`flake.nix` pins `logos-delivery` to `feat/payment-streams-store-eligibility`** ([feature-branch-pins.md](docs/feature-branch-pins.md)) |
+| `logos-delivery-module` | 16 | `storeQuery`, eligibility routing; `flake.nix` pins `logos-delivery` to `feat/payment-streams-store-eligibility` ([feature-branch-pins.md](docs/feature-branch-pins.md)) |
 
 Suggested workflow: Steps 14–15 are on `logos-delivery` branch
 `feat/payment-streams-store-eligibility`. Implement Step 16 on
@@ -92,7 +93,7 @@ Detail: [`logos-architecture-overview.md`](logos-architecture-overview.md).
 | D4 | Wallet module id | [D4](docs/reference/decisions-and-notes.md#d4-wallet-module-runtime-name) |
 | D5 | PS module naming | [D5](docs/reference/decisions-and-notes.md#d5-new-module-naming) |
 | D6 | Universal interface | [D6](docs/reference/decisions-and-notes.md#d6-universal-module-interface) |
-| N1–N11 | Carry-forward notes | [decisions-and-notes.md](docs/reference/decisions-and-notes.md) (N8 = canonical Store bytes) |
+| N1–N12 | Carry-forward notes | [decisions-and-notes.md](docs/reference/decisions-and-notes.md) (N8 canonical Store bytes; N3a–N3c, N12 Step 16) |
 
 Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs/integration-contracts.md).
 
@@ -111,8 +112,8 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 13 | Provider verify | Complete — [step13](docs/step13-provider-eligibility.md), `verify-step13-dod.sh` |
 | 14 | Store wire (`logos-delivery`) | Complete — branch `feat/payment-streams-store-eligibility` (`d033a493`); [step-14-normative.md](docs/plan/completed/step-14-normative.md) |
 | 15 | `liblogosdelivery` hooks | Complete — branch `feat/payment-streams-store-eligibility` (`e59319d8`); [step-15-normative.md](docs/plan/completed/step-15-normative.md) |
-| 16 | `delivery_module` routing | Upcoming — [step-16.md](docs/plan/upcoming/step-16.md) |
-| 17 | E2E demo | Upcoming — [step-17.md](docs/plan/upcoming/step-17.md) |
+| 16 | `delivery_module` routing | Upcoming — bridge only [step-16.md](docs/plan/upcoming/step-16.md) ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)) |
+| 17 | E2E demo | Upcoming — full stack script [step-17.md](docs/plan/upcoming/step-17.md) |
 | 18 | Basecamp UI | Optional — [step-18.md](docs/plan/upcoming/step-18.md) |
 
 Execution order: Steps 12, 11d, 13, 14, and 15 are complete. Next: 16 → 17 on delivery forks
@@ -154,8 +155,8 @@ Verify: [step-15-normative.md](docs/plan/completed/step-15-normative.md).
 
 Do not duplicate full DoD here — read the packet:
 
-- [Step 16](docs/plan/upcoming/step-16.md) — `setEligibilityVerifier` / `setEligibilityProvider`
-- [Step 17](docs/plan/upcoming/step-17.md) — two logical hosts, paid Store mode
+- [Step 16](docs/plan/upcoming/step-16.md) — bridge routing (unit / logoscore); not full two-host E2E
+- [Step 17](docs/plan/upcoming/step-17.md) — two logical hosts, paid Store mode, demo script ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18))
 - [Step 18](docs/plan/upcoming/step-18.md) — optional `ui_qml` plugin
 
 ## Verify scripts (logoscore path)

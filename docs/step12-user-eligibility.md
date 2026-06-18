@@ -2,8 +2,9 @@
 
 Status: complete for integration DoD (feature in tree, `./scripts/verify-step12-dod.sh`,
 strict localnet path with `REQUIRE_STREAM_PROOF=1`). Step 13 provider verify is complete
-separately ([`step13-provider-eligibility.md`](step13-provider-eligibility.md)). Step 16 delivery
-hook is a follow-on, not a blocker for this step.
+separately ([`step13-provider-eligibility.md`](step13-provider-eligibility.md)). Step 16
+`delivery_module` bridge is the next integration step ([N12](reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18));
+not a blocker for Step 12 DoD.
 
 Session keys, persisted negotiation state, and Store `EligibilityProof` bytes (LIP-155
 `stream_proposal` / `stream_proof` arms) for the paid Store demo. Step 12 in
@@ -31,7 +32,10 @@ Show the user path for payment-stream Store eligibility on one local LEZ + two l
 3. Provider accepts; user opens stream on-chain via `chainAction` `createStream` (not automatic).
 4. Next query → `EligibilityProof` with `stream_proof` over the same canonical Store request bytes.
 
-Step 16 attaches opaque `eligibility_proof` bytes from this module to Store traffic ([D2](../reference/decisions-and-notes.md#d2-delivery-module-hook-design)); Step 12 can be tested with logoscore + FFI only.
+Step 16 routes prepare output into outbound Store via `delivery_module`; Step 17 exercises
+the full two-host path ([D2](../reference/decisions-and-notes.md#d2-delivery-module-hook-design),
+[N12](../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+Step 12 can be tested with logoscore + FFI only.
 
 ## Environment
 

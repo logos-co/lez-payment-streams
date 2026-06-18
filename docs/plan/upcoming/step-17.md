@@ -4,7 +4,8 @@ Active-work packet for agents. Index: [integration-index.md](../../../integratio
 
 ### Step 17, End-to-end demo wiring
 
-Blocked on Step 16 (`storeQuery` and eligibility routing on our delivery forks; see [N6](../../reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)).
+Blocked on Step 16 bridge ([N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18);
+`storeQuery` and eligibility routing on our delivery forks; see [N6](../../reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)).
 
 Architectural context:
 this is the only step that exercises every layer at once:
@@ -12,6 +13,14 @@ two Logos hosts (`logoscore` daemons),
 all three backend modules in each host,
 the LEZ sequencer for chain reads and writes,
 and direct Store traffic from the user host to the provider host.
+
+Step 16 lands eligibility routing and async `storeQuery` on `delivery_module` only.
+This step owns full-stack verification: paid Store query across two hosts, eligibility
+outcomes on user and provider, and inbound Store `BAD_REQUEST` when verification fails
+([N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+
+Note that the host application is responsible for calling
+`registerProviderMapping` on the streams module before outbound Store queries in the Step 17 demo.
 
 Create a single shell script that
 starts a fresh scaffold workspace,
@@ -62,7 +71,20 @@ as the Store target,
 and direct network reachability between the two local hosts.
 
 Definition of done:
-the script runs to completion against a clean workspace
+
+The Step 16 bridge is installed from the integration branch and both hosts register
+`payment_streams_module` as eligibility verifier and provider where the demo requires it.
+
+A user-initiated Store query through `delivery_module.storeQuery` against the provider peer
+returns a successful Store outcome when chain state and proofs are valid, including successful
+eligibility on the provider inbound path.
+
+When eligibility checks fail on the provider (including Store requests with no proof while
+paid mode expects one — see [N3c](../../reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)),
+the provider observes `BAD_REQUEST` (400), a populated `eligibility_status` object with
+verdict and `desc`, and an empty messages list.
+
+The script runs to completion against a clean workspace
 and produces a log artifact that documents
 every chain transaction, every Store request,
 and the eligibility outcomes observed on both ends.

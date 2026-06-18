@@ -21,7 +21,7 @@ retired `feat/liblogosdelivery-query-store` branch. Default shared name:
 `logos-delivery-module` (Step 16); alternatives if needed:
 `feat/lip155-store-eligibility`, `integration/payment-streams-store`.
 Point the module flake's `logos-delivery` input at the integration branch (same name on
-`logos-messaging/logos-delivery`). **Configured in** `logos-delivery-module/flake.nix`:
+`logos-messaging/logos-delivery`). Configured in `logos-delivery-module/flake.nix`:
 
 ```nix
 logos-delivery.url =
