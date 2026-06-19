@@ -24,12 +24,31 @@ require_cmd() {
 
 require_cmd lgs
 
+wait_rocksdb_unlocked() {
+  local dir="$1"
+  local i
+  for i in $(seq 1 30); do
+    if [[ ! -f "$dir/LOCK" ]]; then
+      return 0
+    fi
+    sleep 1
+  done
+  if lgs localnet status 2>/dev/null | grep -q 'running=true'; then
+    echo "ERROR: sequencer still running; cannot snapshot RocksDB at $dir" >&2
+    return 1
+  fi
+  echo "WARN: removing stale RocksDB LOCK after localnet stop" >&2
+  rm -f "$dir/LOCK"
+}
+
 echo "=== snapshot localnet ($SNAPSHOT_NAME) ==="
 
 if lgs localnet status 2>/dev/null | grep -qi running; then
   echo "Stopping localnet before copying RocksDB…"
   lgs localnet stop
 fi
+
+wait_rocksdb_unlocked "$ROCKSDB" || exit 1
 
 if [[ -f "$ROCKSDB/LOCK" ]]; then
   echo "ERROR: RocksDB LOCK still present at $ROCKSDB — stop the sequencer and retry" >&2
