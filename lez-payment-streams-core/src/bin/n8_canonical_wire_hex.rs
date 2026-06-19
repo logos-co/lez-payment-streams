@@ -3,12 +3,14 @@ use lez_payment_streams_core::{
 };
 
 fn main() {
-    let hashes = [[1_u8; 32], [2_u8; 32]];
-    let topics = vec!["/my-app/1/chat/proto".to_string()];
+    // Empty message hashes - query returns all messages matching content topic
+    let hashes: [[u8; 32]; 0] = [];
+    // Content topic hashes to shard 1 with 8 shards (cluster 0)
+    let topics = vec!["/lez-payment-streams/1/e2e-eligibility/proto".to_string()];
     let parts = CanonicalStoreQueryParts {
         request_id: "req-1",
         include_data: true,
-        pubsub_topic: Some("/waku/2/topic"),
+        pubsub_topic: Some("/waku/2/rs/0/1"),  // cluster 0, shard 1
         content_topics: &topics,
         start_time: Some(10),
         end_time: None,

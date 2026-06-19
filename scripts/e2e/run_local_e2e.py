@@ -15,17 +15,21 @@ from pathlib import Path
 from typing import Any
 
 
-CONTENT_TOPIC = "/my-app/1/chat/proto"
+# Static sharding config - simpler for E2E demo without autosharding complexity
+# Autosharding requires content topic format: /app/{version}/content-type/encoding
+# where {version} is numeric. The content topic hash determines the shard.
+CONTENT_TOPIC = "/lez-payment-streams/1/e2e-eligibility/proto"
+# Content topic hashes to shard 1 with 8 shards (cluster 0)
+PUBSUB_TOPIC = "/waku/2/rs/0/1"
 N8_REFERENCE_QUERY = {
     "requestId": "req-1",
     "includeData": True,
-    "pubsubTopic": "/waku/2/topic",
+    "pubsubTopic": PUBSUB_TOPIC,
     "contentTopics": [CONTENT_TOPIC],
     "timeStart": 10,
     "paginationForward": True,
     "paginationLimit": 100,
-    "messageHashes": ["0101010101010101010101010101010101010101010101010101010101010101",
-                      "0202020202020202020202020202020202020202020202020202020202020202"],
+    "messageHashes": [],
 }
 STORE_QUERY_TIMEOUT_S = 120
 PUBLISH_WAIT_S = 15
@@ -239,6 +243,8 @@ def local_waku_json_base() -> dict:
         "logLevel": "INFO",
         "tcpPort": 60000,
         "listenAddress": "127.0.0.1",
+        # Autosharding required for subscribe/send APIs
+        "numShardsInNetwork": 8,
     }
 
 
@@ -599,7 +605,7 @@ def main() -> int:
     n8_wire = os.environ.get("N8_WIRE_HEX", "").strip()
     if not n8_wire:
         n8_proc = run(
-            ["cargo", "run", "-q", "-p", "lez-payment-streams-core", "--bin", "n8_canonical_wire_hex"],
+            ["cargo", "run", "-q", "--release", "-p", "lez-payment-streams-core", "--bin", "n8_canonical_wire_hex"],
             cwd=repo,
             timeout=120,
         )
