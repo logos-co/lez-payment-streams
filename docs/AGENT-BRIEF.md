@@ -21,6 +21,7 @@ Steps 1–13, 11d, and Steps 14–16 on the delivery forks are complete. Impleme
 | Step | Repo / area | Agent packet |
 | --- | --- | --- |
 | 17 | E2E demo (local LEZ) | [plan/upcoming/step-17.md](plan/upcoming/step-17.md), runbook [step17-e2e-local.md](step17-e2e-local.md) |
+| 17b | Localnet snapshot restore (repeat Step 17 runs) | [plan/upcoming/step-17b-localnet-snapshot-restore.md](plan/upcoming/step-17b-localnet-snapshot-restore.md), [demo-localnet-recovery.md](demo-localnet-recovery.md) |
 | 18 | Public sequencer E2E (local Store) | [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) |
 | 19 | LIP-155 on-chain spec | [plan/upcoming/step-19-lip155-onchain-spec.md](plan/upcoming/step-19-lip155-onchain-spec.md) |
 | 20 | Developer journey doc packet | [plan/upcoming/step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md) |
@@ -49,6 +50,7 @@ Summary:
 | Delivery / Store wire (16+) | This brief → [integration-contracts.md](integration-contracts.md) → step packet → [D1](reference/decisions-and-notes.md#d1-store-wire-format) / [D2](reference/decisions-and-notes.md#d2-delivery-module-hook-design). Steps 14–16: [step-14-normative.md](plan/completed/step-14-normative.md), [step-15-normative.md](plan/completed/step-15-normative.md), [step-16.md](plan/completed/step-16.md). |
 | Module eligibility bugfix | [step12-user-eligibility.md](step12-user-eligibility.md) or [step13-provider-eligibility.md](step13-provider-eligibility.md) + contracts |
 | Localnet / verify failure | [demo-localnet-recovery.md](demo-localnet-recovery.md) + relevant `verify-step*-dod.sh` |
+| Step 17b snapshot / fast reuse | [plan/upcoming/step-17b-localnet-snapshot-restore.md](plan/upcoming/step-17b-localnet-snapshot-restore.md) + [N15](reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) |
 | Step 17 E2E dual-host | [step17-e2e-local.md](step17-e2e-local.md) (incl. [hermetic run](step17-e2e-local.md#hermetic-run-hand-off)) + [plan/upcoming/step-17.md](plan/upcoming/step-17.md) + [N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18) |
 | Step 18 public sequencer | [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) + Step 17 runbook (local P2P unchanged) |
 | Step 23 hosted provider | [plan/upcoming/step-23-public-store-provider.md](plan/upcoming/step-23-public-store-provider.md) |
@@ -64,7 +66,7 @@ Summary:
 
 ## Historical depth (load on demand)
 
-- [reference/decisions-and-notes.md](reference/decisions-and-notes.md) — D1–D6, N1–N13 (Step 16: N3a–N3c; Step 17: N13 lib overlay)
+- [reference/decisions-and-notes.md](reference/decisions-and-notes.md) — D1–D6, N1–N15 (Step 16: N3a–N3c; Step 17: N13–N14; Step 17b: N15)
 - [plan/completed/step-12-normative.md](plan/completed/step-12-normative.md), [step-13-normative.md](plan/completed/step-13-normative.md), [step-14-normative.md](plan/completed/step-14-normative.md), [step-15-normative.md](plan/completed/step-15-normative.md)
 - Step runbooks and policy notes under [docs/README.md](README.md)
 

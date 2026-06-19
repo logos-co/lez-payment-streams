@@ -115,7 +115,7 @@ Detail: [`logos-architecture-overview.md`](logos-architecture-overview.md).
 | D4 | Wallet module id | [D4](docs/reference/decisions-and-notes.md#d4-wallet-module-runtime-name) |
 | D5 | PS module naming | [D5](docs/reference/decisions-and-notes.md#d5-new-module-naming) |
 | D6 | Universal interface | [D6](docs/reference/decisions-and-notes.md#d6-universal-module-interface) |
-| N1–N12 | Carry-forward notes | [decisions-and-notes.md](docs/reference/decisions-and-notes.md) (N8 canonical Store bytes; N3a–N3c, N12 Step 16) |
+| N1–N15 | Carry-forward notes | [decisions-and-notes.md](docs/reference/decisions-and-notes.md) (N8 canonical Store bytes; N3a–N3c, N12 Step 16; N15 Step 17b snapshot) |
 
 Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs/integration-contracts.md).
 
@@ -135,7 +135,8 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 14 | Store wire (`logos-delivery`) | Complete — `d033a49364f1dda4ee4e5467d828738d01eb7d4c`; [step-14-normative.md](docs/plan/completed/step-14-normative.md) |
 | 15 | `liblogosdelivery` hooks | Complete — `e59319d8648c3c3ea9384c592728d5738f623a13`; [step-15-normative.md](docs/plan/completed/step-15-normative.md) |
 | 16 | `delivery_module` routing | Complete — `bf104a6…`; [step-16.md](docs/plan/completed/step-16.md) |
-| 17 | E2E demo (local LEZ) | Complete — [step-17.md](docs/plan/upcoming/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md), [17b snapshot restore](docs/plan/upcoming/step-17b-localnet-snapshot-restore.md), [N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [N14](docs/reference/decisions-and-notes.md#n14-step-17-paid-query-verify-rejects-2026-06-19), [N15](docs/reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) |
+| 17 | E2E demo (local LEZ) | Complete — [step-17.md](docs/plan/upcoming/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md), [N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [N14](docs/reference/decisions-and-notes.md#n14-step-17-paid-query-verify-rejects-2026-06-19) |
+| 17b | Localnet snapshot restore | Complete — [step-17b-localnet-snapshot-restore.md](docs/plan/upcoming/step-17b-localnet-snapshot-restore.md), [N15](docs/reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19); `demo-localnet-prepare.sh`, `make prepare-localnet` |
 | 18 | Public sequencer E2E (local Store) | Upcoming — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
 | 19 | LIP-155 on-chain spec | Upcoming — [step-19-lip155-onchain-spec.md](docs/plan/upcoming/step-19-lip155-onchain-spec.md) |
 | 20 | Developer journey doc packet | Upcoming — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
@@ -213,4 +214,4 @@ Step 15 DoD is verified in the `logos-delivery` fork only
 | `./scripts/demo-e2e-local.sh` | 17 (dual-host Store E2E) |
 
 `make verify-step12`, `make verify-step13` wrap the Step 12–13 scripts.
-Step 17: `make verify-step17` → [scripts/demo-e2e-local.sh](scripts/demo-e2e-local.sh) (see [step17-e2e-local.md](docs/step17-e2e-local.md)). Installs all modules via nix `#lgx` + `lgpm`; optional `liblogosdelivery` overlay or hermetic `SKIP_LIBLOGOSDELIVERY_OVERLAY=1` ([N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [hermetic run](docs/step17-e2e-local.md#hermetic-run-hand-off)).
+Step 17: `make verify-step17` → [scripts/demo-e2e-local.sh](scripts/demo-e2e-local.sh) (see [step17-e2e-local.md](docs/step17-e2e-local.md)). Fixture prepare (17b): `make prepare-localnet` → [scripts/demo-localnet-prepare.sh](scripts/demo-localnet-prepare.sh). Installs all modules via nix `#lgx` + `lgpm`; optional `liblogosdelivery` overlay or hermetic `SKIP_LIBLOGOSDELIVERY_OVERLAY=1` ([N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [hermetic run](docs/step17-e2e-local.md#hermetic-run-hand-off)).

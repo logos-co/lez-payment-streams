@@ -56,9 +56,14 @@ Step 17 entrypoint `make verify-step17` calls `demo-localnet-prepare` via
 
 ## Verification
 
-1. Phase: `FULL_RESET=1 ./scripts/demo-localnet-prepare.sh`
-2. Phase: `./scripts/demo-localnet-prepare.sh` twice (second run must not call pinata)
-3. Phase: `make verify-step17` back-to-back
+1. `FULL_RESET=1 ./scripts/demo-localnet-prepare.sh`
+2. `./scripts/demo-localnet-prepare.sh` twice (second run must not call pinata)
+3. `make verify-step17` back-to-back
 4. After guest rebuild: restore must fail until `FULL_RESET=1`
+
+## Status
+
+Complete (2026-06-19). Verified: restore + create-stream path, back-to-back
+`make verify-step17`, and `FULL_RESET=1` rebuild.
 
 Decision record: [N15](../reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19).

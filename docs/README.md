@@ -32,6 +32,7 @@ long procedural blocks in both places.
 | [`step12-user-eligibility.md`](step12-user-eligibility.md) | Step 12 user eligibility (`verify-step12-dod.sh`) |
 | [`step13-provider-eligibility.md`](step13-provider-eligibility.md) | Step 13 provider verify (`verify-step13-dod.sh`) |
 | [`step17-e2e-local.md`](step17-e2e-local.md) | Step 17 dual-host Store E2E (`make verify-step17`; hermetic run section) |
+| [`plan/upcoming/step-17b-localnet-snapshot-restore.md`](plan/upcoming/step-17b-localnet-snapshot-restore.md) | Step 17b snapshot restore (`make prepare-localnet`, `FULL_RESET`) |
 | [`step3-policy-and-implementor-notes.md`](step3-policy-and-implementor-notes.md) | Step 3a policy and implementor detail |
 | [`step8-universal-legacy-probe-results.md`](step8-universal-legacy-probe-results.md) | Step 8 probe results (+ historical dilemma appendix) |
 | [`feature-branch-pins.md`](feature-branch-pins.md) | Wallet flake pins (LEZ 510 + PR 19 wrapper) |
