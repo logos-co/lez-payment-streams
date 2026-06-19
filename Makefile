@@ -123,7 +123,9 @@ verify-step13: ## Step 13 definition of done (scripts/verify-step13-dod.sh)
 	./scripts/verify-step13-dod.sh
 
 verify-step17: ## Step 17 local dual-host Store E2E (scripts/demo-e2e-local.sh)
-	chmod +x scripts/demo-e2e-local.sh scripts/e2e/*.py scripts/demo-localnet-prepare.sh
+	chmod +x scripts/demo-e2e-local.sh scripts/e2e/*.py scripts/demo-localnet-prepare.sh \
+		scripts/prefund-localnet.sh scripts/restore-localnet.sh scripts/create-localnet-stream-fixture.sh \
+		scripts/snapshot-localnet.sh scripts/ensure-scaffold-lez-layout.sh
 	./scripts/demo-e2e-local.sh
 
 prepare-localnet: ## Step 17b restore baseline + create stream (scripts/demo-localnet-prepare.sh)
