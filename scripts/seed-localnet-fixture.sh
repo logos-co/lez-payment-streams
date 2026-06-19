@@ -66,10 +66,14 @@ fi
 
 OWNER="$SIGNER_ID"
 echo "Funding owner Public/$OWNER (pinata; repeat for larger demo deposit)…"
-TOPUP_ROUNDS="${SEED_WALLET_TOPUP_ROUNDS:-4}"
-DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-450}"
+# Each pinata claim grants 150 tokens, so TOPUP_ROUNDS*150 must cover DEPOSIT_AMOUNT.
+# Stream lifetime is allocation/rate seconds; allocation 1800 at rate 1 is 30 min, far longer
+# than the seed-plus-run wall time, so the demo never trips depletion. Deposit carries 600 of
+# unallocated headroom (2400-1800) so the E2E top-up loop can also refill mid-run if needed.
+TOPUP_ROUNDS="${SEED_WALLET_TOPUP_ROUNDS:-16}"
+DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-2400}"
 STREAM_RATE="${SEED_STREAM_RATE:-1}"
-STREAM_ALLOCATION="${SEED_STREAM_ALLOCATION:-400}"
+STREAM_ALLOCATION="${SEED_STREAM_ALLOCATION:-1800}"
 for ((round = 1; round <= TOPUP_ROUNDS; round++)); do
   echo "  topup round ${round}/${TOPUP_ROUNDS}…"
   lgs wallet topup --address "Public/$OWNER"

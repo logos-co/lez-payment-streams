@@ -135,7 +135,7 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 14 | Store wire (`logos-delivery`) | Complete — `d033a49364f1dda4ee4e5467d828738d01eb7d4c`; [step-14-normative.md](docs/plan/completed/step-14-normative.md) |
 | 15 | `liblogosdelivery` hooks | Complete — `e59319d8648c3c3ea9384c592728d5738f623a13`; [step-15-normative.md](docs/plan/completed/step-15-normative.md) |
 | 16 | `delivery_module` routing | Complete — `bf104a6…`; [step-16.md](docs/plan/completed/step-16.md) |
-| 17 | E2E demo (local LEZ) | In progress (local gate green) — [step-17.md](docs/plan/upcoming/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md), [N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18) |
+| 17 | E2E demo (local LEZ) | In progress (full gate green 2026-06-19: paid `storeQuery` 200, missing-proof rejected, claim `tx_hash`) — [step-17.md](docs/plan/upcoming/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md), [N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18) |
 | 18 | Public sequencer E2E (local Store) | Upcoming — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
 | 19 | LIP-155 on-chain spec | Upcoming — [step-19-lip155-onchain-spec.md](docs/plan/upcoming/step-19-lip155-onchain-spec.md) |
 | 20 | Developer journey doc packet | Upcoming — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |

@@ -49,6 +49,13 @@ QString makeVerifyEligibilityError(const QString& eligibility, const QString& me
     return QJsonDocument(obj).toJson(QJsonDocument::Compact);
 }
 
+// Demo bypass: accept proofs for depleted (fully accrued) streams. Honors only truthy values
+// so the always-exported default "0" means OFF; prepare and verify must agree on this.
+bool allowDepletedStreamProof() {
+    const QByteArray raw = qgetenv("PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF").trimmed().toLower();
+    return raw == "1" || raw == "true" || raw == "yes" || raw == "on";
+}
+
 quint64 foldClockForPolicy(quint64 rawTs) {
     if (rawTs > 1'000'000'000'000ULL) {
         return rawTs / 1000;
@@ -774,7 +781,7 @@ QString eligibilityErrorForStreamState(const ChainStreamView& view) {
                                     QStringLiteral("stream is paused on chain"));
     }
     if (view.fold.unaccrued_lo == 0 && view.fold.unaccrued_hi == 0) {
-        if (!qEnvironmentVariableIsEmpty("PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF")) {
+        if (allowDepletedStreamProof()) {
             return {};
         }
         return makeEligibilityError(QStringLiteral("STREAM_DEPLETED"),
@@ -864,12 +871,12 @@ bool signVaultOwnerDigest(LogosAPIClient* client,
     return true;
 }
 
+// Only populates the service_id fields. Callers own rate/allocation/deadline: the verify path
+// must keep the on-chain values set by paramsFromStreamConfig, while the fresh-vault proposal arm
+// sets its own demo terms. (Previously this clobbered rate/allocation, making verify reject
+// every stream proof with RateBelowAcceptedParams since chain rate < kDemoRate.)
 void fillServiceId(PsFfiStreamParams* params) {
     const size_t len = std::strlen(kServiceId);
-    params->rate = kDemoRate;
-    params->allocation_lo = 0;
-    params->allocation_hi = 0;
-    params->create_stream_deadline = 0;
     params->service_id_len = static_cast<uint32_t>(len);
     params->_padding = 0;
     std::memset(params->service_id_bytes, 0, sizeof(params->service_id_bytes));
@@ -1184,6 +1191,7 @@ QString PaymentStreamsModuleImpl::prepareEligibilityForStoreQuery(const QVariant
     std::memcpy(proposal.vault_proof.provider_id, provider, 32);
     hex32FromQString(ownerPubHex, proposal.vault_proof.owner_public_key);
     fillServiceId(&proposal.params);
+    proposal.params.rate = kDemoRate;
     proposal.params.allocation_lo = proposalAllocation;
     proposal.params.create_stream_deadline = now + kDemoDeadlineOffset;
     std::memcpy(proposal.session_public_key, sessionPublic, 32);
@@ -1578,7 +1586,7 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
         return makeVerifyEligibilityError(QStringLiteral("STREAM_NOT_ACTIVE"),
                                           QStringLiteral("stream not active"));
     }
-    if (view.fold.unaccrued_lo == 0 && view.fold.unaccrued_hi == 0) {
+    if (view.fold.unaccrued_lo == 0 && view.fold.unaccrued_hi == 0 && !allowDepletedStreamProof()) {
         return makeVerifyEligibilityError(QStringLiteral("STREAM_NOT_ACTIVE"),
                                           QStringLiteral("stream depleted"));
     }
@@ -1598,14 +1606,16 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
     if (!streamIdBound) {
         if (ps_ffi_new_stream_satisfies_proposal(&view.decoded, &acceptedParams, demoProvider, &rejectReason) !=
             kFfiSuccess) {
-            return makeVerifyEligibilityError(verdictForPolicyReject(rejectReason),
-                                              QStringLiteral("new stream policy check failed"));
+            return makeVerifyEligibilityError(
+                verdictForPolicyReject(rejectReason),
+                QStringLiteral("new stream policy check failed (reject_reason=%1)").arg(rejectReason));
         }
     }
 
     if (ps_ffi_stream_satisfies_policy(&view.fold.folded_stream, &terms, &rejectReason) != kFfiSuccess) {
-        return makeVerifyEligibilityError(verdictForPolicyReject(rejectReason),
-                                          QStringLiteral("stream policy check failed"));
+        return makeVerifyEligibilityError(
+            verdictForPolicyReject(rejectReason),
+            QStringLiteral("stream policy check failed (reject_reason=%1)").arg(rejectReason));
     }
 
     QJsonObject row;

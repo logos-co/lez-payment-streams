@@ -3,14 +3,21 @@
 Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
 Operator runbook: [step17-e2e-local.md](../../step17-e2e-local.md).
 
-Checkpoint (2026-06-18): local dual-host gate is green via `make verify-step17`
-(`scripts/demo-e2e-local.sh` + `scripts/e2e/run_local_e2e.py`). Paid `storeQuery`, missing-proof
-failure, and provider claim phases write JSON-lines artifacts under `.scaffold/e2e/artifacts/`.
+Checkpoint (2026-06-19): full local dual-host gate is green via `make verify-step17`
+(`scripts/demo-e2e-local.sh` + `scripts/e2e/run_local_e2e.py`): paid `storeQuery` returns
+`statusCode:200` with messages, missing-proof is rejected, and provider claim writes a `tx_hash`.
+JSON-lines artifacts land under `.scaffold/e2e/artifacts/`. The 2026-06-18 checkpoint reported the
+wiring green but the happy-path `storeQuery` still failed `BAD_REQUEST`; root cause was provider
+verify returning `PARAMS_REJECTED` / `RateBelowAcceptedParams` because `fillServiceId` clobbered
+the on-chain rate/allocation in `acceptedParams` (fixed 2026-06-19, with `reject_reason` now
+surfaced in the verdict and an E2E `store_query_eligibility_verdict` diagnostic line).
 Delivery install uses `nix build …#lgx` + `lgpm install` for all three modules; optional
 `liblogosdelivery` overlay from sibling `logos-delivery` when not using hermetic mode
 ([N13](../../reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18),
 runbook [Hermetic run](../../step17-e2e-local.md#hermetic-run-hand-off)).
 Module bridge invokes eligibility on the `LogosAPIClient` thread ([N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
+Seed defaults are deposit `2400` / allocation `1800` / rate `1` (≈30 min runway) so a fresh seed
+plus a run no longer trips `STREAM_DEPLETED`.
 
 Remaining before Step 17 “Complete” in the index: drop default overlay once hermetic installs
 are routine; align delivery `.lgx` layout with `logoscore` if `MODULE_LOAD_FAILED` appears on

@@ -533,6 +533,35 @@ def wait_store_query(cfg: Path, query_json: str, provider_addr: str, log_path: P
             watch.kill()
 
 
+def provider_verify_verdict(cfg_provider: Path, proof_hex: str, n8_wire: str) -> dict:
+    """Directly invoke the provider verifier to surface the eligibility code/desc.
+
+    The client only ever sees ``BAD_REQUEST``; the verdict (code + message) rides the wire
+    response's eligibility status and is otherwise invisible. Calling the already-installed
+    module method reproduces the inbound verify decision without a rebuild.
+    """
+    try:
+        r = logoscore_cmd(
+            cfg_provider,
+            "call",
+            "payment_streams_module",
+            "verifyEligibilityForStoreQuery",
+            proof_hex,
+            n8_wire,
+            "e2e-diagnostic",
+        )
+        parsed = call_result(r)
+        inner = parsed.get("result")
+        if isinstance(inner, str):
+            try:
+                inner = json.loads(inner)
+            except json.JSONDecodeError:
+                return {"raw": inner}
+        return inner if isinstance(inner, dict) else {"raw": inner}
+    except E2EError as e:
+        return {"error": str(e)}
+
+
 def parse_store_query_completed(blob: str) -> dict:
     for line in reversed(blob.splitlines()):
         if "storeQueryCompleted" not in line:
@@ -772,7 +801,18 @@ def main() -> int:
                 response_preview=str(response)[:500],
             )
             if not store_ok:
-                raise E2EError(f"expected store query success, got {response!r}")
+                verdict = provider_verify_verdict(cfg_provider, proof_hex, n8_wire)
+                log_artifact(
+                    artifact,
+                    "store_query_eligibility_verdict",
+                    False,
+                    eligibility=verdict.get("eligibility"),
+                    message=verdict.get("message"),
+                    verdict=verdict,
+                )
+                raise E2EError(
+                    f"expected store query success, got {response!r}; provider verdict={verdict!r}"
+                )
 
             # Missing proof (no eligibilityProofHex; provider verifier enabled)
             fail_query = dict(N8_REFERENCE_QUERY)

@@ -39,8 +39,9 @@ Search `.scaffold/logs/sequencer.log` for the failing tx hash from seed stdout.
   call); rebuild and redeploy.
 - `Sender has insufficient balance` (authenticated_transfer): demo deposit exceeds owner balance
   after pinata topup; increase `SEED_WALLET_TOPUP_ROUNDS` or lower `SEED_DEPOSIT_AMOUNT` /
-  `SEED_STREAM_ALLOCATION` in `scripts/seed-localnet-fixture.sh` — defaults are deposit 450 /
-  allocation 400 at rate `1`.
+  `SEED_STREAM_ALLOCATION` in `scripts/seed-localnet-fixture.sh` — defaults are deposit 2400 /
+  allocation 1800 at rate `1`, funded by 16 pinata rounds (`SEED_WALLET_TOPUP_ROUNDS`) at 150
+  tokens each. `SEED_WALLET_TOPUP_ROUNDS * 150` must cover `SEED_DEPOSIT_AMOUNT`.
 - `Transaction not found in preconfigured amount of blocks`: tx often never included (check log
   for `ProgramExecutionFailed` / skip); poller timeout is not proof the guest encoding is wrong.
 

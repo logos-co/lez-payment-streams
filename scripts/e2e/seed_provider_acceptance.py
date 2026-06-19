@@ -34,7 +34,10 @@ def save_state(path: Path, state: dict) -> None:
 
 
 def session_from_user_negotiations(user_state: dict, vault_id: int, provider_id_hex: str) -> tuple[str | None, str | None]:
-    for row in user_state.get("negotiations", []):
+    # Iterate newest-first: prepareEligibility appends a fresh negotiation per run, so a
+    # stale row from a prior session (different provider key) must not win when persist
+    # was not cleared. When provider_id_hex is supplied we only accept the matching row.
+    for row in reversed(user_state.get("negotiations", [])):
         if int(row.get("vault_id", -1)) != vault_id:
             continue
         row_provider = row.get("provider_id_hex", "").lower()
@@ -62,12 +65,18 @@ def main() -> int:
     stream_id = int(manifest["stream_id"]) if args.stream_id < 0 else args.stream_id
 
     user_state = load_state(args.user_state)
-    session_hex, provider_id_hex = session_from_user_negotiations(user_state, vault_id, "")
+    # Match the negotiation for the current provider (manifest) so a stale row from a
+    # previous session under a different provider key cannot leak in.
+    manifest_provider_hex = b58decode_account_to_hex(provider_b58)
+    session_hex, provider_id_hex = session_from_user_negotiations(user_state, vault_id, manifest_provider_hex)
+    if not session_hex:
+        # Fall back to newest-any-provider only if no provider-specific match exists.
+        session_hex, provider_id_hex = session_from_user_negotiations(user_state, vault_id, "")
     if not session_hex:
         print("ERROR: no session_public_key_hex in user negotiations", file=sys.stderr)
         return 1
     if not provider_id_hex:
-        provider_id_hex = b58decode_account_to_hex(provider_b58)
+        provider_id_hex = manifest_provider_hex
 
     provider_state = load_state(args.provider_state)
     if provider_state.get("schema_version", 1) < 2:

@@ -428,6 +428,33 @@ commit `flake.lock`, update [feature-branch-pins.md](../feature-branch-pins.md),
 Inbound bridge (`delivery_module` → `payment_streams_module` during Store handling) must invoke
 `LogosAPIClient` on the client object's thread (`runOnOwnerThread`); see [N3a](#n3a-step-16-threading--approach-a-experiment-2025-06-18).
 
+### N14, Step 17 paid-query verify rejects (2026-06-19)
+
+After the N13 wiring was correct (proof carried tag-30, provider verifier reached), the happy-path
+`storeQuery` still returned client-visible `BAD_REQUEST`. The client only ever sees `BAD_REQUEST`
+on a non-OK verdict, so the orchestrator now calls
+`payment_streams_module verifyEligibilityForStoreQuery` directly on the provider and writes the
+real verdict to a `store_query_eligibility_verdict` artifact line (`eligibility` + `message`).
+Policy rejects carry `reject_reason=N` (the FFI `PolicyRejectReason` discriminant) in the message.
+
+Three root causes surfaced through that observability, in order:
+
+- `STREAM_NOT_ACTIVE` / stream depleted. The seed fixture allocated `400` at rate `1`
+  (≈400 s), so the stream depleted before or during a run. Fixed by sizing the seed to deposit
+  `2400` / allocation `1800` / rate `1` (≈30 min runway) in
+  [`scripts/seed-localnet-fixture.sh`](../../scripts/seed-localnet-fixture.sh). The depletion
+  bypass `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF` is now genuinely unnecessary for the demo;
+  its check was also made symmetric across prepare and verify with explicit truthy parsing
+  (`1`/`true`/`yes`/`on`).
+- `PROOF_INVALID` / session public key unknown. `scripts/e2e/seed_provider_acceptance.py` picked a
+  stale negotiation row when `PERSIST_USER` was reused. Hardened to match the current manifest
+  provider, newest-first.
+- `PARAMS_REJECTED` / `RateBelowAcceptedParams` (`reject_reason=4`). `fillServiceId` in
+  `payment_streams_module_eligibility.cpp` overwrote the on-chain `rate`/`allocation` with demo
+  defaults while building `acceptedParams`, so verify compared chain rate `1` against accepted
+  rate `10`. `fillServiceId` now only sets `service_id` fields; the proposal arm sets
+  `proposal.params.rate = kDemoRate` explicitly.
+
 ### N4, Persistence policy
 
 `payment_streams_module` persists pending-proposal state and per-stream session keys

@@ -143,17 +143,23 @@ Failure triage without overlay:
 | Symptom | Likely cause |
 | --- | --- |
 | Provider `BAD_REQUEST`, empty inbound proof | Stale `liblogosdelivery.so` (lock below `39b467ec`) or wrong file in `delivery_module/` |
-| `verify` / prepare → `STREAM_NOT_ACTIVE` | Fixture stream `0` depleted; run `./scripts/demo-localnet-fresh.sh` or fresh `PERSIST_*` |
+| Client `BAD_REQUEST` on a query *with* proof | Provider verifier rejected. The client only sees `BAD_REQUEST`; the orchestrator logs the real verdict in the `store_query_eligibility_verdict` artifact line (calls the provider verifier directly). Read `eligibility` + `message` (policy rejects include `reject_reason=N`). |
+| `verify` / prepare → `STREAM_NOT_ACTIVE` | Fixture stream `0` depleted; run `./scripts/demo-localnet-fresh.sh` or fresh `PERSIST_*`. Default allocation `1800` (≈30 min) keeps a fresh seed + run depletion-free. |
+| `verify` → `PARAMS_REJECTED` (`reject_reason=4`) | `RateBelowAcceptedParams`: on-chain rate below the accepted/proposal rate. Fixed 2026-06-19 (`fillServiceId` no longer clobbers rate/allocation). If it recurs, the stream's on-chain rate genuinely differs from `kDemoRate` for the proposal arm. |
 | `MODULE_LOAD_FAILED` for `delivery_module` | Incomplete `lgpm` install or missing bundled `.so` in module dir |
 
 Default developer path (overlay on): omit `SKIP_LIBLOGOSDELIVERY_OVERLAY` when
-`../logos-delivery` is present — local gate documented as green 2026-06-18 with
-`make verify-step17`. Hermetic path verified same date with `SKIP_LIBLOGOSDELIVERY_OVERLAY=1`
-and `logos-delivery` `39b467ec` in the module lock.
+`../logos-delivery` is present — full E2E gate green 2026-06-19 with `make verify-step17`
+(`store_query_success` 200, missing-proof rejected, claim `tx_hash`) after the `fillServiceId`
+rate/allocation fix. Earlier overlay/hermetic paths verified 2026-06-18 with
+`SKIP_LIBLOGOSDELIVERY_OVERLAY=1` and `logos-delivery` `39b467ec` in the module lock.
 
 After user `prepareEligibilityForStoreQuery`, run `scripts/e2e/seed_provider_acceptance.py` to
 copy `session_public_key_hex` into provider `provider_acceptances` (dual-host warm-up), then
-reload `payment_streams_module` on the provider host.
+reload `payment_streams_module` on the provider host. The script selects the negotiation matching
+the current manifest provider (newest-first), so a stale negotiation from a prior session under a
+different provider key cannot seed the wrong key when `PERSIST_USER` is not cleared. The documented
+re-run gate still clears `PERSIST_USER` / `PERSIST_PROVIDER`.
 
 ## Provider service advertisement (off-band mimic)
 
@@ -167,7 +173,7 @@ info if needed), then writes `E2E_PROVIDER_AD`:
 {
   "provider_peer_id": "<libp2p peer id string>",
   "provider_store_multiaddr": "/ip4/127.0.0.1/tcp/<tcpPort>/p2p/<peerId>",
-  "content_topic": "/lez-payment-streams/e2e/1/demo/proto",
+  "content_topic": "/lez-payment-streams/1/e2e-eligibility/proto",
   "service_id": "/vac/waku/store-query/3.0.0"
 }
 ```
@@ -319,10 +325,17 @@ JSON-lines, one object per phase, e.g.:
 
 ```json
 {"phase":"seed","ok":true,"manifest":"fixtures/localnet.json"}
-{"phase":"provider_ad","peer_id":"…","multiaddr":"…"}
-{"phase":"store_query_success","ok":true,"message_count":1}
-{"phase":"store_query_missing_proof","ok":true,"status":400,"eligibility":"PROOF_INVALID"}
+{"phase":"provider_ad","ok":true,"provider_peer_id":"…","provider_store_multiaddr":"…"}
+{"phase":"store_query_success","ok":true,"message_count":1,"status":200}
+{"phase":"store_query_missing_proof","ok":true,"status":null,"message_count":0}
 {"phase":"claim","ok":true,"tx_hash":"…"}
+```
+
+On a failed `store_query_success`, the orchestrator adds a diagnostic line with the provider's
+real verdict (the client-visible error is only `BAD_REQUEST`):
+
+```json
+{"phase":"store_query_eligibility_verdict","ok":false,"eligibility":"PARAMS_REJECTED","message":"stream policy check failed (reject_reason=4)","verdict":{…}}
 ```
 
 Script exit code: non-zero if any required phase has `"ok":false`.
