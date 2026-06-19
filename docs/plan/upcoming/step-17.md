@@ -3,9 +3,10 @@
 Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
 Operator runbook: [step17-e2e-local.md](../../step17-e2e-local.md).
 
-Checkpoint (2026-06-19): full local dual-host gate is green via `make verify-step17`
-(`scripts/demo-e2e-local.sh` + `scripts/e2e/run_local_e2e.py`): paid `storeQuery` returns
-`statusCode:200` with messages, missing-proof is rejected, and provider claim writes a `tx_hash`.
+Status: Complete (2026-06-19). The full local dual-host gate is green via `make verify-step17`
+(`scripts/demo-e2e-local.sh` + `scripts/e2e/run_local_e2e.py`) on a clean tree (fix committed) plus
+a fresh `demo-localnet-fresh.sh` seed: paid `storeQuery` returns `statusCode:200` with messages,
+missing-proof is rejected, and provider claim writes a `tx_hash`.
 JSON-lines artifacts land under `.scaffold/e2e/artifacts/`. The 2026-06-18 checkpoint reported the
 wiring green but the happy-path `storeQuery` still failed `BAD_REQUEST`; root cause was provider
 verify returning `PARAMS_REJECTED` / `RateBelowAcceptedParams` because `fillServiceId` clobbered
@@ -19,9 +20,10 @@ Module bridge invokes eligibility on the `LogosAPIClient` thread ([N3a](../../re
 Seed defaults are deposit `2400` / allocation `1800` / rate `1` (≈30 min runway) so a fresh seed
 plus a run no longer trips `STREAM_DEPLETED`.
 
-Remaining before Step 17 “Complete” in the index: drop default overlay once hermetic installs
-are routine; align delivery `.lgx` layout with `logoscore` if `MODULE_LOAD_FAILED` appears on
-clean machines only.
+Post-Complete hardening (not gating): re-run the hermetic path (`SKIP_LIBLOGOSDELIVERY_OVERLAY=1`)
+after the fix and drop the default overlay once hermetic installs are routine; align delivery
+`.lgx` layout with `logoscore` if `MODULE_LOAD_FAILED` appears on clean machines only; teach the
+E2E to re-seed on a detected depleted stream (current top-up retry cannot revive depletion).
 
 ### Step 17, End-to-end demo wiring
 
