@@ -135,7 +135,7 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 14 | Store wire (`logos-delivery`) | Complete — `d033a49364f1dda4ee4e5467d828738d01eb7d4c`; [step-14-normative.md](docs/plan/completed/step-14-normative.md) |
 | 15 | `liblogosdelivery` hooks | Complete — `e59319d8648c3c3ea9384c592728d5738f623a13`; [step-15-normative.md](docs/plan/completed/step-15-normative.md) |
 | 16 | `delivery_module` routing | Complete — `bf104a6…`; [step-16.md](docs/plan/completed/step-16.md) |
-| 17 | E2E demo (local LEZ) | Complete — full gate green 2026-06-19 on a clean tree + fresh seed (paid `storeQuery` 200, missing-proof rejected, claim `tx_hash`); [step-17.md](docs/plan/upcoming/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md), [N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [N14](docs/reference/decisions-and-notes.md#n14-step-17-paid-query-verify-rejects-2026-06-19) |
+| 17 | E2E demo (local LEZ) | Complete — [step-17.md](docs/plan/upcoming/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md), [17b snapshot restore](docs/plan/upcoming/step-17b-localnet-snapshot-restore.md), [N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [N14](docs/reference/decisions-and-notes.md#n14-step-17-paid-query-verify-rejects-2026-06-19), [N15](docs/reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) |
 | 18 | Public sequencer E2E (local Store) | Upcoming — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
 | 19 | LIP-155 on-chain spec | Upcoming — [step-19-lip155-onchain-spec.md](docs/plan/upcoming/step-19-lip155-onchain-spec.md) |
 | 20 | Developer journey doc packet | Upcoming — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
@@ -189,6 +189,7 @@ Agent packet: [step-16.md](docs/plan/completed/step-16.md). Locked rev:
 Do not duplicate full DoD here — read the packet:
 
 - [Step 17](docs/plan/upcoming/step-17.md) — two hosts, local LEZ, paid Store script ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)); runbook [step17-e2e-local.md](docs/step17-e2e-local.md)
+- [Step 17b](docs/plan/upcoming/step-17b-localnet-snapshot-restore.md) — localnet snapshot restore (fast repeat runs)
 - [Step 18](docs/plan/upcoming/step-18-public-testnet-demo.md) — public LEZ sequencer; local dual-host Store E2E
 - [Step 23](docs/plan/upcoming/step-23-public-store-provider.md) — optional hosted Store provider on public mesh
 - [Step 19](docs/plan/upcoming/step-19-lip155-onchain-spec.md) — on-chain LIP on `main`
@@ -208,6 +209,7 @@ Step 15 DoD is verified in the `logos-delivery` fork only
 | `./scripts/verify-step11a-dod.sh` … `11d` | 11a–d |
 | `./scripts/verify-step12-dod.sh` | 12 (`REQUIRE_STREAM_PROOF=1` strict) |
 | `./scripts/verify-step13-dod.sh` | 13 (`VERIFY_LOGOSCORE=1` cross-test) |
+| `./scripts/demo-localnet-prepare.sh` | 17b / 17 fixture (restore + stream) |
 | `./scripts/demo-e2e-local.sh` | 17 (dual-host Store E2E) |
 
 `make verify-step12`, `make verify-step13` wrap the Step 12–13 scripts.

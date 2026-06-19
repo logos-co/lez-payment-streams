@@ -455,6 +455,25 @@ Three root causes surfaced through that observability, in order:
   rate `10`. `fillServiceId` now only sets `service_id` fields; the proposal arm sets
   `proposal.params.rate = kDemoRate` explicitly.
 
+### N15, Step 17b localnet snapshot restore (2026-06-19)
+
+Step 17 back-to-back runs reused a live stream whose accrual continued across sessions;
+`verify-step10a-dod.sh` only checks that stream PDAs exist, not eligibility runway ([N14](#n14-step-17-paid-query-verify-rejects-2026-06-19)).
+
+Fix: snapshot a **pre-stream** funded baseline (vault `0` deposited, no stream `0`) while the
+sequencer is stopped, copying `~/.cache/logos-scaffold/repos/lez/<scaffold.toml pin>/rocksdb/`
+plus `.scaffold/wallet`, `.scaffold/state`, and fixture owner/provider state files into
+`.scaffold/snapshots/funded/`. Each run restores that baseline and runs
+`create-stream-onchain` so stream `0` accrual starts at restore time.
+
+Validity keys in `snapshot.json`: `lez_pin`, `program_id_hex` (same guard as Step 10a),
+owner/provider account ids, deposit and stream params. Mismatch → operator runs
+`FULL_RESET=1` (prefund + snapshot rebuild). Default demo path:
+[`scripts/demo-localnet-prepare.sh`](../../scripts/demo-localnet-prepare.sh); legacy full rebuild:
+[`scripts/demo-localnet-fresh.sh`](../../scripts/demo-localnet-fresh.sh) sets `FULL_RESET=1`.
+
+Plan packet: [step-17b-localnet-snapshot-restore.md](../plan/upcoming/step-17b-localnet-snapshot-restore.md).
+
 ### N4, Persistence policy
 
 `payment_streams_module` persists pending-proposal state and per-stream session keys
