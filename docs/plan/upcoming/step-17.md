@@ -96,7 +96,7 @@ If implementation scope is too large for one change set, split delivery:
 | 17A | `scripts/demo-e2e-local.sh` (or `--phase core`) | Dual host, hooks, Store success + missing-proof failure, logs |
 | 17B | same script `--phase claim` or follow-up commit | Provider `claim` + log lines for chain txs |
 
-Do not renumber Steps 18–22; 17B is a sub-phase of Step 17 only.
+Do not renumber Steps 18–23; 17B is a sub-phase of Step 17 only.
 
 Components required to run:
 LEZ sequencer on `127.0.0.1:3040`,
@@ -121,5 +121,6 @@ Definition of done:
 5. Artifact: script exits 0 on a clean workspace and writes
    `.scaffold/e2e/artifacts/demo-e2e-local-<timestamp>.log` (JSON-lines phases; see runbook).
 
-Follow-on: Step 18 (testnet), Step 19 (LIP on-chain), Step 20 (developer journey); optional
-Steps 21–22 (UI). See [integration-index.md](../../../integration-index.md#program-outcomes).
+Follow-on: Step 18 (public sequencer, local P2P), Step 19 (LIP on-chain), Step 20 (developer
+journey); optional Steps 21–22 (UI), Step 23 (hosted Store provider). See
+[integration-index.md](../../../integration-index.md#program-outcomes).

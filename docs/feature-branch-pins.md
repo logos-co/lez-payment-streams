@@ -28,8 +28,8 @@ logos-delivery.url =
 ```
 
 Commit `flake.lock` after changing the input; the lock file records the resolved `rev` at update
-time (branch tip moves until you re-lock). Steps 17–18 E2E may cite the locked rev
-explicitly; wallet pins follow the table in the next section.
+time (branch tip moves until you re-lock). Steps 17–18 E2E cite locked revs where needed; optional
+Step 23 hosted provider uses the same delivery pins. Wallet pins follow the table in the next section.
 Workflow detail: [integration-index.md](../integration-index.md#delivery-integration-branches).
 
 ### Delivery flake lock (logos-delivery-module)

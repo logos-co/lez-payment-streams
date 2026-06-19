@@ -18,17 +18,20 @@ Crypto and policy live in Rust (`lez-payment-streams-core`,
 `liblogosdelivery` hooks in the delivery repos (Steps 14–16).
 
 MVP scope: LIP-155 transparent vaults, single user and single provider, paid Store mode on the
-provider. Step 17 uses a local LEZ sequencer; Step 18 targets public testnet v0.2 for the operator
-demo. The on-chain guest is documented in Step 19 (`rfc-index`); see [architecture.md](architecture.md).
+provider. Step 17 uses a local LEZ sequencer; Step 18 uses public testnet v0.2 for chain access
+while Store and relay stay on two local `logoscore` hosts. Optional Step 23 hosts a public paid
+Store provider on the mesh. The on-chain guest is documented in Step 19 (`rfc-index`); see
+[architecture.md](architecture.md).
 
 ## Program outcomes
 
 | Outcome | Steps |
 | --- | --- |
-| Runnable demo (CLI) | 17 local integration gate; 18 testnet variant |
+| Runnable demo (CLI) | 17 local LEZ gate; 18 public sequencer + local P2P |
 | LIP-155 on-chain spec on `main` | 19 |
 | Developer journey (logos-docs doc packet) | 20 |
 | Basecamp UI + UI journey (optional) | 21–22 |
+| Public hosted Store provider (optional) | 23 |
 
 Details in step packets under [`docs/plan/upcoming/`](docs/plan/upcoming/); do not duplicate DoD here.
 
@@ -133,14 +136,16 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 15 | `liblogosdelivery` hooks | Complete — `e59319d8648c3c3ea9384c592728d5738f623a13`; [step-15-normative.md](docs/plan/completed/step-15-normative.md) |
 | 16 | `delivery_module` routing | Complete — `bf104a6…`; [step-16.md](docs/plan/completed/step-16.md) |
 | 17 | E2E demo (local LEZ) | In progress (local gate green) — [step-17.md](docs/plan/upcoming/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md), [N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18) |
-| 18 | Public testnet demo | Upcoming — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
+| 18 | Public sequencer E2E (local Store) | Upcoming — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
 | 19 | LIP-155 on-chain spec | Upcoming — [step-19-lip155-onchain-spec.md](docs/plan/upcoming/step-19-lip155-onchain-spec.md) |
 | 20 | Developer journey doc packet | Upcoming — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
 | 21 | Basecamp UI | Optional — [step-21-basecamp-ui.md](docs/plan/upcoming/step-21-basecamp-ui.md) |
 | 22 | UI journey doc packet | Optional — [step-22-ui-journey.md](docs/plan/upcoming/step-22-ui-journey.md) |
+| 23 | Public Store provider | Optional — [step-23-public-store-provider.md](docs/plan/upcoming/step-23-public-store-provider.md) |
 
 Execution order: Steps 12, 11d, 13, 14, 15, and 16 are complete. Next: 17, then 18–20 in order;
-19 may parallel 17–18. Optional 21–22 after 20 if shipping UI docs. Entry:
+19 may parallel 17–18. Optional 21–22 after 20 if shipping UI docs; optional 23 if shipping a
+hosted paid-Store provider. Entry:
 [`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md). Local demos:
 [`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 
@@ -184,7 +189,8 @@ Agent packet: [step-16.md](docs/plan/completed/step-16.md). Locked rev:
 Do not duplicate full DoD here — read the packet:
 
 - [Step 17](docs/plan/upcoming/step-17.md) — two hosts, local LEZ, paid Store script ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)); runbook [step17-e2e-local.md](docs/step17-e2e-local.md)
-- [Step 18](docs/plan/upcoming/step-18-public-testnet-demo.md) — testnet v0.2 operator demo
+- [Step 18](docs/plan/upcoming/step-18-public-testnet-demo.md) — public LEZ sequencer; local dual-host Store E2E
+- [Step 23](docs/plan/upcoming/step-23-public-store-provider.md) — optional hosted Store provider on public mesh
 - [Step 19](docs/plan/upcoming/step-19-lip155-onchain-spec.md) — on-chain LIP on `main`
 - [Step 20](docs/plan/upcoming/step-20-developer-journey.md) — logos-docs developer journey
 - [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) — optional `ui_qml` plugin

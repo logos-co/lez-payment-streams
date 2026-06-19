@@ -9,7 +9,8 @@ Prerequisites by published runtime target:
 | Journey runtime target | Required before Step 20 |
 | --- | --- |
 | Local LEZ (script from Step 17 only) | Step 17 DoD satisfied |
-| Testnet v0.2 | Steps 17 and 18 DoD satisfied |
+| Testnet v0.2 (public LEZ, local dual-host Store) | Steps 17 and 18 DoD satisfied |
+| Testnet v0.2 + hosted public Store provider | Steps 17, 18, and 23 DoD satisfied |
 | Any | Step 19 on `main`, or doc packet links explicitly to the spec PR/branch until merge |
 
 Architectural context:
@@ -40,4 +41,5 @@ Definition of done:
 - Red Team completes when org process requires `quality:verified` on the published doc (tracked on
   logos-docs project board, not via a script in this repo).
 
-Not in scope: UI journey (Step 22); implementing new backend features.
+Not in scope: UI journey (Step 22); hosted provider ops (Step 23) unless the journey targets
+that deployment model; implementing new backend features.
