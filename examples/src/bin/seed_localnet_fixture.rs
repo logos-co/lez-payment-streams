@@ -1,4 +1,4 @@
-//! Localnet fixture helper (integration Step 10a).
+//! Localnet fixture helper (integration Step 10a / Step 17b).
 //!
 //! Submits initialize_vault, deposit, and create_stream using core [`Instruction`] encoding
 //! (works around SPEL CLI `VaultId` IDL serialization). Writes `fixtures/localnet.json`.
@@ -30,12 +30,9 @@ use serde::Serialize;
 use wallet::WalletCore;
 
 const DEFAULT_SEQUENCER: &str = "http://127.0.0.1:3040";
-/// Local pinata topup is ~150 tokens per claim on typical scaffold localnets. The seed script
-/// runs several `lgs wallet topup` rounds before deposit; keep `deposit_amount` within that budget
-/// (see `SEED_WALLET_TOPUP_ROUNDS` in `scripts/seed-localnet-fixture.sh`).
+/// Local pinata topup is ~150 tokens per claim on typical scaffold localnets. Demo scripts
+/// pass explicit deposit/topup counts (see `scripts/seed-localnet-fixture.sh`).
 const DEFAULT_DEPOSIT: Balance = 450;
-/// Slow accrual (policy min rate is 1) with a large allocation so stream `0` stays eligible across
-/// long Step 12 / Step 17 demo sessions on one localnet (~400s unaccrued runway at rate 1).
 const DEFAULT_STREAM_RATE: TokensPerSecond = 1;
 const DEFAULT_STREAM_ALLOCATION: Balance = 400;
 
@@ -64,6 +61,50 @@ enum Commands {
         sequencer_url: String,
         #[arg(long, default_value = "fixtures/localnet.json")]
         output: PathBuf,
+    },
+    /// Initialize vault and deposit only (Step 17b baseline snapshot; no stream).
+    PrefundOnchain {
+        #[arg(long)]
+        program_bin: PathBuf,
+        #[arg(long)]
+        owner: String,
+        #[arg(long, default_value = "0")]
+        vault_id: u64,
+        #[arg(long, default_value_t = DEFAULT_DEPOSIT)]
+        deposit_amount: Balance,
+        #[arg(long, default_value_t = true)]
+        skip_if_initialized: bool,
+        #[arg(long)]
+        force: bool,
+        #[arg(long, default_value = DEFAULT_SEQUENCER)]
+        sequencer_url: String,
+    },
+    /// Create stream on a funded vault and write fixture JSON (Step 17b per-run).
+    CreateStreamOnchain {
+        #[arg(long)]
+        program_bin: PathBuf,
+        #[arg(long)]
+        owner: String,
+        #[arg(long)]
+        provider: String,
+        #[arg(long, default_value = "0")]
+        vault_id: u64,
+        #[arg(long, default_value = "0")]
+        stream_id: u64,
+        #[arg(long, default_value_t = DEFAULT_DEPOSIT)]
+        deposit_amount: Balance,
+        #[arg(long, default_value_t = DEFAULT_STREAM_RATE)]
+        stream_rate: TokensPerSecond,
+        #[arg(long, default_value_t = DEFAULT_STREAM_ALLOCATION)]
+        stream_allocation: Balance,
+        #[arg(long, default_value_t = true)]
+        skip_if_initialized: bool,
+        #[arg(long)]
+        force: bool,
+        #[arg(long, default_value = DEFAULT_SEQUENCER)]
+        sequencer_url: String,
+        #[arg(long, default_value = "fixtures/localnet.json")]
+        write_manifest: PathBuf,
     },
     /// Submit demo vault lifecycle txs via scaffold wallet + sequencer.
     SeedOnchain {
@@ -111,6 +152,16 @@ struct LocalnetFixture {
     stream_rate: TokensPerSecond,
     stream_allocation: Balance,
     reserved_for_step_11b: String,
+}
+
+struct OnchainContext {
+    program_id: CoreProgramId,
+    program_id_hex: String,
+    lee_program_id: LeeProgramId,
+    owner_id: CoreAccountId,
+    owner_lee: LeeAccountId,
+    vault_id: VaultId,
+    wallet: WalletCore,
 }
 
 fn ensure_wallet_home_env() -> Result<()> {
@@ -267,6 +318,176 @@ async fn account_has_data(wallet: &WalletCore, account_id: LeeAccountId) -> Resu
     Ok(!acc.data.is_empty())
 }
 
+async fn open_onchain(
+    program_bin: &PathBuf,
+    owner: &str,
+    vault_id: VaultId,
+) -> Result<OnchainContext> {
+    let (program_id, program_id_hex) = program_id_from_bin(program_bin)?;
+    let owner_id = account_id_from_base58(owner)?;
+    let wallet = WalletCore::from_env().context("open wallet (491 storage + LEE_WALLET_HOME_DIR)")?;
+    Ok(OnchainContext {
+        lee_program_id: to_lee_program_id(program_id),
+        program_id,
+        program_id_hex,
+        owner_id,
+        owner_lee: to_lee_account(owner_id),
+        vault_id,
+        wallet,
+    })
+}
+
+async fn prefund_vault(
+    ctx: &OnchainContext,
+    deposit_amount: Balance,
+    skip_if_initialized: bool,
+) -> Result<()> {
+    let init_accounts =
+        initialize_vault_instruction_accounts(&ctx.program_id, ctx.owner_id, ctx.vault_id);
+    let vault_config_lee = to_lee_account(init_accounts[0]);
+    let (_, vault_holding) =
+        derive_vault_account_ids(&ctx.program_id, ctx.owner_id, ctx.vault_id);
+    let vault_holding_lee = to_lee_account(vault_holding);
+
+    let stream_accounts = create_stream_instruction_accounts(
+        &ctx.program_id,
+        ctx.owner_id,
+        ctx.vault_id,
+        0,
+        CLOCK_10_PROGRAM_ACCOUNT_ID,
+    );
+    let stream_config_lee = to_lee_account(stream_accounts[2]);
+
+    let vault_ready = account_has_data(&ctx.wallet, vault_config_lee).await?;
+    let holding_ready = account_has_data(&ctx.wallet, vault_holding_lee).await?;
+    let stream_ready = account_has_data(&ctx.wallet, stream_config_lee).await?;
+
+    if stream_ready {
+        return Err(anyhow!(
+            "stream config already exists on chain; prefund baseline must be pre-stream (reset or restore snapshot)"
+        ));
+    }
+
+    if skip_if_initialized && vault_ready && holding_ready {
+        eprintln!(
+            "Vault {} funded baseline already present; skipping prefund.",
+            account_id_to_base58(init_accounts[0]),
+        );
+        return Ok(());
+    }
+
+    let auth_transfer = LeeProgram::authenticated_transfer_program().id();
+
+    if !vault_ready {
+        submit_instruction(
+            &ctx.wallet,
+            ctx.lee_program_id,
+            init_accounts.iter().copied().map(to_lee_account).collect(),
+            Instruction::initialize_vault(ctx.vault_id, VaultPrivacyTier::Public),
+            vec![ctx.owner_lee],
+        )
+        .await
+        .context("initialize_vault")?;
+    } else {
+        eprintln!(
+            "Vault config {} already initialized; skipping initialize_vault.",
+            account_id_to_base58(init_accounts[0]),
+        );
+    }
+
+    if !holding_ready || !skip_if_initialized {
+        let deposit_accounts =
+            deposit_instruction_accounts(&ctx.program_id, ctx.owner_id, ctx.vault_id);
+        submit_instruction(
+            &ctx.wallet,
+            ctx.lee_program_id,
+            deposit_accounts.iter().copied().map(to_lee_account).collect(),
+            Instruction::Deposit {
+                vault_id: ctx.vault_id,
+                amount: deposit_amount,
+                authenticated_transfer_program_id: auth_transfer,
+            },
+            vec![ctx.owner_lee],
+        )
+        .await
+        .context("deposit")?;
+    } else {
+        eprintln!("Vault holding already funded; skipping deposit.");
+    }
+
+    Ok(())
+}
+
+async fn create_stream_onchain(
+    ctx: &OnchainContext,
+    provider: &str,
+    stream_id: StreamId,
+    stream_rate: TokensPerSecond,
+    stream_allocation: Balance,
+    skip_if_initialized: bool,
+) -> Result<()> {
+    let provider_id = account_id_from_base58(provider)?;
+
+    let init_accounts =
+        initialize_vault_instruction_accounts(&ctx.program_id, ctx.owner_id, ctx.vault_id);
+    let vault_config_lee = to_lee_account(init_accounts[0]);
+    let (_, vault_holding) =
+        derive_vault_account_ids(&ctx.program_id, ctx.owner_id, ctx.vault_id);
+    let vault_holding_lee = to_lee_account(vault_holding);
+
+    let stream_accounts = create_stream_instruction_accounts(
+        &ctx.program_id,
+        ctx.owner_id,
+        ctx.vault_id,
+        stream_id,
+        CLOCK_10_PROGRAM_ACCOUNT_ID,
+    );
+    let stream_config_lee = to_lee_account(stream_accounts[2]);
+
+    let vault_ready = account_has_data(&ctx.wallet, vault_config_lee).await?;
+    let holding_ready = account_has_data(&ctx.wallet, vault_holding_lee).await?;
+    let stream_ready = account_has_data(&ctx.wallet, stream_config_lee).await?;
+
+    if !vault_ready || !holding_ready {
+        return Err(anyhow!(
+            "vault must be initialized and funded before create_stream (run prefund-onchain or restore snapshot)"
+        ));
+    }
+
+    if skip_if_initialized && stream_ready {
+        eprintln!(
+            "Stream config {} already initialized; skipping create_stream.",
+            account_id_to_base58(stream_accounts[2]),
+        );
+        return Ok(());
+    }
+
+    if stream_ready {
+        return Err(anyhow!(
+            "stream config {} already exists (use fresh baseline restore)",
+            account_id_to_base58(stream_accounts[2]),
+        ));
+    }
+
+    submit_instruction(
+        &ctx.wallet,
+        ctx.lee_program_id,
+        stream_accounts.iter().copied().map(to_lee_account).collect(),
+        Instruction::CreateStream {
+            vault_id: ctx.vault_id,
+            stream_id,
+            provider: provider_id,
+            rate: stream_rate,
+            allocation: stream_allocation,
+        },
+        vec![ctx.owner_lee],
+    )
+    .await
+    .context("create_stream")?;
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -297,6 +518,61 @@ async fn main() -> Result<()> {
             );
             write_manifest(&output, &fixture)?;
         },
+        Commands::PrefundOnchain {
+            program_bin,
+            owner,
+            vault_id,
+            deposit_amount,
+            skip_if_initialized,
+            force,
+            sequencer_url: _,
+        } => {
+            ensure_wallet_home_env()?;
+            let skip_if_initialized = skip_if_initialized && !force;
+            let ctx = open_onchain(&program_bin, &owner, vault_id).await?;
+            prefund_vault(&ctx, deposit_amount, skip_if_initialized).await?;
+        },
+        Commands::CreateStreamOnchain {
+            program_bin,
+            owner,
+            provider,
+            vault_id,
+            stream_id,
+            deposit_amount,
+            stream_rate,
+            stream_allocation,
+            skip_if_initialized,
+            force,
+            sequencer_url,
+            write_manifest: manifest_path,
+        } => {
+            ensure_wallet_home_env()?;
+            let skip_if_initialized = skip_if_initialized && !force;
+            let ctx = open_onchain(&program_bin, &owner, vault_id).await?;
+            create_stream_onchain(
+                &ctx,
+                &provider,
+                stream_id,
+                stream_rate,
+                stream_allocation,
+                skip_if_initialized,
+            )
+            .await?;
+            let provider_id = account_id_from_base58(&provider)?;
+            let fixture = build_fixture(
+                &sequencer_url,
+                &ctx.program_id_hex,
+                &ctx.program_id,
+                ctx.owner_id,
+                provider_id,
+                vault_id,
+                stream_id,
+                deposit_amount,
+                stream_rate,
+                stream_allocation,
+            );
+            write_manifest(&manifest_path, &fixture)?;
+        },
         Commands::SeedOnchain {
             program_bin,
             owner,
@@ -313,103 +589,23 @@ async fn main() -> Result<()> {
         } => {
             ensure_wallet_home_env()?;
             let skip_if_initialized = skip_if_initialized && !force;
-
-            let (program_id, program_id_hex) = program_id_from_bin(&program_bin)?;
-            let lee_program_id = to_lee_program_id(program_id);
-            let owner_id = account_id_from_base58(&owner)?;
-            let provider_id = account_id_from_base58(&provider)?;
-            let owner_lee = to_lee_account(owner_id);
-
-            let init_accounts =
-                initialize_vault_instruction_accounts(&program_id, owner_id, vault_id);
-            let vault_config_lee = to_lee_account(init_accounts[0]);
-
-            let stream_accounts = create_stream_instruction_accounts(
-                &program_id,
-                owner_id,
-                vault_id,
+            let ctx = open_onchain(&program_bin, &owner, vault_id).await?;
+            prefund_vault(&ctx, deposit_amount, skip_if_initialized).await?;
+            create_stream_onchain(
+                &ctx,
+                &provider,
                 stream_id,
-                CLOCK_10_PROGRAM_ACCOUNT_ID,
-            );
-            let stream_config_lee = to_lee_account(stream_accounts[2]);
-
-            let wallet =
-                WalletCore::from_env().context("open wallet (491 storage + LEE_WALLET_HOME_DIR)")?;
-
-            let vault_ready = account_has_data(&wallet, vault_config_lee).await?;
-            let stream_ready = account_has_data(&wallet, stream_config_lee).await?;
-
-            if skip_if_initialized && vault_ready && stream_ready {
-                eprintln!(
-                    "Vault {} and stream {} already initialized; skipping on-chain seed.",
-                    account_id_to_base58(init_accounts[0]),
-                    account_id_to_base58(stream_accounts[2]),
-                );
-            } else {
-                let auth_transfer = LeeProgram::authenticated_transfer_program().id();
-
-                if !vault_ready {
-                    submit_instruction(
-                        &wallet,
-                        lee_program_id,
-                        init_accounts.iter().copied().map(to_lee_account).collect(),
-                        Instruction::initialize_vault(vault_id, VaultPrivacyTier::Public),
-                        vec![owner_lee],
-                    )
-                    .await
-                    .context("initialize_vault")?;
-                } else {
-                    eprintln!(
-                        "Vault config {} already initialized; skipping initialize_vault.",
-                        account_id_to_base58(init_accounts[0]),
-                    );
-                }
-
-                if !stream_ready {
-                    let deposit_accounts =
-                        deposit_instruction_accounts(&program_id, owner_id, vault_id);
-                    submit_instruction(
-                        &wallet,
-                        lee_program_id,
-                        deposit_accounts.iter().copied().map(to_lee_account).collect(),
-                        Instruction::Deposit {
-                            vault_id,
-                            amount: deposit_amount,
-                            authenticated_transfer_program_id: auth_transfer,
-                        },
-                        vec![owner_lee],
-                    )
-                    .await
-                    .context("deposit")?;
-
-                    submit_instruction(
-                        &wallet,
-                        lee_program_id,
-                        stream_accounts.iter().copied().map(to_lee_account).collect(),
-                        Instruction::CreateStream {
-                            vault_id,
-                            stream_id,
-                            provider: provider_id,
-                            rate: stream_rate,
-                            allocation: stream_allocation,
-                        },
-                        vec![owner_lee],
-                    )
-                    .await
-                    .context("create_stream")?;
-                } else {
-                    eprintln!(
-                        "Stream config {} already initialized; skipping deposit and create_stream.",
-                        account_id_to_base58(stream_accounts[2]),
-                    );
-                }
-            }
-
+                stream_rate,
+                stream_allocation,
+                skip_if_initialized,
+            )
+            .await?;
+            let provider_id = account_id_from_base58(&provider)?;
             let fixture = build_fixture(
                 &sequencer_url,
-                &program_id_hex,
-                &program_id,
-                owner_id,
+                &ctx.program_id_hex,
+                &ctx.program_id,
+                ctx.owner_id,
                 provider_id,
                 vault_id,
                 stream_id,
