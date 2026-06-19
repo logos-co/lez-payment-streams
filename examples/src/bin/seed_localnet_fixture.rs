@@ -30,11 +30,14 @@ use serde::Serialize;
 use wallet::WalletCore;
 
 const DEFAULT_SEQUENCER: &str = "http://127.0.0.1:3040";
-/// Local pinata topup is well below 500 on typical scaffold localnets; keep deposit + allocation within one claim.
-const DEFAULT_DEPOSIT: Balance = 100;
-/// Slow accrual so stream `0` stays non-depleted across repeated local demos (same terms as testnet table in step12).
+/// Local pinata topup is ~150 tokens per claim on typical scaffold localnets. The seed script
+/// runs several `lgs wallet topup` rounds before deposit; keep `deposit_amount` within that budget
+/// (see `SEED_WALLET_TOPUP_ROUNDS` in `scripts/seed-localnet-fixture.sh`).
+const DEFAULT_DEPOSIT: Balance = 450;
+/// Slow accrual (policy min rate is 1) with a large allocation so stream `0` stays eligible across
+/// long Step 12 / Step 17 demo sessions on one localnet (~400s unaccrued runway at rate 1).
 const DEFAULT_STREAM_RATE: TokensPerSecond = 1;
-const DEFAULT_STREAM_ALLOCATION: Balance = 80;
+const DEFAULT_STREAM_ALLOCATION: Balance = 400;
 
 #[derive(Parser)]
 #[command(name = "seed_localnet_fixture")]

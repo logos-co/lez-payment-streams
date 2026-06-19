@@ -36,6 +36,16 @@ PUBLISH_WAIT_S = 15
 PEER_MESH_WAIT_S = 45
 STORE_QUERY_RETRIES = 4
 DAEMON_START_WAIT_S = 6
+# Provider verify rejects streams with zero unaccrued allocation; accrual runs between
+# prepare and verify, so proof must be minted immediately before storeQuery.
+def min_unaccrued_lo_for_proof(manifest: dict) -> int:
+    alloc = int(manifest.get("stream_allocation", 80))
+    return max(64, min(alloc // 4, 50_000))
+
+
+def default_topup_increase_lo(manifest: dict) -> int:
+    alloc = int(manifest.get("stream_allocation", 80))
+    return max(200, alloc // 2)
 
 
 class E2EError(Exception):
@@ -148,7 +158,7 @@ def sync_wallet(cfg: Path, sequencer_url: str) -> None:
     time.sleep(2)
 
 
-def stream_allocation_available(cfg: Path, vault_id: int, stream_id: int) -> bool:
+def stream_allocation_available(cfg: Path, vault_id: int, stream_id: int, manifest: dict) -> bool:
     r = logoscore_cmd(cfg, "call", "payment_streams_module", "listMyStreams", str(vault_id))
     parsed = call_result(r)
     inner_raw = parsed.get("result")
@@ -162,11 +172,7 @@ def stream_allocation_available(cfg: Path, vault_id: int, stream_id: int) -> boo
         if int(row.get("stream_id", -1)) != stream_id:
             continue
         unaccrued = int(row.get("unaccrued_lo", 0))
-        if unaccrued > 0:
-            return True
-        accrued = int(row.get("accrued_lo", 0))
-        # stream_state 0 often means active; treat low accrued as funds available
-        if accrued < 70:
+        if unaccrued >= min_unaccrued_lo_for_proof(manifest):
             return True
     return False
 
@@ -383,6 +389,36 @@ def pick_multiaddr(addrs_csv: str, peer_id: str, tcp_port: int) -> str:
     return f"/ip4/127.0.0.1/tcp/{tcp_port}/p2p/{peer_id}"
 
 
+def seed_provider_session_from_user(
+    persist_user: Path,
+    persist_provider: Path,
+    manifest_path: Path,
+    repo: Path,
+) -> None:
+    user_state = find_ps_state_file(persist_user)
+    provider_state = find_ps_state_file(persist_provider)
+    seed = run(
+        [
+            sys.executable,
+            str(repo / "scripts/e2e/seed_provider_acceptance.py"),
+            "--user-state",
+            str(user_state),
+            "--provider-state",
+            str(provider_state),
+            "--manifest",
+            str(manifest_path),
+        ],
+        timeout=30,
+    )
+    if seed.returncode != 0:
+        raise E2EError(seed.stderr or seed.stdout)
+
+
+def reload_provider_payment_streams_module(cfg_provider: Path) -> None:
+    logoscore_cmd(cfg_provider, "unload-module", "payment_streams_module")
+    logoscore_cmd(cfg_provider, "load-module", "payment_streams_module")
+
+
 def user_prepare_proof(
     cfg: Path,
     manifest: dict,
@@ -404,7 +440,7 @@ def user_prepare_proof(
         "signer": manifest["owner_account_id"],
         "vault_id": int(manifest["vault_id"]),
         "stream_id": int(manifest["stream_id"]),
-        "increase_lo": 200,
+        "increase_lo": default_topup_increase_lo(manifest),
         "increase_hi": 0,
     }
     allow_depleted = os.environ.get("PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF", "").strip().lower() in (
@@ -420,8 +456,11 @@ def user_prepare_proof(
             sync_wallet(cfg, manifest.get("sequencer_url", "http://127.0.0.1:3040"))
             logoscore_cmd(cfg, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
             time.sleep(2)
-            if allow_depleted or stream_allocation_available(cfg, vault_id, stream_id):
+            if allow_depleted or stream_allocation_available(cfg, vault_id, stream_id, manifest):
                 break
+        if not allow_depleted and not stream_allocation_available(cfg, vault_id, stream_id, manifest):
+            topup["increase_lo"] = int(topup.get("increase_lo", 200)) + 200
+            continue
 
         r = logoscore_cmd(
             cfg,
@@ -673,27 +712,6 @@ def main() -> int:
             delivery_create_start(cfg_user, user_create, persist=persist_user, label="user")
             # Outbound proof via eligibilityProofHex in query JSON (hook deadlocks Approach A).
 
-            proof_hex = user_prepare_proof(cfg_user, manifest, n8_wire, peer_id)
-            user_state = find_ps_state_file(persist_user)
-            provider_state = find_ps_state_file(persist_provider)
-            seed = run(
-                [
-                    sys.executable,
-                    str(repo / "scripts/e2e/seed_provider_acceptance.py"),
-                    "--user-state",
-                    str(user_state),
-                    "--provider-state",
-                    str(provider_state),
-                    "--manifest",
-                    str(manifest_path),
-                ],
-                timeout=30,
-            )
-            if seed.returncode != 0:
-                raise E2EError(seed.stderr or seed.stdout)
-            logoscore_cmd(cfg_provider, "unload-module", "payment_streams_module")
-            logoscore_cmd(cfg_provider, "load-module", "payment_streams_module")
-
             seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
             sync_wallet(cfg_user, seq_url)
             sync_wallet(cfg_provider, seq_url)
@@ -703,9 +721,21 @@ def main() -> int:
             payload = f"e2e-{uuid.uuid4().hex[:8]}"
             logoscore_cmd(cfg_user, "call", "delivery_module", "send", CONTENT_TOPIC, payload)
             time.sleep(PUBLISH_WAIT_S)
-            time.sleep(15)
 
             sync_wallet(cfg_user, seq_url)
+            sync_wallet(cfg_provider, seq_url)
+            logoscore_cmd(
+                cfg_provider,
+                "call",
+                "payment_streams_module",
+                "rediscoverStreams",
+                str(manifest.get("vault_id", 0)),
+            )
+
+            # Mint proof immediately before storeQuery so provider verify still sees unaccrued balance.
+            proof_hex = user_prepare_proof(cfg_user, manifest, n8_wire, peer_id)
+            seed_provider_session_from_user(persist_user, persist_provider, manifest_path, repo)
+            reload_provider_payment_streams_module(cfg_provider)
             sync_wallet(cfg_provider, seq_url)
 
             query = dict(N8_REFERENCE_QUERY)

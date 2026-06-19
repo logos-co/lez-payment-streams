@@ -107,8 +107,11 @@ only if the demo script changes (inventory is already keyed by `vault_id`).
 
 Normative demo numbers for Step 12, Step 13 local verifier, and `verify-step12-dod.sh`.
 Align with [`fixtures/localnet.json`](../fixtures/localnet.json) and
-[`seed_localnet_fixture.rs`](../examples/src/bin/seed_localnet_fixture.rs). One pinata topup is
-~150 tokens; deposit `100` plus stream `0` allocation `80` at rate `1` fits a single claim with fee headroom and accrues slowly on a long-lived localnet.
+[`seed_localnet_fixture.rs`](../examples/src/bin/seed_localnet_fixture.rs). Each local pinata
+claim is about 150 tokens; the seed script runs `SEED_WALLET_TOPUP_ROUNDS` (default 4) before
+on-chain deposit. Defaults are deposit `450`, stream `0` allocation `400`, rate `1` (demo
+`min_rate` floor). Rough unaccrued runway at rate `1` is on the order of `allocation` seconds
+until eligibility sees `STREAM_DEPLETED`; mint proofs immediately before Store queries in E2E.
 
 Demo provider policy (localnet):
 
@@ -122,12 +125,12 @@ Demo provider policy (localnet):
 
 | Path | `stream_id` | `rate` | `allocation` | `create_stream_deadline` |
 | --- | --- | --- | --- | --- |
-| Proof-only on Step 10a seed | `0` (on-chain) | `1` | `80` (on-chain) | n/a |
+| Proof-only on Step 10a seed | `0` (on-chain) | `1` | `400` (on-chain) | n/a |
 | Full arc on same seeded vault | next free (e.g. `1`) | `10` | `15` | `clock10_timestamp + 600` |
 | Fresh vault (testnet one-shot) | `0` | `1` | `80` | `clock10_timestamp + 600` |
 
-After Step 10a seed, vault holding is `100` and `total_allocated` is `80`, so unallocated is
-`20`; the full-arc allocation `15` stays within solvency.
+After Step 10a seed, vault holding matches `demo_deposit_amount` (default `450`) and
+`total_allocated` is `400`, so unallocated is `50`; the full-arc allocation `15` stays within solvency.
 
 `createStream` via `chainAction` must use the same `vault_id`, `stream_id`, provider, rate,
 and allocation as the persisted proposal.

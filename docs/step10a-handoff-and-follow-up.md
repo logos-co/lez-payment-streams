@@ -38,8 +38,9 @@ Search `.scaffold/logs/sequencer.log` for the failing tx hash from seed stdout.
 - `invalid value: integer N, expected variant index` on deposit: old guest (bare `u128` chained
   call); rebuild and redeploy.
 - `Sender has insufficient balance` (authenticated_transfer): demo deposit exceeds owner balance
-  after pinata topup; defaults are deposit 100 / allocation 80 in `seed_localnet_fixture` — adjust
-  amounts or top up again.
+  after pinata topup; increase `SEED_WALLET_TOPUP_ROUNDS` or lower `SEED_DEPOSIT_AMOUNT` /
+  `SEED_STREAM_ALLOCATION` in `scripts/seed-localnet-fixture.sh` — defaults are deposit 450 /
+  allocation 400 at rate `1`.
 - `Transaction not found in preconfigured amount of blocks`: tx often never included (check log
   for `ProgramExecutionFailed` / skip); poller timeout is not proof the guest encoding is wrong.
 
