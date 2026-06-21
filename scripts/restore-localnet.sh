@@ -22,7 +22,6 @@ require_cmd() {
 }
 
 require_cmd lgs
-require_cmd wallet
 
 echo "=== restore localnet ($SNAPSHOT_NAME) ==="
 
