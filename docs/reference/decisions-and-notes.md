@@ -614,8 +614,9 @@ that spells out the expected Borsh encoding byte by byte.
 
 Step 12 demos and `./scripts/verify-step12-dod.sh` use the same field values via Rust:
 `cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex` prints lowercase hex of the
-full `canonical_payload` (32-byte domain prefix + Borsh body, 177 bytes for the reference
-fixture). LogosAPI `canonicalRequestBytes` must be that full wire, not Borsh-only bytes.
+full `canonical_payload` (32-byte domain prefix + Borsh body, 138 bytes for the
+reference demo fixture). LogosAPI `canonicalRequestBytes` must be that full
+wire, not Borsh-only bytes.
 Digest checks use `store_eligibility_digest_matches_n8_reference_fixture` in
 `lez-payment-streams-core/src/off_chain/canonical.rs`.
 

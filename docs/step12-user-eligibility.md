@@ -336,7 +336,7 @@ cargo run -q -p lez-payment-streams-core --bin n8_canonical_wire_hex
 
 That binary prints lowercase hex of the full N8 `canonical_payload`:
 `STORE_ELIGIBILITY_DOMAIN_PREFIX` (32 bytes) concatenated with Borsh(`CanonicalStoreRequest`).
-For the reference fixture the wire is 177 bytes (354 hex characters).
+For the reference fixture the wire is 138 bytes (276 hex characters).
 `verify-step12-dod.sh` and `step12-topup-and-prepare.sh` invoke this tool.
 
 Pass that full wire to `prepareEligibilityForStoreQuery` as `canonical_request_hex`.
@@ -425,7 +425,7 @@ If `lgs localnet start` fails with missing `sequencer/service/configs/debug/sequ
 ## Runbook notes
 
 Addressed in this runbook: wallet env, `PROPOSAL_EXPIRED` + eviction, N8 pin via
-`n8_canonical_wire_hex` (full 177-byte wire), LEZ 510 clock ms normalization in FFI fold,
+`n8_canonical_wire_hex` (full 138-byte reference wire), LEZ 510 clock ms normalization in FFI fold,
 local recovery [`demo-localnet-recovery.md`](demo-localnet-recovery.md),
 `listMyStreams` refresh behavior, stream id allocation, persistence schema v1, keygen in
 `proof_abi.rs`, path selection without `STREAM_ALREADY_EXISTS`, strict verify via

@@ -61,7 +61,7 @@ Codegen: Universal module exports single-line `Q_INVOKABLE` declarations in
 | Argument | Encoding |
 | --- | --- |
 | `proofBytes` | Lowercase hex of serialized `EligibilityProof` |
-| `canonicalRequestBytes` | Lowercase hex of full N8 canonical payload (177-byte reference wire) |
+| `canonicalRequestBytes` | Lowercase hex of full N8 canonical payload (138-byte reference wire for the pinned demo query) |
 | `requesterPeerId` / provider peer in prepare | Opaque UTF-8 libp2p peer id |
 
 N8 tool:

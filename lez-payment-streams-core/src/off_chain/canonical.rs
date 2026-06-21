@@ -77,6 +77,40 @@ pub struct CanonicalStoreQueryParts<'a> {
     pub pagination_limit: Option<u64>,
 }
 
+/// Byte length of the pinned N8 cross-language reference wire (32-byte prefix + Borsh body).
+pub const N8_REFERENCE_STORE_ELIGIBILITY_WIRE_LEN: usize = 138;
+
+pub const N8_REFERENCE_CONTENT_TOPIC: &str = "/lez-payment-streams/1/e2e-eligibility/proto";
+pub const N8_REFERENCE_PUBSUB_TOPIC: &str = "/waku/2/rs/0/1";
+
+/// Pinned Store query fields for Step 15 / Step 17 Nim–Rust parity (N8).
+pub fn n8_reference_store_query_parts<'a>(
+    content_topics: &'a [String],
+) -> CanonicalStoreQueryParts<'a> {
+    CanonicalStoreQueryParts {
+        request_id: "req-1",
+        include_data: true,
+        pubsub_topic: Some(N8_REFERENCE_PUBSUB_TOPIC),
+        content_topics,
+        start_time: Some(10),
+        end_time: None,
+        message_hashes: &[],
+        pagination_cursor: None,
+        pagination_forward: true,
+        pagination_limit: Some(100),
+    }
+}
+
+/// Full N8 reference wire: domain prefix || Borsh(`CanonicalStoreRequest`) for [`n8_reference_store_query_parts`].
+pub fn n8_reference_store_eligibility_wire() -> Vec<u8> {
+    let topics = vec![N8_REFERENCE_CONTENT_TOPIC.to_string()];
+    let parts = n8_reference_store_query_parts(&topics);
+    let body = store_eligibility_canonical_payload(&parts);
+    let mut wire = STORE_ELIGIBILITY_DOMAIN_PREFIX.to_vec();
+    wire.extend_from_slice(&body);
+    wire
+}
+
 /// Build the Store eligibility canonical payload (Borsh body; domain prefix is hashed separately).
 pub fn store_eligibility_canonical_payload(parts: &CanonicalStoreQueryParts<'_>) -> Vec<u8> {
     let mut out = Vec::new();
@@ -193,22 +227,8 @@ mod tests {
 
     #[test]
     fn canonical_store_query_matches_integration_plan_vector_shape() {
-        // Empty message hashes - query returns all messages matching content topic
-        let hashes: [[u8; 32]; 0] = [];
-        // Content topic hashes to shard 1 with 8 shards (cluster 0)
-        let topics = vec!["/lez-payment-streams/1/e2e-eligibility/proto".to_string()];
-        let parts = CanonicalStoreQueryParts {
-            request_id: "req-1",
-            include_data: true,
-            pubsub_topic: Some("/waku/2/rs/0/1"),  // cluster 0, shard 1
-            content_topics: &topics,
-            start_time: Some(10),
-            end_time: None,
-            message_hashes: &hashes,
-            pagination_cursor: None,
-            pagination_forward: true,
-            pagination_limit: Some(100),
-        };
+        let topics = vec![N8_REFERENCE_CONTENT_TOPIC.to_string()];
+        let parts = n8_reference_store_query_parts(&topics);
 
         let bytes = store_eligibility_canonical_payload(&parts);
         assert!(
@@ -238,31 +258,17 @@ mod tests {
 
     #[test]
     fn store_eligibility_digest_matches_n8_reference_fixture() {
-        // Empty message hashes - query returns all messages matching content topic
-        let hashes: [[u8; 32]; 0] = [];
-        // Content topic hashes to shard 1 with 8 shards (cluster 0)
-        let topics = vec!["/lez-payment-streams/1/e2e-eligibility/proto".to_string()];
-        let parts = CanonicalStoreQueryParts {
-            request_id: "req-1",
-            include_data: true,
-            pubsub_topic: Some("/waku/2/rs/0/1"),  // cluster 0, shard 1
-            content_topics: &topics,
-            start_time: Some(10),
-            end_time: None,
-            message_hashes: &hashes,
-            pagination_cursor: None,
-            pagination_forward: true,
-            pagination_limit: Some(100),
-        };
+        let topics = vec![N8_REFERENCE_CONTENT_TOPIC.to_string()];
+        let parts = n8_reference_store_query_parts(&topics);
         let digest = store_eligibility_canonical_payload_digest(&parts);
-        // Rust-computed digest for the fixture above (integration plan N8 shape). When Nim
-        // `liblogosdelivery` publishes the same inputs, re-check and align this literal.
         assert_eq!(
             digest,
             [
-                53, 238, 26, 182, 83, 10, 132, 140, 241, 208, 236, 55, 89, 13, 57, 202, 251, 119,
-                44, 172, 99, 161, 112, 250, 114, 37, 177, 149, 230, 133, 233, 166,
+                65, 191, 241, 41, 255, 102, 85, 126, 128, 47, 231, 66, 240, 218, 71, 20, 131,
+                131, 208, 86, 116, 168, 252, 230, 30, 83, 237, 26, 164, 157, 140, 56,
             ]
         );
+        let wire = n8_reference_store_eligibility_wire();
+        assert_eq!(wire.len(), N8_REFERENCE_STORE_ELIGIBILITY_WIRE_LEN);
     }
 }
