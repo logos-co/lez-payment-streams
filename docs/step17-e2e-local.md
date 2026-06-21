@@ -28,8 +28,8 @@ identity off-band (mimicked by a file). Missing-proof Store requests are rejecte
 | `SKIP_LIBLOGOSDELIVERY_OVERLAY` | `0` | Set `1` for hermetic nix-only `liblogosdelivery` |
 | `E2E_PHASE` | `all` | `core`, `claim`, or `all` |
 | `SKIP_BUILD` | `0` | `1` to reuse installed modules |
-| `SKIP_SEED` | `1` skips prepare when manifest already valid | Skip restore/create when chain already prepared |
-| `FULL_RESET` | `0` | `1` rebuilds funded snapshot (pinata + prefund) before create-stream |
+|| `SKIP_SEED` | `1` with existing manifest | Skip prepare when `fixtures/localnet.json` exists (no validity check) |
+|| `FULL_RESET` | `0` | `1` rebuilds funded snapshot (pinata + prefund) before create-stream |
 | `N8_WIRE_HEX` | (computed) | Host `cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex` if unset |
 
 Wallet (demo): both hosts may `open` the same Step 10a
