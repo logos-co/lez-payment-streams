@@ -1,7 +1,7 @@
 //! `withdraw` to third-party recipients, including public and privacy-preserving recipient flows.
 
-use nssa::program::Program;
-use nssa_core::{
+use lee::program::Program;
+use lee_core::{
     account::{Balance, Nonce},
     BlockId,
 };
@@ -24,7 +24,6 @@ use super::common::{
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_RECIPIENT};
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_withdraw_succeeds() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = 400 as Balance;
@@ -164,7 +163,6 @@ fn test_withdraw_succeeds() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_withdraw_zero_amount_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let withdraw_amount = 0 as Balance;
@@ -233,7 +231,6 @@ fn test_withdraw_zero_amount_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_withdraw_wrong_vault_id_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let withdraw_amount = 100 as Balance;
@@ -308,7 +305,6 @@ fn test_withdraw_wrong_vault_id_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_withdraw_exceeds_unallocated_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let block_deposit = 2 as BlockId;
@@ -408,7 +404,6 @@ fn test_withdraw_exceeds_unallocated_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_withdraw_full_unallocated_with_stream_succeeds() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -592,7 +587,6 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_withdraw_owner_mismatch_fails() {
     let signer_account_balance = DEFAULT_OWNER_GENESIS_BALANCE;
     let recipient_genesis_balance = 0 as Balance;
@@ -697,7 +691,6 @@ fn test_withdraw_owner_mismatch_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_withdraw_recipient_balance_overflow_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = 100 as Balance;
@@ -765,7 +758,6 @@ fn test_withdraw_recipient_balance_overflow_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_withdraw_recipient_not_present_in_state_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = 100 as Balance;
@@ -840,14 +832,14 @@ mod pp_program_tests {
     };
     use crate::test_helpers::load_guest_program;
     use crate::VaultPrivacyTier;
-    use nssa::{
+    use lee::{
         execute_and_prove,
         privacy_preserving_transaction::{
             circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
             PrivacyPreservingTransaction,
         },
     };
-    use nssa_core::{
+    use lee_core::{
         account::{Account, AccountId, AccountWithMetadata},
         encryption::EphemeralPublicKey,
         Commitment, EncryptionScheme, SharedSecretKey,

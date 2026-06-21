@@ -6,10 +6,10 @@
 //! Fixtures in this module model progressively later protocol states,
 //! so higher-level fixtures embed lower-level ones rather than rebuilding from scratch.
 
-use nssa::{
-    error::NssaError, program::Program, PrivateKey, ProgramId, PublicTransaction, V03State,
+use lee::{
+    error::LeeError, program::Program, PrivateKey, ProgramId, PublicTransaction, V03State,
 };
-use nssa_core::{
+use lee_core::{
     account::{AccountId, Balance, Data, Nonce},
     BlockId,
 };
@@ -54,9 +54,6 @@ pub(crate) const DEFAULT_OWNER_GENESIS_BALANCE: Balance = 1_000;
 pub(crate) const DEFAULT_CLOCK_INITIAL_TS: Timestamp = 1;
 /// Single deposit into vault holding after `initialize_vault` for stream-focused tests (unified fixture).
 pub(crate) const DEFAULT_STREAM_TEST_DEPOSIT: Balance = 500;
-
-/// Reason for [`#[ignore]`](ignore) on in-process program tests while the guest targets LEZ 491.
-pub(crate) const IGNORE_LEZ_GUEST_ON_NSSA_HARNESS: &str = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding";
 
 /// Account order for stream instructions: vault config, holding, stream PDA, owner, clock account.
 pub(crate) type StreamIxAccounts = [AccountId; 5];
@@ -315,10 +312,10 @@ pub(crate) fn force_stream_state_closed(state: &mut V03State, stream_pda: Accoun
     state.force_insert_account(stream_pda, stream_account);
 }
 
-pub(crate) fn assert_execution_failed_with_code(result: Result<(), NssaError>, code: ErrorCode) {
+pub(crate) fn assert_execution_failed_with_code(result: Result<(), LeeError>, code: ErrorCode) {
     let numeric = code as u32;
     match result {
-        Err(NssaError::ProgramExecutionFailed(msg)) => assert!(
+        Err(LeeError::ProgramExecutionFailed(msg)) => assert!(
             msg.contains(&format!("{numeric}")),
             "expected error code {numeric} in message, got: {msg}"
         ),

@@ -13,8 +13,8 @@ use lez_payment_streams_core::{
     WireError,
 };
 
-use nssa::PrivateKey;
-use nssa_core::account::AccountId;
+use lee::PrivateKey;
+use lee_core::account::AccountId;
 
 use crate::policy_abi::stream_params_from_ffi;
 use crate::{
@@ -855,7 +855,7 @@ mod tests {
         generate_session_keypair, parse_eligibility_proof, sign_stream_proof_for_store_query,
         sign_stream_proposal_vault_proof, StreamParams, VaultProofWire,
     };
-    use nssa::PublicKey;
+    use lee::PublicKey;
 
     #[test]
     fn ffi_round_trips_proposal_and_verifies_vault_proof() {

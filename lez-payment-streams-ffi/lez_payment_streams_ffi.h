@@ -401,7 +401,7 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_derive_stream_confi
  * layout: eight `u32` words), suitable for [`payment_streams_ffi_serialize_deposit_instruction`]'s
  * `authenticated_transfer_program_id_bytes` argument.
  *
- * Equivalent to reading `nssa::program::Program::authenticated_transfer_program().id()` on the Rust
+ * Equivalent to reading `lee::program::Program::authenticated_transfer_program().id()` on the Rust
  * side and flattening with `u32::to_le_bytes` in program-id order.
  *
  * # Safety

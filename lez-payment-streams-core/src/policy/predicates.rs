@@ -1,6 +1,6 @@
 //! Predicate implementations backing [`super`].
 
-use nssa_core::account::AccountId;
+use lee_core::account::AccountId;
 
 use crate::error_codes::ErrorCode;
 use crate::stream_config::{StreamConfig, StreamState};
@@ -209,7 +209,7 @@ fn stream_provider_binding_satisfies_expected_payee(
 mod predicates_unit_tests {
     //! Documented vectors called out under `step3-policy-and-implementor-notes.md` (reuse verbatim from Step 3b).
 
-    use nssa_core::account::AccountId;
+    use lee_core::account::AccountId;
 
     use super::{
         create_stream_deadline_satisfies_policy_as_of, fold_stream, new_stream_satisfies_proposal,

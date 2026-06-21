@@ -1,7 +1,7 @@
 //! [`StreamState`], [`StreamConfig`], and lazy accrual math.
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use nssa_core::account::{AccountId, Balance};
+use lee_core::account::{AccountId, Balance};
 
 use crate::error_codes::ErrorCode;
 use crate::{StreamId, Timestamp, TokensPerSecond, VersionId, DEFAULT_VERSION};
@@ -229,7 +229,7 @@ impl StreamConfig {
 mod stream_test_fixtures {
     use super::{StreamConfig, StreamState};
     use crate::{Timestamp, TokensPerSecond, DEFAULT_VERSION};
-    use nssa_core::account::{AccountId, Balance};
+    use lee_core::account::{AccountId, Balance};
 
     fn account(n: u8) -> AccountId {
         AccountId::new([n; 32])
@@ -257,7 +257,7 @@ mod stream_test_fixtures {
 #[cfg(test)]
 mod unaccrued_tests {
     use super::stream_test_fixtures::stream_active;
-    use nssa_core::account::Balance;
+    use lee_core::account::Balance;
 
     #[test]
     fn unaccrued_saturating_sub() {
@@ -382,7 +382,7 @@ mod resume_from_paused_at_time_tests {
     use super::StreamState;
     use crate::error_codes::ErrorCode;
     use crate::Timestamp;
-    use nssa_core::account::Balance;
+    use lee_core::account::Balance;
 
     #[test]
     fn resume_from_paused_at_time_succeeds() {
@@ -432,7 +432,7 @@ mod close_at_time_tests {
     use super::StreamState;
     use crate::error_codes::ErrorCode;
     use crate::Timestamp;
-    use nssa_core::account::Balance;
+    use lee_core::account::Balance;
 
     #[test]
     fn close_at_time_folds_accrual_before_releasing_succeeds() {
@@ -481,7 +481,7 @@ mod claim_at_time_tests {
     use super::StreamState;
     use crate::error_codes::ErrorCode;
     use crate::Timestamp;
-    use nssa_core::account::Balance;
+    use lee_core::account::Balance;
 
     #[test]
     fn claim_at_time_zero_accrued_fails() {

@@ -1,7 +1,7 @@
-//! NSSA test harness: deploy the guest, build genesis ([`create_state_with_guest_program`]),
+//! LEE test harness: deploy the guest, build genesis ([`create_state_with_guest_program`]),
 //! derive PDAs, sign txs ([`build_signed_public_tx`], [`state_with_initialized_vault`]).
 //!
-//! After you have a [`nssa::V03State`] and program id,
+//! After you have a [`lee::V03State`] and program id,
 //! see [`crate::program_tests::common`] for deposit fixtures,
 //! [`Instruction`] builders, and helpers like `transition_ok`.
 //!
@@ -19,14 +19,14 @@ use std::path::PathBuf;
 use crate::harness_seeds::{SEED_OWNER, SEED_PROVIDER, SEED_RECIPIENT};
 use crate::{ClockAccountData, CLOCK_01_PROGRAM_ACCOUNT_ID};
 use crate::{Instruction, StreamId, VaultConfig, VaultId, VaultPrivacyTier};
-use nssa::{
-    error::NssaError,
+use lee::{
+    error::LeeError,
     program::Program,
     program_deployment_transaction::{Message as DeployMessage, ProgramDeploymentTransaction},
     public_transaction::{Message, WitnessSet},
     PrivateKey, ProgramId, PublicKey, PublicTransaction, V03State,
 };
-use nssa_core::{
+use lee_core::{
     account::{Account, AccountId, Balance, Data, Nonce},
     BlockId,
 };
@@ -44,9 +44,14 @@ fn workspace_root() -> PathBuf {
 fn guest_binary_path() -> PathBuf {
     // `Program::new` expects the risc0 `ProgramBinary` blob (`*.bin`), not the raw ELF.
     // Produced by `cargo build -p lez_payment_streams-methods` (`risc0_build::embed_methods`).
-    workspace_root().join(
-        "target/riscv-guest/lez_payment_streams-methods/lez_payment_streams-guest/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin",
-    )
+    let base = workspace_root().join(
+        "target/riscv-guest/lez_payment_streams-methods/lez_payment_streams-guest/riscv32im-risc0-zkvm-elf",
+    );
+    let release = base.join("release/lez_payment_streams.bin");
+    if release.is_file() {
+        return release;
+    }
+    base.join("docker/lez_payment_streams.bin")
 }
 
 pub(crate) fn read_guest_program_bytecode() -> Option<Vec<u8>> {
@@ -171,7 +176,7 @@ pub(crate) fn force_clock_account_unchecked(
     state: &mut V03State,
     clock_account_id: AccountId,
     block_id: u64,
-    timestamp: nssa_core::Timestamp,
+    timestamp: lee_core::Timestamp,
 ) {
     let clock_program_id = Program::clock().id();
     let data = ClockAccountData {
@@ -195,7 +200,7 @@ pub(crate) fn force_clock_account_monotonic(
     state: &mut V03State,
     clock_account_id: AccountId,
     block_id: u64,
-    timestamp: nssa_core::Timestamp,
+    timestamp: lee_core::Timestamp,
 ) {
     let prev_acc = state.get_account_by_id(clock_account_id);
     if let Ok(prev) = borsh::from_slice::<ClockAccountData>(&prev_acc.data) {
@@ -215,7 +220,7 @@ impl HarnessClockProvider {
         &self,
         state: &mut V03State,
         block_id: u64,
-        timestamp: nssa_core::Timestamp,
+        timestamp: lee_core::Timestamp,
     ) {
         force_clock_account_monotonic(state, self.clock_id, block_id, timestamp);
     }
@@ -373,10 +378,10 @@ pub(crate) fn transition_public_payment_streams_tx_respecting_privacy_tier(
     vault_config_account_id: AccountId,
     tx: &PublicTransaction,
     block: BlockId,
-    timestamp: nssa_core::Timestamp,
-) -> Result<(), NssaError> {
+    timestamp: lee_core::Timestamp,
+) -> Result<(), LeeError> {
     assert_public_payment_streams_instruction_allowed(state, vault_config_account_id)
-        .map_err(|msg| NssaError::InvalidInput(msg.into()))?;
+        .map_err(|msg| LeeError::InvalidInput(msg.into()))?;
     state.transition_from_public_transaction(tx, block, timestamp)
 }
 

@@ -4,8 +4,8 @@
 //! (`methods/guest/src/bin/lez_payment_streams.rs`) and the harness helpers in
 //! [`crate::test_helpers`] / [`crate::program_tests::common`].
 
-use nssa_core::account::AccountId;
-use nssa_core::program::ProgramId;
+use lee_core::account::AccountId;
+use lee_core::program::ProgramId;
 
 use crate::pda::{derive_stream_config_account_id, derive_vault_account_ids};
 use crate::{StreamId, VaultId};
@@ -226,7 +226,6 @@ mod tests {
     use crate::CLOCK_01_PROGRAM_ACCOUNT_ID;
 
     #[test]
-    #[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
     fn initialize_and_deposit_match_harness_fixture() {
         let fixture = state_with_initialized_vault(DEFAULT_OWNER_GENESIS_BALANCE);
         let expected = [
@@ -253,7 +252,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
     fn withdraw_matches_harness_four_account_flow() {
         let fixture = state_with_initialized_vault_with_recipient(DEFAULT_OWNER_GENESIS_BALANCE);
         let expected = [
@@ -274,7 +272,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
     fn stream_owner_instructions_match_first_stream_ix_accounts() {
         let dep = state_deposited_with_clock(
             DEFAULT_OWNER_GENESIS_BALANCE,
@@ -304,7 +301,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
     fn close_and_claim_match_six_account_layout() {
         let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
         let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;

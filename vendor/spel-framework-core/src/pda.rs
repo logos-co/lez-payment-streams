@@ -1,30 +1,10 @@
 //! Generic PDA (Program Derived Address) computation utilities.
 
 use base58::FromBase58;
-use nssa_core::account::AccountId;
-use nssa_core::program::{PdaSeed, ProgramId};
-use nssa_core::NullifierPublicKey;
-use risc0_zkvm::sha::{Impl, Sha256 as _};
+use lee_core::account::AccountId;
+use lee_core::program::{PdaSeed, ProgramId};
+use lee_core::NullifierPublicKey;
 use sha2::{Digest, Sha256};
-
-/// LEZ 491 public PDA prefix (matches `lee_core::AccountId::for_public_pda`).
-fn public_pda(program_id: &ProgramId, combined: [u8; 32]) -> AccountId {
-    const PROGRAM_DERIVED_ACCOUNT_ID_PREFIX: &[u8; 32] =
-        b"/LEE/v0.2/AccountId/PDA/\x00\x00\x00\x00\x00\x00\x00\x00";
-
-    let mut bytes = [0u8; 96];
-    bytes[0..32].copy_from_slice(PROGRAM_DERIVED_ACCOUNT_ID_PREFIX);
-    let program_id_bytes: &[u8] =
-        bytemuck::try_cast_slice(program_id).expect("ProgramId should be castable to &[u8]");
-    bytes[32..64].copy_from_slice(program_id_bytes);
-    bytes[64..].copy_from_slice(&combined);
-    AccountId::new(
-        Impl::hash_bytes(&bytes)
-            .as_bytes()
-            .try_into()
-            .expect("Hash output must be exactly 32 bytes long"),
-    )
-}
 
 /// Trait for converting a value into a 32-byte PDA seed.
 ///
@@ -105,7 +85,8 @@ pub fn compute_pda(program_id: &ProgramId, seeds: &[&[u8; 32]]) -> AccountId {
         hasher.finalize().into()
     };
 
-    public_pda(program_id, combined)
+    let pda_seed = PdaSeed::new(combined);
+    AccountId::for_public_pda(program_id, &pda_seed)
 }
 
 /// Derive a **private** PDA `AccountId` from a program ID, one or more 32-byte seeds,
@@ -136,7 +117,7 @@ pub fn compute_private_pda(
     };
 
     let pda_seed = PdaSeed::new(combined);
-    AccountId::for_private_pda(program_id, &pda_seed, npk)
+    AccountId::for_private_pda(program_id, &pda_seed, npk, 0)
 }
 
 /// Compute a PDA from a program ID and multiple [`ToSeed`] values.

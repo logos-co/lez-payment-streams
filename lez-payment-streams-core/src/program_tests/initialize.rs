@@ -7,7 +7,7 @@ use crate::{
     },
     StreamId, VaultConfig, VaultHolding, VaultId, VaultPrivacyTier, DEFAULT_VERSION,
 };
-use nssa_core::{
+use lee_core::{
     account::{Balance, Nonce},
     BlockId,
 };
@@ -16,7 +16,6 @@ use super::common::{DEFAULT_OWNER_GENESIS_BALANCE, TEST_PUBLIC_TX_TIMESTAMP};
 use crate::harness_seeds::SEED_OWNER;
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_initialize_vault_then_reinitialize_fails() {
     let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
@@ -89,7 +88,6 @@ fn test_initialize_vault_then_reinitialize_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_initialize_vault_wrong_signer_witness_fails() {
     let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
     let (_, owner_account_id) = create_keypair(SEED_OWNER);
@@ -131,7 +129,6 @@ fn test_initialize_vault_wrong_signer_witness_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_initialize_vault_pseudonymous_funder_succeeds() {
     let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
@@ -177,7 +174,7 @@ mod pp_program_tests {
         PP4_INIT_EPK_SCALAR, PP4_OWNER_FUND_AMOUNT,
     };
     use crate::test_helpers::load_guest_program;
-    use nssa::{
+    use lee::{
         execute_and_prove,
         privacy_preserving_transaction::{
             circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
@@ -185,7 +182,7 @@ mod pp_program_tests {
         },
         program::Program,
     };
-    use nssa_core::{
+    use lee_core::{
         account::{Account, AccountId, AccountWithMetadata},
         encryption::EphemeralPublicKey,
         Commitment, EncryptionScheme, SharedSecretKey,

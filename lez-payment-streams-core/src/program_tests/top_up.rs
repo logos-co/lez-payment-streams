@@ -1,6 +1,6 @@
 //! `top_up_stream` allocation increases, fold-before-top-up behavior, and pause/resume handling.
 
-use nssa_core::{
+use lee_core::{
     account::{Balance, Nonce},
     BlockId,
 };
@@ -19,7 +19,6 @@ use super::common::{
 };
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_topup_paused_depleted_stream_succeeds() {
     let t0: Timestamp = 0;
     let t2: Timestamp = 250;
@@ -98,7 +97,6 @@ fn test_topup_paused_depleted_stream_succeeds() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_topup_active_stream_increases_allocation_succeeds() {
     let t0: Timestamp = 10;
     let t1: Timestamp = 20;
@@ -157,7 +155,6 @@ fn test_topup_active_stream_increases_allocation_succeeds() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_topup_manual_pause_then_active_succeeds() {
     let t0: Timestamp = 5;
     let t1: Timestamp = 15;
@@ -231,7 +228,6 @@ fn test_topup_manual_pause_then_active_succeeds() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_topup_zero_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
     let harness = harness_clock_provider();
@@ -281,7 +277,6 @@ fn test_topup_zero_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_topup_closed_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
     let harness = harness_clock_provider();
@@ -333,7 +328,6 @@ fn test_topup_closed_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_topup_exceeds_unallocated_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
     let harness = harness_clock_provider();
@@ -383,7 +377,6 @@ fn test_topup_exceeds_unallocated_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_topup_allocation_overflow_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
     let harness = harness_clock_provider();
@@ -423,7 +416,7 @@ fn test_topup_allocation_overflow_fails() {
     s_near_max_allocation.accrued = 0 as Balance;
     let mut stream_account = dep.vault.state.get_account_by_id(stream_pda).clone();
     stream_account.data =
-        nssa_core::account::Data::try_from(borsh::to_vec(&s_near_max_allocation).unwrap())
+        lee_core::account::Data::try_from(borsh::to_vec(&s_near_max_allocation).unwrap())
             .expect("stream payload fits");
     dep.vault
         .state
@@ -446,7 +439,6 @@ fn test_topup_allocation_overflow_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_top_up_stream_owner_mismatch_fails() {
     let t0 = DEFAULT_CLOCK_INITIAL_TS;
     let harness = harness_clock_provider();
@@ -517,7 +509,7 @@ mod pp_program_tests {
         test_helpers::{derive_stream_pda, load_guest_program},
         VaultConfig, CLOCK_01_PROGRAM_ACCOUNT_ID,
     };
-    use nssa::{
+    use lee::{
         execute_and_prove,
         privacy_preserving_transaction::{
             circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
@@ -525,7 +517,7 @@ mod pp_program_tests {
         },
         program::Program,
     };
-    use nssa_core::{
+    use lee_core::{
         account::{Account, AccountId, AccountWithMetadata, Data},
         encryption::EphemeralPublicKey,
         Commitment, EncryptionScheme, SharedSecretKey,

@@ -1,24 +1,24 @@
 //! NSSA / LEZ public-transaction instruction words for [`crate::Instruction`].
 //!
-//! NSSA stores guest instruction payloads as [`nssa_core::program::InstructionData`] (`Vec<u32>`)
-//! using Risc0’s serde codec (same as [`nssa::program::Program::serialize_instruction`] and the
-//! guest’s [`nssa_core::program::read_nssa_inputs`] path). Wallet `send_public_transaction` JSON
+//! NSSA stores guest instruction payloads as [`lee_core::program::InstructionData`] (`Vec<u32>`)
+//! using Risc0’s serde codec (same as [`lee::program::Program::serialize_instruction`] and the
+//! guest’s [`lee_core::program::read_lee_inputs`] path). Wallet `send_public_transaction` JSON
 //! typically hex-encodes the little-endian byte expansion of those `u32` words (see
 //! [`instruction_bytes_le_from_words`]).
 
-use nssa::error::NssaError;
-use nssa::program::Program;
-use nssa_core::program::InstructionData;
+use lee::error::LeeError;
+use lee::program::Program;
+use lee_core::program::InstructionData;
 use risc0_zkvm::serde::{Deserializer, Error as Risc0SerdeError};
 use serde::Deserialize;
 
 use crate::Instruction;
 
-/// Serialize an [`Instruction`] the same way NSSA builds [`PublicTransaction`](nssa::public_transaction::PublicTransaction) payloads.
+/// Serialize an [`Instruction`] the same way NSSA builds [`PublicTransaction`](lee::public_transaction::PublicTransaction) payloads.
 #[must_use]
 pub fn instruction_words_for_public_transaction(
     instruction: &Instruction,
-) -> Result<InstructionData, NssaError> {
+) -> Result<InstructionData, LeeError> {
     Program::serialize_instruction(instruction)
 }
 
@@ -40,7 +40,7 @@ pub fn instruction_bytes_le_from_words(words: &[u32]) -> Vec<u8> {
 #[must_use]
 pub fn instruction_bytes_for_public_transaction(
     instruction: &Instruction,
-) -> Result<Vec<u8>, NssaError> {
+) -> Result<Vec<u8>, LeeError> {
     let words = instruction_words_for_public_transaction(instruction)?;
     Ok(instruction_bytes_le_from_words(&words))
 }
@@ -62,8 +62,8 @@ pub fn instruction_words_from_bytes_le(bytes: &[u8]) -> Option<Vec<u32>> {
 mod tests {
     use super::*;
     use crate::VaultPrivacyTier;
-    use nssa::program::Program;
-    use nssa_core::account::AccountId;
+    use lee::program::Program;
+    use lee_core::account::AccountId;
 
     #[test]
     fn all_variants_round_trip_via_instruction_words() {

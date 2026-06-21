@@ -1,7 +1,7 @@
 //! `pause_stream` success and failure cases, especially fold-before-pause behavior and PP parity.
 
-use nssa::program::Program;
-use nssa_core::{
+use lee::program::Program;
+use lee_core::{
     account::{Balance, Nonce},
     BlockId,
 };
@@ -25,7 +25,6 @@ use super::common::{
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER};
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_pause_succeeds() {
     let t0: Timestamp = 12_345;
     let harness = harness_clock_provider();
@@ -81,7 +80,6 @@ fn test_pause_succeeds() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_pause_twice_fails() {
     let t0: Timestamp = 1;
     let harness = harness_clock_provider();
@@ -143,7 +141,6 @@ fn test_pause_twice_fails() {
     assert_execution_failed_with_code(r, ErrorCode::StreamNotActive);
 }
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_pause_when_at_time_depletes_fails() {
     let t0: Timestamp = 0;
     let t_deplete: Timestamp = 100;
@@ -194,7 +191,6 @@ fn test_pause_when_at_time_depletes_fails() {
     assert_execution_failed_with_code(r, ErrorCode::StreamNotActive);
 }
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_pause_closed_fails() {
     let t0: Timestamp = 7;
     let harness = harness_clock_provider();
@@ -244,7 +240,6 @@ fn test_pause_closed_fails() {
     assert_execution_failed_with_code(r, ErrorCode::StreamNotActive);
 }
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_pause_stream_time_regression_fails() {
     let t0: Timestamp = 100;
     let t_bad: Timestamp = 50;
@@ -295,7 +290,6 @@ fn test_pause_stream_time_regression_fails() {
     assert_execution_failed_with_code(r, ErrorCode::TimeRegression);
 }
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_pause_stream_owner_mismatch_fails() {
     let signer_account_balance = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -415,7 +409,6 @@ fn test_pause_stream_owner_mismatch_fails() {
     assert_execution_failed_with_code(r, ErrorCode::VaultOwnerMismatch);
 }
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_pause_stream_wrong_vault_id_fails() {
     let harness = harness_clock_provider();
     let clock_id = harness.clock_id;
@@ -482,14 +475,14 @@ mod pp_program_tests {
     };
     use crate::test_helpers::{force_clock_account_monotonic, load_guest_program};
     use crate::CLOCK_01_PROGRAM_ACCOUNT_ID;
-    use nssa::{
+    use lee::{
         execute_and_prove,
         privacy_preserving_transaction::{
             circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
             PrivacyPreservingTransaction,
         },
     };
-    use nssa_core::{
+    use lee_core::{
         account::{Account, AccountId, AccountWithMetadata, Data},
         encryption::EphemeralPublicKey,
         Commitment, EncryptionScheme, SharedSecretKey,

@@ -140,12 +140,12 @@ and interpret those bytes as eight little-endian `u32` words
 For the scaffold owner id recorded above and `vault_id = 0`,
 the resulting PDAs are:
 
-- vault_config PDA: `EKnp4sr9HL1vxJX1vdBUf82v2xGoDJhPSreqQXRhYAUS`
-- vault_holding PDA: `H1Py4DETrQARSuqH66nL47gRsonsrkLaKNJNCG9hRjnT`
+- vault_config PDA: `9UrfkYQvoVcX6EFAV1RzqZHGf6529rR5mCEr3sxvBcG2`
+- vault_holding PDA: `7s5h6pSAk9s1yuc3uJJDng5n9VJ6PRDTjLmYuL8DEJ6k`
 
 For `stream_id = 0` against that vault_config PDA, the derived stream_config PDA is:
 
-- `HnVEXVhzdzywjAb1JEPbMoCHZ6LXguhwBTkjAGubDri4`
+- `9FTDqNjoMAnDsb1dqaQC8qdNUor8KNgqoBULTkZ5SDj`
 
 Earlier handwritten base58 placeholders in earlier drafts skipped this interpretation
 detail and diverged from the guest seed scheme documented in the IDL macros.

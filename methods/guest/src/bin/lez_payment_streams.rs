@@ -20,8 +20,8 @@ use lez_payment_streams_core::{
     VaultPrivacyTier,
 };
 use authenticated_transfer_core::Instruction as AuthenticatedTransferInstruction;
-use nssa_core::account::{Account, AccountId, Balance};
-use nssa_core::program::ProgramId;
+use lee_core::account::{Account, AccountId, Balance};
+use lee_core::program::ProgramId;
 
 #[cfg(target_arch = "riscv32")]
 risc0_zkvm::guest::entry!(main);

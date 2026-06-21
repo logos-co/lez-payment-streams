@@ -5,9 +5,9 @@
 //! `PseudonymousFunder` vaults is enforced outside the guest because the guest cannot observe
 //! whether execution was transparent or shielded.
 
-use nssa::error::NssaError;
-use nssa_core::account::Nonce;
-use nssa_core::BlockId;
+use lee::error::LeeError;
+use lee_core::account::Nonce;
+use lee_core::BlockId;
 
 use crate::harness_seeds::SEED_PROVIDER;
 use crate::Instruction;
@@ -24,10 +24,9 @@ use crate::{
 use super::common::{signed_create_stream, DEFAULT_CLOCK_INITIAL_TS, TEST_PUBLIC_TX_TIMESTAMP};
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn harness_public_touch_pseudonymous_funder_vault_fails() {
     let fx = state_with_initialized_vault_with_privacy_tier(
-        1_000 as nssa_core::account::Balance,
+        1_000 as lee_core::account::Balance,
         VaultPrivacyTier::PseudonymousFunder,
     );
     assert_eq!(
@@ -37,10 +36,9 @@ fn harness_public_touch_pseudonymous_funder_vault_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn harness_public_touch_public_tier_vault_succeeds() {
     let fx = state_with_initialized_vault_with_privacy_tier(
-        1_000 as nssa_core::account::Balance,
+        1_000 as lee_core::account::Balance,
         VaultPrivacyTier::Public,
     );
     assert!(assert_public_payment_streams_instruction_allowed(
@@ -51,9 +49,8 @@ fn harness_public_touch_public_tier_vault_succeeds() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn wrapped_public_deposit_before_transition_pseudonymous_funder_fails() {
-    use nssa::program::Program;
+    use lee::program::Program;
 
     use crate::test_helpers::{
         build_signed_public_tx, transition_public_payment_streams_tx_respecting_privacy_tier,
@@ -62,7 +59,7 @@ fn wrapped_public_deposit_before_transition_pseudonymous_funder_fails() {
     use super::common::TEST_PUBLIC_TX_TIMESTAMP;
 
     let mut fx = state_with_initialized_vault_with_privacy_tier(
-        1_000 as nssa_core::account::Balance,
+        1_000 as lee_core::account::Balance,
         VaultPrivacyTier::PseudonymousFunder,
     );
     let tx = build_signed_public_tx(
@@ -89,23 +86,22 @@ fn wrapped_public_deposit_before_transition_pseudonymous_funder_fails() {
             2 as BlockId,
             TEST_PUBLIC_TX_TIMESTAMP,
         ),
-        Err(NssaError::InvalidInput(_))
+        Err(LeeError::InvalidInput(_))
     ));
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn public_create_stream_pseudonymous_funder_vault_fails() {
     let (_, provider_account_id) = create_keypair(SEED_PROVIDER);
     let mut fx = state_with_initialized_vault_pseudonymous_funder_preseeded(
-        2_000 as nssa_core::account::Balance,
-        &[(provider_account_id, 0 as nssa_core::account::Balance)],
+        2_000 as lee_core::account::Balance,
+        &[(provider_account_id, 0 as lee_core::account::Balance)],
     );
     transfer_native_balance_for_tests(
         &mut fx.state,
         fx.owner_account_id,
         fx.vault_holding_account_id,
-        500 as nssa_core::account::Balance,
+        500 as lee_core::account::Balance,
     );
     force_clock_account_monotonic(
         &mut fx.state,
@@ -143,6 +139,6 @@ fn public_create_stream_pseudonymous_funder_vault_fails() {
             3 as BlockId,
             TEST_PUBLIC_TX_TIMESTAMP,
         ),
-        Err(NssaError::InvalidInput(_))
+        Err(LeeError::InvalidInput(_))
     ));
 }

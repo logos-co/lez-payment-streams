@@ -9,7 +9,7 @@
 //!
 //! - `payment_streams_ffi_serialize_*_instruction` builds the instruction byte payload for wallet
 //!   JSON `send_public_transaction` (`instruction` field), using the same encoding as
-//!   `nssa::program::Program::serialize_instruction` followed by little-endian `u32` expansion (see
+//!   `lee::program::Program::serialize_instruction` followed by little-endian `u32` expansion (see
 //!   `lez_payment_streams_core::instruction_bytes_for_public_transaction`).
 //!
 //! ## Two-phase sizing
@@ -34,7 +34,7 @@
 //!
 //! ## Error detail
 //!
-//! Instruction serialization failures ([`nssa::error::NssaError`]) are reported as
+//! Instruction serialization failures ([`lee::error::LeeError`]) are reported as
 //! [`PaymentStreamsFfiStatus::Malformed`]; the C ABI does not preserve nested error strings.
 //! For instructions built from validated scalars on this path, serialization failures are
 //! unexpected. [`VaultPrivacyTier`] values that are not `0` or `1` are rejected before serialize.
@@ -66,9 +66,9 @@ use lez_payment_streams_core::{
     top_up_stream_instruction_accounts, withdraw_instruction_accounts, Instruction,
     VaultPrivacyTier,
 };
-use nssa::program::Program;
-use nssa_core::account::{AccountId, Balance};
-use nssa_core::program::ProgramId;
+use lee::program::Program;
+use lee_core::account::{AccountId, Balance};
+use lee_core::program::ProgramId;
 
 use crate::policy_abi::balance_from_lo_hi;
 use crate::{
@@ -107,7 +107,7 @@ unsafe fn serialize_instruction_bytes(
 
     let encoded = match instruction_bytes_for_public_transaction(instruction) {
         Ok(bytes) => bytes,
-        // `NssaError` (e.g. `InstructionSerializationError`) is not threaded through the C ABI;
+        // `LeeError` (e.g. `InstructionSerializationError`) is not threaded through the C ABI;
         // treat as `Malformed`. Should not trigger for `Instruction` values constructed here.
         Err(_) => return PaymentStreamsFfiStatus::Malformed,
     };
@@ -253,7 +253,7 @@ unsafe fn plan_stream_authority_instruction_accounts(
 /// layout: eight `u32` words), suitable for [`payment_streams_ffi_serialize_deposit_instruction`]'s
 /// `authenticated_transfer_program_id_bytes` argument.
 ///
-/// Equivalent to reading `nssa::program::Program::authenticated_transfer_program().id()` on the Rust
+/// Equivalent to reading `lee::program::Program::authenticated_transfer_program().id()` on the Rust
 /// side and flattening with `u32::to_le_bytes` in program-id order.
 ///
 /// # Safety
@@ -783,8 +783,8 @@ mod tests {
         initialize_vault_instruction_accounts, instruction_try_from_instruction_words,
         instruction_words_from_bytes_le, Instruction, VaultPrivacyTier,
     };
-    use nssa::program::Program;
-    use nssa_core::account::AccountId;
+    use lee::program::Program;
+    use lee_core::account::AccountId;
 
     #[test]
     fn authenticated_transfer_program_id_bytes_helper_matches_host_id() {

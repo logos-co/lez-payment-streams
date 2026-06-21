@@ -3,7 +3,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 
-use nssa_core::account::{AccountId, Balance};
+use lee_core::account::{AccountId, Balance};
 
 use crate::error_codes::ErrorCode;
 use crate::{StreamId, VaultId, VersionId};
@@ -143,7 +143,7 @@ impl VaultHolding {
 
 #[cfg(test)]
 mod checked_total_allocated_after_add_tests {
-    use nssa_core::account::Balance;
+    use lee_core::account::Balance;
 
     use super::checked_total_allocated_after_add;
     use crate::error_codes::ErrorCode;
@@ -165,7 +165,7 @@ mod checked_total_allocated_after_add_tests {
 
 #[cfg(test)]
 mod checked_total_allocated_after_release_tests {
-    use nssa_core::account::Balance;
+    use lee_core::account::Balance;
 
     use super::checked_total_allocated_after_release;
     use crate::error_codes::ErrorCode;

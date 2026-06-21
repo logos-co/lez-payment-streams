@@ -72,7 +72,7 @@ pub(crate) fn decode_clock_account_data(data: &[u8]) -> Result<ClockAccountData,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nssa_core::account::{AccountId, Balance};
+    use lee_core::account::{AccountId, Balance};
 
     #[test]
     fn vault_config_roundtrip_core_fixture() {

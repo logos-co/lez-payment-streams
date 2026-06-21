@@ -1,6 +1,6 @@
 //! `claim` payout accounting, provider authorization, and claims from active/closed streams.
 
-use nssa_core::{
+use lee_core::{
     account::{Balance, Nonce},
     BlockId,
 };
@@ -23,7 +23,6 @@ const CLAIM_ALLOCATION: Balance = 200;
 const CLAIM_RATE: TokensPerSecond = 10;
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_claim_balance_succeeds() {
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
     let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
@@ -114,7 +113,6 @@ fn test_claim_balance_succeeds() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_claim_unauthorized_fails() {
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
     let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
@@ -161,7 +159,6 @@ fn test_claim_unauthorized_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_claim_after_close_succeeds() {
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
     let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
@@ -272,7 +269,7 @@ mod pp_program_tests {
         RECIPIENT_NSK,
     };
     use crate::test_helpers::{force_clock_account_monotonic, load_guest_program};
-    use nssa::{
+    use lee::{
         execute_and_prove,
         privacy_preserving_transaction::{
             circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
@@ -280,7 +277,7 @@ mod pp_program_tests {
         },
         program::Program,
     };
-    use nssa_core::{
+    use lee_core::{
         account::{AccountId, AccountWithMetadata},
         encryption::EphemeralPublicKey,
         Commitment, EncryptionScheme, SharedSecretKey,

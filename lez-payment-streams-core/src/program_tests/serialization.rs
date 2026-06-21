@@ -5,7 +5,7 @@
 
 use std::mem::size_of;
 
-use nssa_core::account::AccountId;
+use lee_core::account::AccountId;
 
 use crate::test_helpers::create_keypair;
 use crate::{

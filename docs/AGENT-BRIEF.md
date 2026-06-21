@@ -29,7 +29,7 @@ Implement next in order:
 | 21 | Basecamp UI (optional) | [plan/upcoming/step-21-basecamp-ui.md](plan/upcoming/step-21-basecamp-ui.md) |
 | 22 | UI journey doc packet (optional) | [plan/upcoming/step-22-ui-journey.md](plan/upcoming/step-22-ui-journey.md) |
 | 23 | Public Store provider (optional) | [plan/upcoming/step-23-public-store-provider.md](plan/upcoming/step-23-public-store-provider.md) |
-| 24 | LEZ `lee` harness (`nssa` → 510) | [plan/upcoming/step-24-lee-harness-upgrade.md](plan/upcoming/step-24-lee-harness-upgrade.md) |
+| 24 | LEZ `lee` harness (`nssa` → 510) | Complete — [plan/upcoming/step-24-lee-harness-upgrade.md](plan/upcoming/step-24-lee-harness-upgrade.md) |
 
 Step 19 may run in parallel with 17–18. Step 24 may run after Step 17 is green, in parallel with 18–20. Step 20 should follow 17 and 18 when the journey
 targets testnet v0.2 (Step 23 not required). Steps 21–22 only if shipping a UI journey; Step 23

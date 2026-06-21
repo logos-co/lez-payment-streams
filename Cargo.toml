@@ -1,3 +1,4 @@
+# LEZ git pin for host/guest/tests: rev 62d9ba10 (PR 510 merge). See docs/plan/upcoming/step-24-lee-harness-upgrade.md.
 [workspace]
 members = [
     "lez-payment-streams-core",
@@ -11,3 +12,5 @@ resolver = "2"
 
 [patch."https://github.com/logos-co/spel.git"]
 spel-framework-core = { path = "vendor/spel-framework-core" }
+spel-framework-macros = { path = "vendor/spel-framework-macros" }
+spel-framework = { path = "vendor/spel-framework" }

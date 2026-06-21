@@ -144,7 +144,7 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 21 | Basecamp UI | Optional — [step-21-basecamp-ui.md](docs/plan/upcoming/step-21-basecamp-ui.md) |
 | 22 | UI journey doc packet | Optional — [step-22-ui-journey.md](docs/plan/upcoming/step-22-ui-journey.md) |
 | 23 | Public Store provider | Optional — [step-23-public-store-provider.md](docs/plan/upcoming/step-23-public-store-provider.md) |
-| 24 | LEZ `lee` harness (NSSA → 510) | Upcoming — [step-24-lee-harness-upgrade.md](docs/plan/upcoming/step-24-lee-harness-upgrade.md) |
+| 24 | LEZ `lee` harness (NSSA → 510) | Complete — [step-24-lee-harness-upgrade.md](docs/plan/upcoming/step-24-lee-harness-upgrade.md) |
 
 Execution order: Steps 12, 11d, 13, 14, 15, 16, 17, and 17b are complete. Next: 18–20 in order;
 19 may parallel 18. Step 24 may parallel 18–20 (Rust LEZ pin alignment; restores

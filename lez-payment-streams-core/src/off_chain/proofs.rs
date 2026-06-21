@@ -1,7 +1,7 @@
 //! NSSA Schnorr verification helpers for LEZ payment-stream proofs (LIP‑155 Step 4).
 
-use nssa::{PrivateKey, PublicKey, Signature};
-use nssa_core::account::AccountId;
+use lee::{PrivateKey, PublicKey, Signature};
+use lee_core::account::AccountId;
 
 use super::canonical::{
     store_eligibility_canonical_payload_digest, vault_owner_auth_canonical_payload_digest,
@@ -18,7 +18,7 @@ pub fn verify_canonical_payload_digest(
 ) -> Result<(), OffChainError> {
     let pk = PublicKey::try_new(*public_key).map_err(|_| OffChainError::InvalidPublicKey)?;
     let sig = Signature { value: *signature };
-    if sig.is_valid_for(canonical_payload_digest.as_slice(), &pk) {
+    if sig.is_valid_for(canonical_payload_digest, &pk) {
         Ok(())
     } else {
         Err(OffChainError::BadSignature)
@@ -30,7 +30,7 @@ pub fn sign_canonical_payload_digest(
     private_key: &PrivateKey,
     canonical_payload_digest: &[u8; 32],
 ) -> [u8; 64] {
-    Signature::new(private_key, canonical_payload_digest.as_slice()).value
+    Signature::new(private_key, canonical_payload_digest).value
 }
 
 /// Confirms `owner_public_key` derives to the `vault_owner` anchor stored in `VaultConfig`.

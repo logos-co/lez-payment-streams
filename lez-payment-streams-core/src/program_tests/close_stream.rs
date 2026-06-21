@@ -1,6 +1,6 @@
 //! `close_stream` authorization, payout accounting, and residual accrued balance behavior.
 
-use nssa_core::{
+use lee_core::{
     account::{Balance, Nonce},
     BlockId,
 };
@@ -20,7 +20,6 @@ use super::common::{
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_PROVIDER};
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_close_unaccrued_succeeds() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -125,7 +124,6 @@ fn test_close_unaccrued_succeeds() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_close_stream_unauthorized_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -198,7 +196,6 @@ fn test_close_stream_unauthorized_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_close_already_closed_fails() {
     let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
     let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
@@ -278,7 +275,7 @@ mod pp_program_tests {
         RECIPIENT_NSK,
     };
     use crate::test_helpers::load_guest_program;
-    use nssa::{
+    use lee::{
         execute_and_prove,
         privacy_preserving_transaction::{
             circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
@@ -286,7 +283,7 @@ mod pp_program_tests {
         },
         program::Program,
     };
-    use nssa_core::{
+    use lee_core::{
         account::{AccountId, AccountWithMetadata},
         encryption::EphemeralPublicKey,
         Commitment, EncryptionScheme, SharedSecretKey,

@@ -3,12 +3,12 @@
 //! These types mirror LIP-155 payment streams (see `rfc-index/docs/ift-ts/raw/payment-streams.md`).
 //! Step 3a keeps them free of protobuf and wire parsing; higher layers supply parsed values.
 
-use nssa_core::account::AccountId;
+use lee_core::account::AccountId;
 
 use crate::{Timestamp, TokensPerSecond};
 
 /// Native token amount scale (matches on-chain stream `allocation` and vault accounting).
-pub use nssa_core::account::Balance;
+pub use lee_core::account::Balance;
 
 /// Max length for [`StreamParams::service_id`] bytes (LIP-155 LEZ integration).
 ///

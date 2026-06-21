@@ -3,7 +3,7 @@
 //! NSSA rejects PP messages when both `new_commitments` and `new_nullifiers` are empty, so flows
 //! use mixed visibility (public PDAs plus at least one private slot where applicable).
 
-use nssa::{
+use lee::{
     execute_and_prove,
     privacy_preserving_transaction::{
         circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
@@ -12,7 +12,7 @@ use nssa::{
     program::Program,
     V03State,
 };
-use nssa_core::{
+use lee_core::{
     account::{Account, AccountId, AccountWithMetadata, Balance, Data, Nonce},
     encryption::{EphemeralPublicKey, Scalar, ViewingPublicKey},
     program::InstructionData,

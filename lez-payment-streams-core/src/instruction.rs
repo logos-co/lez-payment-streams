@@ -2,8 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use nssa_core::account::{AccountId, Balance};
-use nssa_core::program::ProgramId;
+use lee_core::account::{AccountId, Balance};
+use lee_core::program::ProgramId;
 
 use crate::{StreamId, TokensPerSecond, VaultId, VaultPrivacyTier};
 

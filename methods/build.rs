@@ -9,15 +9,20 @@ fn main() {
         .expect("methods crate should live under workspace root")
         .to_path_buf();
 
-    let docker = DockerOptionsBuilder::default()
-        .root_dir(workspace_root)
-        .build()
-        .expect("docker options");
-
-    let guest_opts = GuestOptionsBuilder::default()
-        .use_docker(docker)
-        .build()
-        .expect("guest options");
+    let guest_opts = if env::var("RISC0_USE_DOCKER").ok().as_deref() == Some("1") {
+        let docker = DockerOptionsBuilder::default()
+            .root_dir(workspace_root)
+            .build()
+            .expect("docker options");
+        GuestOptionsBuilder::default()
+            .use_docker(docker)
+            .build()
+            .expect("guest options")
+    } else {
+        GuestOptionsBuilder::default()
+            .build()
+            .expect("guest options")
+    };
 
     let mut opts = HashMap::new();
     opts.insert("lez_payment_streams-guest", guest_opts);

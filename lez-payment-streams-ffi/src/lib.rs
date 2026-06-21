@@ -10,8 +10,8 @@ pub use lez_payment_streams_core::{
     derive_stream_config_account_id, derive_vault_account_ids, VaultConfig,
     CLOCK_01_PROGRAM_ACCOUNT_ID, CLOCK_10_PROGRAM_ACCOUNT_ID, CLOCK_50_PROGRAM_ACCOUNT_ID,
 };
-pub use nssa_core::account::AccountId;
-pub use nssa_core::program::ProgramId;
+pub use lee_core::account::AccountId;
+pub use lee_core::program::ProgramId;
 pub use policy_abi::*;
 pub use proof_abi::*;
 
@@ -19,7 +19,7 @@ use core::slice;
 
 use decode::DecodeFault;
 use lez_payment_streams_core::{StreamState, VaultPrivacyTier};
-use nssa_core::account::Balance;
+use lee_core::account::Balance;
 
 /// Outcome codes returned from `payment_streams_*` FFI functions (`Success` plus failures; stable
 /// `repr(u32)` enumerators in `lez_payment_streams_ffi.h` from cbindgen).
@@ -619,15 +619,15 @@ mod tests {
     use std::str::FromStr;
 
     /// Base58 fixtures from the scaffold localnet notes in this repo (same deploy program wire as
-    /// [`doc_scaffold_program_id`], canonical owner, and PDAs for `vault_id` / `stream_id` below; NSSA
-    /// program-id wire encoding matches the documented hex literal).
+    /// [`doc_scaffold_program_id`], canonical owner, and PDAs for `vault_id` / `stream_id` below (LEE
+    /// `AccountId::for_public_pda` @ PR 510 pin).
     const DOC_SCAFFOLD_OWNER_BASE58: &str = "8UUCxCrkZAiP8A6g6rQAVMmk6bVxfurKqYi8aFxfEZqf";
     const DOC_SCAFFOLD_VAULT_CONFIG_PDA_BASE58: &str =
-        "EKnp4sr9HL1vxJX1vdBUf82v2xGoDJhPSreqQXRhYAUS";
+        "9UrfkYQvoVcX6EFAV1RzqZHGf6529rR5mCEr3sxvBcG2";
     const DOC_SCAFFOLD_VAULT_HOLDING_PDA_BASE58: &str =
-        "H1Py4DETrQARSuqH66nL47gRsonsrkLaKNJNCG9hRjnT";
+        "7s5h6pSAk9s1yuc3uJJDng5n9VJ6PRDTjLmYuL8DEJ6k";
     const DOC_SCAFFOLD_STREAM_CONFIG_PDA_BASE58: &str =
-        "HnVEXVhzdzywjAb1JEPbMoCHZ6LXguhwBTkjAGubDri4";
+        "9FTDqNjoMAnDsb1dqaQC8qdNUor8KNgqoBULTkZ5SDj";
 
     const DOC_SCAFFOLD_STREAM_ID: u64 = 0;
     const DOC_SCAFFOLD_VAULT_ID: u64 = 0;

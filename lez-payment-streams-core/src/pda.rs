@@ -7,8 +7,8 @@
 //! [`spel_framework_core::pda::compute_pda`] (aligned with LEZ 491 host validation).
 
 use crate::{StreamId, VaultId};
-use nssa_core::account::AccountId;
-use nssa_core::program::ProgramId;
+use lee_core::account::AccountId;
+use lee_core::program::ProgramId;
 use spel_framework_core::pda::{compute_pda, seed_from_str};
 
 fn seed_from_u64(value: u64) -> [u8; 32] {

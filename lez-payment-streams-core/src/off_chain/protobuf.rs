@@ -5,7 +5,7 @@
 //! apply LEZ `bytes` width checks in one place; field numbers must stay aligned with
 //! `rfc-index/docs/ift-ts/raw/payment-streams.md` (see module `field_numbers`).
 
-use nssa_core::account::Balance;
+use lee_core::account::Balance;
 
 use crate::stream_provider_policy::{StreamParams, MAX_SERVICE_ID_LEN};
 use crate::{Timestamp, TokensPerSecond};

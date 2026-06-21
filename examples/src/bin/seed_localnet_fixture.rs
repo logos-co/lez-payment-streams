@@ -22,9 +22,9 @@ use lez_payment_streams_core::{
     initialize_vault_instruction_accounts, Instruction, StreamId, TokensPerSecond, VaultId,
     VaultPrivacyTier, CLOCK_10_PROGRAM_ACCOUNT_ID,
 };
-use nssa::program::Program;
-use nssa_core::account::AccountId as CoreAccountId;
-use nssa_core::program::ProgramId as CoreProgramId;
+use lee::program::Program;
+use lee_core::account::AccountId as CoreAccountId;
+use lee_core::program::ProgramId as CoreProgramId;
 use sequencer_service_rpc::RpcClient as _;
 use serde::Serialize;
 use wallet::WalletCore;

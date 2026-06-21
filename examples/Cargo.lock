@@ -3613,10 +3613,10 @@ name = "lez-payment-streams-core"
 version = "0.1.0"
 dependencies = [
  "borsh",
- "clock_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.1.2)",
+ "clock_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60)",
  "hex",
- "nssa",
- "nssa_core",
+ "lee",
+ "lee_core",
  "risc0-zkvm",
  "serde",
  "sha2",
@@ -3635,8 +3635,6 @@ dependencies = [
  "lee",
  "lee_core",
  "lez-payment-streams-core",
- "nssa",
- "nssa_core",
  "sequencer_service_rpc 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60)",
  "serde",
  "serde_json",
@@ -7726,10 +7724,9 @@ dependencies = [
 [[package]]
 name = "spel-framework"
 version = "0.5.0"
-source = "git+https://github.com/logos-co/spel.git?tag=v0.5.0#73fc462eb8f0a4d00f1a846437c627ec2e523f83"
 dependencies = [
  "borsh",
- "nssa_core",
+ "lee_core",
  "serde_json",
  "spel-framework-core",
  "spel-framework-macros",
@@ -7742,7 +7739,7 @@ dependencies = [
  "base58",
  "borsh",
  "bytemuck",
- "nssa_core",
+ "lee_core",
  "proc-macro2",
  "risc0-zkvm",
  "serde",
@@ -7756,7 +7753,6 @@ dependencies = [
 [[package]]
 name = "spel-framework-macros"
 version = "0.5.0"
-source = "git+https://github.com/logos-co/spel.git?tag=v0.5.0#73fc462eb8f0a4d00f1a846437c627ec2e523f83"
 dependencies = [
  "proc-macro2",
  "quote",

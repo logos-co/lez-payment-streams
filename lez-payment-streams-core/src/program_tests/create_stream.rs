@@ -1,6 +1,6 @@
 //! `create_stream` happy paths, bounds checks, account layout, and transparent/PP parity.
 
-use nssa_core::{
+use lee_core::{
     account::{Account, Balance, Data, Nonce},
     BlockId,
 };
@@ -25,7 +25,6 @@ use super::common::{
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_OWNER, SEED_PROVIDER_B};
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_derive_stream_pda_stable() {
     let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
     let (_, owner_account_id) = create_keypair(SEED_OWNER);
@@ -56,7 +55,6 @@ fn test_derive_stream_pda_stable() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_create_stream_succeeds() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -151,7 +149,6 @@ fn test_create_stream_succeeds() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_create_stream_exceeds_unallocated_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -238,7 +235,6 @@ fn test_create_stream_exceeds_unallocated_fails() {
     );
 }
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_create_stream_zero_rate_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -282,7 +278,6 @@ fn test_create_stream_zero_rate_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_create_stream_zero_allocation_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -326,7 +321,6 @@ fn test_create_stream_zero_allocation_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_create_stream_stream_id_mismatch_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -372,7 +366,6 @@ fn test_create_stream_stream_id_mismatch_fails() {
 
 /// `stream_config` account must match the PDA for `stream_id` (SPEL account validation).
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_create_stream_mismatched_stream_pda_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -422,7 +415,6 @@ fn test_create_stream_mismatched_stream_pda_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_create_stream_wrong_vault_id_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -473,7 +465,6 @@ fn test_create_stream_wrong_vault_id_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_create_stream_owner_mismatch_fails() {
     let signer_account_balance = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -581,7 +572,6 @@ fn test_create_stream_owner_mismatch_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_create_stream_invalid_clock_account_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -636,7 +626,6 @@ fn test_create_stream_invalid_clock_account_fails() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_create_stream_allocation_equals_unallocated_succeeds() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -692,7 +681,6 @@ fn test_create_stream_allocation_equals_unallocated_succeeds() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_create_stream_second_stream_succeeds() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -786,7 +774,6 @@ fn test_create_stream_second_stream_succeeds() {
 }
 
 #[test]
-#[ignore = "guest targets LEZ 491 (LEE PDAs and authenticated_transfer enum); NSSA in-process harness expects NSSA v0.1.2 encoding"]
 fn test_create_stream_next_stream_id_overflow_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
@@ -863,7 +850,7 @@ mod pp_program_tests {
         PP3_OWNER_FUND_AMOUNT, PP3_SIGNER_EPK_SCALAR, PP3_STREAM_ALLOCATION, PP3_STREAM_RATE,
     };
     use crate::{test_helpers::load_guest_program, CLOCK_01_PROGRAM_ACCOUNT_ID};
-    use nssa::{
+    use lee::{
         execute_and_prove,
         privacy_preserving_transaction::{
             circuit::ProgramWithDependencies, message::Message, witness_set::WitnessSet,
@@ -871,7 +858,7 @@ mod pp_program_tests {
         },
         program::Program,
     };
-    use nssa_core::{
+    use lee_core::{
         account::{AccountId, AccountWithMetadata},
         encryption::EphemeralPublicKey,
         Commitment, EncryptionScheme, SharedSecretKey,

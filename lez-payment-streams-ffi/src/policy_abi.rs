@@ -8,7 +8,7 @@ use lez_payment_streams_core::{
     AcceptedStreamTerms, ErrorCode, PolicyRejectReason, ProposalCheckInputs, StreamConfig,
     StreamParams, StreamProviderPolicy, StreamState,
 };
-use nssa_core::account::{AccountId, Balance};
+use lee_core::account::{AccountId, Balance};
 
 use crate::stream_state_repr;
 use crate::{
