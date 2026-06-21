@@ -2,9 +2,9 @@
 # Shared paths and snapshot metadata for Step 17b (source, do not execute).
 set -euo pipefail
 
-localnet_snapshot_repo_root() {
+localnet_snapshot_repo_root() (
   cd "$(dirname "${BASH_SOURCE[1]}")/.." && pwd
-}
+)
 
 localnet_snapshot_lez_pin() {
   grep -A2 '\[repos.lez\]' "$1/scaffold.toml" | grep '^pin' | sed 's/.*"\([^"]*\)".*/\1/'
