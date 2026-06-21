@@ -39,14 +39,20 @@ if lgs localnet status 2>/dev/null | grep -qi running; then
   lgs localnet stop
 fi
 
+port_free=0
 for _ in 1 2 3 4 5; do
   if ! curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
     -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}' >/dev/null 2>&1; then
+    port_free=1
     break
   fi
   echo "Waiting for port 3040 to free…"
   sleep 1
 done
+if [[ "$port_free" != "1" ]]; then
+  echo "ERROR: port 3040 still reachable after localnet stop; a foreign sequencer may be running" >&2
+  exit 1
+fi
 
 if [[ -d "$ROCKSDB" ]]; then
   rm -rf "$ROCKSDB"
