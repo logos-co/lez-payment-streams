@@ -33,7 +33,6 @@ localnet_snapshot_program_id_hex() {
 localnet_snapshot_write_metadata() {
   local repo="$1"
   local snap_dir="$2"
-  local manifest="${FIXTURE_MANIFEST:-$repo/fixtures/localnet.json}"
   local deposit="${SEED_DEPOSIT_AMOUNT:-2000}"
   local rate="${SEED_STREAM_RATE:-1}"
   local alloc="${SEED_STREAM_ALLOCATION:-1800}"
