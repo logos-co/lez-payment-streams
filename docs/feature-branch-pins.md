@@ -148,6 +148,8 @@ as the wallet stack (LEZ `main` / 510 merge).
 
 `[repos.lez].pin` must match the LEZ `rev` in `nix/payment-streams-ffi.nix` (Step 10a / 11d).
 After bumping either pin, re-run `lgs setup` from this repo so `wallet` and localnet match LEZ `main`.
+Rebuild the Step 17b funded snapshot after a LEZ pin or guest ImageID change:
+`FULL_RESET=1 ./scripts/demo-localnet-prepare.sh` ([step-17b-localnet-snapshot-restore.md](plan/upcoming/step-17b-localnet-snapshot-restore.md)).
 
 ### Payment-streams Logos module (`logos-payment-streams-module/flake.nix`)
 

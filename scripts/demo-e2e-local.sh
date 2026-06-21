@@ -73,19 +73,8 @@ ensure_fixture() {
     log_phase seed 1 '{"skipped":true}'
     return 0
   fi
-  local need_seed=0
-  if [[ ! -f "$FIXTURE_MANIFEST" ]]; then
-    need_seed=1
-  elif ! curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
-    -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}' >/dev/null; then
-    need_seed=1
-  elif ! "$REPO/scripts/verify-step10a-dod.sh" >/dev/null 2>&1; then
-    need_seed=1
-  fi
-  if [[ "$need_seed" == "1" ]]; then
-    echo "--- seed localnet (demo-localnet-fresh) ---"
-    SKIP_VERIFY="${SKIP_VERIFY:-0}" "$REPO/scripts/demo-localnet-fresh.sh"
-  fi
+  echo "--- prepare localnet (Step 17b restore + stream) ---"
+  FULL_RESET="${FULL_RESET:-0}" SKIP_VERIFY="${SKIP_VERIFY:-1}" "$REPO/scripts/demo-localnet-prepare.sh"
   if [[ ! -f "$FIXTURE_MANIFEST" ]]; then
     log_phase seed 0 '{"error":"missing manifest"}'
     exit 1

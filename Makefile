@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-step17
+.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-step17 prepare-localnet
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -41,6 +41,7 @@ help: ## Show this help
 	@echo "  make verify-step12  Run Step 12 DoD script"
 	@echo "  make verify-step13  Run Step 13 DoD script"
 	@echo "  make verify-step17  Run Step 17 local E2E demo script"
+	@echo "  make prepare-localnet  Step 17b restore + create stream (see demo-localnet-prepare.sh)"
 	@echo "  make clean       Remove saved state"
 	@echo ""
 	@echo "Example:"
@@ -122,5 +123,11 @@ verify-step13: ## Step 13 definition of done (scripts/verify-step13-dod.sh)
 	./scripts/verify-step13-dod.sh
 
 verify-step17: ## Step 17 local dual-host Store E2E (scripts/demo-e2e-local.sh)
-	chmod +x scripts/demo-e2e-local.sh scripts/e2e/*.py
+	chmod +x scripts/demo-e2e-local.sh scripts/e2e/*.py scripts/demo-localnet-prepare.sh \
+		scripts/prefund-localnet.sh scripts/restore-localnet.sh scripts/create-localnet-stream-fixture.sh \
+		scripts/snapshot-localnet.sh scripts/ensure-scaffold-lez-layout.sh
 	./scripts/demo-e2e-local.sh
+
+prepare-localnet: ## Step 17b restore baseline + create stream (scripts/demo-localnet-prepare.sh)
+	chmod +x scripts/demo-localnet-prepare.sh scripts/prefund-localnet.sh scripts/restore-localnet.sh scripts/create-localnet-stream-fixture.sh
+	./scripts/demo-localnet-prepare.sh

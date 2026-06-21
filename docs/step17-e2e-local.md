@@ -28,7 +28,8 @@ identity off-band (mimicked by a file). Missing-proof Store requests are rejecte
 | `SKIP_LIBLOGOSDELIVERY_OVERLAY` | `0` | Set `1` for hermetic nix-only `liblogosdelivery` |
 | `E2E_PHASE` | `all` | `core`, `claim`, or `all` |
 | `SKIP_BUILD` | `0` | `1` to reuse installed modules |
-| `SKIP_SEED` | `1` with existing manifest | Skip fixture re-check when manifest present |
+|| `SKIP_SEED` | `1` with existing manifest | Skip prepare when `fixtures/localnet.json` exists (no validity check) |
+|| `FULL_RESET` | `0` | `1` rebuilds funded snapshot (pinata + prefund) before create-stream |
 | `N8_WIRE_HEX` | (computed) | Host `cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex` if unset |
 
 Wallet (demo): both hosts may `open` the same Step 10a
@@ -56,16 +57,23 @@ Two `-D` processes on one machine require **different** `--config-dir` values. T
 integration rule against sharing a single `MODULES` tree; Step 17 uses two install roots so
 user and provider can diverge later (pins, delivery builds, testnet wallets).
 
-## Fixture — seed if needed
+## Fixture — prepare (Step 17b)
 
-Before dual-host messaging:
+Before dual-host messaging, `demo-e2e-local.sh` runs
+[`scripts/demo-localnet-prepare.sh`](../scripts/demo-localnet-prepare.sh):
 
-1. If `fixtures/localnet.json` is missing or `./scripts/verify-step10a-dod.sh` fails → run
-   `./scripts/demo-localnet-fresh.sh`.
-2. If Step 12 strict path would hit `STREAM_DEPLETED` → same fresh seed or
-   `TRY_TOPUP=1 ./scripts/step12-topup-and-prepare.sh` logic inside the E2E script.
+- **Default:** restore `.scaffold/snapshots/funded/` when `snapshot.json` matches LEZ pin and
+  `make program-id`, then `create-localnet-stream-fixture.sh` (one chain tx, no pinata).
+- **No snapshot / invalid snapshot:** prefund once (pinata + `prefund-onchain` + snapshot), then
+  restore + create stream.
+- **`FULL_RESET=1`:** rebuild snapshot from scratch (same as `./scripts/demo-localnet-fresh.sh`).
 
-Localized DoD: prefer seeded stream `0`; only run full vault/stream lifecycle when seed detection fails.
+Per-run cost: restore (directory copy + sequencer restart) + one `CreateStream`.
+
+`SKIP_SEED=1` skips prepare entirely (manifest must already match a fresh stream).
+
+If Step 12 strict path would hit `STREAM_DEPLETED` on an old chain without restore, run
+`./scripts/demo-localnet-prepare.sh` or `FULL_RESET=1 make verify-step17`.
 
 ## Build and install
 
