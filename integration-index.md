@@ -32,6 +32,7 @@ Store provider on the mesh. The on-chain guest is documented in Step 19 (`rfc-in
 | Developer journey (logos-docs doc packet) | 20 |
 | Basecamp UI + UI journey (optional) | 21–22 |
 | Public hosted Store provider (optional) | 23 |
+| LEZ in-process harness (`lee` @ 510, `program_tests`) | 24 |
 
 Details in step packets under [`docs/plan/upcoming/`](docs/plan/upcoming/); do not duplicate DoD here.
 
@@ -143,9 +144,11 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 21 | Basecamp UI | Optional — [step-21-basecamp-ui.md](docs/plan/upcoming/step-21-basecamp-ui.md) |
 | 22 | UI journey doc packet | Optional — [step-22-ui-journey.md](docs/plan/upcoming/step-22-ui-journey.md) |
 | 23 | Public Store provider | Optional — [step-23-public-store-provider.md](docs/plan/upcoming/step-23-public-store-provider.md) |
+| 24 | LEZ `lee` harness (NSSA → 510) | Upcoming — [step-24-lee-harness-upgrade.md](docs/plan/upcoming/step-24-lee-harness-upgrade.md) |
 
-Execution order: Steps 12, 11d, 13, 14, 15, and 16 are complete. Next: 17, then 18–20 in order;
-19 may parallel 17–18. Optional 21–22 after 20 if shipping UI docs; optional 23 if shipping a
+Execution order: Steps 12, 11d, 13, 14, 15, 16, 17, and 17b are complete. Next: 18–20 in order;
+19 may parallel 18. Step 24 may parallel 18–20 (Rust LEZ pin alignment; restores
+`program_tests`). Optional 21–22 after 20 if shipping UI docs; optional 23 if shipping a
 hosted paid-Store provider. Entry:
 [`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md). Local demos:
 [`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
@@ -197,6 +200,7 @@ Do not duplicate full DoD here — read the packet:
 - [Step 20](docs/plan/upcoming/step-20-developer-journey.md) — logos-docs developer journey
 - [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) — optional `ui_qml` plugin
 - [Step 22](docs/plan/upcoming/step-22-ui-journey.md) — optional UI journey doc packet
+- [Step 24](docs/plan/upcoming/step-24-lee-harness-upgrade.md) — `nssa` v0.1.2 → `lee` @ 510; re-enable in-process guest tests
 
 ## Verify scripts (logoscore path)
 

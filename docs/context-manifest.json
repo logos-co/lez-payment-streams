@@ -4,7 +4,7 @@
     "docs/integration-contracts.md",
     "integration-index.md"
   ],
-  "active_steps": [17, 18, 19, 20],
+  "active_steps": [18, 19, 20, 24],
   "optional_steps": [21, 22, 23],
   "step_packets": {
     "16": "docs/plan/completed/step-16.md",
@@ -16,7 +16,8 @@
     "20": "docs/plan/upcoming/step-20-developer-journey.md",
     "21": "docs/plan/upcoming/step-21-basecamp-ui.md",
     "22": "docs/plan/upcoming/step-22-ui-journey.md",
-    "23": "docs/plan/upcoming/step-23-public-store-provider.md"
+    "23": "docs/plan/upcoming/step-23-public-store-provider.md",
+    "24": "docs/plan/upcoming/step-24-lee-harness-upgrade.md"
   },
   "completed_normative": {
     "12": "docs/plan/completed/step-12-normative.md",

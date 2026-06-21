@@ -11,12 +11,13 @@ orchestrates wallet I/O; `logos-delivery` gains opaque wire fields and hooks (St
 
 Program outcomes after Step 16: runnable CLI demo (17 local LEZ, 18 public sequencer + local P2P),
 LIP-155 on-chain spec on `main` (19), developer journey doc packet (20); optional Basecamp UI
-and UI journey (21–22); optional public Store provider (23). Index:
+and UI journey (21–22); optional public Store provider (23); LEZ harness upgrade (24). Index:
 [integration-index.md](../integration-index.md#program-outcomes).
 
 ## Active work (execution order)
 
-Steps 1–13, 11d, and Steps 14–16 on the delivery forks are complete. Implement next in order:
+Steps 1–13, 11d, Steps 14–16 on the delivery forks, and Steps 17–17b are complete.
+Implement next in order:
 
 | Step | Repo / area | Agent packet |
 | --- | --- | --- |
@@ -28,8 +29,9 @@ Steps 1–13, 11d, and Steps 14–16 on the delivery forks are complete. Impleme
 | 21 | Basecamp UI (optional) | [plan/upcoming/step-21-basecamp-ui.md](plan/upcoming/step-21-basecamp-ui.md) |
 | 22 | UI journey doc packet (optional) | [plan/upcoming/step-22-ui-journey.md](plan/upcoming/step-22-ui-journey.md) |
 | 23 | Public Store provider (optional) | [plan/upcoming/step-23-public-store-provider.md](plan/upcoming/step-23-public-store-provider.md) |
+| 24 | LEZ `lee` harness (`nssa` → 510) | [plan/upcoming/step-24-lee-harness-upgrade.md](plan/upcoming/step-24-lee-harness-upgrade.md) |
 
-Step 19 may run in parallel with 17–18. Step 20 should follow 17 and 18 when the journey
+Step 19 may run in parallel with 17–18. Step 24 may run after Step 17 is green, in parallel with 18–20. Step 20 should follow 17 and 18 when the journey
 targets testnet v0.2 (Step 23 not required). Steps 21–22 only if shipping a UI journey; Step 23
 only if shipping a hosted paid-Store provider.
 
@@ -56,6 +58,7 @@ Summary:
 | Step 23 hosted provider | [plan/upcoming/step-23-public-store-provider.md](plan/upcoming/step-23-public-store-provider.md) |
 | Rust FFI / policy only | `lez-payment-streams-core` tests + [step3-policy-and-implementor-notes.md](step3-policy-and-implementor-notes.md) |
 | LIP on-chain spec (19) | [step-19-lip155-onchain-spec.md](plan/upcoming/step-19-lip155-onchain-spec.md) + [architecture.md](../architecture.md) |
+| LEZ harness / `program_tests` (24) | [step-24-lee-harness-upgrade.md](plan/upcoming/step-24-lee-harness-upgrade.md) + [architecture.md](../architecture.md) |
 | Doc packet (20 / 22) | Step packet + [logos-docs doc packet template](https://github.com/logos-co/logos-docs/blob/main/resources/templates/doc-packet.md) |
 
 ## Always-on references
