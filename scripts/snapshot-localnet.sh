@@ -12,7 +12,6 @@ RESTART="${SNAPSHOT_RESTART:-1}"
 # shellcheck source=scripts/localnet-snapshot-common.sh
 source "$REPO_ROOT/scripts/localnet-snapshot-common.sh"
 
-LEZ_CACHE="$(localnet_snapshot_lez_cache "$REPO_ROOT")"
 ROCKSDB="$(localnet_snapshot_rocksdb_dir "$REPO_ROOT")"
 
 require_cmd() {
