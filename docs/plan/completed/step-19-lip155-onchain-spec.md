@@ -1,10 +1,14 @@
-# Step 19 — plan excerpt
+# Step 19 — plan excerpt (complete)
 
-Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
+Normative packet for agents. Index: [integration-index.md](../../../integration-index.md).
 
-Convention: `main` in this step means the default branch of the LIP spec repository
-(`logos-lips` / `rfc-index`), not `lez-payment-streams` or delivery forks. Published URLs
-(for example `lip.logos.co`) follow that merge.
+Status: complete. Canonical LIP-155 text lives on `logos-lips` / `rfc-index` branch
+`feat/payment-streams-onchain-part` at rev `345c8eef` (local clone `lez-related/rfc-index`).
+Integration program outcome does not require merge to `main`; merge to the spec default branch
+is optional follow-up for published `lip.logos.co` URLs.
+
+Convention: when citing “the LIP” in this integration repo, use the branch pin above unless
+`main` has caught up.
 
 Scope: Step 19 edits only LIP-155 in the spec repository —
 `docs/anoncomms/raw/payment-streams.md` on `github.com/logos-co/logos-lips`
@@ -14,11 +18,11 @@ No changes to `lez-payment-streams`, delivery forks, or other repos in this step
 
 ### Step 19, LIP-155 on-chain spec alignment
 
-Goal: publish LIP-155 on `rfc-index` / `logos-lips` `main` with a
-`## On-Chain Protocol` chapter that maps chain-agnostic payment-stream notions
-(from Theory and Semantics) onto the LEZ reference architecture — which
-programs participate, how they interact, and what MUST vs SHOULD hold on chain.
-The LIP is not a transcript of the guest.
+Goal: land LIP-155 with a `## On-Chain Protocol` chapter that maps chain-agnostic
+payment-stream notions (from Theory and Semantics) onto the LEZ reference architecture —
+which programs participate, how they interact, and what MUST vs SHOULD hold on chain.
+The LIP is not a transcript of the guest. **Done** on branch `feat/payment-streams-onchain-part`
+(`345c8eef`).
 
 Normative boundaries:
 
@@ -68,20 +72,15 @@ Prerequisite: on-chain guest and `lez-payment-streams-core` accepted as complete
 ([`architecture.md`](../../../architecture.md),
 [`docs/archive/implementation-plan-on-chain.md](../../archive/implementation-plan-on-chain.md)).
 
-Scheduling: may run in parallel with Steps 17–18 while integration work does not require guest or
-core changes. If Step 17 or 18 exposes a guest/core defect, finish that fix before merging spec
-text that describes the old behavior. The LIP MUST be on rfc-index / logos-lips `main`
-(or the repo default branch if still named `master`) before Step 20 cites it; linking to a
-spec feature branch is acceptable only as an interim doc-packet note.
+Scheduling: ran in parallel with Steps 17–18. Step 20 may cite the branch pin above;
+optional later PR merges the same file to `main` for public lip URLs only.
 
 Architectural context:
 LIP-155 lives at `docs/anoncomms/raw/payment-streams.md` in `github.com/logos-co/logos-lips`
-(local clone `lez-related/rfc-index`; legacy vacp2p clone `rfc-index-old`). Upstream `master`
-lacks the full `## On-Chain Protocol` section; draft prose is on branch
-`feat/payment-streams-onchain-part` (single-file port onto current `master`; do not merge
-unrelated spec-repo history from `rfc-index-old`). That branch has no
-`## Implementation Considerations`; `master` has an outdated Implementation Considerations
-block (wrong account model) — discard it and write a new section at the placement above.
+(local clone `lez-related/rfc-index`). **Integration canonical branch:**
+`feat/payment-streams-onchain-part` (`345c8eef`) includes `## On-Chain Protocol` and
+`## Implementation Considerations` in the prescribed placement. Upstream `main` may lag until
+an optional merge PR lands.
 
 Reference implementation (informative for PR review, not LIP body):
 guest handlers, `instruction.rs`, `program_tests`, and
@@ -100,10 +99,10 @@ LIP-155 On-Chain is a LEZ binding chapter, not an eth-mls-style smart-contract A
 If the draft branch already lists semantic subsections (accounts, PDAs, accounting, lazy accrual,
 authorization, privacy tiers), extend those rather than replacing them with a guest transcript.
 
-Deliver:
+Deliver (satisfied on `feat/payment-streams-onchain-part`):
 
-- Single-file PR: `docs/anoncomms/raw/payment-streams.md` on `logos-lips` / `rfc-index` `main`
-  (spec CI / markdown lint pass).
+- `docs/anoncomms/raw/payment-streams.md` on branch `feat/payment-streams-onchain-part`
+  (`345c8eef`); optional follow-up PR to `main` for published lip URLs only.
 - Section updates within that file:
   - `## On-Chain Protocol` — scope; chain-agnostic invariants remain in Theory; LEZ binding covers
     time signal for folding, shielded vs transparent execution model, authorization model, and
@@ -133,6 +132,17 @@ Deliver:
     layouts may change across testnet revisions. Do not duplicate On-Chain or Security prose.
 
 Definition of done:
+
+Integration closure (met):
+
+- Canonical spec text on `feat/payment-streams-onchain-part` at `345c8eef` with
+  `## On-Chain Protocol` and `## Implementation Considerations` as specified below.
+- Content and link-integrity criteria in this packet satisfied on that branch.
+- Reference LEZ demo (`program_tests`, N8 / Step 15 parity) gates contradictions with the LIP.
+
+Not required for integration “done”:
+
+- Merge to `logos-lips` / `rfc-index` `main` or live `lip.logos.co` publication.
 
 Audience (what “done” means for readers):
 
@@ -172,6 +182,7 @@ Not in scope:
   in On-Chain (see `lez-payment-streams` repo).
 - Normative reference program id in the LIP.
 - A mandatory audit matrix artifact on `main`.
+- Mandatory merge to spec `main` before Step 20 or integration sign-off.
 - eth-mls/LIP-101-depth instruction tables (Writable/Signer grids) as DoD.
 
 Optional (PR author, not definition of done): spot-check LIP MUSTs against the reference guest.

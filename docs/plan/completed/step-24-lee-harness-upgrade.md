@@ -1,6 +1,9 @@
-# Step 24 — plan excerpt
+# Step 24 — plan excerpt (complete)
 
-Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
+Normative packet for agents. Index: [integration-index.md](../../../integration-index.md).
+
+Status: complete on `lez-payment-streams` `master` (LEE @ PR 510 pin `62d9ba10…`, transparent
+`program_tests`, vendored SPEL on `lee_core`).
 
 Engineering track in `lez-payment-streams` only. Does not change LIP-155, Store wire,
 delivery forks, or Logos module ABIs. May run in parallel with Steps 18–20 once Step 17

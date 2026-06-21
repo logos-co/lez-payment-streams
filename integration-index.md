@@ -20,21 +20,22 @@ Crypto and policy live in Rust (`lez-payment-streams-core`,
 MVP scope: LIP-155 transparent vaults, single user and single provider, paid Store mode on the
 provider. Step 17 uses a local LEZ sequencer; Step 18 uses public testnet v0.2 for chain access
 while Store and relay stay on two local `logoscore` hosts. Optional Step 23 hosts a public paid
-Store provider on the mesh. The on-chain guest is documented in Step 19 (`rfc-index`); see
-[architecture.md](architecture.md).
+Store provider on the mesh. The on-chain guest is documented in Step 19 (`rfc-index` branch
+`feat/payment-streams-onchain-part`); see [architecture.md](architecture.md).
 
 ## Program outcomes
 
 | Outcome | Steps |
 | --- | --- |
 | Runnable demo (CLI) | 17 local LEZ gate; 18 public sequencer + local P2P |
-| LIP-155 on-chain spec on `main` | 19 |
+| LIP-155 on-chain spec (branch pin) | 19 (complete) |
 | Developer journey (logos-docs doc packet) | 20 |
 | Basecamp UI + UI journey (optional) | 21–22 |
 | Public hosted Store provider (optional) | 23 |
-| LEZ in-process harness (`lee` @ 510, `program_tests`) | 24 |
+| LEZ in-process harness (`lee` @ 510, `program_tests`) | 24 (complete) |
 
-Details in step packets under [`docs/plan/upcoming/`](docs/plan/upcoming/); do not duplicate DoD here.
+Details in step packets under [`docs/plan/upcoming/`](docs/plan/upcoming/) and
+[`docs/plan/completed/`](docs/plan/completed/) for Steps 19 and 24; do not duplicate DoD here.
 
 ### Store query dependency
 
@@ -139,17 +140,16 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 17 | E2E demo (local LEZ) | Complete — [step-17.md](docs/plan/upcoming/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md), [N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [N14](docs/reference/decisions-and-notes.md#n14-step-17-paid-query-verify-rejects-2026-06-19) |
 | 17b | Localnet snapshot restore | Complete — [step-17b-localnet-snapshot-restore.md](docs/plan/upcoming/step-17b-localnet-snapshot-restore.md), [N15](docs/reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19); `demo-localnet-prepare.sh`, `make prepare-localnet` |
 | 18 | Public sequencer E2E (local Store) | Upcoming — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
-| 19 | LIP-155 on-chain spec | Upcoming — [step-19-lip155-onchain-spec.md](docs/plan/upcoming/step-19-lip155-onchain-spec.md) |
+| 19 | LIP-155 on-chain spec | Complete — [step-19-lip155-onchain-spec.md](docs/plan/completed/step-19-lip155-onchain-spec.md) (`feat/payment-streams-onchain-part` @ `345c8eef`) |
 | 20 | Developer journey doc packet | Upcoming — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
 | 21 | Basecamp UI | Optional — [step-21-basecamp-ui.md](docs/plan/upcoming/step-21-basecamp-ui.md) |
 | 22 | UI journey doc packet | Optional — [step-22-ui-journey.md](docs/plan/upcoming/step-22-ui-journey.md) |
 | 23 | Public Store provider | Optional — [step-23-public-store-provider.md](docs/plan/upcoming/step-23-public-store-provider.md) |
-| 24 | LEZ `lee` harness (NSSA → 510) | Complete — [step-24-lee-harness-upgrade.md](docs/plan/upcoming/step-24-lee-harness-upgrade.md) |
+| 24 | LEZ `lee` harness (NSSA → 510) | Complete — [step-24-lee-harness-upgrade.md](docs/plan/completed/step-24-lee-harness-upgrade.md) |
 
-Execution order: Steps 12, 11d, 13, 14, 15, 16, 17, and 17b are complete. Next: 18–20 in order;
-19 may parallel 18. Step 24 may parallel 18–20 (Rust LEZ pin alignment; restores
-`program_tests`). Optional 21–22 after 20 if shipping UI docs; optional 23 if shipping a
-hosted paid-Store provider. Entry:
+Execution order: Steps 12, 11d, 13, 14, 15, 16, 17, 17b, 19, and 24 are complete. Next: 18
+then 20. Optional 21–22 after 20 if shipping UI docs; optional 23 if shipping a hosted
+paid-Store provider. Entry:
 [`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md). Local demos:
 [`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 
@@ -188,6 +188,18 @@ DoD: eligibility routing, async `storeQuery`, registration introspection; unit t
 Agent packet: [step-16.md](docs/plan/completed/step-16.md). Locked rev:
 [feature-branch-pins.md](docs/feature-branch-pins.md).
 
+### Step 19 — LIP-155 on-chain spec (complete)
+
+DoD: `## On-Chain Protocol` and `## Implementation Considerations` on `logos-lips` branch
+`feat/payment-streams-onchain-part` (`345c8eef`); merge to spec `main` not required for
+integration closure. Packet: [step-19-lip155-onchain-spec.md](docs/plan/completed/step-19-lip155-onchain-spec.md).
+
+### Step 24 — LEZ `lee` harness (complete)
+
+DoD: single LEZ rev `62d9ba10…`, `lee`/`lee_core` host harness, transparent `program_tests`,
+vendored SPEL on `lee_core`; verify 10a/12/13 and Step 17 E2E. Packet:
+[step-24-lee-harness-upgrade.md](docs/plan/completed/step-24-lee-harness-upgrade.md).
+
 ## Upcoming steps (pointers)
 
 Do not duplicate full DoD here — read the packet:
@@ -196,11 +208,12 @@ Do not duplicate full DoD here — read the packet:
 - [Step 17b](docs/plan/upcoming/step-17b-localnet-snapshot-restore.md) — localnet snapshot restore (fast repeat runs)
 - [Step 18](docs/plan/upcoming/step-18-public-testnet-demo.md) — public LEZ sequencer; local dual-host Store E2E
 - [Step 23](docs/plan/upcoming/step-23-public-store-provider.md) — optional hosted Store provider on public mesh
-- [Step 19](docs/plan/upcoming/step-19-lip155-onchain-spec.md) — on-chain LIP on `main`
 - [Step 20](docs/plan/upcoming/step-20-developer-journey.md) — logos-docs developer journey
 - [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) — optional `ui_qml` plugin
 - [Step 22](docs/plan/upcoming/step-22-ui-journey.md) — optional UI journey doc packet
-- [Step 24](docs/plan/upcoming/step-24-lee-harness-upgrade.md) — `nssa` v0.1.2 → `lee` @ 510; re-enable in-process guest tests
+
+Completed (pointers): [Step 19](docs/plan/completed/step-19-lip155-onchain-spec.md),
+[Step 24](docs/plan/completed/step-24-lee-harness-upgrade.md).
 
 ## Verify scripts (logoscore path)
 

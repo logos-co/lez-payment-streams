@@ -11,7 +11,7 @@ Prerequisites by published runtime target:
 | Local LEZ (script from Step 17 only) | Step 17 DoD satisfied |
 | Testnet v0.2 (public LEZ, local dual-host Store) | Steps 17 and 18 DoD satisfied |
 | Testnet v0.2 + hosted public Store provider | Steps 17, 18, and 23 DoD satisfied |
-| Any | Step 19 on `main`, or doc packet links explicitly to the spec PR/branch until merge |
+| Any | Step 19 complete on `feat/payment-streams-onchain-part` (`345c8eef`); cite that branch in the doc packet ([feature-branch-pins.md](../../feature-branch-pins.md)) |
 
 Architectural context:
 Logos documentation intake uses a doc packet issue in `logos-co/logos-docs` (template
@@ -32,8 +32,9 @@ Deliver:
   scripts, success command, expected JSON/log outcomes, configuration (`FIXTURE_MANIFEST`,
   `registerProviderMapping`, eligibility registration, async `storeQuery` event), failure modes.
 - SME validation: run the issue command block verbatim before handoff to Docs.
-- Link merged LIP-155 on-chain section (Step 19) and [`integration-contracts.md`](../../integration-contracts.md)
-  for API shapes; do not duplicate full contract tables in the packet.
+- Link LIP-155 on-chain section on branch `feat/payment-streams-onchain-part` (Step 19) and
+  [`integration-contracts.md`](../../integration-contracts.md) for API shapes; do not duplicate
+  full contract tables in the packet.
 
 Definition of done:
 

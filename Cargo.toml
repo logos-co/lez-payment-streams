@@ -1,4 +1,4 @@
-# LEZ git pin for host/guest/tests: rev 62d9ba10 (PR 510 merge). See docs/plan/upcoming/step-24-lee-harness-upgrade.md.
+# LEZ git pin for host/guest/tests: rev 62d9ba10 (PR 510 merge). See docs/plan/completed/step-24-lee-harness-upgrade.md.
 [workspace]
 members = [
     "lez-payment-streams-core",

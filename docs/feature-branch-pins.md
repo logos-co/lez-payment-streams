@@ -14,6 +14,17 @@ complete on the delivery fork (verify commands in
 async `storeQuery`) is complete on the module fork. The module flake pins `logos-delivery` to
 the integration branch; locked revs in the table below.
 
+## LIP-155 spec (Step 19, complete)
+
+Integration treats the on-chain LIP as done on the spec feature branch (merge to `main` optional).
+
+| Artifact | Branch ref | Locked rev |
+| --- | --- | --- |
+| `logos-lips` / `rfc-index` `docs/anoncomms/raw/payment-streams.md` | `feat/payment-streams-onchain-part` | `345c8eef` |
+
+Local clone: `lez-related/rfc-index`. Step 20 doc packets should link this branch/rev until
+`main` catches up.
+
 ## Delivery integration branches (Steps 14–18)
 
 Branch from upstream `master` in each delivery repo; avoid release-tag baselines and the
