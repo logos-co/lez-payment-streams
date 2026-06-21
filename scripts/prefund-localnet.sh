@@ -71,7 +71,15 @@ done
 if [[ -f "$PROVIDER_FILE" ]]; then
   PROVIDER="$(cat "$PROVIDER_FILE")"
 else
+  if ! command -v wallet >/dev/null 2>&1; then
+    echo "ERROR: wallet not on PATH (run lgs setup from this repo)" >&2
+    exit 1
+  fi
   PROVIDER="$(wallet account new public 2>&1 | sed -n 's/.*Public\/\([A-Za-z0-9]*\).*/\1/p')"
+  if [[ -z "$PROVIDER" ]]; then
+    echo "ERROR: failed to parse provider id from 'wallet account new public' output" >&2
+    exit 1
+  fi
   echo "$PROVIDER" > "$PROVIDER_FILE"
 fi
 
