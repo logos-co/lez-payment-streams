@@ -137,8 +137,8 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 14 | Store wire (`logos-delivery`) | Complete — `d033a49364f1dda4ee4e5467d828738d01eb7d4c`; [step-14-normative.md](docs/plan/completed/step-14-normative.md) |
 | 15 | `liblogosdelivery` hooks | Complete — `e59319d8648c3c3ea9384c592728d5738f623a13`; [step-15-normative.md](docs/plan/completed/step-15-normative.md) |
 | 16 | `delivery_module` routing | Complete — `bf104a6…`; [step-16.md](docs/plan/completed/step-16.md) |
-| 17 | E2E demo (local LEZ) | Complete — [step-17.md](docs/plan/upcoming/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md), [N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [N14](docs/reference/decisions-and-notes.md#n14-step-17-paid-query-verify-rejects-2026-06-19) |
-| 17b | Localnet snapshot restore | Complete — [step-17b-localnet-snapshot-restore.md](docs/plan/upcoming/step-17b-localnet-snapshot-restore.md), [N15](docs/reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19); `demo-localnet-prepare.sh`, `make prepare-localnet` |
+| 17 | E2E demo (local LEZ) | Complete — [step-17.md](docs/plan/completed/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md), [N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [N14](docs/reference/decisions-and-notes.md#n14-step-17-paid-query-verify-rejects-2026-06-19) |
+| 17b | Localnet snapshot restore | Complete — [step-17b-localnet-snapshot-restore.md](docs/plan/completed/step-17b-localnet-snapshot-restore.md), [N15](docs/reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19); `demo-localnet-prepare.sh`, `make prepare-localnet`; `FULL_RESET=1` after guest ImageID change |
 | 18 | Public sequencer E2E (local Store) | Upcoming — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
 | 19 | LIP-155 on-chain spec | Complete — [step-19-lip155-onchain-spec.md](docs/plan/completed/step-19-lip155-onchain-spec.md) (`feat/payment-streams-onchain-part` @ `345c8eef`) |
 | 20 | Developer journey doc packet | Upcoming — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
@@ -188,6 +188,19 @@ DoD: eligibility routing, async `storeQuery`, registration introspection; unit t
 Agent packet: [step-16.md](docs/plan/completed/step-16.md). Locked rev:
 [feature-branch-pins.md](docs/feature-branch-pins.md).
 
+### Step 17 — E2E demo local LEZ (complete)
+
+DoD: `make verify-step17` — paid Store, missing-proof reject, claim `tx_hash`.
+Runbook: [step17-e2e-local.md](docs/step17-e2e-local.md). Packet:
+[step-17.md](docs/plan/completed/step-17.md). Prepare via Step 17b; after guest rebuild run
+`FULL_RESET=1` before E2E ([N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [N14](docs/reference/decisions-and-notes.md#n14-step-17-paid-query-verify-rejects-2026-06-19)).
+
+### Step 17b — Localnet snapshot restore (complete)
+
+DoD: funded snapshot + per-run stream `0`; `make prepare-localnet` / `demo-localnet-prepare.sh`.
+After guest ImageID or LEZ pin change: `FULL_RESET=1` rebuild required ([N15](docs/reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19)).
+Packet: [step-17b-localnet-snapshot-restore.md](docs/plan/completed/step-17b-localnet-snapshot-restore.md).
+
 ### Step 19 — LIP-155 on-chain spec (complete)
 
 DoD: `## On-Chain Protocol` and `## Implementation Considerations` on `logos-lips` branch
@@ -204,15 +217,16 @@ vendored SPEL on `lee_core`; verify 10a/12/13 and Step 17 E2E. Packet:
 
 Do not duplicate full DoD here — read the packet:
 
-- [Step 17](docs/plan/upcoming/step-17.md) — two hosts, local LEZ, paid Store script ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)); runbook [step17-e2e-local.md](docs/step17-e2e-local.md)
-- [Step 17b](docs/plan/upcoming/step-17b-localnet-snapshot-restore.md) — localnet snapshot restore (fast repeat runs)
 - [Step 18](docs/plan/upcoming/step-18-public-testnet-demo.md) — public LEZ sequencer; local dual-host Store E2E
 - [Step 23](docs/plan/upcoming/step-23-public-store-provider.md) — optional hosted Store provider on public mesh
 - [Step 20](docs/plan/upcoming/step-20-developer-journey.md) — logos-docs developer journey
 - [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) — optional `ui_qml` plugin
 - [Step 22](docs/plan/upcoming/step-22-ui-journey.md) — optional UI journey doc packet
 
-Completed (pointers): [Step 19](docs/plan/completed/step-19-lip155-onchain-spec.md),
+Completed (pointers): [Step 17](docs/plan/completed/step-17.md),
+[Step 17b](docs/plan/completed/step-17b-localnet-snapshot-restore.md) (after guest rebuild use
+`FULL_RESET=1` prepare),
+[Step 19](docs/plan/completed/step-19-lip155-onchain-spec.md),
 [Step 24](docs/plan/completed/step-24-lee-harness-upgrade.md).
 
 ## Verify scripts (logoscore path)

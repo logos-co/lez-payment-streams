@@ -472,7 +472,7 @@ owner/provider account ids, deposit and stream params. Mismatch → operator run
 [`scripts/demo-localnet-prepare.sh`](../../scripts/demo-localnet-prepare.sh); legacy full rebuild:
 [`scripts/demo-localnet-fresh.sh`](../../scripts/demo-localnet-fresh.sh) sets `FULL_RESET=1`.
 
-Plan packet: [step-17b-localnet-snapshot-restore.md](../plan/upcoming/step-17b-localnet-snapshot-restore.md).
+Plan packet: [step-17b-localnet-snapshot-restore.md](../plan/completed/step-17b-localnet-snapshot-restore.md).
 
 ### N4, Persistence policy
 

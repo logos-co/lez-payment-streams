@@ -50,7 +50,7 @@ The script:
    (core `Instruction` encoding — SPEL CLI currently fails `VaultId` IDL serialization).
 6. Writes `fixtures/localnet.json` (gitignored).
 
-Step 17b (repeat runs): [`step-17b-localnet-snapshot-restore.md`](plan/upcoming/step-17b-localnet-snapshot-restore.md)
+Step 17b (repeat runs): [`step-17b-localnet-snapshot-restore.md`](plan/completed/step-17b-localnet-snapshot-restore.md)
 splits fund vs stream — `prefund-onchain`, `create-stream-onchain`, and `seed-onchain` on
 `seed_localnet_fixture`. Operators use `./scripts/demo-localnet-prepare.sh` (restore snapshot +
 create stream) or `FULL_RESET=1` to rebuild `.scaffold/snapshots/funded/`.
@@ -193,7 +193,7 @@ Acceptable for Step 10a; optional later improvements (after fixture DoD is green
 - Ledger data lives under `~/.cache/logos-scaffold/repos/lez/<scaffold.toml pin>/rocksdb/`
   (stop the sequencer before copying). Repo-local `.scaffold/state/` tracks scaffold bookkeeping.
 - Step 17b: snapshot/restore the funded baseline (vault without stream) — see
-  [step-17b-localnet-snapshot-restore.md](plan/upcoming/step-17b-localnet-snapshot-restore.md)
+  [step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md)
   and [demo-localnet-recovery.md](demo-localnet-recovery.md).
 - Stop localnet without deleting `.scaffold/state/` to keep chain data between ad-hoc sessions.
 - Full reset (pinata + prefund + snapshot): `FULL_RESET=1 ./scripts/demo-localnet-prepare.sh`

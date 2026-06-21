@@ -27,8 +27,8 @@ Implement next in order:
 | 22 | UI journey doc packet (optional) | [plan/upcoming/step-22-ui-journey.md](plan/upcoming/step-22-ui-journey.md) |
 | 23 | Public Store provider (optional) | [plan/upcoming/step-23-public-store-provider.md](plan/upcoming/step-23-public-store-provider.md) |
 
-Completed packets (reference): [step-17.md](plan/upcoming/step-17.md),
-[step-17b](plan/upcoming/step-17b-localnet-snapshot-restore.md),
+Completed packets (reference): [step-17.md](plan/completed/step-17.md),
+[step-17b](plan/completed/step-17b-localnet-snapshot-restore.md),
 [step-19](plan/completed/step-19-lip155-onchain-spec.md),
 [step-24](plan/completed/step-24-lee-harness-upgrade.md).
 
@@ -52,8 +52,8 @@ Summary:
 | Delivery / Store wire (16+) | This brief → [integration-contracts.md](integration-contracts.md) → step packet → [D1](reference/decisions-and-notes.md#d1-store-wire-format) / [D2](reference/decisions-and-notes.md#d2-delivery-module-hook-design). Steps 14–16: [step-14-normative.md](plan/completed/step-14-normative.md), [step-15-normative.md](plan/completed/step-15-normative.md), [step-16.md](plan/completed/step-16.md). |
 | Module eligibility bugfix | [step12-user-eligibility.md](step12-user-eligibility.md) or [step13-provider-eligibility.md](step13-provider-eligibility.md) + contracts |
 | Localnet / verify failure | [demo-localnet-recovery.md](demo-localnet-recovery.md) + relevant `verify-step*-dod.sh` |
-| Step 17b snapshot / fast reuse | [plan/upcoming/step-17b-localnet-snapshot-restore.md](plan/upcoming/step-17b-localnet-snapshot-restore.md) + [N15](reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) |
-| Step 17 E2E dual-host | [step17-e2e-local.md](step17-e2e-local.md) (incl. [hermetic run](step17-e2e-local.md#hermetic-run-hand-off)) + [plan/upcoming/step-17.md](plan/upcoming/step-17.md) + [N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18) |
+| Step 17b snapshot / fast reuse | [plan/completed/step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md) + [N15](reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) (`FULL_RESET=1` after `make build`) |
+| Step 17 E2E dual-host (done) | [plan/completed/step-17.md](plan/completed/step-17.md) + [step17-e2e-local.md](step17-e2e-local.md) + [N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18) |
 | Step 18 public sequencer | [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) + Step 17 runbook (local P2P unchanged) |
 | Step 23 hosted provider | [plan/upcoming/step-23-public-store-provider.md](plan/upcoming/step-23-public-store-provider.md) |
 | Rust FFI / policy only | `lez-payment-streams-core` tests + [step3-policy-and-implementor-notes.md](step3-policy-and-implementor-notes.md) |

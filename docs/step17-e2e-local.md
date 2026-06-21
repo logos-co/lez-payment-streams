@@ -1,6 +1,6 @@
 # Step 17 — local E2E demo (operator)
 
-Plan excerpt: [plan/upcoming/step-17.md](plan/upcoming/step-17.md). Contracts:
+Plan excerpt: [plan/completed/step-17.md](plan/completed/step-17.md). Contracts:
 [integration-contracts.md](integration-contracts.md).
 
 ## Goal

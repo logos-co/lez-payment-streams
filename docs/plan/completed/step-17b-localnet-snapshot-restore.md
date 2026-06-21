@@ -1,7 +1,7 @@
-# Step 17b — localnet snapshot restore
+# Step 17b — localnet snapshot restore (complete)
 
 Operational addendum to [Step 17](step-17.md). Runnable E2E still gates on
-[step17-e2e-local.md](../step17-e2e-local.md); this step removes pinata-heavy reuse and
+[step17-e2e-local.md](../../step17-e2e-local.md); this step removes pinata-heavy reuse and
 stale-stream depletion on back-to-back runs.
 
 ## Goal
@@ -59,11 +59,13 @@ Step 17 entrypoint `make verify-step17` calls `demo-localnet-prepare` via
 1. `FULL_RESET=1 ./scripts/demo-localnet-prepare.sh`
 2. `./scripts/demo-localnet-prepare.sh` twice (second run must not call pinata)
 3. `make verify-step17` back-to-back
-4. After guest rebuild: restore must fail until `FULL_RESET=1`
+4. After guest rebuild (`make build`) or LEZ pin change: restore-only prepare fails until
+   `FULL_RESET=1` (vault/program mismatch on the restored ledger). Re-run prefund, snapshot, then
+   normal restore path — e.g. after [Step 24](step-24-lee-harness-upgrade.md) harness guest bump.
 
 ## Status
 
 Complete (2026-06-19). Verified: restore + create-stream path, back-to-back
-`make verify-step17`, and `FULL_RESET=1` rebuild.
+`make verify-step17`, and `FULL_RESET=1` rebuild (including post–guest ImageID change).
 
-Decision record: [N15](../reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19).
+Decision record: [N15](../../reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19).

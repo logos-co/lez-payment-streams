@@ -1,14 +1,16 @@
-# Step 17 — plan excerpt
+# Step 17 — plan excerpt (complete)
 
-Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
+Normative packet for agents. Index: [integration-index.md](../../../integration-index.md).
 Operator runbook: [step17-e2e-local.md](../../step17-e2e-local.md).
 
 Status: Complete (2026-06-19). The full local dual-host gate is green via `make verify-step17`
 (`scripts/demo-e2e-local.sh` + `scripts/e2e/run_local_e2e.py`) on a clean tree plus a prepared
 localnet fixture: paid `storeQuery` returns `statusCode:200` with messages, missing-proof is
 rejected, and provider claim writes a `tx_hash`. Fixture prepare is
-[Step 17b](../../plan/upcoming/step-17b-localnet-snapshot-restore.md) (`demo-localnet-prepare.sh`;
+[Step 17b](step-17b-localnet-snapshot-restore.md) (`demo-localnet-prepare.sh`;
 default restore + fresh stream `0`; `FULL_RESET=1` or `demo-localnet-fresh.sh` rebuilds snapshot).
+After a **guest rebuild** (`make build`) or LEZ pin change, run `FULL_RESET=1` prepare before E2E
+(snapshot `program_id_hex` must match the deployed ImageID; restore-only prepare fails otherwise).
 JSON-lines artifacts land under `.scaffold/e2e/artifacts/`. The 2026-06-18 checkpoint reported the
 wiring green but the happy-path `storeQuery` still failed `BAD_REQUEST`; root cause was provider
 verify returning `PARAMS_REJECTED` / `RateBelowAcceptedParams` because `fillServiceId` clobbered

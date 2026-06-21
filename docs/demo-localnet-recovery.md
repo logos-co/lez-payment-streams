@@ -38,7 +38,7 @@ Keep across local resets (slow or stable):
 - `PAYMENT_STREAMS_GUEST_BIN` pointing at the built guest `.bin`.
 - `.scaffold/wallet/wallet_config.json` and valid `storage.json` when deploy and `open` work.
 - Step 17b snapshot `.scaffold/snapshots/funded/` when `lez_pin` and guest ImageID unchanged
-  (see [step-17b-localnet-snapshot-restore.md](plan/upcoming/step-17b-localnet-snapshot-restore.md)).
+  (see [step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md)).
 
 Wipe on blank-slate recovery:
 

@@ -8,8 +8,8 @@
   "optional_steps": [21, 22, 23],
   "step_packets": {
     "16": "docs/plan/completed/step-16.md",
-    "17": "docs/plan/upcoming/step-17.md",
-    "17b": "docs/plan/upcoming/step-17b-localnet-snapshot-restore.md",
+    "17": "docs/plan/completed/step-17.md",
+    "17b": "docs/plan/completed/step-17b-localnet-snapshot-restore.md",
     "17_runbook": "docs/step17-e2e-local.md",
     "18": "docs/plan/upcoming/step-18-public-testnet-demo.md",
     "19": "docs/plan/completed/step-19-lip155-onchain-spec.md",
@@ -25,6 +25,8 @@
     "14": "docs/plan/completed/step-14-normative.md",
     "15": "docs/plan/completed/step-15-normative.md",
     "16": "docs/plan/completed/step-16.md",
+    "17": "docs/plan/completed/step-17.md",
+    "17b": "docs/plan/completed/step-17b-localnet-snapshot-restore.md",
     "19": "docs/plan/completed/step-19-lip155-onchain-spec.md",
     "24": "docs/plan/completed/step-24-lee-harness-upgrade.md"
   },
