@@ -12,7 +12,6 @@ SNAP_DIR="$REPO_ROOT/.scaffold/snapshots/$SNAPSHOT_NAME"
 source "$REPO_ROOT/scripts/localnet-snapshot-common.sh"
 
 export LEE_WALLET_HOME_DIR="${LEE_WALLET_HOME_DIR:-$REPO_ROOT/.scaffold/wallet}"
-LEZ_CACHE="$(localnet_snapshot_lez_cache "$REPO_ROOT")"
 ROCKSDB="$(localnet_snapshot_rocksdb_dir "$REPO_ROOT")"
 
 require_cmd() {
