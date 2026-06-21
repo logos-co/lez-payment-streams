@@ -91,7 +91,7 @@ needs reproducible `lgpm` installs. Wallet pins in that doc are unchanged.
 ### Full (first time in repo)
 
 Add: [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md), [`docs/step1-findings-scaffold-rpc.md`](docs/step1-findings-scaffold-rpc.md),
-[`docs/feature-branch-pins.md`](docs/feature-branch-pins.md), LIP-155 (`rfc-index/.../payment-streams.md`).
+[`docs/feature-branch-pins.md`](docs/feature-branch-pins.md), LIP-155 (`rfc-index/docs/anoncomms/raw/payment-streams.md`, branch `feat/payment-streams-onchain-part` on `logos-co/logos-lips`).
 
 ## Components (sketch)
 
