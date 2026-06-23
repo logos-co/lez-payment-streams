@@ -4,7 +4,8 @@
     "docs/integration-contracts.md",
     "integration-index.md"
   ],
-  "active_steps": [18, 20],
+  "active_steps": [20, 25],
+  "paused_steps": [18],
   "optional_steps": [21, 22, 23],
   "step_packets": {
     "16": "docs/plan/completed/step-16.md",
@@ -14,6 +15,7 @@
     "18": "docs/plan/upcoming/step-18-public-testnet-demo.md",
     "19": "docs/plan/completed/step-19-lip155-onchain-spec.md",
     "20": "docs/plan/upcoming/step-20-developer-journey.md",
+    "25": "docs/plan/upcoming/step-25-demo-coordination-module.md",
     "21": "docs/plan/upcoming/step-21-basecamp-ui.md",
     "22": "docs/plan/upcoming/step-22-ui-journey.md",
     "23": "docs/plan/upcoming/step-23-public-store-provider.md",

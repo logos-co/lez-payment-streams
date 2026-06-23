@@ -4,16 +4,19 @@ Active-work packet for agents. Index: [integration-index.md](../../../integratio
 
 ### Step 25, Demo coordination Logos module
 
-Prerequisite: Step 18 definition of done (testnet sequencer E2E, local dual-host Store).
+Prerequisite: Step 17 definition of done (local LEZ dual-host Store E2E,
+`make verify-step17`). Step 18 (public testnet) is paused; do not block Step 25 on Step 18
+DoD. When Step 18 resumes, extend verify targets and `runDemo` chain selector for testnet.
+
 Step 17 remains the local-LEZ regression gate and must keep passing throughout this step.
 
 Architectural context:
 
-Steps 17 and 18 coordinate the dual-host paid Store E2E run from outside the node via
-`scripts/e2e/run_local_e2e.py` (Python; shells out to `logoscore call` and `logoscore
-watch`). This step replaces that external orchestrator with an in-process Logos module so
-the demo is driven by a single `logoscore` invocation (or, later, a Basecamp plugin) rather
-than a host-side script.
+Steps 17 (and 18 when unblocked) coordinate the dual-host paid Store E2E run from outside
+the node via `scripts/e2e/run_local_e2e.py` (Python; shells out to `logoscore call` and
+`logoscore watch`). This step replaces that external orchestrator with an in-process Logos
+module so the demo is driven by a single `logoscore` invocation (or, later, a Basecamp
+plugin) rather than a host-side script.
 
 The coordinator module drives the three production modules already on the host
 (`logos_execution_zone`, `payment_streams_module`, `delivery_module`) via LogosAPI. It does
@@ -49,8 +52,9 @@ What stays out of the module:
   prerequisite. The module may call `createStream` / `topUpStream` via
   `payment_streams_module.chainAction` to ensure a fresh stream at proof time, mirroring
   the current late-create path.
-- Building and installing `.lgx` artifacts. `make verify-step17` / `verify-step18` still
-  run `nix build` and `lgpm install` before invoking the module.
+- Building and installing `.lgx` artifacts. `make verify-step17` still runs `nix build` and
+  `lgpm install` before invoking the module. Add `make verify-step18` retarget when Step 18
+  testnet unblocks.
 - N8 canonical wire hex computation. Host `cargo run -p lez-payment-streams-core --bin
   n8_canonical_wire_hex` remains the source; the module accepts `N8_WIRE_HEX` (or an
   equivalent LogosAPI argument) rather than building the guest toolchain in-process.
@@ -87,22 +91,22 @@ runDemo ...`), not a Python script.
 
 - New module under `logos-payment-streams-module` (or sibling repo); `nix build .#lgx`
   produces an installable `.lgx`.
-- `make verify-step17` and `make verify-step18` retargeted to invoke the coordinator
-  module. The Python orchestrator (`scripts/e2e/run_local_e2e.py`,
+- `make verify-step17` retargeted to invoke the coordinator module (Step 18 verify retarget
+  when testnet unblocks). The Python orchestrator (`scripts/e2e/run_local_e2e.py`,
   `scripts/e2e/debug_happy_path.py`, `scripts/e2e/seed_provider_acceptance.py`) is retired
   or moved to `scripts/e2e/legacy/`; the artifact path and phase row shape stay stable so
   downstream tooling (CI, dashboards) is unchanged.
-- Runbook section in [step17-e2e-local.md](../../step17-e2e-local.md) and the Step 18
-  runbook documenting the new single-command entry and the module load order
-  (`logos_execution_zone`, `payment_streams_module`, `delivery_module`,
-  `payment_streams_demo_coordinator`).
+- Runbook section in [step17-e2e-local.md](../../step17-e2e-local.md) documenting the new
+  single-command entry and the module load order (`logos_execution_zone`,
+  `payment_streams_module`, `delivery_module`, `payment_streams_demo_coordinator`). Step 18
+  runbook update when testnet path resumes.
 
 #### Definition of done
 
-- `make verify-step17` (local LEZ) and `make verify-step18` (testnet) emit the same
-  artifact rows as today (`store_query_success`, `store_query_missing_proof`, `claim`)
-  from inside the coordinator module, with no external Python orchestrator on the run
-  path.
+- `make verify-step17` (local LEZ) emits the same artifact rows as today
+  (`store_query_success`, `store_query_missing_proof`, `claim`) from inside the coordinator
+  module, with no external Python orchestrator on the run path. Testnet verify parity when
+  Step 18 unblocks.
 - Local-LEZ regression gate (Step 17) stays green; hermetic
   (`SKIP_LIBLOGOSDELIVERY_OVERLAY=1`) and overlay paths both supported.
 - `payment_streams_demo_coordinator.runDemo` is the single entry operators and Step 20
