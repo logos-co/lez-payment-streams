@@ -142,7 +142,7 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 16 | `delivery_module` routing | Complete — `bf104a6…`; [step-16.md](docs/plan/completed/step-16.md) |
 | 17 | E2E demo (local LEZ) | Complete — [step-17.md](docs/plan/completed/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md), [N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [N14](docs/reference/decisions-and-notes.md#n14-step-17-paid-query-verify-rejects-2026-06-19) |
 | 17b | Localnet snapshot restore | Complete — [step-17b-localnet-snapshot-restore.md](docs/plan/completed/step-17b-localnet-snapshot-restore.md), [N15](docs/reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19); `demo-localnet-prepare.sh`, `make prepare-localnet`; `FULL_RESET=1` after guest ImageID change |
-| 18 | Public sequencer E2E (local Store) | Upcoming — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
+| 18 | Public sequencer E2E (local Store) | Blocked on public testnet guest deploy (ELF size) — packet [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md); WIP on `feat/step18-public-testnet` |
 | 19 | LIP-155 on-chain spec | Complete — [step-19-lip155-onchain-spec.md](docs/plan/completed/step-19-lip155-onchain-spec.md) (`feat/payment-streams-onchain-part` @ `345c8eef`) |
 | 20 | Developer journey doc packet | Upcoming (depends on 25) — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
 | 21 | Basecamp UI | Optional (depends on 25) — [step-21-basecamp-ui.md](docs/plan/upcoming/step-21-basecamp-ui.md) |
@@ -151,10 +151,11 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 24 | LEZ `lee` harness (NSSA → 510) | Complete — [step-24-lee-harness-upgrade.md](docs/plan/completed/step-24-lee-harness-upgrade.md) |
 | 25 | Demo coordination Logos module | Upcoming — [step-25-demo-coordination-module.md](docs/plan/upcoming/step-25-demo-coordination-module.md) |
 
-Execution order: Steps 12, 11d, 13, 14, 15, 16, 17, 17b, 19, and 24 are complete. Next: 18,
-then 25, then 20. Step 20 depends on 25 (the developer journey documents the coordinator
-module's `runDemo` entry). Optional 21–22 after 25 if shipping UI docs; optional 23 if shipping
-a hosted paid-Store provider. Entry:
+Execution order: Steps 12, 11d, 13, 14, 15, 16, 17, 17b, 19, and 24 are complete. Next: 18
+(blocked on public testnet program deploy size; see below), then 25, then 20. Step 20 depends
+on 25 (the developer journey documents the coordinator module's `runDemo` entry). Optional
+21–22 after 25 if shipping UI docs; optional 23 if shipping a hosted paid-Store provider.
+Entry:
 [`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md). Local demos:
 [`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 
@@ -218,11 +219,29 @@ DoD: single LEZ rev `62d9ba10…`, `lee`/`lee_core` host harness, transparent `p
 vendored SPEL on `lee_core`; verify 10a/12/13 and Step 17 E2E. Packet:
 [step-24-lee-harness-upgrade.md](docs/plan/completed/step-24-lee-harness-upgrade.md).
 
+### Step 18 — testnet integration (blocked, 2026-06)
+
+Step 17 (local LEZ) is complete. Public testnet Part B is blocked until the payment-streams
+guest can be deployed with rc3 `wallet deploy-program`.
+
+Observed on `https://testnet.lez.logos.co/`: deploy transaction size exceeds the effective
+per-transaction limit (~511800 bytes). The guest `.bin` from `make build` (pin `62d9ba10`, after
+a guest-side `lee_core/host` dependency fix) is ~576576 bytes (~64 KiB over). Local deploy via
+`make deploy` is unaffected (local sequencer allows larger blocks, e.g. 1 MiB).
+
+Part B scaffolding (dual-pin reads, rc3 submit helper, testnet scripts) lives on branch
+`feat/step18-public-testnet`. Detailed recon, dual-pin policy, and resolution options are in the
+Step 18 packet on that branch; merge to `master` when deploy and `make verify-step18` succeed.
+
+Likely unblock paths: raise public testnet `max_block_size`, or shrink the single guest by
+~65+ KiB (upstream LEZ/SPEL or material guest diet). Splitting into two deployed programs is
+deferred for Step 18.
+
 ## Upcoming steps (pointers)
 
 Do not duplicate full DoD here — read the packet:
 
-- [Step 18](docs/plan/upcoming/step-18-public-testnet-demo.md) — public LEZ sequencer; local dual-host Store E2E
+- [Step 18](docs/plan/upcoming/step-18-public-testnet-demo.md) — public LEZ sequencer; local dual-host Store E2E (testnet deploy blocked: guest ELF vs tx size cap; see above)
 - [Step 25](docs/plan/upcoming/step-25-demo-coordination-module.md) — in-process Logos module replacing the external Python orchestrator
 - [Step 23](docs/plan/upcoming/step-23-public-store-provider.md) — optional hosted Store provider on public mesh
 - [Step 20](docs/plan/upcoming/step-20-developer-journey.md) — logos-docs developer journey (depends on 25)

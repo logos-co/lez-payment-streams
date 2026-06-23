@@ -22,7 +22,7 @@ Implement next in order:
 
 | Step | Repo / area | Agent packet |
 | --- | --- | --- |
-| 18 | Public sequencer E2E (local Store) | [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) |
+| 18 | Public sequencer E2E (local Store) | [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) — testnet deploy blocked (~576 KiB guest vs ~512 KiB tx cap); WIP `feat/step18-public-testnet` |
 | 25 | Demo coordination Logos module | [plan/upcoming/step-25-demo-coordination-module.md](plan/upcoming/step-25-demo-coordination-module.md) |
 | 20 | Developer journey doc packet | [plan/upcoming/step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md) |
 | 21 | Basecamp UI (optional) | [plan/upcoming/step-21-basecamp-ui.md](plan/upcoming/step-21-basecamp-ui.md) |
