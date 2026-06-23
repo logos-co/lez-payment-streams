@@ -167,6 +167,29 @@ Rebuild the Step 17b funded snapshot after a LEZ pin or guest ImageID change:
 - `logos_execution_zone` flake input → patched wrapper (PR 19 upstream inside).
 - `logos-execution-zone` follows LEZ 510 for `wallet_ffi`.
 
+## Step 18 public testnet (dual-pin)
+
+Local demo and testnet reads use LEZ pin `62d9ba10` (510) unchanged in `scaffold.toml` and wallet
+flakes. Testnet chain writes use rc3 pin `cf3639d8252040d13b3d4e933feb19b42c76e14a` only inside
+`tools/lez-testnet-submit` (not linked from default `nix build .#payment-streams-ffi` or
+`logos-payment-streams-module#lgx`).
+
+| Artifact | Pin / ref | Role |
+| --- | --- | --- |
+| `logos_execution_zone` .lgx | `62d9ba10` | Local E2E, testnet sync/read/sign |
+| `lez-testnet-submit` | `cf3639d8` | `CHAIN=testnet` chainAction submits |
+| rc3 `wallet` CLI | `cf3639d8` | `make deploy-testnet` (Part B) |
+
+Guest `program_id_hex` on testnet: record after first `deploy-testnet` (expected to match
+`make program-id` for the built guest). Example in `fixtures/testnet.json.example`.
+
+Retirement (Phase 9): when testnet LEZ includes PR #491 and #510 and `wallet check-health`
+passes with pin `62d9ba10`, delete `tools/lez-testnet-submit`, remove `CHAIN=testnet` dispatch,
+and drop the rc3-only flake input. See
+[step18-public-sequencer-e2e.md](step18-public-sequencer-e2e.md).
+
+Runbook: [step18-public-sequencer-e2e.md](step18-public-sequencer-e2e.md).
+
 ## Verification commands
 
 ```bash

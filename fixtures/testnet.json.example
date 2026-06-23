@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "sequencer_url": "https://testnet.lez.logos.co/",
+  "program_id_hex": "f9f4147cb438738a64487ea766afe1d1a6fa5542b402cf3f567fbd813a84cc0b",
+  "owner_account_id": "",
+  "provider_account_id": "",
+  "vault_id": 0,
+  "stream_id": 0,
+  "vault_config_account_id": "",
+  "vault_holding_account_id": "",
+  "stream_config_account_id": "",
+  "clock_10_account_id": "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs",
+  "demo_deposit_amount": 2000,
+  "stream_rate": 1,
+  "stream_allocation": 1800,
+  "reserved_for_step_18": "Copy to gitignored fixtures/testnet.json after make bootstrap-testnet (Part B). Do not copy owner/provider ids from localnet.json."
+}

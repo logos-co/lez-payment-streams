@@ -6,6 +6,19 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 export REPO="${REPO:-$REPO_ROOT}"
+CHAIN="${CHAIN:-local}"
+export CHAIN
+
+if [[ "$CHAIN" == "testnet" ]]; then
+  export FIXTURE_MANIFEST="${FIXTURE_MANIFEST:-$REPO/fixtures/testnet.json}"
+  export WALLET_CONFIG="${WALLET_CONFIG:-$REPO/.scaffold/e2e/testnet-wallet/wallet_config.json}"
+  export WALLET_STORAGE="${WALLET_STORAGE:-$REPO/.scaffold/e2e/testnet-wallet/storage.json}"
+else
+  export FIXTURE_MANIFEST="${FIXTURE_MANIFEST:-$REPO/fixtures/localnet.json}"
+  export WALLET_CONFIG="${WALLET_CONFIG:-$REPO/.scaffold/wallet/wallet_config.json}"
+  export WALLET_STORAGE="${WALLET_STORAGE:-$REPO/.scaffold/wallet/storage.json}"
+fi
+
 E2E_PHASE="${E2E_PHASE:-all}"
 SKIP_BUILD="${SKIP_BUILD:-0}"
 SKIP_SEED="${SKIP_SEED:-0}"
@@ -18,9 +31,6 @@ export LOGOSCORE_CONFIG_PROVIDER="${LOGOSCORE_CONFIG_PROVIDER:-$E2E_BASE/provide
 export PERSIST_USER="${PERSIST_USER:-$E2E_BASE/user/persist}"
 export PERSIST_PROVIDER="${PERSIST_PROVIDER:-$E2E_BASE/provider/persist}"
 export E2E_PROVIDER_AD="${E2E_PROVIDER_AD:-$E2E_BASE/provider-advertisement.json}"
-export FIXTURE_MANIFEST="${FIXTURE_MANIFEST:-$REPO/fixtures/localnet.json}"
-export WALLET_CONFIG="${WALLET_CONFIG:-$REPO/.scaffold/wallet/wallet_config.json}"
-export WALLET_STORAGE="${WALLET_STORAGE:-$REPO/.scaffold/wallet/storage.json}"
 export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
 export PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF="${PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF:-0}"
 
@@ -69,6 +79,15 @@ run_e2e_body() {
 
 ensure_fixture() {
   export FIXTURE_MANIFEST
+  if [[ "$CHAIN" == "testnet" ]]; then
+    if [[ ! -f "$FIXTURE_MANIFEST" ]]; then
+      echo "ERROR: testnet fixture missing: $FIXTURE_MANIFEST (Part B bootstrap)" >&2
+      log_phase seed 0 '{"error":"missing testnet manifest"}'
+      exit 1
+    fi
+    log_phase seed 1 '{"skipped":"testnet_no_localnet"}'
+    return 0
+  fi
   if [[ "$SKIP_SEED" == "1" && -f "$FIXTURE_MANIFEST" ]]; then
     log_phase seed 1 '{"skipped":true}'
     return 0
@@ -177,6 +196,7 @@ nix shell \
     export PERSIST_USER='$PERSIST_USER' PERSIST_PROVIDER='$PERSIST_PROVIDER'
     export FIXTURE_MANIFEST='$FIXTURE_MANIFEST' WALLET_CONFIG='$WALLET_CONFIG' WALLET_STORAGE='$WALLET_STORAGE'
     export PAYMENT_STREAMS_GUEST_BIN='$PAYMENT_STREAMS_GUEST_BIN' E2E_PROVIDER_AD='$E2E_PROVIDER_AD'
+    export CHAIN='$CHAIN'
     export PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF='${PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF:-0}'
     export E2E_LATE_STREAM_CREATE='${E2E_LATE_STREAM_CREATE:-1}'
     export DELIVERY_MODULE_ROOT='${DELIVERY_MODULE_ROOT:-$REPO/../logos-delivery-module}'

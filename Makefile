@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-step17 prepare-localnet
+.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-step17 verify-step18 verify-step18-testnet-read-smoke deploy-testnet bootstrap-testnet prepare-localnet
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -41,6 +41,10 @@ help: ## Show this help
 	@echo "  make verify-step12  Run Step 12 DoD script"
 	@echo "  make verify-step13  Run Step 13 DoD script"
 	@echo "  make verify-step17  Run Step 17 local E2E demo script"
+	@echo "  make verify-step18-testnet-read-smoke  Dual-pin read smoke (skips if RPC down)"
+	@echo "  make verify-step18  Full testnet E2E (Part B; needs fixtures/testnet.json)"
+	@echo "  make deploy-testnet One-time guest deploy (Part B placeholder)"
+	@echo "  make bootstrap-testnet One-time vault/stream bootstrap (Part B placeholder)"
 	@echo "  make prepare-localnet  Step 17b restore + create stream (see demo-localnet-prepare.sh)"
 	@echo "  make clean       Remove saved state"
 	@echo ""
@@ -131,3 +135,19 @@ verify-step17: ## Step 17 local dual-host Store E2E (scripts/demo-e2e-local.sh)
 prepare-localnet: ## Step 17b restore baseline + create stream (scripts/demo-localnet-prepare.sh)
 	chmod +x scripts/demo-localnet-prepare.sh scripts/prefund-localnet.sh scripts/restore-localnet.sh scripts/create-localnet-stream-fixture.sh
 	./scripts/demo-localnet-prepare.sh
+
+verify-step18-testnet-read-smoke: ## Step 18 dual-pin read smoke (scripts/verify-step18-testnet-read-smoke.sh)
+	chmod +x scripts/verify-step18-testnet-read-smoke.sh
+	./scripts/verify-step18-testnet-read-smoke.sh
+
+deploy-testnet: ## Step 18 one-time program deploy (Part B)
+	chmod +x scripts/deploy-testnet.sh
+	./scripts/deploy-testnet.sh
+
+bootstrap-testnet: ## Step 18 one-time fixture bootstrap (Part B)
+	chmod +x scripts/bootstrap-testnet.sh
+	./scripts/bootstrap-testnet.sh
+
+verify-step18: ## Step 18 public sequencer E2E (Part B)
+	chmod +x scripts/verify-step18.sh scripts/demo-e2e-local.sh scripts/e2e/*.py
+	./scripts/verify-step18.sh
