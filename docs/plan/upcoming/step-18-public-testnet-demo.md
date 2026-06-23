@@ -82,7 +82,11 @@ operators, not per-operator.
   `lee/state_machine/src/program.rs:114-119`). `62d9ba10` is a descendant of `cf3639d8`
   (merge-base is `cf3639d8` itself), so the divergence is forward from rc3.
 - Guest ImageID (for `fixtures/testnet.json`, independent of LEZ builtin pin):
-  `f9f4147cb438738a64487ea766afe1d1a6fa5542b402cf3f567fbd813a84cc0b`.
+  `f9f4147cb438738a64487ea766afe1d1a6fa5542b402cf3f567fbd813a84cc0b` on the pre–guest-diet
+  tree. After the `lee_core` guest dependency fix on `feat/step18-public-testnet` (`ca1ba7f`),
+  `make build` reports ImageID
+  `79b1dd5c441caede8f9f82c30de637aba465f94cc43817b1105c8c48c77d0fc9` and ELF size 576576
+  bytes. Any testnet manifest must use `program_id_hex` from the ELF actually deployed.
 
 Dual-pin read path (510 `logos_execution_zone` + testnet `sequencer_addr`, without
 `check-health`): validated 2026-06-23 via `make verify-step18-testnet-read-smoke` (exit 0,
@@ -302,15 +306,67 @@ Reconnaissance complete (2026-06-23):
   details in recon section above.
 - Piñata funding on testnet: `wallet pinata claim` succeeds, balance `150` (recon; re-verify
   after chain reset).
-- Program deploy: rc3 `wallet deploy-program` works for one-time deploy; per-run
-  `chainAction` writes need the temporary helper (no generic-tx FFI at rc3).
-- Deploy size gate (2026-06-23): current guest ELF (~577800 bytes) exceeds public
-  testnet max transaction size (~511800) for `deploy-program`; raise sequencer
-  `max_block_size` or shrink the guest before Part B deploy/bootstrap can complete.
+- Program deploy: rc3 `wallet deploy-program` works in principle (one tx carries the full
+  `.bin` bytecode); per-run `chainAction` writes need the temporary helper (no generic-tx FFI
+  at rc3). Blocked on testnet (2026-06-23): see Guest deploy size blocker below.
 
 Part A landed on `feat/step18-public-testnet` (Part A phases 1–5; `make verify-step17` green on
-branch). Part B (phases 6–8) unblocked for chain I/O once read smoke PASS is current; re-run smoke
-after RPC outages.
+branch). Part B scaffolding (phases 6–8 scripts, dual-wallet env, `lez-testnet-submit`, module
+`CHAIN=testnet` path) landed in commit `ca1ba7f`. Part B chain bootstrap and full
+`make verify-step18` remain blocked until a guest deploy succeeds on public testnet. Re-run read
+smoke after RPC outages before deploy/bootstrap attempts.
+
+#### Guest deploy size blocker (2026-06-23)
+
+Public testnet rejects `wallet deploy-program` when the serialized
+`ProgramDeploymentTransaction` exceeds the effective per-transaction size limit. Observed on
+live testnet:
+
+- Guest ELF (`.bin` from `make build` at `ca1ba7f`): 576576 bytes (~563 KiB).
+- Reported cap at failure: 511800 bytes (~500 KiB) (`Transaction too large: size …, max …`).
+- Gap: ~64 KiB (~64776 bytes). Deploy payload is essentially the full program binary plus
+  small borsh overhead; there is no protocol support for splitting one RISC Zero image across
+  two deploy transactions.
+
+Local LEZ (docker-all-in-one defaults) uses a higher `max_block_size` (e.g. 1 MiB), so Step 17
+deploy via `make deploy` is unaffected.
+
+What we tried on the feature branch (kept vs reverted):
+
+- Kept (`ca1ba7f`): stop forcing `lee_core/host` (and `ml-kem`) on the guest dependency
+  graph; tie `lee_core/host` to host-only `lez-payment-streams-core` / vendored SPEL consumers.
+  ELF 577800 → 576576 (~1.2 KiB). `make verify-step17` still green.
+- Reverted (not worth the complexity): guest-only core module splits, omit embedded IDL on
+  `riscv32`, SPEL `default-features = false`, release LTO profile — combined save only ~2.5 KiB
+  vs pre-diet baseline; branch reset to `ca1ba7f` without that commit.
+
+Why incremental Cargo/feature trimming barely moved the ELF:
+
+- Most of the image is shared LEZ + RISC Zero guest stack (`lee_core` program ABI, SPEL, zkVM
+  runtime, crypto deps), not payment-streams handler logic alone.
+- Reference LEZ demo guests are often ~400 KiB; payment-streams adds ~170 KiB of instruction
+  surface. The testnet cap sits between those two, not because of a single mis-set feature flag.
+
+Options (priority for Step 18 — no multi-program split for now):
+
+1. Raise public testnet `max_block_size` (or equivalent tx size policy) so ~576 KiB deploy
+   txs are accepted. Fastest path if infra can change sequencer config; no guest refactor.
+2. Shrink the single guest by ~65+ KiB — likely needs upstream LEZ/SPEL work (e.g. optional
+   PP modules in `lee_core`) and/or a materially smaller instruction set, not another round of
+   local manifest-only tweaks.
+3. Split into two deployed programs (vault program + streams program, cooperating via
+   `ChainedCall` in one public tx, disjoint PDA ownership). Technically valid on LEZ but a large
+   product/protocol redesign (new `ProgramId`s, seeds, IDL, module routing). Explicitly out of
+   scope for Step 18 unless the size gate cannot be lifted and the org chooses that redesign
+   as a follow-on step.
+
+Not viable without new protocol:
+
+- Two deploy txs that reassemble one ELF / one `ProgramId` (deploy registers a single full
+  `bytecode` vector; `ProgramAlreadyExists` on duplicate id).
+
+Until option 1 or 2 clears the gate, `make deploy-testnet` fails; `make bootstrap-testnet` and
+`make verify-step18` must not be treated as complete on public testnet.
 
 - `CHAIN` env (`local` default, `testnet` for public sequencer path). When `CHAIN` is unset or
   `local`, behavior must remain byte-for-byte Step 17.
@@ -424,25 +480,21 @@ not skip) before Part B chain writes.
     (`getLastBlockId` 55; open/sync/`get_account_public` on CLOCK_10). Re-run after testnet
     outages before deploy/bootstrap. Do not rely on Part B chain I/O if the latest smoke was skip
     or fail.
-18. Add/finish `make deploy-testnet`:
-    - Reads `WALLET_CONFIG` pointing at a testnet wallet config
-      (`sequencer_addr = https://testnet.lez.logos.co/`).
+18. Add/finish `make deploy-testnet` (implemented at `ca1ba7f`):
+    - Reads testnet wallet paths (`scripts/testnet-common.sh`, rc3 `wallet_config` + storage).
     - Runs `wallet deploy-program $(PROGRAM_BIN)` (rc3 CLI, not the helper) against the
       testnet sequencer.
     - Records the resulting `program_id_hex` (should equal `make program-id` output).
-    - Is idempotent for re-runs: probe the rc3 CLI's behavior on a duplicate deploy (run it
-      twice against the same ELF on a throwaway testnet account first), capture the exact exit
-      code and error string for the "already deployed" case, and have the Makefile target
-      treat that specific outcome as success. Fail on any other error.
+    - Idempotent handling for duplicate deploy documented in script.
+    - Status: fails on public testnet with transaction too large while ELF is ~576576 bytes
+      and cap ~511800 (see Guest deploy size blocker). Unblocks Phase 7–8.
 19. Do not wire `deploy-testnet` into `make verify-step18`. It is a one-time bootstrap step.
 
 ##### Phase 7 — Testnet fixture bootstrap (one-time, or rare)
 
-20. Add/finish `make bootstrap-testnet` that runs `initialize_vault`, `deposit`, and
-    `create_stream` against testnet. Vault/stream bootstrap uses the helper's
-    `submit-public-tx` (these are `chainAction` writes: `initializeVault`, `deposit`,
-    `createStream`) since rc3 has no CLI for them. Writes or updates `fixtures/testnet.json`
-    with the resulting ids and `program_id_hex` from Phase 6.
+20. Add/finish `make bootstrap-testnet` (implemented at `ca1ba7f`; blocked until Phase 6
+    deploy succeeds). Runs vault/stream fixture via rc3 helper + dual-wallet env; writes
+    `fixtures/testnet.json`. See script and `examples/src/bin/bootstrap_testnet_fixture.rs`.
 21. `bootstrap-testnet` must be idempotent for partial state, not assume a fresh chain. It does
     not require a running `logoscore`. Before each sub-step, read chain state via rc3
     `wallet` CLI account/query commands against testnet and/or sequencer JSON-RPC
@@ -460,11 +512,10 @@ not skip) before Part B chain writes.
 
 ##### Phase 8 — Repeatable verify-step18
 
-23. `make verify-step18` runs the full testnet path: `getLastBlockId` (fail fast if
-    unreachable), read smoke (or rely on Phase 6 gate), then dual-host demo with
+23. `make verify-step18` (wired at `ca1ba7f`; blocked on public testnet until deploy +
+    bootstrap complete). Intended flow: `getLastBlockId`, read smoke gate, dual-host demo with
     `CHAIN=testnet`. Must not start a local sequencer or call `make deploy` / `make setup` /
-    `demo-localnet-fresh.sh`. Required on the feature branch before merge (maintainer /
-    network access).
+    `demo-localnet-fresh.sh`. Full DoD on testnet pending guest deploy size resolution.
 
 #### Deferred (not Part A or B implementation on the feature branch)
 
@@ -516,7 +567,9 @@ not skip) before Part B chain writes.
   CLI; testnet demo reads/sign via 510 module, submits via helper.
 - `lez_payment_streams` deployed on that network via rc3 `wallet deploy-program`; demo uses
   committed or operator manifest with matching `program_id_hex` and bootstrapped vault/stream
-  state.
+  state. Open: deploy blocked by public testnet tx size vs ~576 KiB guest ELF (see Guest
+  deploy size blocker); resolution via sequencer limit and/or guest shrink, not multi-program
+  split in Step 18.
 - The temporary submit helper (`tools/lez-testnet-submit`) drives `chainAction` writes
   (`createStream`, `topUpStream`, `claim`) against testnet; its JSON contract matches
   `send_generic_public_transaction_json` so the `CHAIN` selector is the only module-side
@@ -537,8 +590,11 @@ Before merging `feat/step18-public-testnet` to `master`:
 - Run `make verify-step17` on `master` and on the branch. Both must pass with `CHAIN` unset
   and with `CHAIN=local`. Confirm no local-path script behavior changed when `CHAIN` is unset
   or `local`.
-- Run `make verify-step18` on the branch against testnet. Confirm it does not start a local
-  sequencer and does not call `make deploy` / `make setup` / `demo-localnet-fresh.sh`.
+- Run `make verify-step18` on the branch against testnet once deploy and bootstrap succeed.
+  Confirm it does not start a local sequencer and does not call `make deploy` / `make setup` /
+  `demo-localnet-fresh.sh`. Until the deploy size gate is cleared, this item is expected to
+  fail or be skipped at deploy/bootstrap; local `make verify-step17` remains the merge gate for
+  guest correctness.
 - Confirm `verify-step10a-dod.sh` and `verify-step10b-dod.sh` still assert `127.0.0.1:3040`
   and are not parameterized for testnet (they are the local-LEZ gate).
 - Confirm no default pin in `scaffold.toml` or wallet flakes changed without an explicit
