@@ -27,10 +27,10 @@ Store provider on the mesh. The on-chain guest is documented in Step 19 (`rfc-in
 
 | Outcome | Steps |
 | --- | --- |
-| Runnable demo (CLI) | 17 local LEZ gate; 18 public sequencer + local P2P |
+| Runnable demo (CLI) | 17 local LEZ gate; 18 public sequencer + local P2P; 25 in-process demo coordinator module |
 | LIP-155 on-chain spec (branch pin) | 19 (complete) |
-| Developer journey (logos-docs doc packet) | 20 |
-| Basecamp UI + UI journey (optional) | 21–22 |
+| Developer journey (logos-docs doc packet) | 20 (depends on 25) |
+| Basecamp UI + UI journey (optional) | 21–22 (depend on 25) |
 | Public hosted Store provider (optional) | 23 |
 | LEZ in-process harness (`lee` @ 510, `program_tests`) | 24 (complete) |
 
@@ -47,6 +47,8 @@ Step 14 (wire) and Step 15 (C hooks + `logosdelivery_store_query`) are complete 
 fork (`9361e49` on `feat/payment-streams-store-eligibility`; eligibility bridge threading for Step 17).
 Step 17 owns full-stack E2E
 ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+Step 25 retires the external Python orchestrator and moves demo coordination into an in-process
+Logos module; until Step 25 lands, `scripts/e2e/run_local_e2e.py` remains the Step 17/18 CI path.
 
 We do not maintain the retired exploratory PR branch
 (`feat/liblogosdelivery-query-store` / old `queryStore` exposure) in payment-streams flakes.
@@ -103,6 +105,7 @@ Add: [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md), [`docs/step1-
 | `logos-payment-streams-module` | Universal Qt module, wallet via `logos_execution_zone` |
 | `logos-delivery` / `liblogosdelivery` | Store protocol + eligibility hooks (14–15) |
 | `logos-delivery-module` | `delivery_module` + routing (16) |
+| `payment_streams_demo_coordinator` | In-process demo coordinator (Step 25, upcoming); replaces `scripts/e2e/run_local_e2e.py` |
 | `lgs` / `logoscore` / `lgpm` / `lm` | Localnet, host, install, introspection |
 
 Detail: [`logos-architecture-overview.md`](logos-architecture-overview.md).
@@ -141,15 +144,17 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 17b | Localnet snapshot restore | Complete — [step-17b-localnet-snapshot-restore.md](docs/plan/completed/step-17b-localnet-snapshot-restore.md), [N15](docs/reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19); `demo-localnet-prepare.sh`, `make prepare-localnet`; `FULL_RESET=1` after guest ImageID change |
 | 18 | Public sequencer E2E (local Store) | Upcoming — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
 | 19 | LIP-155 on-chain spec | Complete — [step-19-lip155-onchain-spec.md](docs/plan/completed/step-19-lip155-onchain-spec.md) (`feat/payment-streams-onchain-part` @ `345c8eef`) |
-| 20 | Developer journey doc packet | Upcoming — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
-| 21 | Basecamp UI | Optional — [step-21-basecamp-ui.md](docs/plan/upcoming/step-21-basecamp-ui.md) |
-| 22 | UI journey doc packet | Optional — [step-22-ui-journey.md](docs/plan/upcoming/step-22-ui-journey.md) |
+| 20 | Developer journey doc packet | Upcoming (depends on 25) — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
+| 21 | Basecamp UI | Optional (depends on 25) — [step-21-basecamp-ui.md](docs/plan/upcoming/step-21-basecamp-ui.md) |
+| 22 | UI journey doc packet | Optional (depends on 21) — [step-22-ui-journey.md](docs/plan/upcoming/step-22-ui-journey.md) |
 | 23 | Public Store provider | Optional — [step-23-public-store-provider.md](docs/plan/upcoming/step-23-public-store-provider.md) |
 | 24 | LEZ `lee` harness (NSSA → 510) | Complete — [step-24-lee-harness-upgrade.md](docs/plan/completed/step-24-lee-harness-upgrade.md) |
+| 25 | Demo coordination Logos module | Upcoming — [step-25-demo-coordination-module.md](docs/plan/upcoming/step-25-demo-coordination-module.md) |
 
-Execution order: Steps 12, 11d, 13, 14, 15, 16, 17, 17b, 19, and 24 are complete. Next: 18
-then 20. Optional 21–22 after 20 if shipping UI docs; optional 23 if shipping a hosted
-paid-Store provider. Entry:
+Execution order: Steps 12, 11d, 13, 14, 15, 16, 17, 17b, 19, and 24 are complete. Next: 18,
+then 25, then 20. Step 20 depends on 25 (the developer journey documents the coordinator
+module's `runDemo` entry). Optional 21–22 after 25 if shipping UI docs; optional 23 if shipping
+a hosted paid-Store provider. Entry:
 [`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md). Local demos:
 [`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 
@@ -218,10 +223,11 @@ vendored SPEL on `lee_core`; verify 10a/12/13 and Step 17 E2E. Packet:
 Do not duplicate full DoD here — read the packet:
 
 - [Step 18](docs/plan/upcoming/step-18-public-testnet-demo.md) — public LEZ sequencer; local dual-host Store E2E
+- [Step 25](docs/plan/upcoming/step-25-demo-coordination-module.md) — in-process Logos module replacing the external Python orchestrator
 - [Step 23](docs/plan/upcoming/step-23-public-store-provider.md) — optional hosted Store provider on public mesh
-- [Step 20](docs/plan/upcoming/step-20-developer-journey.md) — logos-docs developer journey
-- [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) — optional `ui_qml` plugin
-- [Step 22](docs/plan/upcoming/step-22-ui-journey.md) — optional UI journey doc packet
+- [Step 20](docs/plan/upcoming/step-20-developer-journey.md) — logos-docs developer journey (depends on 25)
+- [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) — optional `ui_qml` plugin (depends on 25)
+- [Step 22](docs/plan/upcoming/step-22-ui-journey.md) — optional UI journey doc packet (depends on 21)
 
 Completed (pointers): [Step 17](docs/plan/completed/step-17.md),
 [Step 17b](docs/plan/completed/step-17b-localnet-snapshot-restore.md) (after guest rebuild use
@@ -246,3 +252,4 @@ Step 15 DoD is verified in the `logos-delivery` fork only
 
 `make verify-step12`, `make verify-step13` wrap the Step 12–13 scripts.
 Step 17: `make verify-step17` → [scripts/demo-e2e-local.sh](scripts/demo-e2e-local.sh) (see [step17-e2e-local.md](docs/step17-e2e-local.md)). Fixture prepare (17b): `make prepare-localnet` → [scripts/demo-localnet-prepare.sh](scripts/demo-localnet-prepare.sh). Installs all modules via nix `#lgx` + `lgpm`; optional `liblogosdelivery` overlay or hermetic `SKIP_LIBLOGOSDELIVERY_OVERLAY=1` ([N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [hermetic run](docs/step17-e2e-local.md#hermetic-run-hand-off)).
+Step 25 (upcoming) retargets `make verify-step17` and `make verify-step18` to invoke `payment_streams_demo_coordinator.runDemo` instead of the Python orchestrator; artifact path and phase row shape stay stable.

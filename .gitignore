@@ -30,3 +30,11 @@ logos-payment-streams-module/result
 logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out
 logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/*lgx-out
 logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/*lgx-dev
+
+# risc0 guest build output
+rust_out
+
+# Local Store SQLite archives (Step 17 demo artifacts)
+store.sqlite3
+store.sqlite3-shm
+store.sqlite3-wal

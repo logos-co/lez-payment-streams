@@ -74,7 +74,24 @@ ensure_fixture() {
     return 0
   fi
   echo "--- prepare localnet (Step 17b restore + stream) ---"
-  FULL_RESET="${FULL_RESET:-0}" SKIP_VERIFY="${SKIP_VERIFY:-1}" "$REPO/scripts/demo-localnet-prepare.sh"
+  export E2E_LATE_STREAM_CREATE="${E2E_LATE_STREAM_CREATE:-1}"
+  skip_stream=0
+  if [[ "$E2E_LATE_STREAM_CREATE" == "1" ]]; then
+    skip_stream=1
+  fi
+  FULL_RESET="${FULL_RESET:-0}" SKIP_VERIFY="${SKIP_VERIFY:-1}" SKIP_STREAM_CREATE="$skip_stream" \
+    "$REPO/scripts/demo-localnet-prepare.sh"
+  if [[ "$E2E_LATE_STREAM_CREATE" == "1" ]]; then
+    echo "--- fixture manifest stub (stream on chain at proof time) ---"
+    # shellcheck disable=SC1090
+    source "$REPO/.lez_payment_streams-state"
+    PROVIDER="$(cat "$REPO/.lez_payment_streams-fixture-provider")"
+    cargo run --quiet --manifest-path "$REPO/examples/Cargo.toml" --bin seed_localnet_fixture -- write-manifest \
+      --program-bin "$PAYMENT_STREAMS_GUEST_BIN" \
+      --owner "$SIGNER_ID" \
+      --provider "$PROVIDER" \
+      --output "$FIXTURE_MANIFEST"
+  fi
   if [[ ! -f "$FIXTURE_MANIFEST" ]]; then
     log_phase seed 0 '{"error":"missing manifest"}'
     exit 1
@@ -161,6 +178,7 @@ nix shell \
     export FIXTURE_MANIFEST='$FIXTURE_MANIFEST' WALLET_CONFIG='$WALLET_CONFIG' WALLET_STORAGE='$WALLET_STORAGE'
     export PAYMENT_STREAMS_GUEST_BIN='$PAYMENT_STREAMS_GUEST_BIN' E2E_PROVIDER_AD='$E2E_PROVIDER_AD'
     export PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF='${PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF:-0}'
+    export E2E_LATE_STREAM_CREATE='${E2E_LATE_STREAM_CREATE:-1}'
     export DELIVERY_MODULE_ROOT='${DELIVERY_MODULE_ROOT:-$REPO/../logos-delivery-module}'
     export SKIP_LIBLOGOSDELIVERY_OVERLAY='${SKIP_LIBLOGOSDELIVERY_OVERLAY:-0}'
     export N8_WIRE_HEX='$N8_WIRE_HEX' FIXTURE_MANIFEST='$FIXTURE_MANIFEST'

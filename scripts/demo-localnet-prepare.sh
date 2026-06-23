@@ -27,7 +27,11 @@ else
   fi
 fi
 
-"$REPO_ROOT/scripts/create-localnet-stream-fixture.sh"
+if [[ "${SKIP_STREAM_CREATE:-0}" != "1" ]]; then
+  "$REPO_ROOT/scripts/create-localnet-stream-fixture.sh"
+else
+  echo "SKIP_STREAM_CREATE=1 — vault baseline only (stream created in E2E orchestrator)"
+fi
 
 if [[ "$SKIP_VERIFY" == "1" ]]; then
   echo "SKIP_VERIFY=1 — skipping verify-step10a-dod.sh"

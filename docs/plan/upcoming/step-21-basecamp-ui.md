@@ -7,7 +7,8 @@ only when the milestone includes Basecamp UI + UI journey (Step 22). Otherwise s
 
 ### Step 21, Basecamp UI demo
 
-Prerequisite: Step 17 demo wiring (local); Step 18 if the UI demo targets testnet LEZ.
+Prerequisite: Step 25 demo coordinator module (the UI wraps `runDemo`); Step 18 if the UI demo
+targets testnet LEZ.
 
 Canonical module id for the plugin: `payment_streams_ui` (`metadata.json` `name`);
 main plugin id `payment_streams_ui_plugin` (follow `logos-module-builder` template conventions).
@@ -15,7 +16,8 @@ main plugin id `payment_streams_ui_plugin` (follow `logos-module-builder` templa
 Architectural context:
 the UI plugin is a Logos module (`type: ui_qml` with a C++ backend), not part of Basecamp.
 Basecamp loads it like `logoscore` loads core modules for Steps 7–17.
-The plugin calls the same backend modules through `LogosAPI`; no protocol or guest work.
+The plugin calls `payment_streams_demo_coordinator.runDemo` (Step 25) through `LogosAPI` and
+renders the phase artifacts; no protocol or guest work, no second orchestration path.
 
 Scaffold a `ui_qml` plugin (sibling repo or under `logos-basecamp`) from
 `logos-module-builder` `ui-qml-backend`, modeled on `logos-delivery-demo`.
@@ -26,8 +28,9 @@ event handlers.
 Surface vault state, stream state, pending proposal slot, and the most recent Store query result.
 No custom backend beyond thin C++ → module calls.
 
-Components: everything from Step 17 (and Step 18 if testnet) plus `logos-basecamp` and `lgpm`
-install into Basecamp plugins directory.
+Components: everything from Step 25 (coordinator module + the three production modules) plus
+`logos-basecamp` and `lgpm` install into Basecamp plugins directory. Step 18 fixture when
+targeting testnet.
 
 Definition of done:
 

@@ -9,9 +9,10 @@ request, eligibility status on response); the provider verifies against LEZ chai
 state and serves only when valid. Rust/FFI holds crypto and policy; `payment_streams_module`
 orchestrates wallet I/O; `logos-delivery` gains opaque wire fields and hooks (Steps 14–16).
 
-Program outcomes after Step 16: runnable CLI demo (17 local LEZ, 18 public sequencer + local P2P),
-LIP-155 on-chain spec (19, branch pin), developer journey doc packet (20); optional Basecamp UI
-and UI journey (21–22); optional public Store provider (23); LEZ harness upgrade (24, done). Index:
+Program outcomes after Step 16: runnable CLI demo (17 local LEZ, 18 public sequencer + local P2P,
+25 in-process demo coordinator module), LIP-155 on-chain spec (19, branch pin), developer journey
+doc packet (20); optional Basecamp UI and UI journey (21–22); optional public Store provider (23);
+LEZ harness upgrade (24, done). Index:
 [integration-index.md](../integration-index.md#program-outcomes).
 
 ## Active work (execution order)
@@ -22,6 +23,7 @@ Implement next in order:
 | Step | Repo / area | Agent packet |
 | --- | --- | --- |
 | 18 | Public sequencer E2E (local Store) | [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) |
+| 25 | Demo coordination Logos module | [plan/upcoming/step-25-demo-coordination-module.md](plan/upcoming/step-25-demo-coordination-module.md) |
 | 20 | Developer journey doc packet | [plan/upcoming/step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md) |
 | 21 | Basecamp UI (optional) | [plan/upcoming/step-21-basecamp-ui.md](plan/upcoming/step-21-basecamp-ui.md) |
 | 22 | UI journey doc packet (optional) | [plan/upcoming/step-22-ui-journey.md](plan/upcoming/step-22-ui-journey.md) |
@@ -32,8 +34,9 @@ Completed packets (reference): [step-17.md](plan/completed/step-17.md),
 [step-19](plan/completed/step-19-lip155-onchain-spec.md),
 [step-24](plan/completed/step-24-lee-harness-upgrade.md).
 
-Step 20 should follow 17 and 18 when the journey targets testnet v0.2 (Step 23 not required).
-Steps 21–22 only if shipping a UI journey; Step 23 only if shipping a hosted paid-Store provider.
+Step 20 depends on Step 25: the developer journey documents the coordinator module's `runDemo`
+entry as the single-command demo, not the retired Python orchestrator. Steps 21–22 are optional
+and also depend on Step 25 (Basecamp wraps `runDemo`). Step 23 is optional and independent.
 
 N6 unblocked: `storeQuery` is added directly on our fork of `logos-delivery-module` (Step 16);
 upstream N6 is no longer a prerequisite for Steps 17–20.
@@ -55,11 +58,12 @@ Summary:
 | Step 17b snapshot / fast reuse | [plan/completed/step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md) + [N15](reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) (`FULL_RESET=1` after `make build`) |
 | Step 17 E2E dual-host (done) | [plan/completed/step-17.md](plan/completed/step-17.md) + [step17-e2e-local.md](step17-e2e-local.md) + [N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18) |
 | Step 18 public sequencer | [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) + Step 17 runbook (local P2P unchanged) |
+| Step 25 demo coordinator module | [plan/upcoming/step-25-demo-coordination-module.md](plan/upcoming/step-25-demo-coordination-module.md) + [step17-e2e-local.md](step17-e2e-local.md) (current orchestrator being replaced) |
 | Step 23 hosted provider | [plan/upcoming/step-23-public-store-provider.md](plan/upcoming/step-23-public-store-provider.md) |
 | Rust FFI / policy only | `lez-payment-streams-core` tests + [step3-policy-and-implementor-notes.md](step3-policy-and-implementor-notes.md) |
 | LIP on-chain spec (19, done) | [step-19-lip155-onchain-spec.md](plan/completed/step-19-lip155-onchain-spec.md) + [feature-branch-pins.md](feature-branch-pins.md) LIP-155 pin |
 | LEZ harness / `program_tests` (24, done) | [step-24-lee-harness-upgrade.md](plan/completed/step-24-lee-harness-upgrade.md) + [architecture.md](../architecture.md) |
-| Doc packet (20 / 22) | Step packet + [logos-docs doc packet template](https://github.com/logos-co/logos-docs/blob/main/resources/templates/doc-packet.md) |
+| Doc packet (20 / 22) | Step packet (20 depends on 25) + [logos-docs doc packet template](https://github.com/logos-co/logos-docs/blob/main/resources/templates/doc-packet.md) |
 
 ## Always-on references
 

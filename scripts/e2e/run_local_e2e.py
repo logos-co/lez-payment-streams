@@ -419,6 +419,98 @@ def reload_provider_payment_streams_module(cfg_provider: Path) -> None:
     logoscore_cmd(cfg_provider, "load-module", "payment_streams_module")
 
 
+def reload_payment_streams_wallet(cfg: Path, seq_url: str) -> None:
+    sync_wallet(cfg, seq_url)
+    logoscore_cmd(cfg, "unload-module", "payment_streams_module")
+    logoscore_cmd(cfg, "load-module", "payment_streams_module")
+    wc = os.environ.get("WALLET_CONFIG", "")
+    ws = os.environ.get("WALLET_STORAGE", "")
+    if wc and ws:
+        logoscore_cmd(cfg, "call", "logos_execution_zone", "open", wc, ws)
+    sync_wallet(cfg, seq_url)
+
+
+def vault_next_stream_id(cfg: Path, manifest: dict) -> int:
+    body = json.dumps(
+        {
+            "owner": manifest["owner_account_id"],
+            "vault_id": int(manifest.get("vault_id", 0)),
+        }
+    )
+    r = logoscore_cmd(cfg, "call", "payment_streams_module", "chainAction", "getVaultStatus", body)
+    parsed = call_result(r)
+    inner_raw = parsed.get("result")
+    if isinstance(inner_raw, str):
+        try:
+            inner = json.loads(inner_raw)
+        except json.JSONDecodeError:
+            return int(manifest.get("stream_id", 0))
+    else:
+        inner = inner_raw if isinstance(inner_raw, dict) else {}
+    vault_cfg = inner.get("vault_config") if isinstance(inner.get("vault_config"), dict) else {}
+    if "next_stream_id" in vault_cfg:
+        return int(vault_cfg["next_stream_id"])
+    return int(manifest.get("stream_id", 0))
+
+
+def ensure_fresh_demo_stream(
+    cfg_user: Path,
+    cfg_provider: Path,
+    repo: Path,
+    manifest_path: Path,
+    manifest: dict,
+    persist_user: Path,
+    artifact: Path,
+) -> None:
+    if os.environ.get("E2E_LATE_STREAM_CREATE", "1").strip().lower() in ("0", "false", "no"):
+        return
+    seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
+    vault_id = int(manifest.get("vault_id", 0))
+    stream_id = int(manifest.get("stream_id", 0))
+    sync_wallet(cfg_user, seq_url)
+    if stream_allocation_available(cfg_user, vault_id, stream_id, manifest):
+        log_artifact(artifact, "late_create_stream", True, skipped=True, stream_id=stream_id)
+        return
+
+    create_id = vault_next_stream_id(cfg_user, manifest)
+    wallet_home = Path(os.environ.get("LEE_WALLET_HOME_DIR", repo / ".scaffold" / "wallet"))
+    tmp_wallet = persist_user / "late-create-wallet"
+    if tmp_wallet.exists():
+        shutil.rmtree(tmp_wallet)
+    shutil.copytree(wallet_home, tmp_wallet)
+    env = os.environ.copy()
+    env["LEE_WALLET_HOME_DIR"] = str(tmp_wallet)
+    env["FIXTURE_MANIFEST"] = str(manifest_path)
+    env["REPO"] = str(repo)
+    env["STREAM_ID"] = str(create_id)
+    env["SEQUENCER_URL"] = seq_url
+    script = repo / "scripts" / "create-localnet-stream-fixture.sh"
+    proc = run(["bash", str(script)], cwd=repo, env=env, timeout=600)
+    log_artifact(
+        artifact,
+        "late_create_stream",
+        proc.returncode == 0,
+        stream_id=create_id,
+        stderr=(proc.stderr or "")[-500:],
+    )
+    if proc.returncode != 0:
+        raise E2EError(f"late stream create failed: {proc.stderr or proc.stdout}")
+
+    manifest.clear()
+    manifest.update(json.loads(manifest_path.read_text()))
+    reload_payment_streams_wallet(cfg_user, seq_url)
+    reload_payment_streams_wallet(cfg_provider, seq_url)
+    stream_id = int(manifest.get("stream_id", create_id))
+    for attempt in range(15):
+        sync_wallet(cfg_user, seq_url)
+        logoscore_cmd(cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
+        if stream_allocation_available(cfg_user, vault_id, stream_id, manifest):
+            log_artifact(artifact, "late_create_stream_ready", True, stream_id=stream_id, attempt=attempt)
+            return
+        time.sleep(1)
+    raise E2EError("stream not fundable after late create (see listMyStreams in daemon logs)")
+
+
 def user_prepare_proof(
     cfg: Path,
     manifest: dict,
@@ -753,12 +845,15 @@ def main() -> int:
 
             sync_wallet(cfg_user, seq_url)
             sync_wallet(cfg_provider, seq_url)
-            logoscore_cmd(
+
+            ensure_fresh_demo_stream(
+                cfg_user,
                 cfg_provider,
-                "call",
-                "payment_streams_module",
-                "rediscoverStreams",
-                str(manifest.get("vault_id", 0)),
+                repo,
+                manifest_path,
+                manifest,
+                persist_user,
+                artifact,
             )
 
             # Mint proof immediately before storeQuery so provider verify still sees unaccrued balance.
