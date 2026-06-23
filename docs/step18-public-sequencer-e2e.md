@@ -42,6 +42,7 @@ Create or import keys with the rc3 wallet first if 510-created storage cannot be
 Copy `fixtures/testnet-wallet_config.example.json` to
 `.scaffold/e2e/testnet-wallet/wallet_config.json` (and import or copy wallet storage) before
 Part B. Template also under `.scaffold/e2e/testnet-wallet/wallet_config.json` when created locally.
+| `LEZ_TESTNET_WALLET_CONFIG` / `LEZ_TESTNET_WALLET_STORAGE` | rc3 wallet paths for helper submits | required when 510 storage differs from rc3 |
 | `LEZ_TESTNET_SUBMIT` | `lez-testnet-submit` on PATH | optional override to helper binary |
 | `PAYMENT_STREAMS_GUEST_BIN` | guest ELF path | same; passed to helper when `program_elf_hex` is empty |
 

@@ -68,8 +68,11 @@ operators, not per-operator.
 
 #### Reconnaissance results (2026-06-23)
 
-- Sequencer liveness: `https://testnet.lez.logos.co/` is live; `getLastBlockId` returns
-  block `66256` (JSON-RPC `result` int, same shape `run_local_e2e.py:142-147` parses).
+- Sequencer liveness: `https://testnet.lez.logos.co/` responds to `getLastBlockId` (JSON-RPC
+  `result` int, same shape `run_local_e2e.py:142-147` parses). Recon on 2026-06-23 saw block
+  `66256`; the endpoint later returned 502; after recovery (same week) height was in the tens
+  (`55` at read-smoke time), consistent with a redeployed or reset chain — do not assume recon
+  block height or fixture ids from the old height without re-checking.
 - Compatible LEZ pin: `v0.2.0-rc3` = `cf3639d8252040d13b3d4e933feb19b42c76e14a`. Confirmed
   via `wallet check-health` (exit 0) and tag probes. Piñata funding confirmed: balance `150`
   after `wallet pinata claim`.
@@ -82,10 +85,12 @@ operators, not per-operator.
   `f9f4147cb438738a64487ea766afe1d1a6fa5542b402cf3f567fbd813a84cc0b`.
 
 Dual-pin read path (510 `logos_execution_zone` + testnet `sequencer_addr`, without
-`check-health`): not re-verified here while the public RPC was down (502). When testnet is
-reachable again, run `./scripts/verify-step18-testnet-read-smoke.sh` before relying on
-`verify-step18`; exit 0 skip means unreachable, a full PASS closes this gate. See dual-pin
-section below.
+`check-health`): validated 2026-06-23 via `make verify-step18-testnet-read-smoke` (exit 0,
+all checks PASS, not skip). At that run: `getLastBlockId` = `55`; `load-module
+logos_execution_zone`; `open` with testnet `sequencer_addr`; `sync_to_block`; `get_account_public`
+on CLOCK_10 `4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs` returned on-chain data. Re-run the
+smoke after testnet outages before Part B chain writes; exit 0 with only SKIP lines means
+unreachable; a full PASS re-closes the gate. See dual-pin section below.
 
 #### Builtin program IDs and dual-pin semantics (2026-06-23)
 
@@ -287,22 +292,29 @@ Delivery `createNode` defaults: [step17-e2e-local.md](../../step17-e2e-local.md#
 
 Reconnaissance complete (2026-06-23):
 
-- Sequencer liveness: `https://testnet.lez.logos.co/` responds to `getLastBlockId`
-  (block `66256`). No code change needed in `run_local_e2e.py` — it already parses the
-  `result` int shape.
+- Sequencer liveness: `https://testnet.lez.logos.co/` responds to `getLastBlockId`. No code
+  change needed in `run_local_e2e.py` — it already parses the `result` int shape. Block height
+  varies with testnet lifecycle (recon `66256`; post-outage smoke `55`).
 - Compatible LEZ pin for testnet sequencer + rc3 tooling: `cf3639d8` (`v0.2.0-rc3`);
   `wallet check-health` with rc3 wallet against testnet exits 0.
 - Pin `62d9ba10` vs testnet: `check-health` fails (builtin id mismatch); dual-pin semantics
-  documented above. Read-path smoke test still pending (recon bullet).
-- Piñata funding on testnet: `wallet pinata claim` succeeds, balance `150`.
+  documented above. Read-path smoke: PASS on 2026-06-23 (`make verify-step18-testnet-read-smoke`);
+  details in recon section above.
+- Piñata funding on testnet: `wallet pinata claim` succeeds, balance `150` (recon; re-verify
+  after chain reset).
 - Program deploy: rc3 `wallet deploy-program` works for one-time deploy; per-run
   `chainAction` writes need the temporary helper (no generic-tx FFI at rc3).
+- Deploy size gate (2026-06-23): current guest ELF (~577800 bytes) exceeds public
+  testnet max transaction size (~511800) for `deploy-program`; raise sequencer
+  `max_block_size` or shrink the guest before Part B deploy/bootstrap can complete.
 
-Implementation pending on `feat/step18-public-testnet` (may be partial on branch; verify in git):
+Part A landed on `feat/step18-public-testnet` (Part A phases 1–5; `make verify-step17` green on
+branch). Part B (phases 6–8) unblocked for chain I/O once read smoke PASS is current; re-run smoke
+after RPC outages.
 
-- Branch from `master`, `CHAIN` env (`local` default, `testnet` for public sequencer path).
-  When `CHAIN` is unset or `local`, behavior must remain byte-for-byte Step 17.
-- Phases 1–9 below (Part A first, then Part B when RPC is up).
+- `CHAIN` env (`local` default, `testnet` for public sequencer path). When `CHAIN` is unset or
+  `local`, behavior must remain byte-for-byte Step 17.
+- Phases 6–9 below (Part B when RPC is up and read smoke PASS).
 
 #### Implementation order
 
@@ -408,8 +420,10 @@ not skip) before Part B chain writes.
 
 ##### Phase 6 — Read gate and program deploy (one-time)
 
-17. Run `./scripts/verify-step18-testnet-read-smoke.sh` until PASS (not skip). Do not rely on
-    Part B chain I/O until dual-pin reads are confirmed.
+17. Read gate (dual-pin reads): done 2026-06-23 — `make verify-step18-testnet-read-smoke` PASS
+    (`getLastBlockId` 55; open/sync/`get_account_public` on CLOCK_10). Re-run after testnet
+    outages before deploy/bootstrap. Do not rely on Part B chain I/O if the latest smoke was skip
+    or fail.
 18. Add/finish `make deploy-testnet`:
     - Reads `WALLET_CONFIG` pointing at a testnet wallet config
       (`sequencer_addr = https://testnet.lez.logos.co/`).

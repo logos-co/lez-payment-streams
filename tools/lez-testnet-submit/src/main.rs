@@ -7,7 +7,10 @@ use std::{
 
 use anyhow::{Context as _, Result};
 use clap::{Parser, Subcommand};
-use submit::{parse_payload_json, resolve_program_elf_path, submit_public_tx, SubmitResult};
+use nssa::program::Program as NssaProgram;
+use submit::{parse_account_id_hex, parse_payload_json, resolve_program_elf_path, submit_public_tx, SubmitResult};
+use sequencer_service_rpc::RpcClient as _;
+use wallet::WalletCore;
 
 #[derive(Parser)]
 #[command(name = "lez-testnet-submit", about = "Step 18 rc3 public-tx submit helper")]
@@ -29,6 +32,17 @@ enum Commands {
         #[arg(long, help = "JSON file; otherwise read stdin")]
         arg_file: Option<PathBuf>,
     },
+    /// Read on-chain account data (existence / bootstrap idempotency).
+    GetAccountPublic {
+        #[arg(long)]
+        wallet_config: PathBuf,
+        #[arg(long)]
+        wallet_storage: PathBuf,
+        #[arg(long, help = "64-char hex account id")]
+        account_id_hex: String,
+    },
+    /// Print rc3 authenticated-transfer ProgramId (64 hex chars) for testnet deposit instructions.
+    AuthTransferProgramIdHex,
 }
 
 #[tokio::main]
@@ -71,6 +85,36 @@ async fn run() -> Result<()> {
                     anyhow::bail!("{err:#}");
                 }
             }
+        }
+        Commands::GetAccountPublic {
+            wallet_config,
+            wallet_storage,
+            account_id_hex,
+        } => {
+            let id = parse_account_id_hex(&account_id_hex)?;
+            let wallet = WalletCore::new_update_chain(wallet_config, wallet_storage, None)
+                .context("open wallet")?;
+            let acc = wallet
+                .sequencer_client
+                .get_account(id)
+                .await
+                .map_err(|e| anyhow::anyhow!("get_account: {e}"))?;
+            let out = serde_json::json!({
+                "success": true,
+                "has_data": !acc.data.is_empty(),
+                "balance": acc.balance,
+            });
+            println!("{}", serde_json::to_string(&out)?);
+        }
+        Commands::AuthTransferProgramIdHex => {
+            let id = NssaProgram::authenticated_transfer_program().id();
+            let hex: String = id
+                .as_ref()
+                .iter()
+                .flat_map(|w| w.to_le_bytes())
+                .map(|b| format!("{b:02x}"))
+                .collect();
+            println!("{hex}");
         }
     }
     Ok(())

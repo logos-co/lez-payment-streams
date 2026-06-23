@@ -3632,6 +3632,7 @@ dependencies = [
  "base58",
  "clap",
  "common 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60)",
+ "hex",
  "lee",
  "lee_core",
  "lez-payment-streams-core",
@@ -7726,7 +7727,6 @@ name = "spel-framework"
 version = "0.5.0"
 dependencies = [
  "borsh",
- "lee_core",
  "serde_json",
  "spel-framework-core",
  "spel-framework-macros",

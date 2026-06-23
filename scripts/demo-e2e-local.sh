@@ -11,8 +11,18 @@ export CHAIN
 
 if [[ "$CHAIN" == "testnet" ]]; then
   export FIXTURE_MANIFEST="${FIXTURE_MANIFEST:-$REPO/fixtures/testnet.json}"
-  export WALLET_CONFIG="${WALLET_CONFIG:-$REPO/.scaffold/e2e/testnet-wallet/wallet_config.json}"
-  export WALLET_STORAGE="${WALLET_STORAGE:-$REPO/.scaffold/e2e/testnet-wallet/storage.json}"
+  export LEZ_TESTNET_WALLET_CONFIG="${LEZ_TESTNET_WALLET_CONFIG:-$REPO/.scaffold/e2e/testnet-wallet/wallet_config.json}"
+  export LEZ_TESTNET_WALLET_STORAGE="${LEZ_TESTNET_WALLET_STORAGE:-$REPO/.scaffold/e2e/testnet-wallet/storage.json}"
+  # shellcheck source=scripts/testnet-common.sh
+  source "$REPO/scripts/testnet-common.sh"
+  export WALLET_CONFIG="${WALLET_CONFIG:-$(patch_510_wallet_config_for_testnet)}"
+  export WALLET_STORAGE="${WALLET_STORAGE:-$REPO/.scaffold/wallet/storage.json}"
+  if [[ -n "${LEZ_TESTNET_SUBMIT:-}" ]]; then
+    export PATH="$(dirname "$LEZ_TESTNET_SUBMIT"):$PATH"
+  elif [[ -x "$REPO/tools/lez-testnet-submit/target/release/lez-testnet-submit" ]]; then
+    export LEZ_TESTNET_SUBMIT="$REPO/tools/lez-testnet-submit/target/release/lez-testnet-submit"
+    export PATH="$REPO/tools/lez-testnet-submit/target/release:$PATH"
+  fi
 else
   export FIXTURE_MANIFEST="${FIXTURE_MANIFEST:-$REPO/fixtures/localnet.json}"
   export WALLET_CONFIG="${WALLET_CONFIG:-$REPO/.scaffold/wallet/wallet_config.json}"
@@ -195,6 +205,9 @@ nix shell \
     export LOGOSCORE_CONFIG_USER='$LOGOSCORE_CONFIG_USER' LOGOSCORE_CONFIG_PROVIDER='$LOGOSCORE_CONFIG_PROVIDER'
     export PERSIST_USER='$PERSIST_USER' PERSIST_PROVIDER='$PERSIST_PROVIDER'
     export FIXTURE_MANIFEST='$FIXTURE_MANIFEST' WALLET_CONFIG='$WALLET_CONFIG' WALLET_STORAGE='$WALLET_STORAGE'
+    export LEZ_TESTNET_WALLET_CONFIG='${LEZ_TESTNET_WALLET_CONFIG:-}'
+    export LEZ_TESTNET_WALLET_STORAGE='${LEZ_TESTNET_WALLET_STORAGE:-}'
+    export LEZ_TESTNET_SUBMIT='${LEZ_TESTNET_SUBMIT:-}'
     export PAYMENT_STREAMS_GUEST_BIN='$PAYMENT_STREAMS_GUEST_BIN' E2E_PROVIDER_AD='$E2E_PROVIDER_AD'
     export CHAIN='$CHAIN'
     export PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF='${PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF:-0}'

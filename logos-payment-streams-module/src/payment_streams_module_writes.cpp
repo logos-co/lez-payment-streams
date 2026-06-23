@@ -550,11 +550,17 @@ QString submitGenericPublicViaFfi(LogosAPIClient* client,
 }
 
 QString submitGenericPublicViaTestnetHelper(const QString& payloadJson, QString* errorOut) {
-    const QByteArray walletConfig = qgetenv("WALLET_CONFIG");
-    const QByteArray walletStorage = qgetenv("WALLET_STORAGE");
+    QByteArray walletConfig = qgetenv("LEZ_TESTNET_WALLET_CONFIG");
+    QByteArray walletStorage = qgetenv("LEZ_TESTNET_WALLET_STORAGE");
+    if (walletConfig.isEmpty()) {
+        walletConfig = qgetenv("WALLET_CONFIG");
+    }
+    if (walletStorage.isEmpty()) {
+        walletStorage = qgetenv("WALLET_STORAGE");
+    }
     if (walletConfig.isEmpty() || walletStorage.isEmpty()) {
-        const QString msg =
-            QStringLiteral("CHAIN=testnet requires WALLET_CONFIG and WALLET_STORAGE in the module process");
+        const QString msg = QStringLiteral(
+            "CHAIN=testnet requires WALLET_CONFIG/WALLET_STORAGE or LEZ_TESTNET_WALLET_* for rc3 submits");
         if (errorOut != nullptr) {
             *errorOut = msg;
         }

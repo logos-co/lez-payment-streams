@@ -21,7 +21,8 @@ pub trait IntoPostState {
 /// This struct is `#[non_exhaustive]` to allow future field additions without
 /// breaking external programs that construct it via struct literals.
 /// Use the builder methods (`execute()`, `with_*()`) instead.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
+#[cfg_attr(any(test, feature = "host"), derive(Debug))]
 #[non_exhaustive]
 pub struct SpelOutput {
     pub post_states: Vec<AccountPostState>,
@@ -110,7 +111,8 @@ impl SpelOutput {
 ///
 /// This struct is `#[non_exhaustive]` so future field additions don't break
 /// callers that pattern-match on it.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
+#[cfg_attr(any(test, feature = "host"), derive(Debug))]
 #[non_exhaustive]
 pub struct SpelOutputParts {
     /// Post-transaction account states (claims, mutability).

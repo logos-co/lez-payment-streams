@@ -6,7 +6,7 @@ edition = "2021"
 [features]
 default = ["host"]
 # Host-side LEE (`lee` crate): instruction wire + off-chain proofs. Disabled for RISC0 guest builds.
-host = ["dep:lee"]
+host = ["dep:lee", "lee_core/host", "dep:sha2"]
 # Privacy-preserving LEE proving tests in `program_tests` (slow). Enable with `--features pp-program-tests`.
 pp-program-tests = []
 
@@ -17,9 +17,9 @@ hex = "0.4"
 risc0-zkvm = { version = "=3.0.5", features = ["std"] }
 # LEZ pin: PR 510 merge — must match scaffold.toml [repos.lez].pin (Step 24).
 lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60", features = ["test-utils"], optional = true }
-lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60", features = ["host"] }
+lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60", default-features = false }
 clock_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60" }
-sha2 = "0.10"
+sha2 = { version = "0.10", optional = true }
 spel-framework-macros = { git = "https://github.com/logos-co/spel.git", tag = "v0.5.0" }
 spel-framework-core = { git = "https://github.com/logos-co/spel.git", tag = "v0.5.0" }
 
