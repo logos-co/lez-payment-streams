@@ -98,7 +98,7 @@ cargo run --quiet --manifest-path examples/Cargo.toml --bin seed_localnet_fixtur
   --provider "$PROVIDER" \
   --deposit-amount "$DEPOSIT_AMOUNT" \
   --stream-rate "$STREAM_RATE" \
-  --stream-allocation "$STREAM_ALLOCATION" \
+  --allocation "$STREAM_ALLOCATION" \
   "${SKIP_EXTRA[@]}" \
   --write-manifest "$MANIFEST"
 

@@ -39,12 +39,12 @@ DAEMON_START_WAIT_S = 6
 # Provider verify rejects streams with zero unaccrued allocation; accrual runs between
 # prepare and verify, so proof must be minted immediately before storeQuery.
 def min_unaccrued_lo_for_proof(manifest: dict) -> int:
-    alloc = int(manifest.get("stream_allocation", 80))
+    alloc = int(manifest.get("allocation", 80))
     return max(64, min(alloc // 4, 50_000))
 
 
 def default_topup_increase_lo(manifest: dict) -> int:
-    alloc = int(manifest.get("stream_allocation", 80))
+    alloc = int(manifest.get("allocation", 80))
     return max(200, alloc // 2)
 
 
@@ -122,6 +122,16 @@ def ensure_ok(parsed: dict, context: str) -> dict:
 
 
 def sequencer_block_height(sequencer_url: str) -> int | None:
+    repo = Path(os.environ.get("REPO", Path.cwd()))
+    helper = repo / "scripts" / "testnet_rpc.py"
+    if helper.is_file():
+        proc = run(
+            ["python3", str(helper), "block-height"],
+            env={**os.environ, "TESTNET_SEQUENCER": sequencer_url},
+            timeout=30,
+        )
+        if proc.returncode == 0 and proc.stdout.strip().isdigit():
+            return int(proc.stdout.strip())
     proc = run(
         [
             "curl",
@@ -132,15 +142,32 @@ def sequencer_block_height(sequencer_url: str) -> int | None:
             "-H",
             "Content-Type: application/json",
             "-d",
-            '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}',
+            '{"jsonrpc":"2.0","id":1,"method":"get_last_block","params":{}}',
         ],
         timeout=30,
     )
     if proc.returncode != 0 or not proc.stdout.strip():
-        return None
+        proc = run(
+            [
+                "curl",
+                "-sf",
+                "-X",
+                "POST",
+                sequencer_url,
+                "-H",
+                "Content-Type: application/json",
+                "-d",
+                '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}',
+            ],
+            timeout=30,
+        )
+        if proc.returncode != 0 or not proc.stdout.strip():
+            return None
     try:
         data = json.loads(proc.stdout)
         result = data.get("result")
+        if isinstance(result, dict) and "last_block" in result:
+            return int(result["last_block"])
         if isinstance(result, int):
             return result
         if isinstance(result, str) and result.isdigit():
@@ -158,7 +185,7 @@ def sync_wallet(cfg: Path, sequencer_url: str) -> None:
     time.sleep(2)
 
 
-def stream_allocation_available(cfg: Path, vault_id: int, stream_id: int, manifest: dict) -> bool:
+def allocation_available(cfg: Path, vault_id: int, stream_id: int, manifest: dict) -> bool:
     r = logoscore_cmd(cfg, "call", "payment_streams_module", "listMyStreams", str(vault_id))
     parsed = call_result(r)
     inner_raw = parsed.get("result")
@@ -468,7 +495,7 @@ def ensure_fresh_demo_stream(
     vault_id = int(manifest.get("vault_id", 0))
     stream_id = int(manifest.get("stream_id", 0))
     sync_wallet(cfg_user, seq_url)
-    if stream_allocation_available(cfg_user, vault_id, stream_id, manifest):
+    if allocation_available(cfg_user, vault_id, stream_id, manifest):
         log_artifact(artifact, "late_create_stream", True, skipped=True, stream_id=stream_id)
         return
 
@@ -504,7 +531,7 @@ def ensure_fresh_demo_stream(
     for attempt in range(15):
         sync_wallet(cfg_user, seq_url)
         logoscore_cmd(cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
-        if stream_allocation_available(cfg_user, vault_id, stream_id, manifest):
+        if allocation_available(cfg_user, vault_id, stream_id, manifest):
             log_artifact(artifact, "late_create_stream_ready", True, stream_id=stream_id, attempt=attempt)
             return
         time.sleep(1)
@@ -548,9 +575,9 @@ def user_prepare_proof(
             sync_wallet(cfg, manifest.get("sequencer_url", "http://127.0.0.1:3040"))
             logoscore_cmd(cfg, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
             time.sleep(2)
-            if allow_depleted or stream_allocation_available(cfg, vault_id, stream_id, manifest):
+            if allow_depleted or allocation_available(cfg, vault_id, stream_id, manifest):
                 break
-        if not allow_depleted and not stream_allocation_available(cfg, vault_id, stream_id, manifest):
+        if not allow_depleted and not allocation_available(cfg, vault_id, stream_id, manifest):
             topup["increase_lo"] = int(topup.get("increase_lo", 200)) + 200
             continue
 

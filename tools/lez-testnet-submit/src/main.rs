@@ -1,3 +1,4 @@
+mod legacy_sequencer;
 mod submit;
 
 use std::{
@@ -7,9 +8,12 @@ use std::{
 
 use anyhow::{Context as _, Result};
 use clap::{Parser, Subcommand};
+use legacy_sequencer::LegacySequencerClient;
 use nssa::program::Program as NssaProgram;
-use submit::{parse_account_id_hex, parse_payload_json, resolve_program_elf_path, submit_public_tx, SubmitResult};
-use sequencer_service_rpc::RpcClient as _;
+use submit::{
+    account_id_hex_from_base58, parse_account_id_hex, parse_payload_json, resolve_program_elf_path,
+    submit_public_tx, SubmitResult,
+};
 use wallet::WalletCore;
 
 #[derive(Parser)]
@@ -43,6 +47,19 @@ enum Commands {
     },
     /// Print rc3 authenticated-transfer ProgramId (64 hex chars) for testnet deposit instructions.
     AuthTransferProgramIdHex,
+    /// Deploy guest ELF via legacy send_tx (public testnet sequencer API).
+    DeployProgram {
+        #[arg(long)]
+        wallet_config: PathBuf,
+        #[arg(long, help = "Guest .bin path")]
+        program_bin: PathBuf,
+    },
+    /// Print 64-char hex account id for a base58 LEZ account id string.
+    AccountIdFromBase58 {
+        account_base58: String,
+    },
+    /// Print built-in CLOCK_10 account id (base58) for manifest / read smoke.
+    Clock10AccountBase58,
 }
 
 #[tokio::main]
@@ -92,10 +109,14 @@ async fn run() -> Result<()> {
             account_id_hex,
         } => {
             let id = parse_account_id_hex(&account_id_hex)?;
-            let wallet = WalletCore::new_update_chain(wallet_config, wallet_storage, None)
-                .context("open wallet")?;
-            let acc = wallet
-                .sequencer_client
+            let _wallet = WalletCore::new_update_chain(
+                wallet_config.clone(),
+                wallet_storage,
+                None,
+            )
+            .context("open wallet")?;
+            let legacy = LegacySequencerClient::from_wallet_config(&wallet_config)?;
+            let acc = legacy
                 .get_account(id)
                 .await
                 .map_err(|e| anyhow::anyhow!("get_account: {e}"))?;
@@ -103,8 +124,50 @@ async fn run() -> Result<()> {
                 "success": true,
                 "has_data": !acc.data.is_empty(),
                 "balance": acc.balance,
+                "program_owner_nonzero": acc.program_owner.as_ref().iter().any(|&w| w != 0),
             });
             println!("{}", serde_json::to_string(&out)?);
+        }
+        Commands::DeployProgram {
+            wallet_config,
+            program_bin,
+        } => {
+            let bytecode = std::fs::read(&program_bin)
+                .with_context(|| format!("read {}", program_bin.display()))?;
+            let program = NssaProgram::new(bytecode.clone()).context("parse guest ELF")?;
+            let expected_id = program.id();
+            let legacy = LegacySequencerClient::from_wallet_config(&wallet_config)?;
+            match legacy.deploy_program_bytecode(bytecode).await {
+                Ok(tx_hash) => {
+                    let out = SubmitResult::ok(tx_hash);
+                    println!("{}", serde_json::to_string(&out)?);
+                    let hex: String = expected_id
+                        .as_ref()
+                        .iter()
+                        .flat_map(|w| w.to_le_bytes())
+                        .map(|b| format!("{b:02x}"))
+                        .collect();
+                    eprintln!("program_id_hex={hex}");
+                }
+                Err(err) => {
+                    let msg = format!("{err:#}");
+                    if msg.to_ascii_lowercase().contains("already")
+                        || msg.to_ascii_lowercase().contains("exist")
+                    {
+                        let out = SubmitResult::ok(String::new());
+                        println!("{}", serde_json::to_string(&out)?);
+                        let hex: String = expected_id
+                            .as_ref()
+                            .iter()
+                            .flat_map(|w| w.to_le_bytes())
+                            .map(|b| format!("{b:02x}"))
+                            .collect();
+                        eprintln!("program_id_hex={hex} (already deployed)");
+                    } else {
+                        anyhow::bail!("{msg}");
+                    }
+                }
+            }
         }
         Commands::AuthTransferProgramIdHex => {
             let id = NssaProgram::authenticated_transfer_program().id();
@@ -115,6 +178,14 @@ async fn run() -> Result<()> {
                 .map(|b| format!("{b:02x}"))
                 .collect();
             println!("{hex}");
+        }
+        Commands::AccountIdFromBase58 { account_base58 } => {
+            let hex = account_id_hex_from_base58(&account_base58)?;
+            println!("{hex}");
+        }
+        Commands::Clock10AccountBase58 => {
+            use nssa::CLOCK_10_PROGRAM_ACCOUNT_ID;
+            println!("{CLOCK_10_PROGRAM_ACCOUNT_ID}");
         }
     }
     Ok(())

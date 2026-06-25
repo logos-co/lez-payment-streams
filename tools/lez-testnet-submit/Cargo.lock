@@ -2901,16 +2901,21 @@ name = "lez-testnet-submit"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base58",
+ "base64",
+ "borsh",
  "clap",
  "common",
  "hex",
  "nssa",
+ "nssa_core",
+ "reqwest",
  "risc0-zkvm",
- "sequencer_service_rpc",
  "serde",
  "serde_json",
  "tempfile",
  "tokio",
+ "url",
  "wallet",
 ]
 

@@ -1,15 +1,12 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context as _, Result};
-use common::transaction::NSSATransaction;
-use nssa::{
-    program::Program,
-    public_transaction::{Message, WitnessSet},
-    AccountId, PrivateKey, PublicTransaction,
-};
-use sequencer_service_rpc::RpcClient as _;
+use base58::FromBase58;
+use nssa::{program::Program, AccountId};
 use serde::Deserialize;
 use wallet::WalletCore;
+
+use crate::legacy_sequencer::{LegacySequencerClient, submit_public_with_wallet};
 
 #[derive(Debug, Deserialize)]
 pub struct SubmitPayload {
@@ -46,6 +43,16 @@ impl SubmitResult {
             error: Some(message.into()),
         }
     }
+}
+
+pub fn account_id_hex_from_base58(raw: &str) -> Result<String> {
+    let bytes: Vec<u8> = raw
+        .from_base58()
+        .map_err(|e| anyhow::anyhow!("base58 decode: {e:?}"))?;
+    if bytes.len() != 32 {
+        bail!("base58 account id must decode to 32 bytes, got {}", bytes.len());
+    }
+    Ok(hex::encode(bytes))
 }
 
 pub fn parse_account_id_hex(hex_str: &str) -> Result<AccountId> {
@@ -109,35 +116,16 @@ pub async fn submit_public_tx(
     )
     .context("open wallet")?;
 
-    let nonces = wallet
-        .get_accounts_nonces(account_ids.clone())
-        .await
-        .map_err(|e| anyhow::anyhow!("get_accounts_nonces: {e}"))?;
-
-    let mut private_keys = Vec::new();
-    for (account_id, needs_sign) in account_ids.iter().zip(payload.signing_requirements.iter()) {
-        if *needs_sign {
-            let key = wallet
-                .storage()
-                .user_data
-                .get_pub_account_signing_key(*account_id)
-                .ok_or_else(|| anyhow::anyhow!("signing key not found for {account_id:?}"))?;
-            private_keys.push(key);
-        }
-    }
-
-    let message = Message::new_preserialized(program_id, account_ids, nonces, instruction_words);
-    let key_refs: Vec<&PrivateKey> = private_keys.iter().copied().collect();
-    let witness_set = WitnessSet::for_message(&message, &key_refs);
-    let tx = PublicTransaction::new(message, witness_set);
-
-    let hash = wallet
-        .sequencer_client
-        .send_transaction(NSSATransaction::Public(tx))
-        .await
-        .map_err(|e| anyhow::anyhow!("send_transaction: {e}"))?;
-
-    Ok(format!("{hash}"))
+    let legacy = LegacySequencerClient::from_wallet_config(wallet_config)?;
+    submit_public_with_wallet(
+        &legacy,
+        &wallet,
+        payload,
+        program_id,
+        account_ids,
+        instruction_words,
+    )
+    .await
 }
 
 pub fn instruction_bytes_to_risc0_words(bytes: &[u8]) -> Result<Vec<u32>> {

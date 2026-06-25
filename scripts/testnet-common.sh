@@ -144,14 +144,12 @@ json.dump(c, open(dst, 'w'), indent=2)
 }
 
 testnet_rpc_last_block() {
-  curl -sf -m 20 -X POST "$TESTNET_SEQUENCER" -H 'Content-Type: application/json' \
-    -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}' \
-    | python3 -c "import json,sys; d=json.load(sys.stdin); r=d.get('result'); print(r if isinstance(r,int) else int(r))"
+  python3 "$REPO_ROOT/scripts/testnet_rpc.py" block-height
 }
 
 require_testnet_rpc() {
   if ! testnet_rpc_last_block >/dev/null 2>&1; then
-    echo "ERROR: testnet sequencer unreachable at $TESTNET_SEQUENCER" >&2
+    echo "ERROR: testnet sequencer unreachable at $TESTNET_SEQUENCER (expected get_last_block RPC)" >&2
     exit 1
   fi
 }
