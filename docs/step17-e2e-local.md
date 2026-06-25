@@ -102,8 +102,15 @@ The script (`SKIP_BUILD=1` to reuse installed modules) builds/installs from `REP
    `logos-delivery` without bumping `logos-delivery-module/flake.lock`. For reproducible nix-only
    libs, set `SKIP_LIBLOGOSDELIVERY_OVERLAY=1` ([N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
 
-Orchestration: `scripts/e2e/run_local_e2e.py` (dual hosts, JSON-lines artifact under
-`.scaffold/e2e/artifacts/`). Optional probe: `scripts/e2e/debug_happy_path.py`.
+Orchestration: [`scripts/e2e/run_local_e2e.py`](../scripts/e2e/run_local_e2e.py) via
+[`scripts/demo-e2e-local.sh`](../scripts/demo-e2e-local.sh) (JSON-lines artifact under
+`.scaffold/e2e/artifacts/`). This runbook is **Track A** — Store + eligibility integration
+([N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
+Payment-streams-only Basecamp UI is **Track B** (Steps 21–22), not described here.
+Policy: [N17](reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06).
+Step 20 developer journey adds a step-by-step command path equivalent to the script; see
+[step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md).
+Optional probe: [`scripts/e2e/debug_happy_path.py`](../scripts/e2e/debug_happy_path.py).
 
 ## Hermetic run (hand-off)
 

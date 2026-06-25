@@ -33,7 +33,10 @@ long procedural blocks in both places.
 | [`step13-provider-eligibility.md`](step13-provider-eligibility.md) | Step 13 provider verify (`verify-step13-dod.sh`) |
 | [`step17-e2e-local.md`](step17-e2e-local.md) | Step 17 dual-host Store E2E (`make verify-step17`; hermetic run section) |
 | [`plan/completed/step-17b-localnet-snapshot-restore.md`](plan/completed/step-17b-localnet-snapshot-restore.md) | Step 17b snapshot restore (`make prepare-localnet`, `FULL_RESET`) |
-| [`plan/upcoming/step-25-demo-coordination-module.md`](plan/upcoming/step-25-demo-coordination-module.md) | Step 25 in-process demo coordinator module (replaces Python orchestrator) |
+| [`plan/upcoming/step-20-developer-journey.md`](plan/upcoming/step-20-developer-journey.md) | Step 20 Track A — integrator journey (Store + script demo) |
+| [`plan/upcoming/step-21-basecamp-ui.md`](plan/upcoming/step-21-basecamp-ui.md) | Step 21 Track B — optional payment streams Basecamp UI |
+| [`plan/upcoming/step-22-ui-journey.md`](plan/upcoming/step-22-ui-journey.md) | Step 22 Track B — optional payment streams UI journey doc |
+| [`plan/cancelled/step-25-demo-coordination-module.md`](plan/cancelled/step-25-demo-coordination-module.md) | Step 25 won't fix — demo stays script-orchestrated ([N17](reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06)) |
 | [`step3-policy-and-implementor-notes.md`](step3-policy-and-implementor-notes.md) | Step 3a policy and implementor detail |
 | [`step8-universal-legacy-probe-results.md`](step8-universal-legacy-probe-results.md) | Step 8 probe results (+ historical dilemma appendix) |
 | [`feature-branch-pins.md`](feature-branch-pins.md) | Wallet flake pins (LEZ 510 + PR 19 wrapper) |

@@ -749,3 +749,61 @@ Step 11b uses a `chainAction` router to keep write/status operations behind one
 Logos entry point; that is an API ergonomics choice, not a codegen limit. Step 12
 adds named eligibility methods; Step 16 registration must match those names exactly
 (for example `prepareEligibilityForStoreQuery`).
+
+### N16, Step 25 dual demo orchestration paths (2026-06) — superseded
+
+Superseded by [N17](#n17-demo-orchestration-stays-external-script-2026-06). Step 25 (in-process
+coordinator module) is **won't fix**; do not implement `payment_streams_demo_coordinator` or
+`E2E_ORCHESTRATOR=coordinator`.
+
+### N17, Demo orchestration stays external script (2026-06)
+
+Dual-host paid Store demo coordination stays on the **host**, not in a Logos module.
+
+- **Regression / one-command demo:** [`scripts/demo-e2e-local.sh`](../../scripts/demo-e2e-local.sh)
+  (`make verify-step17`) — fixture prepare, build/install, then
+  [`scripts/e2e/run_local_e2e.py`](../../scripts/e2e/run_local_e2e.py).
+- **Cross-host sequencing:** the Python orchestrator (or an operator following Step 20 /
+  [step17-e2e-local.md](../../step17-e2e-local.md)) calls `logoscore` with
+  `LOGOSCORE_CONFIG_USER` vs `LOGOSCORE_CONFIG_PROVIDER`. Each daemon loads
+  `logos_execution_zone`, `payment_streams_module`, and `delivery_module` only.
+- **Product APIs:** eligibility and Store integration are
+  `payment_streams_module` + `delivery_module` ([integration-contracts.md](../integration-contracts.md)).
+  A future third-party Logos app module may compose those APIs; that is **not** part of this
+  integration plan (Step 25 closed — [cancelled packet](../plan/cancelled/step-25-demo-coordination-module.md)).
+- **Step 20 developer journey:** document (1) one-script E2E, (2) equivalent step-by-step
+  `logoscore call` sequences per host for the same scenario. This is the **Delivery + Store
+  eligibility integration** track only ([N18](#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
+- **Step 21–22 (optional):** payment streams **protocol** UI + user journey — not Store
+  integration; see [N18](#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06). No demo
+  coordinator module.
+
+### N18, Integration demo vs payment streams UI tracks (2026-06)
+
+Two documentation/demonstration tracks; do not merge them in copy or scope.
+
+**Track A — Developer integration demo (Step 20, required for this milestone)**
+
+- **Story:** LIP-155 eligibility proofs used with **Logos Delivery Store** (one application of
+  payment streams).
+- **Mechanism:** external script orchestration ([N17](#n17-demo-orchestration-stays-external-script-2026-06));
+  dual local `logoscore` hosts; `payment_streams_module` + `delivery_module` +
+  `logos_execution_zone`.
+- **Audience:** integrators reproducing paid Store via CLI/script.
+
+**Track B — Payment streams UI (Steps 21–22, optional if time)**
+
+- **Story:** **Payment streams protocol only** — universal LEZ payment (vaults, streams, accrual,
+  claim). Not tied to Store, eligibility hooks, or `storeQuery`.
+- **Mechanism:** Basecamp `ui_qml` plugin — thin UI over `payment_streams_module` (+ wallet).
+  Single-host; service/counterparty coordination **out of band**.
+- **Payer side:** initialize vault, deposit, create/pause/resume/top-up/close stream, list
+  vaults/streams (`chainAction`, reads, inventory APIs).
+- **Payee side (optional in UI):** `chainAction claim` after funds accrue. The payee must know
+  the stream exists and must have the **stream identity** (vault id, stream id, and program/
+  account context from the fixture or manifest — whatever the module needs to target claim).
+  **Assumption for the UI journey:** the stream creator notifies the payee **out of band** (e.g.
+  message, email, QR) with the stream address / ids so the payee can claim; the UI does not
+  implement discovery or messaging protocols.
+- **Audience:** end users exploring payment streams in Basecamp; cross-link Step 20 for Store
+  integration, do not duplicate it.

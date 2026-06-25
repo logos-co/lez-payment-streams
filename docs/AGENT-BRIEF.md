@@ -9,42 +9,39 @@ request, eligibility status on response); the provider verifies against LEZ chai
 state and serves only when valid. Rust/FFI holds crypto and policy; `payment_streams_module`
 orchestrates wallet I/O; `logos-delivery` gains opaque wire fields and hooks (Steps 14–16).
 
-Program outcomes after Step 16: runnable CLI demo (17 local LEZ — active path; 18 public
-sequencer + local P2P — paused until testnet deploy unblocks; 25 in-process demo coordinator
-module), LIP-155 on-chain spec (19, branch pin), developer journey doc packet (20); optional
-Basecamp UI and UI journey (21–22); optional public Store provider (23); LEZ harness upgrade
-(24, done). Index:
-[integration-index.md](../integration-index.md#program-outcomes).
+Payment streams is a **universal LEZ payment protocol**; Store eligibility is **one integration
+use case** (Track A). Optional Basecamp UI (Track B) covers protocol-only flows, not Store.
+
+Program outcomes and track split: [N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
+Index: [integration-index.md](../integration-index.md#program-outcomes).
 
 ## Active work (execution order)
 
 Steps 1–13, 11d, Steps 14–16 on the delivery forks, Steps 17–17b, 19, and 24 are complete.
-Public testnet (Step 18) is paused; proceed with the fully local demo (`make verify-step17`).
-Implement next (order may overlap):
+Public testnet (Step 18) is paused; proceed with the fully local integration demo
+(`make verify-step17`).
 
 | Step | Repo / area | Agent packet |
 | --- | --- | --- |
-| 20 | Developer journey doc packet | [plan/upcoming/step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md) — local LEZ journey first |
-| 25 | Demo coordination Logos module | [plan/upcoming/step-25-demo-coordination-module.md](plan/upcoming/step-25-demo-coordination-module.md) |
-| 18 | Public sequencer E2E (local Store) | Parked — [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md); WIP `feat/step18-public-testnet` (~576 KiB guest vs ~512 KiB tx cap) |
-| 21 | Basecamp UI (optional) | [plan/upcoming/step-21-basecamp-ui.md](plan/upcoming/step-21-basecamp-ui.md) |
-| 22 | UI journey doc packet (optional) | [plan/upcoming/step-22-ui-journey.md](plan/upcoming/step-22-ui-journey.md) |
+| 20 | Developer journey — **Track A** (Store integration) | [plan/upcoming/step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md) — script E2E + step-by-step dual-host commands ([N17](reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06), [N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)) |
+| 18 | Public sequencer E2E (local Store) | Parked — [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) |
 | 23 | Public Store provider (optional) | [plan/upcoming/step-23-public-store-provider.md](plan/upcoming/step-23-public-store-provider.md) |
+
+**Optional stretch (if time):** Step 21 payment streams Basecamp UI, Step 22 UI journey doc —
+**Track B** protocol only ([N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)); payee claim assumes stream ids shared **out of band**.
+
+Closed: Step 25 — [plan/cancelled/step-25-demo-coordination-module.md](plan/cancelled/step-25-demo-coordination-module.md).
 
 Completed packets (reference): [step-17.md](plan/completed/step-17.md),
 [step-17b](plan/completed/step-17b-localnet-snapshot-restore.md),
 [step-19](plan/completed/step-19-lip155-onchain-spec.md),
 [step-24](plan/completed/step-24-lee-harness-upgrade.md).
 
-Step 20 (developer journey): draft the local LEZ path once Steps 17 and 19 are satisfied
-(`make verify-step17`, fixture prepare, LIP-155 cite). Prefer documenting today's Python
-orchestrator and artifact shape first if Step 25 is not landed yet; revise the packet when
-`payment_streams_demo_coordinator.runDemo` replaces it. Testnet journey rows stay blocked on
-Step 18. Steps 21–22 are optional and depend on Step 25 (Basecamp wraps `runDemo`). Step 23
-is optional and independent.
+Step 20 documents Track A only. Steps 21–22 document Track B only; cross-link Step 20 for Store
+integration. Step 25 won't fix ([N17](reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06)).
 
-N6 unblocked: `storeQuery` is added directly on our fork of `logos-delivery-module` (Step 16);
-upstream N6 is no longer a prerequisite for Steps 17–20.
+N6 unblocked: `storeQuery` is on our `logos-delivery-module` fork (Step 16); upstream N6 is not
+a gate for Steps 17–20.
 
 Delivery branches: fork `logos-delivery` and `logos-delivery-module` from upstream
 `master` (not release tags); default shared branch name
@@ -60,16 +57,16 @@ Summary:
 | Delivery / Store wire (16+) | This brief → [integration-contracts.md](integration-contracts.md) → step packet → [D1](reference/decisions-and-notes.md#d1-store-wire-format) / [D2](reference/decisions-and-notes.md#d2-delivery-module-hook-design). Steps 14–16: [step-14-normative.md](plan/completed/step-14-normative.md), [step-15-normative.md](plan/completed/step-15-normative.md), [step-16.md](plan/completed/step-16.md). |
 | Module eligibility bugfix | [step12-user-eligibility.md](step12-user-eligibility.md) or [step13-provider-eligibility.md](step13-provider-eligibility.md) + contracts |
 | Localnet / verify failure | [demo-localnet-recovery.md](demo-localnet-recovery.md) + relevant `verify-step*-dod.sh` |
-| Step 17b snapshot / fast reuse | [plan/completed/step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md) + [N15](reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) (`FULL_RESET=1` after `make build`) |
+| Step 17b snapshot / fast reuse | [plan/completed/step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md) + [N15](reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) |
 | Step 17 E2E dual-host (done) | [plan/completed/step-17.md](plan/completed/step-17.md) + [step17-e2e-local.md](step17-e2e-local.md) + [N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18) |
-| Step 18 public sequencer | Parked — [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md); local demo remains Step 17 runbook |
-| Step 20 developer journey | [plan/upcoming/step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md) + [step17-e2e-local.md](step17-e2e-local.md) (local path; coordinator when 25 lands) |
-| Step 25 demo coordinator module | [plan/upcoming/step-25-demo-coordination-module.md](plan/upcoming/step-25-demo-coordination-module.md) + [step17-e2e-local.md](step17-e2e-local.md) (current orchestrator being replaced) |
+| Step 18 public sequencer | Parked — [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) |
+| Step 20 developer journey (Track A) | [plan/upcoming/step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md) + [step17-e2e-local.md](step17-e2e-local.md) + [N17](reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06) + [N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06) |
+| Step 21–22 payment streams UI (Track B, optional) | [step-21-basecamp-ui.md](plan/upcoming/step-21-basecamp-ui.md), [step-22-ui-journey.md](plan/upcoming/step-22-ui-journey.md) + [N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06) |
 | Step 23 hosted provider | [plan/upcoming/step-23-public-store-provider.md](plan/upcoming/step-23-public-store-provider.md) |
 | Rust FFI / policy only | `lez-payment-streams-core` tests + [step3-policy-and-implementor-notes.md](step3-policy-and-implementor-notes.md) |
-| LIP on-chain spec (19, done) | [step-19-lip155-onchain-spec.md](plan/completed/step-19-lip155-onchain-spec.md) + [feature-branch-pins.md](feature-branch-pins.md) LIP-155 pin |
+| LIP on-chain spec (19, done) | [step-19-lip155-onchain-spec.md](plan/completed/step-19-lip155-onchain-spec.md) + [feature-branch-pins.md](feature-branch-pins.md) |
 | LEZ harness / `program_tests` (24, done) | [step-24-lee-harness-upgrade.md](plan/completed/step-24-lee-harness-upgrade.md) + [architecture.md](../architecture.md) |
-| Doc packet (20 / 22) | Step packet (20: local journey first; full `runDemo` doc after 25) + [logos-docs doc packet template](https://github.com/logos-co/logos-docs/blob/main/resources/templates/doc-packet.md) |
+| Doc packet (20 / 22) | Step 20 = Track A; Step 22 = Track B (after 21) + [logos-docs doc packet template](https://github.com/logos-co/logos-docs/blob/main/resources/templates/doc-packet.md) |
 
 ## Always-on references
 
@@ -79,7 +76,7 @@ Summary:
 
 ## Historical depth (load on demand)
 
-- [reference/decisions-and-notes.md](reference/decisions-and-notes.md) — D1–D6, N1–N15 (Step 16: N3a–N3c; Step 17: N13–N14; Step 17b: N15)
+- [reference/decisions-and-notes.md](reference/decisions-and-notes.md) — D1–D6, N1–N18
 - [plan/completed/step-12-normative.md](plan/completed/step-12-normative.md), [step-13-normative.md](plan/completed/step-13-normative.md), [step-14-normative.md](plan/completed/step-14-normative.md), [step-15-normative.md](plan/completed/step-15-normative.md)
 - Step runbooks and policy notes under [docs/README.md](README.md)
 

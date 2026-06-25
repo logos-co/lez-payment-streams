@@ -4,19 +4,23 @@ Active-work packet for agents. Index: [integration-index.md](../../../integratio
 
 ### Step 20, Developer journey doc packet
 
-Priority (2026-06): next active integration deliverable while Step 18 testnet is paused.
-Ship the local LEZ journey first; defer testnet v0.2 and hosted-provider journey rows until
-Step 18 (and Step 23 where applicable) unblock.
+**Next active integration deliverable** (local LEZ). Step 18 testnet remains paused; defer
+testnet and hosted-provider journey rows until Step 18 (and Step 23 where applicable) unblock.
 
-Prerequisites by published runtime target:
+Prerequisites:
 
 | Journey runtime target | Required before Step 20 |
 | --- | --- |
-| Local LEZ (today: Python orchestrator + `make verify-step17`) | Steps 17 and 19 DoD satisfied |
-| Local LEZ (target: coordinator module from Step 25) | Steps 17, 19, and 25 DoD satisfied — revise packet when `runDemo` lands |
-| Testnet v0.2 (public LEZ, local dual-host Store) | Steps 17, 18, and 25 DoD satisfied (blocked on Step 18) |
-| Testnet v0.2 + hosted public Store provider | Steps 17, 18, 25, and 23 DoD satisfied |
-| Any | Step 19 complete on `feat/payment-streams-onchain-part` (`345c8eef`); cite that branch in the doc packet ([feature-branch-pins.md](../../feature-branch-pins.md)) |
+| Local LEZ (script-orchestrated dual-host demo) | Steps 17 and 19 DoD satisfied |
+| Testnet v0.2 (public LEZ, local dual-host Store) | Steps 17, 18 DoD satisfied (blocked on Step 18) |
+| Testnet v0.2 + hosted public Store provider | Steps 17, 18, and 23 DoD satisfied |
+| Any | Step 19 on `feat/payment-streams-onchain-part` (`345c8eef`); cite in packet ([feature-branch-pins.md](../../feature-branch-pins.md)) |
+
+Orchestration policy: [N17](../../reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06).
+Track split: [N18](../../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)
+(Step 20 = **Track A** integration demo only; Steps 21–22 = optional **Track B** payment
+streams UI — not part of this step).
+No in-process demo coordinator module (Step 25 won't fix).
 
 Architectural context:
 Logos documentation intake uses a doc packet issue in `logos-co/logos-docs` (template
@@ -24,28 +28,45 @@ Logos documentation intake uses a doc packet issue in `logos-co/logos-docs` (tem
 label `type:journey`). Docs drafts the public page; R&D SME reviews; Red Team dogfoods the
 published instructions ([`logos-docs/CONTRIBUTING.md`](https://github.com/logos-co/logos-docs/blob/main/CONTRIBUTING.md)).
 
-This step is the primary documentation deliverable for integrators: reproduce paid Store +
-LIP-155 eligibility via `logoscore` and module APIs, not Basecamp clicks. For the first
-local LEZ draft, document the Step 17 happy path (`scripts/e2e/run_local_e2e.py` or
-`make verify-step17`, fixture prepare, phase artifact shape). When Step 25 lands, update the
-packet so the single-command entry is `payment_streams_demo_coordinator.runDemo` and retire
-Python orchestrator instructions from the published journey. Pattern references:
-[logos-docs#311](https://github.com/logos-co/logos-docs/issues/311),
-[logos-docs#307](https://github.com/logos-co/logos-docs/issues/307).
+This step is **Track A** ([N18](../../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
+the documentation deliverable for **integrators** showing payment streams **composed with
+Logos Delivery Store** (LIP-155 eligibility on Store requests — one protocol use case). It is not
+the payment-streams-only Basecamp UI journey (Track B, Steps 21–22).
+
+Paid Store + eligibility uses **`payment_streams_module`**, **`delivery_module`**, and
+**`logos_execution_zone`**, not Basecamp clicks. Demo coordination is a **host-side script**
+that drives two local `logoscore` instances — the same model as Step 17
+([step17-e2e-local.md](../../step17-e2e-local.md)). Integrators may later wrap the same module
+calls in their own Logos app module; that pattern is mentioned briefly but not implemented here.
+
+#### Journey structure (local LEZ)
+
+Publish two tiers in one doc packet (or two linked sections):
+
+1. **One-command path** — reproduce the full demo with fixture prepare + verify entrypoint
+   (`make verify-step17` or `./scripts/demo-e2e-local.sh`), pointing at
+   [`scripts/e2e/run_local_e2e.py`](../../../scripts/e2e/run_local_e2e.py) as the dual-host
+   orchestrator. Success criteria: JSON-lines artifact phases
+   (`store_query_success`, `store_query_missing_proof`, `claim`) under
+   `.scaffold/e2e/artifacts/`.
+2. **Step-by-step path** — same outcome without the Python orchestrator: explicit commands for
+   **user** and **provider** `logoscore` configs (module load, wallet `open`, delivery
+   `createNode` / `start`, eligibility registration, publish, paid `storeQuery`, missing-proof
+   check, claim). Lift command order and JSON shapes from the runbook and from the script
+   (script is normative for ordering until the journey is validated).
+
+Both tiers must cite [integration-contracts.md](../../integration-contracts.md) for method names
+and encodings; do not duplicate full contract tables in the packet.
 
 Deliver:
 
-- Filled doc packet: outcome, components (`payment_streams_module`, `logos_execution_zone`,
-  forked `delivery_module`, `payment_streams_demo_coordinator`), pinned repo refs
-  ([`feature-branch-pins.md`](../../feature-branch-pins.md)), runtime target (local LEZ first;
-  testnet v0.2 when Step 18 unblocks), copy-paste happy path from Step 17 verify/fixture flow
-  (revise to Step 25 `runDemo` when available), success command, expected JSON/log outcomes
-  (phase row shape unchanged from Step 17), configuration (`FIXTURE_MANIFEST`,
-  `registerProviderMapping`, eligibility registration, async `storeQuery` event), failure modes.
-- SME validation: run the issue command block verbatim before handoff to Docs.
-- Link LIP-155 on-chain section on branch `feat/payment-streams-onchain-part` (Step 19) and
-  [`integration-contracts.md`](../../integration-contracts.md) for API shapes; do not duplicate
-  full contract tables in the packet.
+- Filled doc packet: outcome, components (three production modules + script orchestrator),
+  pinned repo refs ([feature-branch-pins.md](../../feature-branch-pins.md)), runtime target
+  (local LEZ first), tier-1 and tier-2 command blocks, expected logs/JSON, configuration
+  (`FIXTURE_MANIFEST`, `registerProviderMapping`, eligibility hooks, async `storeQuery`
+  completion), failure modes + [demo-localnet-recovery.md](../../demo-localnet-recovery.md).
+- SME validation: run tier-1 verbatim; spot-check tier-2 against script behavior before handoff.
+- Link LIP-155 on-chain section (Step 19) and integration contracts.
 
 Definition of done:
 
@@ -53,5 +74,10 @@ Definition of done:
 - Red Team completes when org process requires `quality:verified` on the published doc (tracked on
   logos-docs project board, not via a script in this repo).
 
-Not in scope: UI journey (Step 22); hosted provider ops (Step 23) unless the journey targets
-that deployment model; implementing new backend features.
+Not in scope: Step 25 demo coordinator module; Track B payment streams UI (Steps 21–22);
+hosted provider ops (Step 23) unless the journey targets that deployment model; new backend
+features.
+
+Pattern references:
+[logos-docs#311](https://github.com/logos-co/logos-docs/issues/311),
+[logos-docs#307](https://github.com/logos-co/logos-docs/issues/307).

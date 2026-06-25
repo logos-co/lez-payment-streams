@@ -2,38 +2,62 @@
 
 Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
 
-Optional track — see [program outcomes](../../../integration-index.md#program-outcomes). Execute
-only when the milestone includes Basecamp UI + UI journey (Step 22). Otherwise stop after Step 20.
+**Optional stretch** after Step 20 — time-boxed; not required for integration milestone closure.
+Track split: [N18](../../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 
-### Step 21, Basecamp UI demo
+### Step 21, Payment streams Basecamp UI
 
-Prerequisite: Step 25 demo coordinator module (the UI wraps `runDemo`); Step 18 if the UI demo
-targets testnet LEZ.
+Prerequisite: Steps 10–11 and `payment_streams_module` operational on local LEZ (same fixture
+patterns as runbooks). Does **not** require Step 17 dual-host demo or `delivery_module` in the
+UI host unless an advanced integrator panel is added deliberately.
 
-Canonical module id for the plugin: `payment_streams_ui` (`metadata.json` `name`);
-main plugin id `payment_streams_ui_plugin` (follow `logos-module-builder` template conventions).
+#### Scope boundary
+
+This step is **payment streams protocol only** (LIP-155 / LEZ vaults and streams). It is **not**
+the Store eligibility integration demo (that is Step 20 + Step 17 script). Store, `storeQuery`,
+eligibility hook registration, and dual-`logoscore` provider/user layout are **out of scope**.
+
+Canonical module id: `payment_streams_ui` (`metadata.json` `name`); plugin id
+`payment_streams_ui_plugin` (`logos-module-builder` conventions).
 
 Architectural context:
-the UI plugin is a Logos module (`type: ui_qml` with a C++ backend), not part of Basecamp.
-Basecamp loads it like `logoscore` loads core modules for Steps 7–17.
-The plugin calls `payment_streams_demo_coordinator.runDemo` (Step 25) through `LogosAPI` and
-renders the phase artifacts; no protocol or guest work, no second orchestration path.
 
-Scaffold a `ui_qml` plugin (sibling repo or under `logos-basecamp`) from
-`logos-module-builder` `ui-qml-backend`, modeled on `logos-delivery-demo`.
-Dependencies: `payment_streams_module`, `delivery_module` (integration branch pins).
-Construct `LogosModules` in `initLogos`; wire async `storeQuery` completion like chat module
-event handlers.
+- `type: ui_qml` plugin with C++ backend calling **`payment_streams_module`** and
+  **`logos_execution_zone`** via LogosAPI only — no `delivery_module`, no script orchestrator,
+  no demo coordinator (Step 25 won't fix).
+- Thin wrapper: buttons/forms map to existing LogosAPI (`chainAction`, reads, `listMyStreams`,
+  `rediscoverStreams`) per [integration-contracts.md](../../integration-contracts.md).
+- **Single Basecamp / single `logoscore`** for typical flows; counterparty service is **out of
+  band** (not modeled in UI).
 
-Surface vault state, stream state, pending proposal slot, and the most recent Store query result.
-No custom backend beyond thin C++ → module calls.
+#### Payer flows (in scope)
 
-Components: everything from Step 25 (coordinator module + the three production modules) plus
-`logos-basecamp` and `lgpm` install into Basecamp plugins directory. Step 18 fixture when
-targeting testnet.
+Examples: open wallet, initialize vault, deposit, create stream to a **payee account id**
+(base58), list vaults/streams, pause/resume/top-up/close stream, read vault/stream status.
+
+#### Payee flows (optional but documented)
+
+To show the **receiver** side, include **claim** (`chainAction claim`) after accrual.
+
+The payee cannot claim without knowing **which stream** to claim from. **UI journey assumption
+(N18):** the stream creator sends the stream identity out of band (vault id, stream id, and any
+manifest fields the payee wallet needs) to notify the payee where accrued funds can be claimed.
+The plugin may offer a form to paste those ids; it does **not** implement discovery, Store, or
+messaging.
+
+#### Deliver
+
+- `ui_qml` `.lgx` buildable with `nix build`; loads in Basecamp without QML errors.
+- Dependency pins aligned with [feature-branch-pins.md](../../feature-branch-pins.md) for
+  `payment_streams_module` and patched wallet `.lgx`.
 
 Definition of done:
 
-- `nix build` produces a `.lgx` that loads in Basecamp without QML errors.
-- User completes the full demo flow through the UI without CLI (dual-instance layout as needed for
-  user vs provider roles).
+- Operator can run payer flows (minimum: create stream, list streams) on local LEZ through the UI.
+- If payee claim is implemented: doc packet / in-app hint states the out-of-band stream-id
+  assumption ([N18](../../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
+
+Not in scope: Step 17 E2E replay in UI; `delivery_module`; eligibility prepare/verify for Store;
+Step 20 developer journey content (cross-link only).
+
+Follow-on: Step 22 (UI journey doc packet).

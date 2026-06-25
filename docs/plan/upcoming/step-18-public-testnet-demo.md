@@ -7,7 +7,7 @@ Active-work packet for agents. Index: [integration-index.md](../../../integratio
 Paused on `master`: public testnet Part B is blocked on guest program deploy size (~576576 B
 ELF vs ~511800 B public testnet tx cap). Org priority is the fully local demo (Step 17,
 `make verify-step17`). Implementation WIP remains on `feat/step18-public-testnet`; do not
-block Step 20 or Step 25 on Step 18 completion. Resume this packet when deploy succeeds or
+block Step 20 on Step 18 completion. Resume this packet when deploy succeeds or
 testnet policy changes.
 
 ### Step 18, Public sequencer E2E (local Store and relay)
@@ -551,7 +551,7 @@ Before merging `feat/step18-public-testnet` to `master`:
 
 Not in scope: public internet Store provider (Step 23); replacing Step 17 local CI gate;
 automatic testnet faucet unless the network ships a supported funding API; Basecamp UI
-(Step 21); demo coordinator module (Step 25).
+(Step 21, parked). Demo orchestration stays external scripts ([N17](../../reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06); Step 25 won't fix).
 
 Follow-on: Step 19 (LIP on-chain, done). Step 20 testnet journey rows use this step when
 unblocked; local journey does not require Step 18. Optional Step 23 (hosted provider).
