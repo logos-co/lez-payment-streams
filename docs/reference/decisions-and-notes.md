@@ -807,3 +807,17 @@ Two documentation/demonstration tracks; do not merge them in copy or scope.
   implement discovery or messaging protocols.
 - **Audience:** end users exploring payment streams in Basecamp; cross-link Step 20 for Store
   integration, do not duplicate it.
+
+### N16, Step 18b rc5 operational pin (2026-06)
+
+Public testnet at `https://testnet.lez.logos.co/` expects LEE v0.3 public message hashing and
+builtin program ids aligned with the 510-era lineage, not rc3 dual-pin tooling.
+
+- **Operational pin:** `logos-execution-zone` tag `v0.2.0-rc5` (git `27360cb7d6ccb2bfbcca7d171bab8a3938490264`)
+  for `scaffold.toml`, payment-streams wallet flakes, module `.lgx`, E2E, and testnet scripts.
+- **Dual-pin abandoned:** rc3-only `lez-testnet-submit` / split wallet storage was Step 18 WIP only.
+- **Harness lag allowed:** `lez-payment-streams-core` `program_tests` may stay on PR 510 (`62d9ba10`)
+  until a deliberate harness bump; do not infer operational pin from harness deps alone.
+- **Phase 9:** retire `tools/lez-testnet-submit` when module `chainAction` on testnet needs no helper.
+
+Handoff: [step-18b-rc5-unify-handoff.md](../plan/upcoming/step-18b-rc5-unify-handoff.md).

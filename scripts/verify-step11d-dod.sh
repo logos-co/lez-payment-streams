@@ -7,7 +7,7 @@ cd "$REPO_ROOT"
 
 export REPO="${REPO:-$REPO_ROOT}"
 export MODULES="${MODULES:-$HOME/Downloads/software/waku/lez-related/logos-cli/modules}"
-LEZ_510=62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60
+LEZ_RC5=27360cb7d6ccb2bfbcca7d171bab8a3938490264
 VERIFY_LOGOSCORE="${VERIFY_LOGOSCORE:-1}"
 WALLET_CONFIG="${WALLET_CONFIG:-$REPO/.scaffold/wallet/wallet_config.json}"
 WALLET_STORAGE="${WALLET_STORAGE:-$REPO/.scaffold/wallet/storage.json}"
@@ -21,22 +21,22 @@ skip() { echo "SKIP: $*"; }
 echo "=== Step 11d DoD verification ==="
 
 LEZ_PIN="$(grep -A2 '\[repos.lez\]' scaffold.toml | grep '^pin' | sed 's/.*"\([^"]*\)".*/\1/')"
-if [[ "$LEZ_PIN" == "$LEZ_510" ]]; then
-  ok "scaffold.toml LEZ pin is 510 merge"
+if [[ "$LEZ_PIN" == "$LEZ_RC5" ]]; then
+  ok "scaffold.toml LEZ pin is v0.2.0-rc5"
 else
-  bad "scaffold.toml LEZ pin expected $LEZ_510 got $LEZ_PIN"
+  bad "scaffold.toml LEZ pin expected $LEZ_RC5 got $LEZ_PIN"
 fi
 
-if rg -q "$LEZ_510" nix/payment-streams-ffi.nix; then
-  ok "payment-streams-ffi.nix pins LEZ 510"
+if rg -q "$LEZ_RC5" nix/payment-streams-ffi.nix; then
+  ok "payment-streams-ffi.nix pins LEZ rc5"
 else
-  bad "payment-streams-ffi.nix missing LEZ 510 rev"
+  bad "payment-streams-ffi.nix missing LEZ rc5 rev"
 fi
 
-if rg -q "$LEZ_510" logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/lez-wallet-ffi-patched/flake.nix; then
-  ok "wallet wrapper LEZ input is 510"
+if rg -q "$LEZ_RC5" logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/lez-wallet-ffi-patched/flake.nix; then
+  ok "wallet wrapper LEZ input is rc5"
 else
-  bad "lez-wallet-ffi-patched flake.nix missing 510 rev"
+  bad "lez-wallet-ffi-patched flake.nix missing rc5 rev"
 fi
 
 if [[ -f docs/step11d-wallet-510.md ]]; then

@@ -8,7 +8,7 @@ use std::{
 
 use anyhow::{Context as _, Result};
 use clap::{Parser, Subcommand};
-use nssa::program::Program as NssaProgram;
+use lee::program::Program as LeeProgram;
 use submit::{
     account_id_hex_from_base58, parse_account_id_hex, parse_payload_json, resolve_program_elf_path,
     submit_public_tx, SubmitResult,
@@ -16,7 +16,7 @@ use submit::{
 use wallet::WalletCore;
 
 #[derive(Parser)]
-#[command(name = "lez-testnet-submit", about = "Step 18 rc3 public-tx submit helper (jsonrpsee)")]
+#[command(name = "lez-testnet-submit", about = "Step 18 public-tx submit helper (jsonrpsee, rc5 LEZ)")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -122,24 +122,14 @@ async fn run() -> Result<()> {
             println!("{}", serde_json::to_string(&out)?);
         }
         Commands::AuthTransferProgramIdHex => {
-            const TESTNET_AUTH_TRANSFER_HEX: &str =
-                "d9a19237236822b1f8100576ebd19a19f74178f99e284c983a4ac44acbd5b472";
-            if std::env::var("LEZ_TESTNET_USE_RC3_BUILTIN_IDS")
-                .ok()
-                .as_deref()
-                == Some("1")
-            {
-                let id = NssaProgram::authenticated_transfer_program().id();
-                let hex: String = id
-                    .as_ref()
-                    .iter()
-                    .flat_map(|w| w.to_le_bytes())
-                    .map(|b| format!("{b:02x}"))
-                    .collect();
-                println!("{hex}");
-            } else {
-                println!("{TESTNET_AUTH_TRANSFER_HEX}");
-            }
+            let id = LeeProgram::authenticated_transfer_program().id();
+            let hex: String = id
+                .as_ref()
+                .iter()
+                .flat_map(|w| w.to_le_bytes())
+                .map(|b| format!("{b:02x}"))
+                .collect();
+            println!("{hex}");
         }
         Commands::AuthTransferElfHex => {
             if let Ok(path) = std::env::var("TESTNET_AUTH_TRANSFER_ELF_PATH") {
@@ -150,7 +140,7 @@ async fn run() -> Result<()> {
                     return Ok(());
                 }
             }
-            let elf = NssaProgram::authenticated_transfer_program();
+            let elf = LeeProgram::authenticated_transfer_program();
             println!("{}", hex::encode(elf.elf()));
         }
         Commands::AccountIdFromBase58 { account_base58 } => {
@@ -158,7 +148,7 @@ async fn run() -> Result<()> {
             println!("{hex}");
         }
         Commands::Clock10AccountBase58 => {
-            use nssa::CLOCK_10_PROGRAM_ACCOUNT_ID;
+            use lee::CLOCK_10_PROGRAM_ACCOUNT_ID;
             println!("{CLOCK_10_PROGRAM_ACCOUNT_ID}");
         }
     }

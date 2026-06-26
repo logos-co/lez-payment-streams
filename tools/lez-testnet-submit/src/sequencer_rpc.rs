@@ -1,13 +1,12 @@
 use std::path::Path;
 
 use anyhow::{Context as _, Result};
-use common::{transaction::NSSATransaction, HashType};
-use nssa::{
+use common::{transaction::LeeTransaction, HashType};
+use lee::{
     program_deployment_transaction::{Message as DeployMessage, ProgramDeploymentTransaction},
     public_transaction::{Message, WitnessSet},
-    Account, AccountId, PrivateKey, ProgramId, PublicKey, PublicTransaction, Signature,
+    Account, AccountId, PrivateKey, ProgramId, PublicTransaction,
 };
-use sha2::{Digest as _, Sha256};
 use sequencer_service_rpc::{RpcClient as _, SequencerClient, SequencerClientBuilder};
 use serde_json::Value;
 use url::Url;
@@ -56,7 +55,7 @@ impl SequencerRpc {
             .context("getAccount")
     }
 
-    pub async fn send_nssa_tx(&self, tx: NSSATransaction) -> Result<String> {
+    pub async fn send_lee_tx(&self, tx: LeeTransaction) -> Result<String> {
         let hash: HashType = self
             .client
             .send_transaction(tx)
@@ -66,50 +65,15 @@ impl SequencerRpc {
     }
 
     pub async fn send_public_tx(&self, tx: PublicTransaction) -> Result<String> {
-        self.send_nssa_tx(NSSATransaction::Public(tx)).await
+        self.send_lee_tx(LeeTransaction::Public(tx)).await
     }
 
     pub async fn deploy_program_bytecode(&self, bytecode: Vec<u8>) -> Result<String> {
         let message = DeployMessage::new(bytecode);
         let transaction = ProgramDeploymentTransaction::new(message);
-        self.send_nssa_tx(NSSATransaction::ProgramDeployment(transaction))
+        self.send_lee_tx(LeeTransaction::ProgramDeployment(transaction))
             .await
     }
-}
-
-const PUBLIC_MESSAGE_HASH_PREFIX: &[u8; 32] = b"/LEE/v0.3/Message/Public/\x00\x00\x00\x00\x00\x00\x00";
-
-fn public_message_signing_hash(message: &Message) -> [u8; 32] {
-    let body = borsh::to_vec(message).expect("borsh Message");
-    let mut bytes = Vec::with_capacity(PUBLIC_MESSAGE_HASH_PREFIX.len() + body.len());
-    bytes.extend_from_slice(PUBLIC_MESSAGE_HASH_PREFIX);
-    bytes.extend_from_slice(&body);
-    Sha256::digest(bytes).into()
-}
-
-fn witness_set_for_testnet_message(
-    message: &Message,
-    private_keys: &[&PrivateKey],
-) -> WitnessSet {
-    let digest = public_message_signing_hash(message);
-    let signatures_and_public_keys = private_keys
-        .iter()
-        .map(|&key| {
-            (
-                Signature::new(key, &digest),
-                PublicKey::new_from_private_key(key),
-            )
-        })
-        .collect();
-    WitnessSet::from_raw_parts(signatures_and_public_keys)
-}
-
-fn witness_valid_for_testnet_message(message: &Message, witness_set: &WitnessSet) -> bool {
-    let digest = public_message_signing_hash(message);
-    witness_set
-        .signatures_and_public_keys()
-        .iter()
-        .all(|(signature, public_key)| signature.is_valid_for(&digest, public_key))
 }
 
 pub async fn submit_public_with_wallet(
@@ -120,37 +84,31 @@ pub async fn submit_public_with_wallet(
     instruction_words: Vec<u32>,
 ) -> Result<String> {
     let mut signing_account_ids = Vec::new();
-    let mut private_keys = Vec::new();
+    let mut private_key_refs: Vec<&PrivateKey> = Vec::new();
     for (account_id, needs_sign) in account_ids.iter().zip(payload.signing_requirements.iter()) {
         if *needs_sign {
             signing_account_ids.push(*account_id);
             let key = wallet
-                .storage()
-                .user_data
-                .get_pub_account_signing_key(*account_id)
+                .get_account_public_signing_key(*account_id)
                 .ok_or_else(|| anyhow::anyhow!("signing key not found for {account_id:?}"))?;
-            private_keys.push(key);
+            private_key_refs.push(key);
         }
     }
 
-    let nonces: Vec<nssa_core::account::Nonce> = wallet
+    let nonces = wallet
         .get_accounts_nonces(signing_account_ids)
         .await
-        .context("get_accounts_nonces")?
-        .into_iter()
-        .map(Into::into)
-        .collect();
+        .context("get_accounts_nonces")?;
 
     let message = Message::new_preserialized(program_id, account_ids, nonces, instruction_words);
-    let key_refs: Vec<&PrivateKey> = private_keys.iter().copied().collect();
-    let witness_set = witness_set_for_testnet_message(&message, &key_refs);
-    if !witness_valid_for_testnet_message(&message, &witness_set) {
-        anyhow::bail!("witness set fails testnet message-hash validation");
+    let witness_set = WitnessSet::for_message(&message, &private_key_refs);
+    if !witness_set.is_valid_for(&message) {
+        anyhow::bail!("witness set fails message-hash validation");
     }
     let tx = PublicTransaction::new(message, witness_set);
     let hash = wallet
         .sequencer_client
-        .send_transaction(NSSATransaction::Public(tx))
+        .send_transaction(LeeTransaction::Public(tx))
         .await
         .context("sendTransaction")?;
     Ok(format!("{hash}"))

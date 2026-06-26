@@ -15,7 +15,8 @@ serde = { version = "1.0", features = ["derive"] }
 borsh = "1.5"
 hex = "0.4"
 risc0-zkvm = { version = "=3.0.5", features = ["std"] }
-# LEZ pin: PR 510 merge — must match scaffold.toml [repos.lez].pin (Step 24).
+# LEZ harness pin: PR 510 merge — in-process program_tests only (Step 24).
+# Operational scaffold / wallet / testnet pin is v0.2.0-rc5 (Step 18b); see N16.
 lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60", features = ["test-utils"], optional = true }
 lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60", default-features = false }
 clock_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60" }

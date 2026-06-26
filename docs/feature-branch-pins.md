@@ -91,23 +91,27 @@ Re-run `nix flake update logos-delivery` in `logos-delivery-module` after pushin
 that branch, then commit the updated `flake.lock`. Steps 17–18 E2E may pin this rev explicitly in
 scripts; until then the branch ref in `flake.nix` plus a committed lock is the source of truth.
 
-## Wallet — primary path (510 on main + PR 19)
+## Wallet — primary path (rc5 operational + PR 19 module)
 
-Chain writes use generic public transactions and program deploy FFI from LEZ 510:
+Chain writes use generic public transactions and program deploy FFI from LEZ `v0.2.0-rc5`
+(operational pin; public testnet compatible):
 
 | Layer | Upstream | Role |
 | --- | --- | --- |
-| LEZ `wallet_ffi` | [`logos-execution-zone` `main`](https://github.com/logos-blockchain/logos-execution-zone) at [PR 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510) merge | Deploy, program ELF helpers, shielded `key_path`, zones API |
+| LEZ `wallet_ffi` | [`logos-execution-zone`](https://github.com/logos-blockchain/logos-execution-zone) @ `27360cb7…` (`v0.2.0-rc5`) | Deploy, program ELF helpers, LEE v0.3 public tx signing |
 | Wallet Qt module | [`logos-execution-zone-module` PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19) | Expose FFI to Logos modules (`Q_INVOKABLE` / LogosAPI) |
 
 Do not pin [PR 429 / PR 16](archive/superseded-wallet-pr-429-16.md) in this integration.
 
-### Flake refs (Step 11d)
+### Flake refs (Step 11d / Step 18b)
 
-- LEZ rev `62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60` in:
+- LEZ rev `27360cb7d6ccb2bfbcca7d171bab8a3938490264` (`v0.2.0-rc5`) in:
   - `scaffold.toml` `[repos.lez].pin`
   - `nix/payment-streams-ffi.nix` (`fetchFromGitHub`)
   - `lez-wallet-ffi-patched/flake.nix` (wallet wrapper input)
+  - `tools/lez-testnet-submit` (testnet submit helper; same pin)
+- `lez-payment-streams-core` `program_tests` harness may remain on PR 510 (`62d9ba10`) until
+  harness bump ([N16](reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06)).
 - Patched wallet wrapper `upstream` =
   `github:logos-blockchain/logos-execution-zone-module?ref=refs/pull/19/head`
   with `upstream.inputs.logos-execution-zone.follows` the same LEZ input as payment streams.
@@ -167,26 +171,23 @@ Rebuild the Step 17b funded snapshot after a LEZ pin or guest ImageID change:
 - `logos_execution_zone` flake input → patched wrapper (PR 19 upstream inside).
 - `logos-execution-zone` follows LEZ 510 for `wallet_ffi`.
 
-## Step 18 public testnet (dual-pin)
+## Step 18 public testnet (single rc5 pin)
 
-Local demo and testnet reads use LEZ pin `62d9ba10` (510) unchanged in `scaffold.toml` and wallet
-flakes. Testnet chain writes use rc3 pin `cf3639d8252040d13b3d4e933feb19b42c76e14a` only inside
-`tools/lez-testnet-submit` (not linked from default `nix build .#payment-streams-ffi` or
-`logos-payment-streams-module#lgx`).
+Local E2E, module `.lgx`, and public testnet share LEZ `v0.2.0-rc5` (`27360cb7…`). See
+[step18-public-sequencer-e2e.md](step18-public-sequencer-e2e.md) and
+[step-18b-rc5-unify-handoff.md](plan/upcoming/step-18b-rc5-unify-handoff.md).
 
 | Artifact | Pin / ref | Role |
 | --- | --- | --- |
-| `logos_execution_zone` .lgx | `62d9ba10` | Local E2E, testnet sync/read/sign |
-| `lez-testnet-submit` | `cf3639d8` | `CHAIN=testnet` chainAction submits |
-| rc3 `wallet` CLI | `cf3639d8` | `make deploy-testnet` (Part B) |
+| `logos_execution_zone` .lgx | `27360cb7` (rc5) | Local E2E + testnet reads/writes |
+| `lez-testnet-submit` | `27360cb7` (rc5) | Optional `CHAIN=testnet` chainAction submits until Phase 9 |
+| rc5 `wallet` CLI | `27360cb7` (rc5) | `make deploy-testnet`, bootstrap, Piñata |
 
-Guest `program_id_hex` on testnet: record after first `deploy-testnet` (expected to match
-`make program-id` for the built guest). Example in `fixtures/testnet.json.example`.
+Guest `program_id_hex` on testnet: org deploy recorded in step packet; example in
+`fixtures/testnet.json.example`.
 
-Retirement (Phase 9): when testnet LEZ includes PR #491 and #510 and `wallet check-health`
-passes with pin `62d9ba10`, delete `tools/lez-testnet-submit`, remove `CHAIN=testnet` dispatch,
-and drop the rc3-only flake input. See
-[step18-public-sequencer-e2e.md](step18-public-sequencer-e2e.md).
+Retirement (Phase 9): when module `chainAction` works on testnet without the helper, delete
+`tools/lez-testnet-submit` and narrow `CHAIN=testnet` dispatch in the module.
 
 Runbook: [step18-public-sequencer-e2e.md](step18-public-sequencer-e2e.md).
 

@@ -9,9 +9,9 @@ cd "$REPO_ROOT"
 source "$REPO_ROOT/scripts/testnet-common.sh"
 
 require_testnet_rpc
-ensure_testnet_rc3_wallet
+ensure_testnet_wallet
 export TESTNET_SKIP_PINATA="${TESTNET_SKIP_PINATA:-1}"
-export TESTNET_AUTH_TRANSFER_ELF_PATH="${TESTNET_AUTH_TRANSFER_ELF_PATH:-$HOME/.cache/logos-scaffold/repos/lez/62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60/artifacts/program_methods/authenticated_transfer.bin}"
+export TESTNET_AUTH_TRANSFER_ELF_PATH="${TESTNET_AUTH_TRANSFER_ELF_PATH:-$(testnet_auth_transfer_elf_path)}"
 
 MANIFEST="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/testnet.json}"
 PROGRAM_ID_HEX="${TESTNET_PROGRAM_ID_HEX:-79b1dd5c441caede8f9f82c30de637aba465f94cc43817b1105c8c48c77d0fc9}"
@@ -30,10 +30,9 @@ fi
 if [[ -z "$OWNER" ]]; then
   OWNER="$(ensure_testnet_owner_funded)"
 fi
-sync_testnet_owner_to_510_wallet
 
 export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
-WALLET_BIN="$(lez_rc3_wallet_bin)"
+WALLET_BIN="$(lez_wallet_bin)"
 if [[ -z "$PROVIDER" ]]; then
   PROVIDER="${TESTNET_PROVIDER_ID:-}"
 fi
@@ -63,8 +62,8 @@ cargo run --quiet --manifest-path "$REPO_ROOT/examples/Cargo.toml" --bin bootstr
   --owner "$OWNER" \
   --provider "$PROVIDER" \
   --program-id-hex "$PROGRAM_ID_HEX" \
-  --rc3-wallet-config "$TESTNET_WALLET_DIR/wallet_config.json" \
-  --rc3-wallet-storage "$TESTNET_WALLET_DIR/storage.json" \
+  --rc3-wallet-config "$WALLET_CONFIG" \
+  --rc3-wallet-storage "$WALLET_STORAGE" \
   --submit-helper "$SUBMIT_BIN" \
   --sequencer-url "$TESTNET_SEQUENCER" \
   --stream-rate "$STREAM_RATE" \

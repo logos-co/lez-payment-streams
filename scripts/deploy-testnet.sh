@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Step 18 Part B — one-time guest deploy to public testnet (rc3 wallet deploy-program).
+# Step 18 Part B — one-time guest deploy to public testnet (rc5 wallet deploy-program).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -9,7 +9,7 @@ cd "$REPO_ROOT"
 source "$REPO_ROOT/scripts/testnet-common.sh"
 
 require_testnet_rpc
-ensure_testnet_rc3_wallet
+ensure_testnet_wallet
 
 if [[ ! -f "$PROGRAM_BIN" ]]; then
   echo "Building guest…"
@@ -17,7 +17,7 @@ if [[ ! -f "$PROGRAM_BIN" ]]; then
 fi
 
 EXPECTED_ID="${TESTNET_PROGRAM_ID_HEX:-$(make -s program-id)}"
-WALLET_BIN="$(lez_rc3_wallet_bin)"
+WALLET_BIN="$(lez_wallet_bin)"
 export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
 
 echo "=== deploy-testnet (expected program-id $EXPECTED_ID, ELF $(stat -c%s "$PROGRAM_BIN") bytes) ==="

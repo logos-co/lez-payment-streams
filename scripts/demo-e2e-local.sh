@@ -11,25 +11,20 @@ export CHAIN
 
 if [[ "$CHAIN" == "testnet" ]]; then
   export FIXTURE_MANIFEST="${FIXTURE_MANIFEST:-$REPO/fixtures/testnet.json}"
-  export LEZ_TESTNET_WALLET_CONFIG="${LEZ_TESTNET_WALLET_CONFIG:-$REPO/.scaffold/e2e/testnet-wallet/wallet_config.json}"
-  export LEZ_TESTNET_WALLET_STORAGE="${LEZ_TESTNET_WALLET_STORAGE:-$REPO/.scaffold/e2e/testnet-wallet/storage.json}"
   # shellcheck source=scripts/testnet-common.sh
   source "$REPO/scripts/testnet-common.sh"
-  export WALLET_CONFIG="${WALLET_CONFIG:-$(patch_510_wallet_config_for_testnet)}"
-  export WALLET_STORAGE="${WALLET_STORAGE:-$REPO/.scaffold/wallet/storage.json}"
+  ensure_testnet_wallet
+  export WALLET_CONFIG="${WALLET_CONFIG:-$TESTNET_WALLET_DIR/wallet_config.json}"
+  export WALLET_STORAGE="${WALLET_STORAGE:-$TESTNET_WALLET_DIR/storage.json}"
+  export LEZ_TESTNET_WALLET_CONFIG="${LEZ_TESTNET_WALLET_CONFIG:-$WALLET_CONFIG}"
+  export LEZ_TESTNET_WALLET_STORAGE="${LEZ_TESTNET_WALLET_STORAGE:-$WALLET_STORAGE}"
   if [[ -n "${LEZ_TESTNET_SUBMIT:-}" ]]; then
     export PATH="$(dirname "$LEZ_TESTNET_SUBMIT"):$PATH"
   elif [[ -x "$REPO/tools/lez-testnet-submit/target/release/lez-testnet-submit" ]]; then
     export LEZ_TESTNET_SUBMIT="$REPO/tools/lez-testnet-submit/target/release/lez-testnet-submit"
     export PATH="$REPO/tools/lez-testnet-submit/target/release:$PATH"
   fi
-  export TESTNET_AUTH_TRANSFER_ELF_PATH="${TESTNET_AUTH_TRANSFER_ELF_PATH:-$HOME/.cache/logos-scaffold/repos/lez/62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60/artifacts/program_methods/authenticated_transfer.bin}"
-  if [[ -n "${LEZ_TESTNET_SUBMIT:-}" && -x "$LEZ_TESTNET_SUBMIT" ]]; then
-    RC3_AUTH_ELF_FILE="${RC3_AUTH_TRANSFER_ELF_PATH:-$REPO/.scaffold/e2e/rc3-auth-transfer-elf.hex}"
-    mkdir -p "$(dirname "$RC3_AUTH_ELF_FILE")"
-    "$LEZ_TESTNET_SUBMIT" auth-transfer-elf-hex >"$RC3_AUTH_ELF_FILE"
-    export RC3_AUTH_TRANSFER_ELF_PATH="$RC3_AUTH_ELF_FILE"
-  fi
+  export TESTNET_AUTH_TRANSFER_ELF_PATH="${TESTNET_AUTH_TRANSFER_ELF_PATH:-$(testnet_auth_transfer_elf_path)}"
   export PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF="${PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF:-1}"
 else
   export FIXTURE_MANIFEST="${FIXTURE_MANIFEST:-$REPO/fixtures/localnet.json}"

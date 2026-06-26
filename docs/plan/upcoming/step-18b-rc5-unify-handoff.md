@@ -6,8 +6,8 @@ This document does not replace
 [step18-public-sequencer-e2e.md](../../step18-public-sequencer-e2e.md);
 it records the recommended execution order and what to keep from in-flight WIP.
 
-Status: planning only (no rc5 unification merged as of this write-up).
-Do not treat dual-pin runbooks as final until Step 18b completes.
+Status: Step 18b implementation on branch `feat/lez-unify-v0.2.0-rc5` (merge to `master` when
+`make verify-step17` and manual testnet smoke pass). Operator defaults recorded below.
 
 ## Audience and goal
 

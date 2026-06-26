@@ -87,10 +87,21 @@ def probe_sequencer(*, sequencer_url: str | None = None) -> bool:
         return False
 
 
+def account_balance_base58(account_base58: str, *, sequencer_url: str | None = None) -> int:
+    account_hex = base58_to_hex(account_base58)
+    url = sequencer_url or DEFAULT_SEQUENCER
+    result = rpc_call("getAccount", {"accountId": account_hex}, sequencer_url=url)
+    if isinstance(result, dict):
+        bal = result.get("balance")
+        if bal is not None:
+            return int(bal)
+    raise RuntimeError(f"unexpected getAccount shape: {result!r}")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]
     if not args or args[0] in ("-h", "--help"):
-        print("usage: testnet_rpc.py block-height|hello", file=sys.stderr)
+        print("usage: testnet_rpc.py block-height|hello|account-hex|account-balance", file=sys.stderr)
         return 2
     cmd = args[0]
     url = os.environ.get("TESTNET_SEQUENCER", DEFAULT_SEQUENCER)
@@ -99,6 +110,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if cmd == "hello":
         print(json.dumps(rpc_call("hello", {}, sequencer_url=url)))
+        return 0
+    if cmd == "account-balance":
+        if len(args) < 2:
+            print("usage: testnet_rpc.py account-balance <base58-account-id>", file=sys.stderr)
+            return 2
+        print(account_balance_base58(args[1], sequencer_url=url))
         return 0
     if cmd == "account-hex":
         if len(args) < 2:

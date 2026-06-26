@@ -560,7 +560,7 @@ QString submitGenericPublicViaTestnetHelper(const QString& payloadJson, QString*
     }
     if (walletConfig.isEmpty() || walletStorage.isEmpty()) {
         const QString msg = QStringLiteral(
-            "CHAIN=testnet requires WALLET_CONFIG/WALLET_STORAGE or LEZ_TESTNET_WALLET_* for rc3 submits");
+            "CHAIN=testnet requires WALLET_CONFIG/WALLET_STORAGE (unified rc5 testnet wallet)");
         if (errorOut != nullptr) {
             *errorOut = msg;
         }

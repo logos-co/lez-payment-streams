@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context as _, Result};
 use base58::FromBase58;
-use nssa::{program::Program, AccountId};
+use lee::{program::Program, AccountId};
 use serde::Deserialize;
 use wallet::WalletCore;
 

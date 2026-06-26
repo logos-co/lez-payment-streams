@@ -9,12 +9,12 @@
 }:
 
 let
-  # LEZ main at PR 510 merge (program deploy + test ELF FFI).
+  # LEZ v0.2.0-rc5 — operational pin (matches scaffold.toml).
   logosExecutionZoneSrc = fetchFromGitHub {
     owner = "logos-blockchain";
     repo = "logos-execution-zone";
-    rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60";
-    sha256 = "sha256-lhKiGOWisFxEs3tiZ6/mO+4d78D9WolHh3BQsMexFoQ=";
+    rev = "27360cb7d6ccb2bfbcca7d171bab8a3938490264";
+    sha256 = "sha256-YrA4tAu1G7drJaaG4c7xX72yBMMoSHmbTNS2UYqtxFY=";
   };
 in
 
