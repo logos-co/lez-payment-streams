@@ -23,6 +23,14 @@ if [[ "$CHAIN" == "testnet" ]]; then
     export LEZ_TESTNET_SUBMIT="$REPO/tools/lez-testnet-submit/target/release/lez-testnet-submit"
     export PATH="$REPO/tools/lez-testnet-submit/target/release:$PATH"
   fi
+  export TESTNET_AUTH_TRANSFER_ELF_PATH="${TESTNET_AUTH_TRANSFER_ELF_PATH:-$HOME/.cache/logos-scaffold/repos/lez/62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60/artifacts/program_methods/authenticated_transfer.bin}"
+  if [[ -n "${LEZ_TESTNET_SUBMIT:-}" && -x "$LEZ_TESTNET_SUBMIT" ]]; then
+    RC3_AUTH_ELF_FILE="${RC3_AUTH_TRANSFER_ELF_PATH:-$REPO/.scaffold/e2e/rc3-auth-transfer-elf.hex}"
+    mkdir -p "$(dirname "$RC3_AUTH_ELF_FILE")"
+    "$LEZ_TESTNET_SUBMIT" auth-transfer-elf-hex >"$RC3_AUTH_ELF_FILE"
+    export RC3_AUTH_TRANSFER_ELF_PATH="$RC3_AUTH_ELF_FILE"
+  fi
+  export PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF="${PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF:-1}"
 else
   export FIXTURE_MANIFEST="${FIXTURE_MANIFEST:-$REPO/fixtures/localnet.json}"
   export WALLET_CONFIG="${WALLET_CONFIG:-$REPO/.scaffold/wallet/wallet_config.json}"

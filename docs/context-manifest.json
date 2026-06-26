@@ -4,7 +4,7 @@
     "docs/integration-contracts.md",
     "integration-index.md"
   ],
-  "active_steps": [18, 20],
+  "active_steps": [18, 25, 20],
   "optional_steps": [21, 22, 23],
   "step_packets": {
     "16": "docs/plan/completed/step-16.md",

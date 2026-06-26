@@ -6,7 +6,7 @@ use nssa::{program::Program, AccountId};
 use serde::Deserialize;
 use wallet::WalletCore;
 
-use crate::legacy_sequencer::{LegacySequencerClient, submit_public_with_wallet};
+use crate::sequencer_rpc::submit_public_with_wallet;
 
 #[derive(Debug, Deserialize)]
 pub struct SubmitPayload {
@@ -107,7 +107,7 @@ pub async fn submit_public_tx(
         .collect::<Result<_>>()?;
 
     let instruction_bytes = hex::decode(payload.instruction_hex.trim()).context("instruction_hex")?;
-    let instruction_words = instruction_bytes_to_risc0_words(&instruction_bytes)?;
+    let instruction_words = instruction_words_from_le_bytes(&instruction_bytes)?;
 
     let wallet = WalletCore::new_update_chain(
         wallet_config.to_path_buf(),
@@ -116,9 +116,7 @@ pub async fn submit_public_tx(
     )
     .context("open wallet")?;
 
-    let legacy = LegacySequencerClient::from_wallet_config(wallet_config)?;
     submit_public_with_wallet(
-        &legacy,
         &wallet,
         payload,
         program_id,
@@ -128,9 +126,17 @@ pub async fn submit_public_tx(
     .await
 }
 
-pub fn instruction_bytes_to_risc0_words(bytes: &[u8]) -> Result<Vec<u32>> {
-    let with_prefix = risc0_zkvm::serde::to_vec(bytes).context("risc0 serialize instruction")?;
-    Ok(with_prefix[1..].to_vec())
+pub fn instruction_words_from_le_bytes(bytes: &[u8]) -> Result<Vec<u32>> {
+    if bytes.len() % 4 != 0 {
+        bail!(
+            "instruction_hex must be little-endian u32 words (length multiple of 4), got {} bytes",
+            bytes.len()
+        );
+    }
+    Ok(bytes
+        .chunks_exact(4)
+        .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()))
+        .collect())
 }
 
 pub fn resolve_program_elf_path(explicit: Option<PathBuf>) -> Option<PathBuf> {

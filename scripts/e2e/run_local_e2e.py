@@ -39,7 +39,7 @@ DAEMON_START_WAIT_S = 6
 # Provider verify rejects streams with zero unaccrued allocation; accrual runs between
 # prepare and verify, so proof must be minted immediately before storeQuery.
 def min_unaccrued_lo_for_proof(manifest: dict) -> int:
-    alloc = int(manifest.get("allocation", 80))
+    alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 80)))
     return max(64, min(alloc // 4, 50_000))
 
 
@@ -200,6 +200,22 @@ def allocation_available(cfg: Path, vault_id: int, stream_id: int, manifest: dic
             continue
         unaccrued = int(row.get("unaccrued_lo", 0))
         if unaccrued >= min_unaccrued_lo_for_proof(manifest):
+            return True
+    return False
+
+
+def stream_listed(cfg: Path, vault_id: int, stream_id: int) -> bool:
+    r = logoscore_cmd(cfg, "call", "payment_streams_module", "listMyStreams", str(vault_id))
+    parsed = call_result(r)
+    inner_raw = parsed.get("result")
+    if isinstance(inner_raw, str):
+        inner = json.loads(inner_raw)
+    else:
+        inner = inner_raw if isinstance(inner_raw, dict) else {}
+    if inner.get("status") != "ok":
+        return False
+    for row in inner.get("streams", []):
+        if int(row.get("stream_id", -1)) == stream_id:
             return True
     return False
 
@@ -489,11 +505,54 @@ def ensure_fresh_demo_stream(
     persist_user: Path,
     artifact: Path,
 ) -> None:
-    if os.environ.get("E2E_LATE_STREAM_CREATE", "1").strip().lower() in ("0", "false", "no"):
-        return
+    chain = os.environ.get("CHAIN", "local").strip().lower()
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
     vault_id = int(manifest.get("vault_id", 0))
     stream_id = int(manifest.get("stream_id", 0))
+
+    if chain == "testnet":
+        allow_depleted = os.environ.get(
+            "PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF", ""
+        ).strip().lower() in ("1", "true", "yes")
+        max_wait_s = int(os.environ.get("E2E_TESTNET_ACCRUAL_WAIT_S", "60" if allow_depleted else "180"))
+        interval_s = 2
+        attempts = max(1, max_wait_s // interval_s)
+        for attempt in range(attempts):
+            sync_wallet(cfg_user, seq_url)
+            logoscore_cmd(
+                cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id)
+            )
+            if allocation_available(cfg_user, vault_id, stream_id, manifest):
+                log_artifact(
+                    artifact,
+                    "late_create_stream",
+                    True,
+                    skipped=True,
+                    testnet=True,
+                    stream_id=stream_id,
+                    attempt=attempt,
+                )
+                return
+            if allow_depleted and stream_listed(cfg_user, vault_id, stream_id) and attempt >= 2:
+                log_artifact(
+                    artifact,
+                    "late_create_stream",
+                    True,
+                    skipped=True,
+                    testnet=True,
+                    allow_depleted=True,
+                    stream_id=stream_id,
+                    attempt=attempt,
+                )
+                return
+            time.sleep(interval_s)
+        raise E2EError(
+            "testnet stream not fundable after accrual wait "
+            f"(stream_id={stream_id}, waited ~{max_wait_s}s; see listMyStreams)"
+        )
+
+    if os.environ.get("E2E_LATE_STREAM_CREATE", "1").strip().lower() in ("0", "false", "no"):
+        return
     sync_wallet(cfg_user, seq_url)
     if allocation_available(cfg_user, vault_id, stream_id, manifest):
         log_artifact(artifact, "late_create_stream", True, skipped=True, stream_id=stream_id)

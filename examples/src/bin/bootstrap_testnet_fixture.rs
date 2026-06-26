@@ -127,6 +127,20 @@ fn program_id_from_hex32(hex_str: &str) -> Result<CoreProgramId> {
     Ok(words)
 }
 
+fn resolve_auth_transfer_elf_hex(args: &Args) -> Result<String> {
+    let out = Command::new(&args.submit_helper)
+        .arg("auth-transfer-elf-hex")
+        .output()
+        .with_context(|| format!("spawn {}", args.submit_helper.display()))?;
+    if !out.status.success() {
+        bail!(
+            "auth-transfer-elf-hex failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+}
+
 fn resolve_auth_transfer_hex(args: &Args) -> Result<String> {
     if let Some(hex) = &args.auth_transfer_program_hex {
         return Ok(hex.trim().to_string());
@@ -152,6 +166,7 @@ fn build_submit_json(
     account_ids: &[lee_core::account::AccountId],
     instruction: &Instruction,
     owner: lee_core::account::AccountId,
+    program_dependencies_hex: &[String],
 ) -> Result<String> {
     let instruction_bytes = instruction_bytes_for_public_transaction(instruction)
         .map_err(|e| anyhow!("instruction bytes: {e}"))?;
@@ -164,7 +179,7 @@ fn build_submit_json(
         "signing_requirements": signing,
         "instruction_hex": hex::encode(instruction_bytes),
         "program_elf_hex": "",
-        "program_dependencies_hex": [],
+        "program_dependencies_hex": program_dependencies_hex,
     });
     Ok(serde_json::to_string(&payload)?)
 }
@@ -249,6 +264,7 @@ async fn main() -> Result<()> {
 
     let auth_hex = resolve_auth_transfer_hex(&args)?;
     let auth_transfer = program_id_from_hex32(&auth_hex)?;
+    let auth_elf_hex = resolve_auth_transfer_elf_hex(&args)?;
 
     let init_accounts =
         initialize_vault_instruction_accounts(&program_id, owner_id, vault_id);
@@ -270,6 +286,7 @@ async fn main() -> Result<()> {
             &init_accounts,
             &Instruction::initialize_vault(vault_id, VaultPrivacyTier::Public),
             owner_id,
+            &[],
         )?;
         submit_via_helper(&args, &json)?;
     } else if skip_if_initialized {
@@ -286,6 +303,7 @@ async fn main() -> Result<()> {
                 authenticated_transfer_program_id: auth_transfer,
             },
             owner_id,
+            std::slice::from_ref(&auth_elf_hex),
         )?;
         submit_via_helper(&args, &json)?;
     } else {
@@ -305,6 +323,7 @@ async fn main() -> Result<()> {
                 allocation: args.stream_allocation,
             },
             owner_id,
+            &[],
         )?;
         submit_via_helper(&args, &json)?;
     }

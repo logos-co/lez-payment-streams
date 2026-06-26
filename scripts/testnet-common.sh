@@ -77,10 +77,23 @@ ensure_testnet_rc3_wallet() {
 }
 
 testnet_wallet_public_id() {
-  export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
-  local wallet_bin
-  wallet_bin="$(lez_rc3_wallet_bin)"
-  "$wallet_bin" account list 2>&1 | sed -n 's|^/ Public/\([A-Za-z0-9]*\).*|\1|p' | head -1
+  python3 -c "
+import json, os
+path = os.environ['TESTNET_WALLET_DIR'] + '/storage.json'
+for entry in json.load(open(path)).get('accounts', []):
+    pub = entry.get('Public')
+    if not pub:
+        continue
+    cid = pub.get('account_id', '')
+    if not cid:
+        continue
+    chain = pub.get('chain_index')
+    if chain == [0] or chain == []:
+        print(cid)
+        break
+else:
+    raise SystemExit('no public account in testnet wallet storage')
+"
 }
 
 ensure_testnet_owner_funded() {
@@ -89,6 +102,11 @@ ensure_testnet_owner_funded() {
   if [[ -z "$owner" ]]; then
     echo "ERROR: no public account in testnet rc3 wallet" >&2
     exit 1
+  fi
+  if [[ "${TESTNET_SKIP_PINATA:-0}" == "1" ]]; then
+    echo "Skipping pinata (TESTNET_SKIP_PINATA=1); owner Public/$owner" >&2
+    echo "$owner"
+    return 0
   fi
   export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
   local wallet_bin
@@ -109,7 +127,15 @@ sync_testnet_owner_to_510_wallet() {
   export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
   local rc3_wallet
   rc3_wallet="$(lez_rc3_wallet_bin)"
-  owner_pk="$("$rc3_wallet" account list 2>&1 | sed -n 's/.*pk \([0-9a-fA-F]*\).*/\1/p' | head -1)"
+  owner_pk="$(TESTNET_WALLET_DIR="$TESTNET_WALLET_DIR" owner_id="$owner_id" python3 -c "
+import json, os
+wid = os.environ['owner_id']
+for entry in json.load(open(os.environ['TESTNET_WALLET_DIR'] + '/storage.json')).get('accounts', []):
+    pub = entry.get('Public') or {}
+    if pub.get('account_id') == wid:
+        print(pub.get('data', {}).get('csk', ''))
+        break
+")"
   if [[ -z "$owner_pk" ]]; then
     echo "WARN: could not read owner pk from rc3 wallet list; 510 sign may fail" >&2
     return 0
@@ -149,7 +175,7 @@ testnet_rpc_last_block() {
 
 require_testnet_rpc() {
   if ! testnet_rpc_last_block >/dev/null 2>&1; then
-    echo "ERROR: testnet sequencer unreachable at $TESTNET_SEQUENCER (expected get_last_block RPC)" >&2
+    echo "ERROR: testnet sequencer unreachable at $TESTNET_SEQUENCER (expected getLastBlockId JSON-RPC)" >&2
     exit 1
   fi
 }

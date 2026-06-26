@@ -1,4 +1,4 @@
-mod legacy_sequencer;
+mod sequencer_rpc;
 mod submit;
 
 use std::{
@@ -8,7 +8,6 @@ use std::{
 
 use anyhow::{Context as _, Result};
 use clap::{Parser, Subcommand};
-use legacy_sequencer::LegacySequencerClient;
 use nssa::program::Program as NssaProgram;
 use submit::{
     account_id_hex_from_base58, parse_account_id_hex, parse_payload_json, resolve_program_elf_path,
@@ -17,7 +16,7 @@ use submit::{
 use wallet::WalletCore;
 
 #[derive(Parser)]
-#[command(name = "lez-testnet-submit", about = "Step 18 rc3 public-tx submit helper")]
+#[command(name = "lez-testnet-submit", about = "Step 18 rc3 public-tx submit helper (jsonrpsee)")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -47,13 +46,8 @@ enum Commands {
     },
     /// Print rc3 authenticated-transfer ProgramId (64 hex chars) for testnet deposit instructions.
     AuthTransferProgramIdHex,
-    /// Deploy guest ELF via legacy send_tx (public testnet sequencer API).
-    DeployProgram {
-        #[arg(long)]
-        wallet_config: PathBuf,
-        #[arg(long, help = "Guest .bin path")]
-        program_bin: PathBuf,
-    },
+    /// Print rc3 authenticated-transfer guest ELF hex (for program_dependencies_hex on deposit).
+    AuthTransferElfHex,
     /// Print 64-char hex account id for a base58 LEZ account id string.
     AccountIdFromBase58 {
         account_base58: String,
@@ -109,17 +103,16 @@ async fn run() -> Result<()> {
             account_id_hex,
         } => {
             let id = parse_account_id_hex(&account_id_hex)?;
-            let _wallet = WalletCore::new_update_chain(
+            let wallet = WalletCore::new_update_chain(
                 wallet_config.clone(),
                 wallet_storage,
                 None,
             )
             .context("open wallet")?;
-            let legacy = LegacySequencerClient::from_wallet_config(&wallet_config)?;
-            let acc = legacy
-                .get_account(id)
+            let acc = wallet
+                .get_account_public(id)
                 .await
-                .map_err(|e| anyhow::anyhow!("get_account: {e}"))?;
+                .map_err(|e| anyhow::anyhow!("get_account_public: {e}"))?;
             let out = serde_json::json!({
                 "success": true,
                 "has_data": !acc.data.is_empty(),
@@ -128,56 +121,37 @@ async fn run() -> Result<()> {
             });
             println!("{}", serde_json::to_string(&out)?);
         }
-        Commands::DeployProgram {
-            wallet_config,
-            program_bin,
-        } => {
-            let bytecode = std::fs::read(&program_bin)
-                .with_context(|| format!("read {}", program_bin.display()))?;
-            let program = NssaProgram::new(bytecode.clone()).context("parse guest ELF")?;
-            let expected_id = program.id();
-            let legacy = LegacySequencerClient::from_wallet_config(&wallet_config)?;
-            match legacy.deploy_program_bytecode(bytecode).await {
-                Ok(tx_hash) => {
-                    let out = SubmitResult::ok(tx_hash);
-                    println!("{}", serde_json::to_string(&out)?);
-                    let hex: String = expected_id
-                        .as_ref()
-                        .iter()
-                        .flat_map(|w| w.to_le_bytes())
-                        .map(|b| format!("{b:02x}"))
-                        .collect();
-                    eprintln!("program_id_hex={hex}");
-                }
-                Err(err) => {
-                    let msg = format!("{err:#}");
-                    if msg.to_ascii_lowercase().contains("already")
-                        || msg.to_ascii_lowercase().contains("exist")
-                    {
-                        let out = SubmitResult::ok(String::new());
-                        println!("{}", serde_json::to_string(&out)?);
-                        let hex: String = expected_id
-                            .as_ref()
-                            .iter()
-                            .flat_map(|w| w.to_le_bytes())
-                            .map(|b| format!("{b:02x}"))
-                            .collect();
-                        eprintln!("program_id_hex={hex} (already deployed)");
-                    } else {
-                        anyhow::bail!("{msg}");
-                    }
-                }
+        Commands::AuthTransferProgramIdHex => {
+            const TESTNET_AUTH_TRANSFER_HEX: &str =
+                "d9a19237236822b1f8100576ebd19a19f74178f99e284c983a4ac44acbd5b472";
+            if std::env::var("LEZ_TESTNET_USE_RC3_BUILTIN_IDS")
+                .ok()
+                .as_deref()
+                == Some("1")
+            {
+                let id = NssaProgram::authenticated_transfer_program().id();
+                let hex: String = id
+                    .as_ref()
+                    .iter()
+                    .flat_map(|w| w.to_le_bytes())
+                    .map(|b| format!("{b:02x}"))
+                    .collect();
+                println!("{hex}");
+            } else {
+                println!("{TESTNET_AUTH_TRANSFER_HEX}");
             }
         }
-        Commands::AuthTransferProgramIdHex => {
-            let id = NssaProgram::authenticated_transfer_program().id();
-            let hex: String = id
-                .as_ref()
-                .iter()
-                .flat_map(|w| w.to_le_bytes())
-                .map(|b| format!("{b:02x}"))
-                .collect();
-            println!("{hex}");
+        Commands::AuthTransferElfHex => {
+            if let Ok(path) = std::env::var("TESTNET_AUTH_TRANSFER_ELF_PATH") {
+                if !path.trim().is_empty() {
+                    let bytes = std::fs::read(&path)
+                        .with_context(|| format!("read TESTNET_AUTH_TRANSFER_ELF_PATH {path}"))?;
+                    println!("{}", hex::encode(bytes));
+                    return Ok(());
+                }
+            }
+            let elf = NssaProgram::authenticated_transfer_program();
+            println!("{}", hex::encode(elf.elf()));
         }
         Commands::AccountIdFromBase58 { account_base58 } => {
             let hex = account_id_hex_from_base58(&account_base58)?;

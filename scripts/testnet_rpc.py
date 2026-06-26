@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Public testnet sequencer JSON-RPC helpers (legacy snake_case API).
-
-The org testnet endpoint uses NSSA legacy methods (get_last_block, send_tx, …).
-Older integration code called jsonrpsee camelCase (getLastBlockId) used by local LEZ 510/rc3 wallets.
-"""
+"""Public testnet sequencer JSON-RPC helpers (lez jsonrpsee API)."""
 from __future__ import annotations
 
 import json
@@ -72,15 +68,8 @@ def rpc_call(
 
 
 def block_height(*, sequencer_url: str | None = None) -> int:
-    """Return chain tip height; prefers get_last_block, falls back to getLastBlockId."""
+    """Return chain tip height via getLastBlockId (jsonrpsee)."""
     url = sequencer_url or DEFAULT_SEQUENCER
-    try:
-        result = rpc_call("get_last_block", {}, sequencer_url=url)
-        if isinstance(result, dict) and "last_block" in result:
-            return int(result["last_block"])
-    except RuntimeError:
-        pass
-
     result = rpc_call("getLastBlockId", [], sequencer_url=url)
     if isinstance(result, int):
         return result

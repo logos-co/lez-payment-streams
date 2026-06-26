@@ -745,7 +745,24 @@ QString buildAndSubmit(LogosAPIClient* client,
 
     QList<QList<uint8_t>> deps;
     if (includeTransferDep) {
-        if (guestElfLoadedInWalletProcess()) {
+        if (chainUsesTestnetSubmit()) {
+            QByteArray authHex = qgetenv("RC3_AUTH_TRANSFER_ELF_HEX").trimmed();
+            if (authHex.isEmpty()) {
+                const QByteArray pathBytes = qgetenv("RC3_AUTH_TRANSFER_ELF_PATH").trimmed();
+                if (!pathBytes.isEmpty()) {
+                    QFile authFile(QString::fromLocal8Bit(pathBytes));
+                    if (authFile.open(QIODevice::ReadOnly)) {
+                        authHex = authFile.readAll().trimmed();
+                    }
+                }
+            }
+            if (!authHex.isEmpty()) {
+                const QByteArray transferElf = QByteArray::fromHex(authHex);
+                if (!transferElf.isEmpty()) {
+                    deps.append(bytesToUint8List(transferElf));
+                }
+            }
+        } else if (guestElfLoadedInWalletProcess()) {
             deps = {};
         } else {
             const QList<uint8_t> transferElf = walletAuthenticatedTransferElfBytes(client, &loadErr);

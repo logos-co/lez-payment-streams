@@ -19,15 +19,18 @@ Crypto and policy live in Rust (`lez-payment-streams-core`,
 
 MVP scope: LIP-155 transparent vaults, single user and single provider, paid Store mode on the
 provider. Step 17 uses a local LEZ sequencer; Step 18 uses public testnet v0.2 for chain access
-while Store and relay stay on two local `logoscore` hosts. Optional Step 23 hosts a public paid
-Store provider on the mesh. The on-chain guest is documented in Step 19 (`rfc-index` branch
-`feat/payment-streams-onchain-part`); see [architecture.md](architecture.md).
+while Store and relay stay on two local `logoscore` hosts (Part B active on jsonrpsee testnet;
+org guest deploy recorded in the step packet). Integration demo tracks
+([N18](docs/reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
+Track A — Step 17 script + Step 20 developer journey; Track B — optional Steps 21–22. Optional
+Step 23 hosts a public paid Store provider on the mesh. The on-chain guest is documented in Step 19
+(`rfc-index` branch `feat/payment-streams-onchain-part`); see [architecture.md](architecture.md).
 
 ## Program outcomes
 
 | Outcome | Steps |
 | --- | --- |
-| Runnable demo (CLI) | 17 local LEZ gate; 18 public sequencer + local P2P; 25 in-process demo coordinator module |
+| Runnable demo (CLI) | 17 local LEZ gate; 18 public sequencer + local P2P (Part B active); 25 in-process demo coordinator module |
 | LIP-155 on-chain spec (branch pin) | 19 (complete) |
 | Developer journey (logos-docs doc packet) | 20 (depends on 25) |
 | Basecamp UI + UI journey (optional) | 21–22 (depend on 25) |
@@ -142,7 +145,7 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 16 | `delivery_module` routing | Complete — `bf104a6…`; [step-16.md](docs/plan/completed/step-16.md) |
 | 17 | E2E demo (local LEZ) | Complete — [step-17.md](docs/plan/completed/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md), [N13](docs/reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18), [N14](docs/reference/decisions-and-notes.md#n14-step-17-paid-query-verify-rejects-2026-06-19) |
 | 17b | Localnet snapshot restore | Complete — [step-17b-localnet-snapshot-restore.md](docs/plan/completed/step-17b-localnet-snapshot-restore.md), [N15](docs/reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19); `demo-localnet-prepare.sh`, `make prepare-localnet`; `FULL_RESET=1` after guest ImageID change |
-| 18 | Public sequencer E2E (local Store) | Upcoming — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
+| 18 | Public sequencer E2E (local Store) | Active Part B — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
 | 19 | LIP-155 on-chain spec | Complete — [step-19-lip155-onchain-spec.md](docs/plan/completed/step-19-lip155-onchain-spec.md) (`feat/payment-streams-onchain-part` @ `345c8eef`) |
 | 20 | Developer journey doc packet | Upcoming (depends on 25) — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
 | 21 | Basecamp UI | Optional (depends on 25) — [step-21-basecamp-ui.md](docs/plan/upcoming/step-21-basecamp-ui.md) |
@@ -151,10 +154,11 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 24 | LEZ `lee` harness (NSSA → 510) | Complete — [step-24-lee-harness-upgrade.md](docs/plan/completed/step-24-lee-harness-upgrade.md) |
 | 25 | Demo coordination Logos module | Upcoming — [step-25-demo-coordination-module.md](docs/plan/upcoming/step-25-demo-coordination-module.md) |
 
-Execution order: Steps 12, 11d, 13, 14, 15, 16, 17, 17b, 19, and 24 are complete. Next: 18,
-then 25, then 20. Step 20 depends on 25 (the developer journey documents the coordinator
-module's `runDemo` entry). Optional 21–22 after 25 if shipping UI docs; optional 23 if shipping
-a hosted paid-Store provider. Entry:
+Execution order: Steps 12, 11d, 13, 14, 15, 16, 17, 17b, 19, and 24 are complete. Next: 18
+Part B (jsonrpsee testnet, deploy log in step packet), then 25, then 20. Step 20
+depends on 25 (the developer journey documents the coordinator module's `runDemo` entry).
+Optional 21–22 after 25 if shipping UI docs; optional 23 if shipping a hosted paid-Store
+provider. Entry:
 [`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md). Local demos:
 [`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 
@@ -217,6 +221,13 @@ integration closure. Packet: [step-19-lip155-onchain-spec.md](docs/plan/complete
 DoD: single LEZ rev `62d9ba10…`, `lee`/`lee_core` host harness, transparent `program_tests`,
 vendored SPEL on `lee_core`; verify 10a/12/13 and Step 17 E2E. Packet:
 [step-24-lee-harness-upgrade.md](docs/plan/completed/step-24-lee-harness-upgrade.md).
+
+### Step 18 — testnet integration (Part B active)
+
+Public sequencer at `https://testnet.lez.logos.co/` (lez jsonrpsee). Org guest deploy complete
+for ELF 576576 B; `program_id_hex` `79b1dd5c441caede8f9f82c30de637aba465f94cc43817b1105c8c48c77d0fc9`.
+Remaining: read smoke, per-operator bootstrap, `make verify-step18`. Packet:
+[step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md).
 
 ## Upcoming steps (pointers)
 

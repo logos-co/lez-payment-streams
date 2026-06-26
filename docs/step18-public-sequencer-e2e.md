@@ -8,31 +8,31 @@ Operator runbook for `CHAIN=testnet`. Local dual-host layout matches
 | Role | LEZ pin | Artifact |
 | --- | --- | --- |
 | Local E2E and testnet reads/sign | `62d9ba10` (510) | `logos_execution_zone` .lgx, `scaffold.toml`, payment-streams FFI |
-| Testnet chain writes (chainAction) | `cf3639d8` (rc3) | `lez-testnet-submit`, `deploy-testnet` via helper |
+| Testnet deploy and chain writes | `cf3639d8` (rc3) | rc3 `wallet deploy-program`, `lez-testnet-submit` |
 
-Public testnet sequencer RPC (2026-06): snake_case legacy methods (`get_last_block`, `send_tx`,
-`get_account`). Local LEZ and pin-510 `logos_execution_zone` use jsonrpsee camelCase
-(`getLastBlockId`, `sendTransaction`). `lez-testnet-submit` talks legacy RPC for deploy, submits,
-and bootstrap reads. Full testnet E2E still opens the 510 wallet module for eligibility chain reads;
-that path fails until testnet exposes jsonrpsee again or `logos_execution_zone` gains a legacy
-sequencer client (track with infra).
+Public testnet at `https://testnet.lez.logos.co/` uses lez jsonrpsee RPC (`getLastBlockId`,
+`sendTransaction`, `getAccount`, …). The 510 wallet module uses the same RPC shape when
+`sequencer_addr` points at testnet. `lez-testnet-submit` submits via jsonrpsee `sendTransaction`.
 
-Manifest policy: committed `fixtures/testnet.json.example` (chain constants + template); gitignored
-`fixtures/testnet.json` per operator after `make bootstrap-testnet`. Shared on-chain guest
-`program_id_hex`; per-operator owner/provider/vault/stream ids.
+Manifest policy: committed `fixtures/testnet.json.example` (chain constants + org
+`program_id_hex`); gitignored `fixtures/testnet.json` per operator after
+`make bootstrap-testnet`. Per-operator owner/provider/vault/stream ids.
 
 `wallet check-health` with the 510 CLI against testnet is expected to fail (builtin program id
-mismatch). Do not use it as a testnet gate. Run
-`./scripts/verify-step18-testnet-read-smoke.sh` when the public RPC is up (PASS on legacy checks,
-not skip) before Part B bootstrap.
+mismatch). Do not use it as a testnet gate. Run `./scripts/verify-step18-testnet-read-smoke.sh`
+(PASS, not skip-only) before Part B bootstrap.
 
 ## Part A vs Part B
 
 Part A (no live testnet required): helper, `CHAIN` selector, fixtures template, runbook, Makefile
 wiring. Local `make verify-step17` must stay green.
 
-Part B (public RPC required): read smoke PASS, `make deploy-testnet`, `make bootstrap-testnet`,
-`make verify-step18`.
+Part B (public RPC required): read smoke PASS, `make bootstrap-testnet`, `make verify-step18`.
+Org guest deploy is already on chain (see step plan Verified org deploy log); operators only
+re-run `make deploy-testnet` when the guest ELF or ImageID changes.
+
+Explorer: transaction `1787368626484789a2976a2aa8631d2b5b39c415c0a74b5a345474d1415f79b1`
+(block 3284) — `https://explorer.testnet.lez.logos.co/transaction/1787368626484789a2976a2aa8631d2b5b39c415c0a74b5a345474d1415f79b1`
 
 ## Prerequisites (Part B)
 
@@ -50,9 +50,11 @@ Create or import keys with the rc3 wallet first if 510-created storage cannot be
 | --- | --- | --- |
 | `CHAIN` | `local` | `testnet` |
 | `FIXTURE_MANIFEST` | `fixtures/localnet.json` | `fixtures/testnet.json` |
+
 Copy `fixtures/testnet-wallet_config.example.json` to
 `.scaffold/e2e/testnet-wallet/wallet_config.json` (and import or copy wallet storage) before
 Part B. Template also under `.scaffold/e2e/testnet-wallet/wallet_config.json` when created locally.
+
 | `LEZ_TESTNET_WALLET_CONFIG` / `LEZ_TESTNET_WALLET_STORAGE` | rc3 wallet paths for helper submits | required when 510 storage differs from rc3 |
 | `LEZ_TESTNET_SUBMIT` | `lez-testnet-submit` on PATH | optional override to helper binary |
 | `PAYMENT_STREAMS_GUEST_BIN` | guest ELF path | same; passed to helper when `program_elf_hex` is empty |
@@ -67,8 +69,8 @@ export PATH="$PWD/tools/lez-testnet-submit/target/release:$PATH"
 
 ## One-time bootstrap (Part B)
 
-1. `make deploy-testnet` — `lez-testnet-submit deploy-program` (legacy `send_tx`); idempotent if
-   the guest is already deployed; record `program_id_hex` in your gitignored manifest
+1. Optional: `make deploy-testnet` — rc3 `wallet deploy-program` (not the helper); idempotent if
+   the org guest is already deployed; `program_id_hex` must match `make program-id`
 2. `make bootstrap-testnet` — vault/stream via `lez-testnet-submit`; writes `fixtures/testnet.json`
 
 ## Repeatable demo (Part B)
@@ -100,11 +102,8 @@ when debugging off-chain eligibility state.
 
 ## Failure triage
 
-- Sequencer unreachable: fix network or wait; read smoke skips with exit 0 when RPC is down
-- `getLastBlockId` / METHOD_NOT_FOUND: testnet expects `get_last_block`; use `scripts/testnet_rpc.py`
-- Read smoke fails on CLOCK_10: update `clock_10_account_id` in manifest from testnet recon
-- Full E2E fails at wallet open/sync on testnet: 510 module jsonrpsee vs legacy RPC (see Dual-pin)
+- Sequencer unreachable: fix network or wait; read smoke may skip when RPC is down
+- Read smoke fails on CLOCK_10: align `clock_10_account_id` with `fixtures/testnet.json.example`
 - Helper not found: build `lez-testnet-submit` and set `LEZ_TESTNET_SUBMIT` or PATH
-- Stale `program_id_hex`: align manifest with `make program-id` after deploy
-- Deploy `Transaction too large`: guest ELF vs testnet tx size policy (target 600 KiB class limit)
+- Stale `program_id_hex`: align manifest with `make program-id` and org deploy on chain
 - Faucet limits: retry Piñata claim; bootstrap funding is independent of deploy

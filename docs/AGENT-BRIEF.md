@@ -18,7 +18,9 @@ LEZ harness upgrade (24, done). Index:
 ## Active work (execution order)
 
 Steps 1–13, 11d, Steps 14–16 on the delivery forks, Steps 17–17b, 19, and 24 are complete.
-Implement next in order:
+Implement next in order: Step 18 Part B on `feat/step18-public-testnet` (jsonrpsee testnet;
+org guest deploy recorded in step packet), then 25, then 20. Step 20
+testnet journey rows still need Step 18 DoD; local Step 17 does not.
 
 | Step | Repo / area | Agent packet |
 | --- | --- | --- |
