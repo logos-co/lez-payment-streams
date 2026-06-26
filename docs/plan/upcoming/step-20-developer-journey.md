@@ -12,7 +12,7 @@ Prerequisites:
 | Journey runtime target | Required before Step 20 |
 | --- | --- |
 | Local LEZ (script-orchestrated dual-host demo) | Steps 17 and 19 DoD satisfied |
-| Testnet v0.2 (public LEZ, local dual-host Store) | Steps 17, 18 DoD satisfied (blocked on Step 18) |
+| Testnet v0.2 (public LEZ, local dual-host Store) | Steps 17, 18 DoD satisfied (Step 18 Part B on rc5 tooling) |
 | Testnet v0.2 + hosted public Store provider | Steps 17, 18, and 23 DoD satisfied |
 | Any | Step 19 on `feat/payment-streams-onchain-part` (`345c8eef`); cite in packet ([feature-branch-pins.md](../../feature-branch-pins.md)) |
 

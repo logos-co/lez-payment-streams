@@ -22,9 +22,9 @@ provider. Demonstration is split into two tracks ([N18](docs/reference/decisions
 **Track A** — integrator integration demo (Step 17 script + Step 20 developer journey): payment
 streams eligibility with Logos Delivery Store. **Track B** — optional payment streams-only UI
 (Steps 21–22): vault/stream/claim flows in Basecamp; service and stream discovery out of band.
-Step 17 is the local LEZ gate (`make verify-step17`). Step 18 uses public testnet for chain
-I/O while Store and relay stay on two local `logoscore` hosts; org guest deploy is on chain.
-Step 18b unifies the operational LEZ pin to `v0.2.0-rc5` on `master` before Part B DoD. On-chain
+Step 17 is the local LEZ gate (`make verify-step17`). Step 18 uses public testnet for chain I/O while Store and relay stay on two local `logoscore`
+hosts; org guest deploy is on chain. Step 18b (rc5 operational pin) is complete on `master`
+([N16](docs/reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06)). On-chain
 guest: Step 19 (`rfc-index` branch `feat/payment-streams-onchain-part`); see
 [architecture.md](architecture.md).
 
@@ -32,7 +32,7 @@ guest: Step 19 (`rfc-index` branch `feat/payment-streams-onchain-part`); see
 
 | Outcome | Steps |
 | --- | --- |
-| Runnable integration demo (CLI, Store + eligibility) | 17 local LEZ ([N17](docs/reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06)); 18 public sequencer + local P2P (Part B after 18b) |
+| Runnable integration demo (CLI, Store + eligibility) | 17 local LEZ ([N17](docs/reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06)); 18 public sequencer + local P2P (rc5 tooling) |
 | LIP-155 on-chain spec (branch pin) | 19 (complete) |
 | Developer journey — Track A (integrators, Store integration) | 20 (**next**) |
 | Payment streams UI + user journey — Track B (protocol only, optional) | 21–22 (optional stretch; [N18](docs/reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)) |
@@ -57,7 +57,7 @@ Step 17 owns full-stack E2E
 ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
 Dual-host demo coordination stays in host scripts
 ([N17](docs/reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06)).
-Step 18 Part B follows Step 18b on `master`.
+Step 18 Part B follows rc5 on `master` ([N16](docs/reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06)).
 
 We do not maintain the retired exploratory PR branch
 (`feat/liblogosdelivery-query-store` / old `queryStore` exposure) in payment-streams flakes.
@@ -130,7 +130,7 @@ Detail: [`logos-architecture-overview.md`](logos-architecture-overview.md).
 | D4 | Wallet module id | [D4](docs/reference/decisions-and-notes.md#d4-wallet-module-runtime-name) |
 | D5 | PS module naming | [D5](docs/reference/decisions-and-notes.md#d5-new-module-naming) |
 | D6 | Universal interface | [D6](docs/reference/decisions-and-notes.md#d6-universal-module-interface) |
-| N1–N18 | Carry-forward notes | [decisions-and-notes.md](docs/reference/decisions-and-notes.md) (N17 script orchestration; N18 Track A vs B; N16 superseded) |
+| N1–N18 | Carry-forward notes | [decisions-and-notes.md](docs/reference/decisions-and-notes.md) (N16 rc5 operational pin; N17 script orchestration; N18 Track A vs B) |
 
 Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs/integration-contracts.md).
 
@@ -152,8 +152,8 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 16 | `delivery_module` routing | Complete — [step-16.md](docs/plan/completed/step-16.md) |
 | 17 | E2E demo (local LEZ) | Complete — [step-17.md](docs/plan/completed/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md) |
 | 17b | Localnet snapshot restore | Complete — [step-17b](docs/plan/completed/step-17b-localnet-snapshot-restore.md), [N15](docs/reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) |
-| 18b | rc5 LEZ pin unify | Active — [step-18b-rc5-unify-handoff.md](docs/plan/upcoming/step-18b-rc5-unify-handoff.md) |
-| 18 | Public sequencer E2E | Part B after 18b — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
+| 18b | rc5 LEZ pin unify | Complete — [step-18b-rc5-unify-handoff.md](docs/plan/upcoming/step-18b-rc5-unify-handoff.md), [N16](docs/reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06) |
+| 18 | Public sequencer E2E | Part B — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md), [step18-public-sequencer-e2e.md](docs/step18-public-sequencer-e2e.md) |
 | 19 | LIP-155 on-chain spec | Complete — [step-19](docs/plan/completed/step-19-lip155-onchain-spec.md) |
 | 20 | Developer journey (Track A — Store integration) | After Step 18 DoD — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
 | 21 | Payment streams Basecamp UI (Track B) | Optional stretch — [step-21-basecamp-ui.md](docs/plan/upcoming/step-21-basecamp-ui.md) |
@@ -162,9 +162,9 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 24 | LEZ `lee` harness | Complete — [step-24](docs/plan/completed/step-24-lee-harness-upgrade.md) |
 | 25 | Demo coordination Logos module | Won't fix — [cancelled/step-25](docs/plan/cancelled/step-25-demo-coordination-module.md), [N17](docs/reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06) |
 
-Execution order: Steps through 17, 17b, 19, and 24 are complete. Next: Step 18b (rc5 on
-`master`), then Step 18 Part B on rebased `feat/step18-public-testnet`, then Step 20 (Track A).
-Optional 23; optional stretch Steps 21–22 (Track B). Step 25 won't fix.
+Execution order: Steps through 17, 17b, 18b, 19, and 24 are complete. Next: Step 18 Part B DoD
+on testnet (if not merged), then Step 20 (Track A). Optional 23; optional stretch Steps 21–22
+(Track B). Step 25 won't fix.
 Entry: [`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md). Local demos:
 [`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 

@@ -19,8 +19,7 @@ Rust `program_tests` / Step 24 harness may still pin PR 510 (`62d9ba10`) in
 Public testnet at `https://testnet.lez.logos.co/` uses lez jsonrpsee RPC (`getLastBlockId`,
 `sendTransaction`, `getAccount`, …). LEE v0.3 public message hashing applies on chain writes.
 
-Historical note: dual-pin (510 local + rc3 testnet writes) was attempted during Step 18 WIP;
-superseded by Step 18b (rc5).
+Historical note: dual-pin (510 local + rc3 testnet writes) was Step 18 WIP; superseded by Step 18b (rc5 on `master`).
 
 Manifest policy: committed `fixtures/testnet.json.example` (chain constants + org
 `program_id_hex`); gitignored `fixtures/testnet.json` per operator after
@@ -48,7 +47,7 @@ Explorer: transaction `1787368626484789a2976a2aa8631d2b5b39c415c0a74b5a345474d14
 - `fixtures/testnet.json` (from `make bootstrap-testnet`)
 - `WALLET_CONFIG` / `WALLET_STORAGE` under `.scaffold/e2e/testnet-wallet/` for module and CLI
 
-Create or import keys with rc5 `wallet` after Phase 18b; retire split `LEZ_TESTNET_WALLET_*` vars.
+Create or import keys with rc5 `wallet` after `lgs setup`; retire split `LEZ_TESTNET_WALLET_*` env vars if present in old notes.
 
 ## Environment
 
@@ -107,8 +106,8 @@ the helper path, remove the helper and narrow `CHAIN=testnet` C++ dispatch.
 Do not wipe testnet chain state between runs. Reset only local `PERSIST_USER` / `PERSIST_PROVIDER`
 when debugging off-chain eligibility state.
 
-After rc5 unification, delete local `fixtures/testnet.json` and re-run `make bootstrap-testnet` if
-the manifest was produced under dual-pin tooling.
+After changing operational LEZ pin or wallet storage format, delete local `fixtures/testnet.json`
+and re-run `make bootstrap-testnet`.
 
 ## Failure triage (Phase 3 order)
 

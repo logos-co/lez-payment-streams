@@ -157,19 +157,19 @@ nix build ./logos-payment-streams-module#lgx
 ### Rust FFI (`nix/payment-streams-ffi.nix`)
 
 `lez-payment-streams-ffi` symlinks LEZ `artifacts/` from the same `logos-execution-zone` revision
-as the wallet stack (LEZ `main` / 510 merge).
+as the wallet stack (operational pin `v0.2.0-rc5`).
 
 ### Scaffold localnet (`scaffold.toml`)
 
-`[repos.lez].pin` must match the LEZ `rev` in `nix/payment-streams-ffi.nix` (Step 10a / 11d).
-After bumping either pin, re-run `lgs setup` from this repo so `wallet` and localnet match LEZ `main`.
+`[repos.lez].pin` must match the LEZ `rev` in `nix/payment-streams-ffi.nix` (Step 10a / 11d / 18b).
+After bumping either pin, re-run `lgs setup` from this repo so `wallet` and localnet match the operational LEZ rev.
 Rebuild the Step 17b funded snapshot after a LEZ pin or guest ImageID change:
 `FULL_RESET=1 ./scripts/demo-localnet-prepare.sh` ([step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md)).
 
 ### Payment-streams Logos module (`logos-payment-streams-module/flake.nix`)
 
 - `logos_execution_zone` flake input → patched wrapper (PR 19 upstream inside).
-- `logos-execution-zone` follows LEZ 510 for `wallet_ffi`.
+- `logos-execution-zone` follows the operational LEZ pin (rc5) for `wallet_ffi`.
 
 ## Step 18 public testnet (single rc5 pin)
 

@@ -39,7 +39,7 @@ long procedural blocks in both places.
 | [`plan/cancelled/step-25-demo-coordination-module.md`](plan/cancelled/step-25-demo-coordination-module.md) | Step 25 won't fix — demo stays script-orchestrated ([N17](reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06)) |
 | [`step3-policy-and-implementor-notes.md`](step3-policy-and-implementor-notes.md) | Step 3a policy and implementor detail |
 | [`step8-universal-legacy-probe-results.md`](step8-universal-legacy-probe-results.md) | Step 8 probe results (+ historical dilemma appendix) |
-| [`feature-branch-pins.md`](feature-branch-pins.md) | Wallet flake pins (LEZ 510 + PR 19 wrapper) |
+| [`feature-branch-pins.md`](feature-branch-pins.md) | Wallet flake pins (LEZ rc5 operational + PR 19 wrapper) |
 | [`demo-localnet-recovery.md`](demo-localnet-recovery.md) | Blank-slate localnet policy |
 | [`archive/legacy-module-bootstrap.md`](archive/legacy-module-bootstrap.md) | Superseded Legacy plugin bootstrap |
 | [`archive/superseded-wallet-pr-429-16.md`](archive/superseded-wallet-pr-429-16.md) | Deprecated PR 429 / 16 wallet JSON API |

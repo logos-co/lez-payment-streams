@@ -815,9 +815,10 @@ builtin program ids aligned with the 510-era lineage, not rc3 dual-pin tooling.
 
 - **Operational pin:** `logos-execution-zone` tag `v0.2.0-rc5` (git `27360cb7d6ccb2bfbcca7d171bab8a3938490264`)
   for `scaffold.toml`, payment-streams wallet flakes, module `.lgx`, E2E, and testnet scripts.
-- **Dual-pin abandoned:** rc3-only `lez-testnet-submit` / split wallet storage was Step 18 WIP only.
+- **Dual-pin abandoned:** rc3-only submit tooling and split wallet storage were Step 18 WIP only; not used after 18b.
 - **Harness lag allowed:** `lez-payment-streams-core` `program_tests` may stay on PR 510 (`62d9ba10`)
   until a deliberate harness bump; do not infer operational pin from harness deps alone.
 - **Phase 9:** retire `tools/lez-testnet-submit` when module `chainAction` on testnet needs no helper.
+- **Status (2026-06):** merged to `master`; `make verify-step17` and local `make verify-step18` exercised on rc5.
 
 Handoff: [step-18b-rc5-unify-handoff.md](../plan/upcoming/step-18b-rc5-unify-handoff.md).
