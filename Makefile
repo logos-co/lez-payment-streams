@@ -41,7 +41,7 @@ help: ## Show this help
 	@echo "  make verify-step12  Run Step 12 DoD script"
 	@echo "  make verify-step13  Run Step 13 DoD script"
 	@echo "  make verify-step17  Run Step 17 local E2E demo script"
-  @echo "  make verify-step18-testnet-read-smoke  Testnet read smoke (rc5; skips if RPC down)"
+	@echo "  make verify-step18-testnet-read-smoke  Testnet read smoke (rc5; skips if RPC down)"
 	@echo "  make verify-step18  Full testnet E2E (Part B; needs fixtures/testnet.json)"
 	@echo "  make deploy-testnet One-time guest deploy on public testnet (Part B)"
 	@echo "  make bootstrap-testnet One-time vault/stream bootstrap (Part B)"

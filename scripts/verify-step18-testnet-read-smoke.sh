@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Step 18 — dual-pin read smoke: pin-510 logos_execution_zone against public testnet RPC.
-# Closes recon "pending validation" in docs/plan/upcoming/step-18-public-testnet-demo.md.
-# Does not use wallet check-health (expected to fail cross-pin). Does not start local LEZ.
+# Step 18 — read smoke: rc5 logos_execution_zone against public testnet RPC.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -19,7 +17,7 @@ ok() { echo "PASS: $*"; }
 bad() { echo "FAIL: $*"; fail=1; }
 skip() { echo "SKIP: $*"; }
 
-echo "=== Step 18 testnet read smoke (510 wallet module → public sequencer) ==="
+echo "=== Step 18 testnet read smoke (rc5 wallet module → public sequencer) ==="
 
 if [[ ! -f "$WALLET_CONFIG_BASE" || ! -f "$WALLET_STORAGE" ]]; then
   bad "wallet config/storage missing (WALLET_CONFIG=$WALLET_CONFIG_BASE)"
