@@ -11,6 +11,8 @@ source "$REPO_ROOT/scripts/testnet-common.sh"
 require_testnet_rpc
 echo "testnet block height: $(testnet_rpc_last_block)"
 
+ensure_testnet_wallet
+
 SUBMIT_BIN="$(lez_testnet_submit_bin)"
 export LEZ_TESTNET_SUBMIT="$SUBMIT_BIN"
 export PATH="$(dirname "$SUBMIT_BIN"):$PATH"
@@ -22,24 +24,20 @@ if [[ ! -f "$FIXTURE_MANIFEST" ]]; then
   exit 2
 fi
 
-export LEZ_TESTNET_WALLET_CONFIG="${LEZ_TESTNET_WALLET_CONFIG:-$TESTNET_WALLET_DIR/wallet_config.json}"
-export LEZ_TESTNET_WALLET_STORAGE="${LEZ_TESTNET_WALLET_STORAGE:-$TESTNET_WALLET_DIR/storage.json}"
-
-WALLET_CFG_510="$(patch_510_wallet_config_for_testnet)"
-export WALLET_CONFIG="$WALLET_CFG_510"
-export WALLET_STORAGE="${WALLET_STORAGE:-$REPO_ROOT/.scaffold/wallet/storage.json}"
+export WALLET_CONFIG="${WALLET_CONFIG:-$TESTNET_WALLET_DIR/wallet_config.json}"
+export WALLET_STORAGE="${WALLET_STORAGE:-$TESTNET_WALLET_DIR/storage.json}"
+export LEZ_TESTNET_WALLET_CONFIG="${LEZ_TESTNET_WALLET_CONFIG:-$WALLET_CONFIG}"
+export LEZ_TESTNET_WALLET_STORAGE="${LEZ_TESTNET_WALLET_STORAGE:-$WALLET_STORAGE}"
+export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
+export LEE_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
 
 if [[ ! -f "$WALLET_STORAGE" ]]; then
-  echo "ERROR: 510 wallet storage missing at $WALLET_STORAGE" >&2
-  exit 1
-fi
-if [[ ! -f "$LEZ_TESTNET_WALLET_STORAGE" ]]; then
-  echo "ERROR: rc3 testnet wallet missing (run bootstrap-testnet)" >&2
+  echo "ERROR: testnet wallet storage missing at $WALLET_STORAGE (run bootstrap-testnet)" >&2
   exit 1
 fi
 
-echo "--- read smoke (510 module → testnet) ---"
-WALLET_CONFIG="$WALLET_CFG_510" FIXTURE_MANIFEST="$FIXTURE_MANIFEST" \
+echo "--- read smoke (rc5 module → testnet) ---"
+WALLET_CONFIG="$WALLET_CONFIG" WALLET_STORAGE="$WALLET_STORAGE" FIXTURE_MANIFEST="$FIXTURE_MANIFEST" \
   "$REPO_ROOT/scripts/verify-step18-testnet-read-smoke.sh"
 
 exec "$REPO_ROOT/scripts/demo-e2e-local.sh"

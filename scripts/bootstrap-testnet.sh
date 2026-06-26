@@ -57,6 +57,8 @@ export PATH="$(dirname "$SUBMIT_BIN"):$PATH"
 
 echo "=== bootstrap-testnet owner=$OWNER provider=$PROVIDER ==="
 STREAM_RATE="${SEED_STREAM_RATE:-50}"
+DEPOSIT_AMOUNT="${TESTNET_DEPOSIT_AMOUNT:-400}"
+STREAM_ALLOCATION="${TESTNET_STREAM_ALLOCATION:-350}"
 cargo run --quiet --manifest-path "$REPO_ROOT/examples/Cargo.toml" --bin bootstrap_testnet_fixture -- \
   --program-bin "$PROGRAM_BIN" \
   --owner "$OWNER" \
@@ -67,6 +69,8 @@ cargo run --quiet --manifest-path "$REPO_ROOT/examples/Cargo.toml" --bin bootstr
   --submit-helper "$SUBMIT_BIN" \
   --sequencer-url "$TESTNET_SEQUENCER" \
   --stream-rate "$STREAM_RATE" \
+  --deposit-amount "$DEPOSIT_AMOUNT" \
+  --stream-allocation "$STREAM_ALLOCATION" \
   --write-manifest "$MANIFEST"
 
 echo "=== bootstrap-testnet done: $MANIFEST ==="

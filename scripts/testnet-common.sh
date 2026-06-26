@@ -13,6 +13,7 @@ export PROGRAM_BIN="${PROGRAM_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-ris
 export WALLET_CONFIG="${WALLET_CONFIG:-$TESTNET_WALLET_DIR/wallet_config.json}"
 export WALLET_STORAGE="${WALLET_STORAGE:-$TESTNET_WALLET_DIR/storage.json}"
 export NSSA_WALLET_HOME_DIR="${NSSA_WALLET_HOME_DIR:-$TESTNET_WALLET_DIR}"
+export LEE_WALLET_HOME_DIR="${LEE_WALLET_HOME_DIR:-$TESTNET_WALLET_DIR}"
 
 lez_scaffold_cache_dir() {
   echo "${HOME}/.cache/logos-scaffold/repos/lez/${LEZ_OP_REV}"
@@ -77,10 +78,13 @@ json.dump(cfg, open(path, 'w'), indent=2)
 ensure_testnet_wallet() {
   write_testnet_wallet_config
   export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
+  export LEE_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
   local wallet_bin
   wallet_bin="$(lez_wallet_bin)"
   if [[ -f "$TESTNET_WALLET_DIR/storage.json" ]]; then
-    return 0
+    if TESTNET_WALLET_DIR="$TESTNET_WALLET_DIR" testnet_wallet_public_id >/dev/null 2>&1; then
+      return 0
+    fi
   fi
   echo "Creating testnet wallet at $TESTNET_WALLET_DIR …"
   printf '%s\n' "$TESTNET_WALLET_PASSWORD" | "$wallet_bin" account new public >/dev/null
@@ -94,7 +98,9 @@ testnet_wallet_public_id() {
   python3 -c "
 import json, os
 path = os.environ['TESTNET_WALLET_DIR'] + '/storage.json'
-for entry in json.load(open(path)).get('accounts', []):
+data = json.load(open(path))
+accounts = data.get('accounts') or data.get('key_chain', {}).get('accounts') or []
+for entry in accounts:
     pub = entry.get('Public')
     if not pub:
         continue
@@ -135,14 +141,15 @@ ensure_testnet_owner_funded() {
     return 0
   fi
   export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
+  export LEE_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
   local wallet_bin
   wallet_bin="$(lez_wallet_bin)"
   rounds="${TESTNET_PINATA_ROUNDS:-3}"
-  echo "Initializing auth-transfer for Public/$owner …"
-  "$wallet_bin" auth-transfer init --account-id "Public/$owner" || true
-  echo "Funding owner Public/$owner (pinata x$rounds)…"
+  echo "Initializing auth-transfer for Public/$owner …" >&2
+  "$wallet_bin" auth-transfer init --account-id "Public/$owner" >&2 || true
+  echo "Funding owner Public/$owner (pinata x$rounds)…" >&2
   for ((i = 1; i <= rounds; i++)); do
-    "$wallet_bin" pinata claim --to "Public/$owner" || true
+    "$wallet_bin" pinata claim --to "Public/$owner" >&2 || true
   done
   echo "$owner"
 }

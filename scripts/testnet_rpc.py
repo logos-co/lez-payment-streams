@@ -88,9 +88,8 @@ def probe_sequencer(*, sequencer_url: str | None = None) -> bool:
 
 
 def account_balance_base58(account_base58: str, *, sequencer_url: str | None = None) -> int:
-    account_hex = base58_to_hex(account_base58)
     url = sequencer_url or DEFAULT_SEQUENCER
-    result = rpc_call("getAccount", {"accountId": account_hex}, sequencer_url=url)
+    result = rpc_call("getAccount", {"accountId": account_base58}, sequencer_url=url)
     if isinstance(result, dict):
         bal = result.get("balance")
         if bal is not None:
