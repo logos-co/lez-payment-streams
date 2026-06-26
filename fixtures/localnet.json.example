@@ -12,6 +12,6 @@
   "clock_10_account_id": "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs",
   "demo_deposit_amount": 100,
   "stream_rate": 1,
-  "stream_allocation": 80,
+  "allocation": 80,
   "reserved_for_step_11b": "Use a fresh vault_id (e.g. 1) or reset .scaffold/state/ for module-driven init tests."
 }

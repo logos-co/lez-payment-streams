@@ -34,7 +34,7 @@ const DEFAULT_SEQUENCER: &str = "http://127.0.0.1:3040";
 /// pass explicit deposit/topup counts (see `scripts/seed-localnet-fixture.sh`).
 const DEFAULT_DEPOSIT: Balance = 450;
 const DEFAULT_STREAM_RATE: TokensPerSecond = 1;
-const DEFAULT_STREAM_ALLOCATION: Balance = 400;
+const DEFAULT_ALLOCATION: Balance = 400;
 
 #[derive(Parser)]
 #[command(name = "seed_localnet_fixture")]
@@ -95,8 +95,8 @@ enum Commands {
         deposit_amount: Balance,
         #[arg(long, default_value_t = DEFAULT_STREAM_RATE)]
         stream_rate: TokensPerSecond,
-        #[arg(long, default_value_t = DEFAULT_STREAM_ALLOCATION)]
-        stream_allocation: Balance,
+        #[arg(long, default_value_t = DEFAULT_ALLOCATION)]
+        allocation: Balance,
         #[arg(long, default_value_t = true)]
         skip_if_initialized: bool,
         #[arg(long)]
@@ -122,8 +122,8 @@ enum Commands {
         deposit_amount: Balance,
         #[arg(long, default_value_t = DEFAULT_STREAM_RATE)]
         stream_rate: TokensPerSecond,
-        #[arg(long, default_value_t = DEFAULT_STREAM_ALLOCATION)]
-        stream_allocation: Balance,
+        #[arg(long, default_value_t = DEFAULT_ALLOCATION)]
+        allocation: Balance,
         #[arg(long, default_value_t = true)]
         skip_if_initialized: bool,
         #[arg(long)]
@@ -150,7 +150,7 @@ struct LocalnetFixture {
     clock_10_account_id: String,
     demo_deposit_amount: Balance,
     stream_rate: TokensPerSecond,
-    stream_allocation: Balance,
+    allocation: Balance,
     reserved_for_step_11b: String,
 }
 
@@ -225,7 +225,7 @@ fn build_fixture(
     stream_id: StreamId,
     deposit_amount: Balance,
     stream_rate: TokensPerSecond,
-    stream_allocation: Balance,
+    allocation: Balance,
 ) -> LocalnetFixture {
     let (vault_config, vault_holding) = derive_vault_account_ids(program_id, owner, vault_id);
     let stream_config = derive_stream_config_account_id(program_id, vault_config, stream_id);
@@ -243,7 +243,7 @@ fn build_fixture(
         clock_10_account_id: account_id_to_base58(CLOCK_10_PROGRAM_ACCOUNT_ID),
         demo_deposit_amount: deposit_amount,
         stream_rate,
-        stream_allocation,
+        allocation,
         reserved_for_step_11b:
             "Use a fresh vault_id (e.g. 1) or reset .scaffold/state/ for module-driven init tests."
                 .to_string(),
@@ -423,7 +423,7 @@ async fn create_stream_onchain(
     provider: &str,
     stream_id: StreamId,
     stream_rate: TokensPerSecond,
-    stream_allocation: Balance,
+    allocation: Balance,
     skip_if_initialized: bool,
 ) -> Result<()> {
     let provider_id = account_id_from_base58(provider)?;
@@ -478,7 +478,7 @@ async fn create_stream_onchain(
             stream_id,
             provider: provider_id,
             rate: stream_rate,
-            allocation: stream_allocation,
+            allocation: allocation,
         },
         vec![ctx.owner_lee],
     )
@@ -514,7 +514,7 @@ async fn main() -> Result<()> {
                 stream_id,
                 DEFAULT_DEPOSIT,
                 DEFAULT_STREAM_RATE,
-                DEFAULT_STREAM_ALLOCATION,
+                DEFAULT_ALLOCATION,
             );
             write_manifest(&output, &fixture)?;
         },
@@ -540,7 +540,7 @@ async fn main() -> Result<()> {
             stream_id,
             deposit_amount,
             stream_rate,
-            stream_allocation,
+            allocation,
             skip_if_initialized,
             force,
             sequencer_url,
@@ -554,7 +554,7 @@ async fn main() -> Result<()> {
                 &provider,
                 stream_id,
                 stream_rate,
-                stream_allocation,
+                allocation,
                 skip_if_initialized,
             )
             .await?;
@@ -569,7 +569,7 @@ async fn main() -> Result<()> {
                 stream_id,
                 deposit_amount,
                 stream_rate,
-                stream_allocation,
+                allocation,
             );
             write_manifest(&manifest_path, &fixture)?;
         },
@@ -581,7 +581,7 @@ async fn main() -> Result<()> {
             stream_id,
             deposit_amount,
             stream_rate,
-            stream_allocation,
+            allocation,
             skip_if_initialized,
             force,
             sequencer_url,
@@ -596,7 +596,7 @@ async fn main() -> Result<()> {
                 &provider,
                 stream_id,
                 stream_rate,
-                stream_allocation,
+                allocation,
                 skip_if_initialized,
             )
             .await?;
@@ -611,7 +611,7 @@ async fn main() -> Result<()> {
                 stream_id,
                 deposit_amount,
                 stream_rate,
-                stream_allocation,
+                allocation,
             );
             write_manifest(&manifest_path, &fixture)?;
         },

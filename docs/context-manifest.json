@@ -4,8 +4,8 @@
     "docs/integration-contracts.md",
     "integration-index.md"
   ],
-  "active_steps": [20],
-  "paused_steps": [18],
+  "active_steps": ["18b", 18],
+  "paused_steps": [],
   "cancelled_steps": [25],
   "optional_stretch_steps": [21, 22],
   "optional_steps": [23],
@@ -15,6 +15,7 @@
     "17b": "docs/plan/completed/step-17b-localnet-snapshot-restore.md",
     "17_runbook": "docs/step17-e2e-local.md",
     "18": "docs/plan/upcoming/step-18-public-testnet-demo.md",
+    "18b": "docs/plan/upcoming/step-18b-rc5-unify-handoff.md",
     "19": "docs/plan/completed/step-19-lip155-onchain-spec.md",
     "20": "docs/plan/upcoming/step-20-developer-journey.md",
     "25": "docs/plan/cancelled/step-25-demo-coordination-module.md",

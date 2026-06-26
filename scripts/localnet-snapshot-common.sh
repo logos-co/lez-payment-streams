@@ -60,7 +60,7 @@ doc = {
     "vault_id": 0,
     "deposit_amount": int(deposit),
     "stream_rate": int(rate),
-    "stream_allocation": int(alloc),
+    "allocation": int(alloc),
     "sequencer_url": "http://127.0.0.1:3040",
     "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
 }

@@ -105,7 +105,7 @@ print(
   m.get('provider_account_id',''),
   m.get('demo_deposit_amount', 100),
   m.get('stream_rate', 1),
-  m.get('stream_allocation', 80),
+  m.get('allocation', 80),
 )
 ")"
 

@@ -43,6 +43,7 @@ rustPlatform.buildRustPackage rec {
   preBuild = ''
     vendor_root="''${NIX_BUILD_TOP:-/build}/cargo-vendor-dir"
     ln -sfn ${logosExecutionZoneSrc}/artifacts "$vendor_root/artifacts"
+    ln -sfn ${logosExecutionZoneSrc}/artifacts "''${NIX_BUILD_TOP:-/build}/artifacts"
   '';
 
   postInstall = ''

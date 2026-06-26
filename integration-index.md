@@ -22,14 +22,17 @@ provider. Demonstration is split into two tracks ([N18](docs/reference/decisions
 **Track A** — integrator integration demo (Step 17 script + Step 20 developer journey): payment
 streams eligibility with Logos Delivery Store. **Track B** — optional payment streams-only UI
 (Steps 21–22): vault/stream/claim flows in Basecamp; service and stream discovery out of band.
-The supported **integration** demo is fully local: Step 17 (`make verify-step17`). Step 18
-(public testnet) is paused until the guest deploy size gate clears.
+Step 17 is the local LEZ gate (`make verify-step17`). Step 18 uses public testnet for chain
+I/O while Store and relay stay on two local `logoscore` hosts; org guest deploy is on chain.
+Step 18b unifies the operational LEZ pin to `v0.2.0-rc5` on `master` before Part B DoD. On-chain
+guest: Step 19 (`rfc-index` branch `feat/payment-streams-onchain-part`); see
+[architecture.md](architecture.md).
 
 ## Program outcomes
 
 | Outcome | Steps |
 | --- | --- |
-| Runnable integration demo (CLI, Store + eligibility) | 17 local LEZ — script orchestration ([N17](docs/reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06)); 18 paused |
+| Runnable integration demo (CLI, Store + eligibility) | 17 local LEZ ([N17](docs/reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06)); 18 public sequencer + local P2P (Part B after 18b) |
 | LIP-155 on-chain spec (branch pin) | 19 (complete) |
 | Developer journey — Track A (integrators, Store integration) | 20 (**next**) |
 | Payment streams UI + user journey — Track B (protocol only, optional) | 21–22 (optional stretch; [N18](docs/reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)) |
@@ -54,7 +57,7 @@ Step 17 owns full-stack E2E
 ([N12](docs/reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
 Dual-host demo coordination stays in host scripts
 ([N17](docs/reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06)).
-Step 18 testnet verify stays parked.
+Step 18 Part B follows Step 18b on `master`.
 
 We do not maintain the retired exploratory PR branch
 (`feat/liblogosdelivery-query-store` / old `queryStore` exposure) in payment-streams flakes.
@@ -148,20 +151,20 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 15 | `liblogosdelivery` hooks | Complete — [step-15-normative.md](docs/plan/completed/step-15-normative.md) |
 | 16 | `delivery_module` routing | Complete — [step-16.md](docs/plan/completed/step-16.md) |
 | 17 | E2E demo (local LEZ) | Complete — [step-17.md](docs/plan/completed/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md) |
-| 17b | Localnet snapshot restore | Complete — [step-17b](docs/plan/completed/step-17b-localnet-snapshot-restore.md) |
-| 18 | Public sequencer E2E | Paused — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
+| 17b | Localnet snapshot restore | Complete — [step-17b](docs/plan/completed/step-17b-localnet-snapshot-restore.md), [N15](docs/reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) |
+| 18b | rc5 LEZ pin unify | Active — [step-18b-rc5-unify-handoff.md](docs/plan/upcoming/step-18b-rc5-unify-handoff.md) |
+| 18 | Public sequencer E2E | Part B after 18b — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md) |
 | 19 | LIP-155 on-chain spec | Complete — [step-19](docs/plan/completed/step-19-lip155-onchain-spec.md) |
-| 20 | Developer journey (Track A — Store integration) | Next — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
+| 20 | Developer journey (Track A — Store integration) | After Step 18 DoD — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
 | 21 | Payment streams Basecamp UI (Track B) | Optional stretch — [step-21-basecamp-ui.md](docs/plan/upcoming/step-21-basecamp-ui.md) |
 | 22 | Payment streams UI journey (Track B) | Optional stretch — [step-22-ui-journey.md](docs/plan/upcoming/step-22-ui-journey.md) |
 | 23 | Public Store provider | Optional — [step-23-public-store-provider.md](docs/plan/upcoming/step-23-public-store-provider.md) |
 | 24 | LEZ `lee` harness | Complete — [step-24](docs/plan/completed/step-24-lee-harness-upgrade.md) |
 | 25 | Demo coordination Logos module | Won't fix — [cancelled/step-25](docs/plan/cancelled/step-25-demo-coordination-module.md), [N17](docs/reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06) |
 
-Execution order: Steps through 17, 17b, 19, and 24 are complete. **Next: Step 20** (Track A
-developer journey). Step 18 paused; optional 23. **Optional stretch:** Steps 21–22 (Track B
-payment streams UI + user journey, [N18](docs/reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
-Step 25 won't fix.
+Execution order: Steps through 17, 17b, 19, and 24 are complete. Next: Step 18b (rc5 on
+`master`), then Step 18 Part B on rebased `feat/step18-public-testnet`, then Step 20 (Track A).
+Optional 23; optional stretch Steps 21–22 (Track B). Step 25 won't fix.
 Entry: [`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md). Local demos:
 [`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 
@@ -221,6 +224,13 @@ Packet: [step-24-lee-harness-upgrade.md](docs/plan/completed/step-24-lee-harness
 Continue with fully local demo (Step 17). Resume Step 18 when guest deploy size gate clears.
 Guest `.bin` ~576 KiB vs public tx cap ~512 KiB; local `make deploy` unaffected.
 Scaffolding on `feat/step18-public-testnet`. Do not block Step 20 on testnet.
+
+### Step 18 — testnet integration (Part B active)
+
+Public sequencer at `https://testnet.lez.logos.co/` (lez jsonrpsee). Org guest deploy complete
+for ELF 576576 B; `program_id_hex` `79b1dd5c441caede8f9f82c30de637aba465f94cc43817b1105c8c48c77d0fc9`.
+Remaining: read smoke, per-operator bootstrap, `make verify-step18`. Packet:
+[step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md).
 
 ## Upcoming steps (pointers)
 

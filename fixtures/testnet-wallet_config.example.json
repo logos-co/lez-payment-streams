@@ -1,0 +1,8 @@
+{
+  "sequencer_addr": "https://testnet.lez.logos.co/",
+  "seq_poll_timeout": "30s",
+  "seq_tx_poll_max_blocks": 15,
+  "seq_poll_max_retries": 10,
+  "seq_block_poll_max_amount": 100,
+  "basic_auth": null
+}

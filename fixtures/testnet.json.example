@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "sequencer_url": "https://testnet.lez.logos.co/",
+  "program_id_hex": "79b1dd5c441caede8f9f82c30de637aba465f94cc43817b1105c8c48c77d0fc9",
+  "deploy_tx_hash": "1787368626484789a2976a2aa8631d2b5b39c415c0a74b5a345474d1415f79b1",
+  "deploy_block_id": 3284,
+  "owner_account_id": "",
+  "provider_account_id": "",
+  "vault_id": 0,
+  "stream_id": 0,
+  "vault_config_account_id": "",
+  "vault_holding_account_id": "",
+  "stream_config_account_id": "",
+  "clock_10_account_id": "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs",
+  "demo_deposit_amount": 2000,
+  "stream_rate": 1,
+  "stream_allocation": 1800,
+  "reserved_for_step_18": "Copy to gitignored fixtures/testnet.json after make bootstrap-testnet. Per-operator manifest; do not copy owner/provider ids from localnet.json. Shared chain fields: sequencer_url, program_id_hex, deploy_tx_hash, deploy_block_id (org deploy), clock_10_account_id."
+}

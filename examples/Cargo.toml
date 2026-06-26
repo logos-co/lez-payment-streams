@@ -23,6 +23,10 @@ path = "src/bin/lez_payment_streams_cli.rs"
 name = "seed_localnet_fixture"
 path = "src/bin/seed_localnet_fixture.rs"
 
+[[bin]]
+name = "bootstrap_testnet_fixture"
+path = "src/bin/bootstrap_testnet_fixture.rs"
+
 [dependencies]
 spel-framework = { git = "https://github.com/logos-co/spel.git", tag = "v0.5.0" }
 spel = { git = "https://github.com/logos-co/spel.git", tag = "v0.5.0" }
@@ -32,6 +36,7 @@ tokio = { version = "1.28.2", features = ["net", "rt-multi-thread", "sync", "mac
 anyhow = "1.0"
 base58 = "0.2"
 clap = { version = "4.5", features = ["derive"] }
+hex = "0.4"
 # LEZ main (510 merge) — match scaffold.toml [repos.lez].pin (seed_localnet_fixture).
 lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60" }
 lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60" }

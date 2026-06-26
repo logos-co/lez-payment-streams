@@ -11,10 +11,10 @@ description = "Core types for the SPEL program framework"
 default = ["decode"]
 decode = ["dep:base58"]
 idl-gen = ["dep:syn", "dep:proc-macro2", "dep:toml"]
-host = ["dep:lee"]
+host = ["dep:lee", "lee_core/host"]
 
 [dependencies]
-lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60", features = ["host"] }
+lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60", default-features = false }
 borsh = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }

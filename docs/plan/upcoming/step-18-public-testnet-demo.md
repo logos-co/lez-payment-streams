@@ -2,13 +2,14 @@
 
 Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
 
-#### Integration status (2026-06)
+#### Integration status
 
-Paused on `master`: public testnet Part B is blocked on guest program deploy size (~576576 B
-ELF vs ~511800 B public testnet tx cap). Org priority is the fully local demo (Step 17,
-`make verify-step17`). Implementation WIP remains on `feat/step18-public-testnet`; do not
-block Step 20 on Step 18 completion. Resume this packet when deploy succeeds or
-testnet policy changes.
+Public sequencer at `https://testnet.lez.logos.co/` uses lez jsonrpsee RPC. Org guest deploy
+for the current tree is complete (see Verified org deploy below). Step 18b unifies the
+operational LEZ pin to `v0.2.0-rc5` on `master` before Part B DoD. Remaining Part B on
+rebased `feat/step18-public-testnet`: read smoke PASS, `make bootstrap-testnet`,
+`make verify-step18`. Step 20 testnet journey rows depend on Step 18 DoD.
+`make verify-step17` on `CHAIN=local` is unchanged.
 
 ### Step 18, Public sequencer E2E (local Store and relay)
 
@@ -33,8 +34,8 @@ public testnet sequencer (testnet v0.2 target). The public endpoint is documente
 `https://testnet.lez.logos.co/` (explorer `https://explorer.testnet.lez.logos.co/`). That doc
 asserts the endpoint exists but does not document the `wallet_config.json` schema, the
 `sequencer_addr` field, the testnet LEZ revision, whether `wallet pinata claim` works against
-it, or how to deploy a LEE guest program there. Those gaps are closed by the reconnaissance
-phase below, not by the docs.
+it, or how to deploy a LEE guest program there. Operator setup is documented in this packet
+and in `docs/step18-public-sequencer-e2e.md` (Phase 4).
 
 Do not apply local reset-first policy from
 [`demo-localnet-recovery.md`](../../demo-localnet-recovery.md). See testnet persistence in
@@ -69,33 +70,75 @@ binary links pin `62d9ba10` / `lee` and is the local fixture tool only. Testnet 
 `wallet deploy-program`; testnet (3) is `make bootstrap-testnet` (helper submits + manifest write)
 with no localnet preamble. The lifecycle stages match local; the implementation differs.
 
-Program deploy on testnet is network-one-time: `wallet deploy-program` against the public
-testnet succeeds and the deployed program is immediately callable by a second wallet on the
-same chain (confirmed during reconnaissance). The `program_id_hex` is therefore shared across
-operators, not per-operator.
+Program deploy on testnet is network-one-time: rc3 `wallet deploy-program` against the public
+sequencer; the deployed program is callable by any wallet on that chain. The `program_id_hex`
+is shared across operators for a given guest ELF, not per-operator.
 
-#### Reconnaissance results (2026-06-23)
+#### Public testnet (operator facts)
 
-- Sequencer liveness: `https://testnet.lez.logos.co/` is live; `getLastBlockId` returns
-  block `66256` (JSON-RPC `result` int, same shape `run_local_e2e.py:142-147` parses).
-- Compatible LEZ pin: `v0.2.0-rc3` = `cf3639d8252040d13b3d4e933feb19b42c76e14a`. Confirmed
-  via `wallet check-health` (exit 0) and tag probes. Piñata funding confirmed: balance `150`
-  after `wallet pinata claim`.
-- Current pin `62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60` (PR 510 merge) is not compatible
-  with the public testnet: `check-health` panics with "Local ID for authenticated transfer
-  program is different from remote" (builtin `AUTHENTICATED_TRANSFER_ID` mismatch,
-  `lee/state_machine/src/program.rs:114-119`). `62d9ba10` is a descendant of `cf3639d8`
-  (merge-base is `cf3639d8` itself), so the divergence is forward from rc3.
-- Guest ImageID (for `fixtures/testnet.json`, independent of LEZ builtin pin):
-  `f9f4147cb438738a64487ea766afe1d1a6fa5542b402cf3f567fbd813a84cc0b`.
+- Sequencer URL: `https://testnet.lez.logos.co/` (explorer
+  `https://explorer.testnet.lez.logos.co/`).
+- RPC: lez jsonrpsee — `getLastBlockId` (JSON `result` int), `getProgramIds`, `getAccount`,
+  `sendTransaction`, and related methods used by the rc3 wallet and read smoke.
+- Dual-pin: pin **510** `logos_execution_zone` for reads, sync, and `sign_public_payload` against
+  testnet `sequencer_addr`; rc3 **`cf3639d8`** for `wallet deploy-program` and
+  `lez-testnet-submit` writes. Do not use rc3 `wallet check-health` as a gate (builtin id
+  mismatch with 510 is expected until testnet catches local pin).
+- Guest ELF (current tree): **576576** bytes; ImageID / `program_id_hex`
+  `79b1dd5c441caede8f9f82c30de637aba465f94cc43817b1105c8c48c77d0fc9` (`make program-id`).
+- Read gate: `./scripts/verify-step18-testnet-read-smoke.sh` — 510 module `open`,
+  `sync_to_block`, `get_account_public` on testnet; PASS (not skip-only) before bootstrap.
+- Manifest policy: committed `fixtures/testnet.json.example`; gitignored per-operator
+  `fixtures/testnet.json` after bootstrap. Example `clock_10_account_id` is testnet CLOCK_10
+  (`4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs`); do not copy from `localnet.json`.
 
-Dual-pin read path (510 `logos_execution_zone` + testnet `sequencer_addr`, without
-`check-health`): not re-verified here while the public RPC was down (502). When testnet is
-reachable again, run `./scripts/verify-step18-testnet-read-smoke.sh` before relying on
-`verify-step18`; exit 0 skip means unreachable, a full PASS closes this gate. See dual-pin
-section below.
+#### Verified org deploy log (2026-06-25)
 
-#### Builtin program IDs and dual-pin semantics (2026-06-23)
+Recorded on `feat/step18-public-testnet`. Shared on-chain guest id for the current guest tree
+(org deploy; copy into manifests per policy).
+
+Pre-check RPC (`getLastBlockId`, jsonrpsee POST to sequencer URL):
+
+- HTTP status **200**
+- `result` block id **3291** immediately before deploy (height moves with chain time)
+
+Command (rc3 wallet at pin `cf3639d8252040d13b3d4e933feb19b42c76e14a`; testnet wallet home
+under `.scaffold/e2e/testnet-wallet` with `sequencer_addr` `https://testnet.lez.logos.co/`):
+
+```bash
+export NSSA_WALLET_HOME_DIR=/home/sergei/Downloads/software/waku/lez-related/lez-payment-streams/.scaffold/e2e/testnet-wallet
+$HOME/.cargo/git/checkouts/logos-execution-zone-6bae42d7c9cadfe7/cf3639d8252040d13b3d4e933feb19b42c76e14a/target/release/wallet \
+  deploy-program \
+  methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin
+```
+
+Observed outcome:
+
+- Shell exit code **0**
+- Wallet stdout and stderr **empty** on success (repeat invocation also exit 0; treat as
+  idempotent once the program is on chain)
+- Guest ELF size **576576** bytes
+- `program_id_hex` (ImageID): `79b1dd5c441caede8f9f82c30de637aba465f94cc43817b1105c8c48c77d0fc9`
+  (`make program-id` / `lez_payment_streams_cli program-id` on the same ELF path)
+- Deploy transaction hash (`deploy_tx_hash`): `1787368626484789a2976a2aa8631d2b5b39c415c0a74b5a345474d1415f79b1`
+  (included in block **3284**; `getTransaction` on the testnet sequencer returns the
+  `ProgramDeployment` payload). The rc3 `wallet deploy-program` CLI does not print this hash.
+- Block explorer (transaction): `https://explorer.testnet.lez.logos.co/transaction/1787368626484789a2976a2aa8631d2b5b39c415c0a74b5a345474d1415f79b1`
+- Block explorer (block): `https://explorer.testnet.lez.logos.co/block/3284`
+
+Finding the deployment in the explorer:
+
+1. Open the transaction URL above, or paste `deploy_tx_hash` into the explorer search box.
+2. To locate the block, search block id `3284` or open the block URL above; the deploy is the
+   large `ProgramDeployment` transaction in that block (guest bytecode begins with RISC Zero
+   `R0BF` magic).
+3. The guest program is identified by `program_id_hex` (ImageID), not a separate explorer
+   program page today; use the transaction view or `make program-id` for the id.
+
+Implementation note: `make deploy-testnet` must invoke rc3 `wallet deploy-program` as above
+until the Makefile script is aligned.
+
+#### Builtin program IDs and dual-pin semantics
 
 Step 18 keeps the Step 17 module stack on pin `62d9ba10` for local E2E and adds testnet
 chain access without retargeting `scaffold.toml` or the default `logos_execution_zone` `.lgx`.
@@ -121,8 +164,8 @@ ImageIDs derived from `artifacts/program_methods/*.bin` at each pin (same method
 | `token` | `6d1ec77d426db847e2a37eb964b78d7870b89f17fc7f2537c0e50046bd8a8150` | `c4584a559312f876bbde4248b1daf95f6fc895a42171734d3ffd32940c0adf24` |
 | `amm` | `a2cb551b201f93227167cdd38a0c081c2b771cd4fdc95ed950167132b2e39fbe` | `5d75823a711b071a6da5685c84300a4d4e2fcbada25b95889ee11d88c84b6791` |
 
-The deployed payment-streams guest on testnet uses its own ImageID (`f9f4147c…` above). Fixture
-`program_id_hex` must match that guest, not the authenticated-transfer builtin.
+The deployed payment-streams guest uses ImageID `79b1dd5c441caede8f9f82c30de637aba465f94cc43817b1105c8c48c77d0fc9`.
+Fixture `program_id_hex` must match that guest, not the authenticated-transfer builtin.
 
 What still uses pin `62d9ba10` on the testnet demo path:
 
@@ -253,8 +296,8 @@ Open policy choices (record in runbook when decided; not blockers for local demo
 
 - `fixtures/testnet.json.example` in git; operator-specific `fixtures/testnet.json` gitignored
   unless the org commits a shared non-secret manifest after one-time bootstrap.
-- `clock_10_account_id` in the manifest must come from testnet recon, not copied from
-  `fixtures/localnet.json`.
+- `clock_10_account_id` in the manifest must match testnet CLOCK_10 (see
+  `fixtures/testnet.json.example`), not copied blindly from `fixtures/localnet.json`.
 
 #### What stays local vs what moves to testnet
 
@@ -291,26 +334,17 @@ symptoms.
 Wallet and manifest: [N10 fixture and config](../../reference/decisions-and-notes.md#n10-step-11b-module-writes-decisions).
 Delivery `createNode` defaults: [step17-e2e-local.md](../../step17-e2e-local.md#delivery-createnode-defaults) (local ports unchanged).
 
-##### Preliminaries
+##### Branch status
 
-Reconnaissance complete (2026-06-23):
+Part A (phases 1–5) is on `feat/step18-public-testnet`; `make verify-step17` is green on the
+branch. Part B scaffolding (phases 6–8 scripts, `lez-testnet-submit`, module `CHAIN=testnet`)
+landed at `ca1ba7f`. Org guest deploy on public testnet is complete (2026-06-25). Remaining
+Part B: read smoke PASS on current chain, `make bootstrap-testnet`, `make verify-step18`, and
+script/Makefile alignment with rc3 deploy plus jsonrpsee helper submits.
 
-- Sequencer liveness: `https://testnet.lez.logos.co/` responds to `getLastBlockId`
-  (block `66256`). No code change needed in `run_local_e2e.py` — it already parses the
-  `result` int shape.
-- Compatible LEZ pin for testnet sequencer + rc3 tooling: `cf3639d8` (`v0.2.0-rc3`);
-  `wallet check-health` with rc3 wallet against testnet exits 0.
-- Pin `62d9ba10` vs testnet: `check-health` fails (builtin id mismatch); dual-pin semantics
-  documented above. Read-path smoke test still pending (recon bullet).
-- Piñata funding on testnet: `wallet pinata claim` succeeds, balance `150`.
-- Program deploy: rc3 `wallet deploy-program` works for one-time deploy; per-run
-  `chainAction` writes need the temporary helper (no generic-tx FFI at rc3).
-
-Implementation pending on `feat/step18-public-testnet` (may be partial on branch; verify in git):
-
-- Branch from `master`, `CHAIN` env (`local` default, `testnet` for public sequencer path).
-  When `CHAIN` is unset or `local`, behavior must remain byte-for-byte Step 17.
-- Phases 1–9 below (Part A first, then Part B when RPC is up).
+- `CHAIN` env (`local` default, `testnet` for public sequencer path). When `CHAIN` is unset or
+  `local`, behavior must remain byte-for-byte Step 17.
+- Phases 6–9 below (Part B when read smoke PASS).
 
 #### Implementation order
 
@@ -334,7 +368,8 @@ not skip) before Part B chain writes.
     - Wallet paths: `--wallet-config`, `--wallet-storage` (same dirs as `logos_execution_zone open`).
     - Behavior: open wallet at rc3, resolve nonces, load signing keys, run the rc3 four-step
       public submit pattern (`Message::try_new` → `WitnessSet::for_message` →
-      `PublicTransaction::new` → `send_transaction`).
+      `PublicTransaction::new` → `send_transaction`) over the jsonrpsee sequencer client
+      (`sendTransaction`).
     - Output: wallet-shaped JSON on stdout for `parseWalletSubmitJson`; non-zero exit on failure.
     - No `deploy-program` subcommand (rc3 `wallet deploy-program` covers one-time deploy).
 3. The helper does not touch `wallet_ffi`, `payment_streams_ffi`, or the C bridge. When
@@ -367,10 +402,10 @@ not skip) before Part B chain writes.
     with `sequencer_addr` set to the testnet URL. Document copy-to-gitignored paths for
     `WALLET_CONFIG` / `WALLET_STORAGE` (see testnet wallet layout — same dirs for 510 module
     and rc3 helper).
-10. Ship `fixtures/testnet.json.example` in git (no secrets; include recon `program_id_hex`
-    where known). Default: operators copy to gitignored `fixtures/testnet.json` or set
-    `FIXTURE_MANIFEST`. An org-wide committed manifest is optional policy; record
-    `clock_10_account_id` from testnet recon in the example or runbook, not from localnet.
+10. Ship `fixtures/testnet.json.example` in git (no secrets; includes org `program_id_hex`
+    for the current guest). Default: operators copy to gitignored `fixtures/testnet.json` or set
+    `FIXTURE_MANIFEST`. An org-wide committed manifest is optional policy; use testnet
+    `clock_10_account_id` from the example or runbook, not from localnet.
 11. The existing `verify-step10b-dod.sh` `127.0.0.1:3040` assertion is the local-LEZ gate and
     stays unchanged. It is not run for `CHAIN=testnet`.
 
@@ -385,7 +420,7 @@ not skip) before Part B chain writes.
       runs a LEZ revision containing PR #491 and #510).
     - Persistence rules (do not wipe chain state; only reset local `PERSIST_*`).
     - Failure triage for testnet-specific cases (unreachable sequencer, stale program id,
-      faucet rate limits, stream depletion, dual-pin read smoke failing after RPC is up).
+      faucet rate limits, stream depletion, read smoke failing when the sequencer is up).
 13. Update [`feature-branch-pins.md`](../../feature-branch-pins.md) with:
     - The testnet LEZ revision (`cf3639d8`) for helper + `deploy-testnet` CLI.
     - The deployed `program_id_hex` (after Part B deploy).
@@ -416,27 +451,25 @@ not skip) before Part B chain writes.
 
 ##### Phase 6 — Read gate and program deploy (one-time)
 
-17. Run `./scripts/verify-step18-testnet-read-smoke.sh` until PASS (not skip). Do not rely on
-    Part B chain I/O until dual-pin reads are confirmed.
-18. Add/finish `make deploy-testnet`:
-    - Reads `WALLET_CONFIG` pointing at a testnet wallet config
-      (`sequencer_addr = https://testnet.lez.logos.co/`).
-    - Runs `wallet deploy-program $(PROGRAM_BIN)` (rc3 CLI, not the helper) against the
-      testnet sequencer.
-    - Records the resulting `program_id_hex` (should equal `make program-id` output).
-    - Is idempotent for re-runs: probe the rc3 CLI's behavior on a duplicate deploy (run it
-      twice against the same ELF on a throwaway testnet account first), capture the exact exit
-      code and error string for the "already deployed" case, and have the Makefile target
-      treat that specific outcome as success. Fail on any other error.
+17. Read gate (dual-pin reads): run `make verify-step18-testnet-read-smoke` until PASS
+    (`getLastBlockId`, open/sync/`get_account_public` on CLOCK_10). Re-run if the sequencer was
+    unreachable before bootstrap. Do not rely on Part B chain I/O if the latest smoke was skip
+    or fail.
+18. `make deploy-testnet` (implement at `ca1ba7f`, align with verified command below):
+    - Reads testnet wallet paths (`scripts/testnet-common.sh`, rc3 `wallet_config` + storage).
+    - Runs rc3 `wallet deploy-program $(PROGRAM_BIN)` against the testnet sequencer (not the
+      helper).
+    - Records the resulting `program_id_hex` (must equal `make program-id` output).
+    - Idempotent handling for duplicate deploy documented in script.
+    - Org deploy complete 2026-06-25 for guest ELF 576576 B and ImageID `79b1dd5c…` (see
+      Verified org deploy log).
 19. Do not wire `deploy-testnet` into `make verify-step18`. It is a one-time bootstrap step.
 
 ##### Phase 7 — Testnet fixture bootstrap (one-time, or rare)
 
-20. Add/finish `make bootstrap-testnet` that runs `initialize_vault`, `deposit`, and
-    `create_stream` against testnet. Vault/stream bootstrap uses the helper's
-    `submit-public-tx` (these are `chainAction` writes: `initializeVault`, `deposit`,
-    `createStream`) since rc3 has no CLI for them. Writes or updates `fixtures/testnet.json`
-    with the resulting ids and `program_id_hex` from Phase 6.
+20. `make bootstrap-testnet` (implement at `ca1ba7f`; requires org program on chain). Runs
+    vault/stream fixture via rc3 helper + dual-wallet env; writes `fixtures/testnet.json`. See
+    script and `examples/src/bin/bootstrap_testnet_fixture.rs`.
 21. `bootstrap-testnet` must be idempotent for partial state, not assume a fresh chain. It does
     not require a running `logoscore`. Before each sub-step, read chain state via rc3
     `wallet` CLI account/query commands against testnet and/or sequencer JSON-RPC
@@ -454,11 +487,9 @@ not skip) before Part B chain writes.
 
 ##### Phase 8 — Repeatable verify-step18
 
-23. `make verify-step18` runs the full testnet path: `getLastBlockId` (fail fast if
-    unreachable), read smoke (or rely on Phase 6 gate), then dual-host demo with
-    `CHAIN=testnet`. Must not start a local sequencer or call `make deploy` / `make setup` /
-    `demo-localnet-fresh.sh`. Required on the feature branch before merge (maintainer /
-    network access).
+23. `make verify-step18` (wired at `ca1ba7f`; requires bootstrap complete). Intended flow:
+    read smoke gate, dual-host demo with `CHAIN=testnet`. Must not start a local sequencer or
+    call `make deploy` / `make setup` / `demo-localnet-fresh.sh`.
 
 #### Deferred (not Part A or B implementation on the feature branch)
 
@@ -508,9 +539,9 @@ not skip) before Part B chain writes.
   ([`feature-branch-pins.md`](../../feature-branch-pins.md)): `scaffold.toml` and default
   `logos_execution_zone` stay on `62d9ba10`; rc3 `cf3639d8` only for helper + `deploy-testnet`
   CLI; testnet demo reads/sign via 510 module, submits via helper.
-- `lez_payment_streams` deployed on that network via rc3 `wallet deploy-program`; demo uses
-  committed or operator manifest with matching `program_id_hex` and bootstrapped vault/stream
-  state.
+- `lez_payment_streams` deployed on public testnet via rc3 `wallet deploy-program` (org deploy
+  2026-06-25); demo uses committed or operator manifest with matching `program_id_hex` and
+  bootstrapped vault/stream state.
 - The temporary submit helper (`tools/lez-testnet-submit`) drives `chainAction` writes
   (`createStream`, `topUpStream`, `claim`) against testnet; its JSON contract matches
   `send_generic_public_transaction_json` so the `CHAIN` selector is the only module-side
@@ -531,8 +562,10 @@ Before merging `feat/step18-public-testnet` to `master`:
 - Run `make verify-step17` on `master` and on the branch. Both must pass with `CHAIN` unset
   and with `CHAIN=local`. Confirm no local-path script behavior changed when `CHAIN` is unset
   or `local`.
-- Run `make verify-step18` on the branch against testnet. Confirm it does not start a local
-  sequencer and does not call `make deploy` / `make setup` / `demo-localnet-fresh.sh`.
+- Run `make verify-step18` on the branch against testnet once bootstrap succeeds. Confirm it
+  does not start a local sequencer and does not call `make deploy` / `make setup` /
+  `demo-localnet-fresh.sh`. Until bootstrap and verify pass, local `make verify-step17` remains
+  the merge gate for guest correctness.
 - Confirm `verify-step10a-dod.sh` and `verify-step10b-dod.sh` still assert `127.0.0.1:3040`
   and are not parameterized for testnet (they are the local-LEZ gate).
 - Confirm no default pin in `scaffold.toml` or wallet flakes changed without an explicit

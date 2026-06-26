@@ -9,6 +9,8 @@
 #include <QJsonValue>
 #include <QJsonParseError>
 #include <QMetaType>
+#include <QProcess>
+#include <QProcessEnvironment>
 #include <QVariant>
 
 #include <functional>
@@ -437,8 +439,196 @@ QList<uint8_t> instructionBytesForWallet(LogosAPIClient* client, const QByteArra
     return borshList;
 }
 
+QString parseWalletSubmitJson(const QString& walletJson, QJsonObject* fieldsOut, QString* errorOut);
+
 bool guestElfLoadedInWalletProcess() {
     return !qEnvironmentVariableIsEmpty("PAYMENT_STREAMS_GUEST_BIN");
+}
+
+bool chainUsesTestnetSubmit() {
+    const QByteArray chain = qgetenv("CHAIN").trimmed().toLower();
+    if (chain.isEmpty() || chain == "local") {
+        return false;
+    }
+    return chain == "testnet";
+}
+
+QString buildGenericPublicPayloadJson(const QStringList& accountHexIds,
+                                      const QList<bool>& signingFlags,
+                                      const QList<uint8_t>& instructionBytes,
+                                      const QList<uint8_t>& programElfBytes,
+                                      const QList<QList<uint8_t>>& programDependencies) {
+    QJsonObject payload;
+    QJsonArray accountIdsJson;
+    for (const QString& id : accountHexIds) {
+        accountIdsJson.append(id);
+    }
+    payload.insert(QStringLiteral("account_ids"), accountIdsJson);
+    QJsonArray signingJson;
+    for (bool flag : signingFlags) {
+        signingJson.append(flag);
+    }
+    payload.insert(QStringLiteral("signing_requirements"), signingJson);
+
+    QByteArray instructionRaw;
+    instructionRaw.reserve(instructionBytes.size());
+    for (uint8_t byte : instructionBytes) {
+        instructionRaw.append(static_cast<char>(byte));
+    }
+    payload.insert(QStringLiteral("instruction_hex"), QString::fromLatin1(instructionRaw.toHex()));
+
+    QByteArray programRaw;
+    programRaw.reserve(programElfBytes.size());
+    for (uint8_t byte : programElfBytes) {
+        programRaw.append(static_cast<char>(byte));
+    }
+    payload.insert(QStringLiteral("program_elf_hex"), QString::fromLatin1(programRaw.toHex()));
+
+    QJsonArray depsJson;
+    for (const QList<uint8_t>& depList : programDependencies) {
+        QByteArray depRaw;
+        depRaw.reserve(depList.size());
+        for (uint8_t byte : depList) {
+            depRaw.append(static_cast<char>(byte));
+        }
+        depsJson.append(QString::fromLatin1(depRaw.toHex()));
+    }
+    payload.insert(QStringLiteral("program_dependencies_hex"), depsJson);
+
+    return QJsonDocument(payload).toJson(QJsonDocument::Compact);
+}
+
+QString submitGenericPublicViaFfi(LogosAPIClient* client,
+                                  const QString& payloadJson,
+                                  QString* errorOut) {
+    QString walletJson =
+        invokeWalletString(client, "send_generic_public_transaction_json", payloadJson);
+    if (walletJson.isEmpty()) {
+        QJsonParseError parseError{};
+        const QJsonDocument doc = QJsonDocument::fromJson(payloadJson.toUtf8(), &parseError);
+        if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+            if (errorOut != nullptr) {
+                *errorOut = QStringLiteral("send_generic_public_transaction returned empty");
+            }
+            return makeErrorJson(QStringLiteral("send_generic_public_transaction returned empty"));
+        }
+        const QJsonObject obj = doc.object();
+        QStringList accountHexIds;
+        for (const QJsonValue value : obj.value(QStringLiteral("account_ids")).toArray()) {
+            accountHexIds.append(value.toString());
+        }
+        QList<bool> signingFlags;
+        for (const QJsonValue value : obj.value(QStringLiteral("signing_requirements")).toArray()) {
+            signingFlags.append(value.toBool());
+        }
+        const QByteArray instructionBytes =
+            QByteArray::fromHex(obj.value(QStringLiteral("instruction_hex")).toString().toLatin1());
+        QList<uint8_t> instructionList = bytesToUint8List(instructionBytes);
+        const QByteArray programBytes =
+            QByteArray::fromHex(obj.value(QStringLiteral("program_elf_hex")).toString().toLatin1());
+        QList<uint8_t> programElfList = bytesToUint8List(programBytes);
+        QList<QList<uint8_t>> deps;
+        for (const QJsonValue depValue : obj.value(QStringLiteral("program_dependencies_hex")).toArray()) {
+            deps.append(bytesToUint8List(QByteArray::fromHex(depValue.toString().toLatin1())));
+        }
+        walletJson = invokeWalletMulti(client,
+                                       "send_generic_public_transaction",
+                                       QVariant::fromValue(accountHexIds),
+                                       QVariant::fromValue(signingFlags),
+                                       QVariant::fromValue(instructionList),
+                                       QVariant::fromValue(programElfList),
+                                       QVariant::fromValue(deps));
+    }
+    if (walletJson.isEmpty()) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("send_generic_public_transaction returned empty");
+        }
+        return makeErrorJson(QStringLiteral("send_generic_public_transaction returned empty"));
+    }
+    QJsonObject fields;
+    return parseWalletSubmitJson(walletJson, &fields, errorOut);
+}
+
+QString submitGenericPublicViaTestnetHelper(const QString& payloadJson, QString* errorOut) {
+    QByteArray walletConfig = qgetenv("LEZ_TESTNET_WALLET_CONFIG");
+    QByteArray walletStorage = qgetenv("LEZ_TESTNET_WALLET_STORAGE");
+    if (walletConfig.isEmpty()) {
+        walletConfig = qgetenv("WALLET_CONFIG");
+    }
+    if (walletStorage.isEmpty()) {
+        walletStorage = qgetenv("WALLET_STORAGE");
+    }
+    if (walletConfig.isEmpty() || walletStorage.isEmpty()) {
+        const QString msg = QStringLiteral(
+            "CHAIN=testnet requires WALLET_CONFIG/WALLET_STORAGE or LEZ_TESTNET_WALLET_* for rc3 submits");
+        if (errorOut != nullptr) {
+            *errorOut = msg;
+        }
+        return makeErrorJson(msg);
+    }
+
+    const QByteArray helperEnv = qgetenv("LEZ_TESTNET_SUBMIT");
+    const QString helperProgram =
+        helperEnv.isEmpty() ? QStringLiteral("lez-testnet-submit") : QString::fromUtf8(helperEnv);
+
+    QProcess process;
+    process.setProgram(helperProgram);
+    QStringList args{QStringLiteral("submit-public-tx"),
+                     QStringLiteral("--wallet-config"),
+                     QString::fromUtf8(walletConfig),
+                     QStringLiteral("--wallet-storage"),
+                     QString::fromUtf8(walletStorage)};
+    const QByteArray guestBin = qgetenv("PAYMENT_STREAMS_GUEST_BIN");
+    if (!guestBin.isEmpty()) {
+        args << QStringLiteral("--program-elf") << QString::fromUtf8(guestBin);
+    }
+    process.setArguments(args);
+    process.setProcessChannelMode(QProcess::MergedChannels);
+
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    process.setProcessEnvironment(env);
+
+    process.start();
+    if (!process.waitForStarted(15000)) {
+        const QString msg = QStringLiteral("lez-testnet-submit failed to start: %1").arg(process.errorString());
+        if (errorOut != nullptr) {
+            *errorOut = msg;
+        }
+        return makeErrorJson(msg);
+    }
+    process.write(payloadJson.toUtf8());
+    process.closeWriteChannel();
+    if (!process.waitForFinished(300000)) {
+        process.kill();
+        const QString msg = QStringLiteral("lez-testnet-submit timed out");
+        if (errorOut != nullptr) {
+            *errorOut = msg;
+        }
+        return makeErrorJson(msg);
+    }
+
+    const QString walletJson = QString::fromUtf8(process.readAllStandardOutput()).trimmed();
+    if (process.exitCode() != 0) {
+        QJsonObject fields;
+        if (!walletJson.isEmpty()) {
+            return parseWalletSubmitJson(walletJson, &fields, errorOut);
+        }
+        const QString msg =
+            QStringLiteral("lez-testnet-submit exit %1").arg(process.exitCode());
+        if (errorOut != nullptr) {
+            *errorOut = msg;
+        }
+        return makeErrorJson(msg);
+    }
+    if (walletJson.isEmpty()) {
+        const QString msg = QStringLiteral("lez-testnet-submit returned empty stdout");
+        if (errorOut != nullptr) {
+            *errorOut = msg;
+        }
+        return makeErrorJson(msg);
+    }
+    QJsonObject fields;
+    return parseWalletSubmitJson(walletJson, &fields, errorOut);
 }
 
 QList<uint8_t> walletAuthenticatedTransferElfBytes(LogosAPIClient* client, QString* errorOut) {
@@ -503,63 +693,15 @@ QString submitGenericPublic(LogosAPIClient* client,
                             const QList<uint8_t>& programElfBytes,
                             const QList<QList<uint8_t>>& programDependencies,
                             QString* errorOut) {
-    QJsonObject payload;
-    QJsonArray accountIdsJson;
-    for (const QString& id : accountHexIds) {
-        accountIdsJson.append(id);
+    const QString payloadJson = buildGenericPublicPayloadJson(accountHexIds,
+                                                              signingFlags,
+                                                              instructionBytes,
+                                                              programElfBytes,
+                                                              programDependencies);
+    if (chainUsesTestnetSubmit()) {
+        return submitGenericPublicViaTestnetHelper(payloadJson, errorOut);
     }
-    payload.insert(QStringLiteral("account_ids"), accountIdsJson);
-    QJsonArray signingJson;
-    for (bool flag : signingFlags) {
-        signingJson.append(flag);
-    }
-    payload.insert(QStringLiteral("signing_requirements"), signingJson);
-
-    QByteArray instructionRaw;
-    instructionRaw.reserve(instructionBytes.size());
-    for (uint8_t byte : instructionBytes) {
-        instructionRaw.append(static_cast<char>(byte));
-    }
-    payload.insert(QStringLiteral("instruction_hex"), QString::fromLatin1(instructionRaw.toHex()));
-
-    QByteArray programRaw;
-    programRaw.reserve(programElfBytes.size());
-    for (uint8_t byte : programElfBytes) {
-        programRaw.append(static_cast<char>(byte));
-    }
-    payload.insert(QStringLiteral("program_elf_hex"), QString::fromLatin1(programRaw.toHex()));
-
-    QJsonArray depsJson;
-    for (const QList<uint8_t>& depList : programDependencies) {
-        QByteArray depRaw;
-        depRaw.reserve(depList.size());
-        for (uint8_t byte : depList) {
-            depRaw.append(static_cast<char>(byte));
-        }
-        depsJson.append(QString::fromLatin1(depRaw.toHex()));
-    }
-    payload.insert(QStringLiteral("program_dependencies_hex"), depsJson);
-
-    const QString payloadJson = QJsonDocument(payload).toJson(QJsonDocument::Compact);
-    QString walletJson =
-        invokeWalletString(client, "send_generic_public_transaction_json", payloadJson);
-    if (walletJson.isEmpty()) {
-        walletJson = invokeWalletMulti(client,
-                                       "send_generic_public_transaction",
-                                       QVariant::fromValue(accountHexIds),
-                                       QVariant::fromValue(signingFlags),
-                                       QVariant::fromValue(instructionBytes),
-                                       QVariant::fromValue(programElfBytes),
-                                       QVariant::fromValue(programDependencies));
-    }
-    if (walletJson.isEmpty()) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("send_generic_public_transaction returned empty");
-        }
-        return makeErrorJson(QStringLiteral("send_generic_public_transaction returned empty"));
-    }
-    QJsonObject fields;
-    return parseWalletSubmitJson(walletJson, &fields, errorOut);
+    return submitGenericPublicViaFfi(client, payloadJson, errorOut);
 }
 
 QString buildAndSubmit(LogosAPIClient* client,
@@ -603,7 +745,24 @@ QString buildAndSubmit(LogosAPIClient* client,
 
     QList<QList<uint8_t>> deps;
     if (includeTransferDep) {
-        if (guestElfLoadedInWalletProcess()) {
+        if (chainUsesTestnetSubmit()) {
+            QByteArray authHex = qgetenv("RC3_AUTH_TRANSFER_ELF_HEX").trimmed();
+            if (authHex.isEmpty()) {
+                const QByteArray pathBytes = qgetenv("RC3_AUTH_TRANSFER_ELF_PATH").trimmed();
+                if (!pathBytes.isEmpty()) {
+                    QFile authFile(QString::fromLocal8Bit(pathBytes));
+                    if (authFile.open(QIODevice::ReadOnly)) {
+                        authHex = authFile.readAll().trimmed();
+                    }
+                }
+            }
+            if (!authHex.isEmpty()) {
+                const QByteArray transferElf = QByteArray::fromHex(authHex);
+                if (!transferElf.isEmpty()) {
+                    deps.append(bytesToUint8List(transferElf));
+                }
+            }
+        } else if (guestElfLoadedInWalletProcess()) {
             deps = {};
         } else {
             const QList<uint8_t> transferElf = walletAuthenticatedTransferElfBytes(client, &loadErr);
