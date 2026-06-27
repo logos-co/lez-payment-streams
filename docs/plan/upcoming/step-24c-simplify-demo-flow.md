@@ -537,7 +537,7 @@ Resolve during implementation (smoke test or product call); do not block startin
 | Scripts create at `next_stream_id` every run | yes (E2E + step12 strip/create) |
 | `ensure_fresh_demo_stream` removed or replaced | yes → per-run create in orchestrator |
 | Close then claim teardown (claim skip if zero accrued) | yes; provider-signed close on local seed path |
-| verify-step17-back-to-back | yes (local, 2026-06-28) |
+| verify-step17-back-to-back | yes (local, 2026-06-28 post-commit run) |
 | E2E timing / poll diagnostics | yes (orchestrator + step17 runbook) |
 | `findActiveStreamForProvider` removed | yes |
 | Step 18 testnet E2E with unified lifecycle | open (Phase 4) |
