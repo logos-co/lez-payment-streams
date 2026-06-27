@@ -533,7 +533,7 @@ Resolve during implementation (smoke test or product call); do not block startin
 | --- | --- |
 | Dual prepare methods + contracts doc | yes (impl + delivery; Step 20 journey doc may lag) |
 | Vault-only manifest + per-run stream fields | yes (prepare + orchestrator) |
-| Step 10a vault-only verify | yes via prepare path (`SKIP_STREAM_CREATE=1`) |
+| Step 10a vault-only verify | yes (`make prepare-localnet` + verify-step10a green 2026-06-28) |
 | Scripts create at `next_stream_id` every run | yes (E2E + step12 strip/create) |
 | `ensure_fresh_demo_stream` removed or replaced | yes → per-run create in orchestrator |
 | Close then claim teardown (claim skip if zero accrued) | yes; provider-signed close on local seed path |
