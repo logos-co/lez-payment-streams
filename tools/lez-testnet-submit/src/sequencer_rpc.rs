@@ -10,7 +10,9 @@ use lee::{
 use sequencer_service_rpc::{RpcClient as _, SequencerClient, SequencerClientBuilder};
 use serde_json::Value;
 use url::Url;
+use lez_payment_streams_core::instruction_try_from_instruction_words;
 use wallet::WalletCore;
+use wallet::poller::TxPoller;
 
 #[derive(Clone)]
 pub struct SequencerRpc {
@@ -100,16 +102,24 @@ pub async fn submit_public_with_wallet(
         .await
         .context("get_accounts_nonces")?;
 
-    let message = Message::new_preserialized(program_id, account_ids, nonces, instruction_words);
+    let instruction = instruction_try_from_instruction_words(&instruction_words)
+        .map_err(|e| anyhow::anyhow!("decode payment-streams instruction: {e}"))?;
+    let message =
+        Message::try_new(program_id, account_ids, nonces, instruction).context("build message")?;
     let witness_set = WitnessSet::for_message(&message, &private_key_refs);
     if !witness_set.is_valid_for(&message) {
         anyhow::bail!("witness set fails message-hash validation");
     }
     let tx = PublicTransaction::new(message, witness_set);
-    let hash = wallet
+    let tx_hash = wallet
         .sequencer_client
         .send_transaction(LeeTransaction::Public(tx))
         .await
         .context("sendTransaction")?;
-    Ok(format!("{hash}"))
+    let poller = TxPoller::new(wallet.config(), wallet.sequencer_client.clone());
+    poller
+        .poll_tx(tx_hash)
+        .await
+        .context("confirm transaction")?;
+    Ok(format!("{tx_hash}"))
 }

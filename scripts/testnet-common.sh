@@ -65,8 +65,8 @@ path = os.environ['TESTNET_WALLET_DIR'] + '/wallet_config.json'
 url = os.environ['TESTNET_SEQUENCER']
 cfg = {
   'sequencer_addr': url,
-  'seq_poll_timeout': '30s',
-  'seq_tx_poll_max_blocks': 15,
+  'seq_poll_timeout': '60s',
+  'seq_tx_poll_max_blocks': 30,
   'seq_poll_max_retries': 10,
   'seq_block_poll_max_amount': 100,
   'basic_auth': None,

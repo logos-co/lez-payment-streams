@@ -94,8 +94,6 @@ pub async fn submit_public_tx(
         bail!("instruction_hex empty");
     }
 
-    let _deps_present = !payload.program_dependencies_hex.is_empty();
-
     let elf = load_program_elf(payload, program_elf_path)?;
     let program = Program::new(elf).context("invalid guest program ELF")?;
     let program_id = program.id();

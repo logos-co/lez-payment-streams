@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sequencer_url": "https://testnet.lez.logos.co/",
-  "program_id_hex": "79b1dd5c441caede8f9f82c30de637aba465f94cc43817b1105c8c48c77d0fc9",
+  "program_id_hex": "16b95d3701d256eecd41d5a55e4f570331994d787abf0cba44eec209e24f8a44",
   "deploy_tx_hash": "1787368626484789a2976a2aa8631d2b5b39c415c0a74b5a345474d1415f79b1",
   "deploy_block_id": 3284,
   "owner_account_id": "",

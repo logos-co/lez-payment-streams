@@ -25,7 +25,11 @@ lee = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = 
 lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "27360cb7d6ccb2bfbcca7d171bab8a3938490264", package = "lee_core" }
 common = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "27360cb7d6ccb2bfbcca7d171bab8a3938490264", package = "common" }
 sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "27360cb7d6ccb2bfbcca7d171bab8a3938490264", package = "sequencer_service_rpc", features = ["client"] }
-risc0-zkvm = { version = "3.0.5", features = ["std"] }
+lez-payment-streams-core = { path = "../../lez-payment-streams-core" }
+
+[patch."https://github.com/logos-co/spel.git"]
+spel-framework-core = { path = "../../vendor/spel-framework-core" }
+spel-framework-macros = { path = "../../vendor/spel-framework-macros" }
 
 [dev-dependencies]
 tempfile = "3"

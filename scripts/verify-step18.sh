@@ -19,6 +19,14 @@ export PATH="$(dirname "$SUBMIT_BIN"):$PATH"
 
 export CHAIN=testnet
 export FIXTURE_MANIFEST="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/testnet.json}"
+export E2E_PHASE="${E2E_PHASE:-core}"
+export PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF="${PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF:-0}"
+export TESTNET_SKIP_PREFLIGHT_TOPUP="${TESTNET_SKIP_PREFLIGHT_TOPUP:-1}"
+if [[ "${TESTNET_SKIP_PREFLIGHT_TOPUP}" != "1" ]]; then
+  echo "--- testnet preflight top-up (unaccrued for Store verify) ---"
+  chmod +x "$REPO_ROOT/scripts/testnet-preflight-topup.sh"
+  "$REPO_ROOT/scripts/testnet-preflight-topup.sh"
+fi
 if [[ ! -f "$FIXTURE_MANIFEST" ]]; then
   echo "verify-step18: missing $FIXTURE_MANIFEST (run make bootstrap-testnet)" >&2
   exit 2

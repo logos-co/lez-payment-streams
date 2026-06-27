@@ -110,8 +110,7 @@ Do not pin [PR 429 / PR 16](archive/superseded-wallet-pr-429-16.md) in this inte
   - `nix/payment-streams-ffi.nix` (`fetchFromGitHub`)
   - `lez-wallet-ffi-patched/flake.nix` (wallet wrapper input)
   - `tools/lez-testnet-submit` (testnet submit helper; same pin)
-- `lez-payment-streams-core` `program_tests` harness may remain on PR 510 (`62d9ba10`) until
-  harness bump ([N16](reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06)).
+- `lez-payment-streams-core`, guest, FFI, and `examples/` use LEZ rc5 (`27360cb7…`) — same rev as operational pin ([Step 24b](plan/completed/step-24b-rc5-rust-lee-unify.md)).
 - Patched wallet wrapper `upstream` =
   `github:logos-blockchain/logos-execution-zone-module?ref=refs/pull/19/head`
   with `upstream.inputs.logos-execution-zone.follows` the same LEZ input as payment streams.

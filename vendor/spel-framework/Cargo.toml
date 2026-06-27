@@ -11,6 +11,6 @@ host = ["dep:lee", "spel-framework-core/host"]
 [dependencies]
 spel-framework-core = { path = "../spel-framework-core" }
 spel-framework-macros = { path = "../spel-framework-macros" }
-lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60", optional = true }
+lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "27360cb7d6ccb2bfbcca7d171bab8a3938490264", optional = true }
 borsh = { version = "1.0", features = ["derive"] }
 serde_json = "1"

@@ -7,8 +7,8 @@ Split from the monolithic `integration-plan.md` to keep agent context small.
 | [../integration-index.md](../../integration-index.md) | Short index — start here for step status |
 | [../AGENT-BRIEF.md](../AGENT-BRIEF.md) | Agent read order |
 | [../integration-contracts.md](../integration-contracts.md) | Cross-step APIs |
-| [completed/](completed/) | Normative excerpts (12–16), completed Steps 17–17b, 19, 24 |
-| [upcoming/](upcoming/) | Step 20 (next); paused 18; optional 21–22 (Track B), 23 |
+| [completed/](completed/) | Normative excerpts (12–16), completed Steps 17–17b, 19, 24, 24b |
+| [upcoming/](upcoming/) | Step 24c (demo flow); Step 20; Step 18 Part B; optional 21–22 (Track B), 23 |
 | [cancelled/](cancelled/) | Step 25 won't fix |
 | [../reference/decisions-and-notes.md](../reference/decisions-and-notes.md) | D1–D6, N1–N18 (N17 script orchestration; N18 Track A vs B) |
 | [../archive/implementation-plan-on-chain.md](../archive/implementation-plan-on-chain.md) | On-chain SPEL guest milestones (archived) |

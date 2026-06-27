@@ -78,6 +78,16 @@ def logoscore_cmd(cfg_dir: Path, *args: str, timeout: int = 120) -> subprocess.C
     return run(cmd, timeout=timeout)
 
 
+def testnet_chain_action_timeout_s() -> int:
+    if os.environ.get("CHAIN", "local").strip().lower() != "testnet":
+        return 120
+    raw = os.environ.get("LOGOSCORE_CHAIN_ACTION_TIMEOUT", "360").strip()
+    try:
+        return max(120, int(raw))
+    except ValueError:
+        return 360
+
+
 def last_json_line(text: str) -> dict | None:
     for line in reversed(text.splitlines()):
         line = line.strip()
@@ -514,6 +524,46 @@ def ensure_fresh_demo_stream(
         allow_depleted = os.environ.get(
             "PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF", ""
         ).strip().lower() in ("1", "true", "yes")
+        if not allow_depleted and not allocation_available(cfg_user, vault_id, stream_id, manifest):
+            topup = {
+                "signer": manifest["owner_account_id"],
+                "vault_id": vault_id,
+                "stream_id": stream_id,
+                "increase_lo": int(os.environ.get("TESTNET_E2E_TOPUP_LO", "0")) or default_topup_increase_lo(manifest),
+                "increase_hi": 0,
+            }
+            for topup_attempt in range(3):
+                r = logoscore_cmd(
+                    cfg_user,
+                    "call",
+                    "payment_streams_module",
+                    "chainAction",
+                    "topUpStream",
+                    json.dumps(topup),
+                    timeout=testnet_chain_action_timeout_s(),
+                )
+                parsed = call_result(r)
+                if parsed.get("status") != "ok":
+                    raise E2EError(f"testnet topUpStream RPC: {parsed}")
+                inner_raw = parsed.get("result")
+                inner = json.loads(inner_raw) if isinstance(inner_raw, str) else inner_raw
+                if isinstance(inner, dict) and inner.get("success") is False:
+                    if topup_attempt < 2:
+                        topup["increase_lo"] = int(topup["increase_lo"]) + 200
+                        continue
+                    raise E2EError(f"testnet topUpStream failed: {inner}")
+                sync_wallet(cfg_user, seq_url)
+                logoscore_cmd(
+                    cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id)
+                )
+                time.sleep(5)
+                if allocation_available(cfg_user, vault_id, stream_id, manifest):
+                    break
+                topup["increase_lo"] = int(topup["increase_lo"]) + 200
+            else:
+                raise E2EError(
+                    "testnet topUpStream did not restore unaccrued allocation (see listMyStreams)"
+                )
         max_wait_s = int(os.environ.get("E2E_TESTNET_ACCRUAL_WAIT_S", "60" if allow_depleted else "180"))
         interval_s = 2
         attempts = max(1, max_wait_s // interval_s)
@@ -626,17 +676,39 @@ def user_prepare_proof(
         "true",
         "yes",
     )
+    chain = os.environ.get("CHAIN", "local").strip().lower()
     vault_id = int(manifest["vault_id"])
     stream_id = int(manifest["stream_id"])
+    seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
     for attempt in range(8):
-        logoscore_cmd(cfg, "call", "payment_streams_module", "chainAction", "topUpStream", json.dumps(topup))
-        for _ in range(12):
-            sync_wallet(cfg, manifest.get("sequencer_url", "http://127.0.0.1:3040"))
+        skip_testnet_topup = chain == "testnet" and allocation_available(
+            cfg, vault_id, stream_id, manifest
+        )
+        if skip_testnet_topup:
+            sync_wallet(cfg, seq_url)
             logoscore_cmd(cfg, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
-            time.sleep(2)
-            if allow_depleted or allocation_available(cfg, vault_id, stream_id, manifest):
-                break
+        else:
+            logoscore_cmd(
+                cfg,
+                "call",
+                "payment_streams_module",
+                "chainAction",
+                "topUpStream",
+                json.dumps(topup),
+                timeout=testnet_chain_action_timeout_s(),
+            )
+            for _ in range(12):
+                sync_wallet(cfg, seq_url)
+                logoscore_cmd(cfg, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
+                time.sleep(2)
+                if allow_depleted or allocation_available(cfg, vault_id, stream_id, manifest):
+                    break
         if not allow_depleted and not allocation_available(cfg, vault_id, stream_id, manifest):
+            if chain == "testnet":
+                raise E2EError(
+                    "testnet stream has insufficient unaccrued allocation; "
+                    "bootstrap fresh fixture or set PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF=1"
+                )
             topup["increase_lo"] = int(topup.get("increase_lo", 200)) + 200
             continue
 
@@ -647,6 +719,7 @@ def user_prepare_proof(
             "prepareEligibilityForStoreQuery",
             n8_wire,
             provider_peer_id,
+            timeout=240 if chain == "testnet" else 120,
         )
         parsed = call_result(r)
         if parsed.get("status") != "ok":
@@ -1027,6 +1100,7 @@ def main() -> int:
                 "chainAction",
                 "claim",
                 json.dumps(claim_body),
+                timeout=testnet_chain_action_timeout_s(),
             )
             parsed = call_result(r)
             ok_claim = parsed.get("status") == "ok"

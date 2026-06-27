@@ -13,8 +13,7 @@ Operational wallet, module `.lgx`, local E2E, and public testnet use one LEZ rev
 | Git rev | `27360cb7d6ccb2bfbcca7d171bab8a3938490264` |
 | Where | `scaffold.toml`, `nix/payment-streams-ffi.nix`, wallet flakes, `tools/lez-testnet-submit` |
 
-Rust `program_tests` / Step 24 harness may still pin PR 510 (`62d9ba10`) in
-`lez-payment-streams-core` until a deliberate harness bump ([N16](reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06)).
+Rust `program_tests` and the guest ELF share the operational rc5 LEZ pin ([N16](reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06), [Step 24b](plan/completed/step-24b-rc5-rust-lee-unify.md)).
 
 Public testnet at `https://testnet.lez.logos.co/` uses lez jsonrpsee RPC (`getLastBlockId`,
 `sendTransaction`, `getAccount`, …). LEE v0.3 public message hashing applies on chain writes.
@@ -80,6 +79,19 @@ First-time funding: unset `TESTNET_SKIP_PINATA` or fund owner manually. Repeat r
 
 ## Repeatable demo (Part B)
 
+Default gate: `make verify-step18` sets `E2E_PHASE=core` (paid Store + missing-proof path),
+`PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF=0`, and runs an in-orchestrator testnet
+`topUpStream` when unaccrued allocation is low. Optional standalone preflight:
+`TESTNET_SKIP_PREFLIGHT_TOPUP=0 ./scripts/testnet-preflight-topup.sh` (same top-up via ephemeral
+logoscore; default skip because the dual-host orchestrator top-ups after daemons start).
+
+### Depleted-stream bypass (demo only — remove when top-up is reliable)
+
+`PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF=1` lets the user module mint proofs when unaccrued
+is zero. It is **not** production semantics. Do not use for Step 20 journey docs unless explicitly
+documented as a testnet repeatability escape hatch. Follow-up: rebootstrap or vault deposit when
+`topUpStream` cannot increase unaccrued (fixture liquidity).
+
 ```bash
 export CHAIN=testnet
 export FIXTURE_MANIFEST=fixtures/testnet.json
@@ -115,7 +127,9 @@ and re-run `make bootstrap-testnet`.
 2. `make bootstrap-testnet` → vault holding balance and stream config accounts
 3. `prepareEligibility` / module chain reads against manifest ids
 4. Dual-host Store path (relay, filter, paid Store) — same split as Step 17
-5. Stream accrual / depletion flags (`PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF`, orchestrator waits)
+5. Stream accrual / depletion — default `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF=0`; orchestrator
+   top-up (`chainAction` / `scripts/testnet-preflight-topup.sh`); rebootstrap if vault holding
+   cannot fund top-up
 
 Do not re-open signing unless Phase 1 testnet smoke regresses.
 

@@ -17,19 +17,21 @@ Index: [integration-index.md](../integration-index.md#program-outcomes).
 
 ## Active work (execution order)
 
-Steps 1–13, 11d, Steps 14–16 on the delivery forks, Steps 17–17b, 18b, 19, and 24 are complete.
+Steps 1–13, 11d, Steps 14–16 on the delivery forks, Steps 17–17b, 18b, 19, 24, and 24b are complete.
 
 Step 18 Part B (public testnet E2E with local Store) uses the same operational LEZ pin as Step 17
-(rc5 on `master`). Active work: finish or merge Step 18 feature branch if not already on `master`,
-then Step 20 (Track A). Step 20 testnet journey rows need Step 18 DoD.
+(rc5 on `master`). Active work: **Step 24c** (demo lifecycle), Step 18 Part B, Step 20 (Track A).
+Step 20 testnet journey rows need Step 18 DoD; prefer landing 24c before final Step 20 tier-1 text.
 
 | Step | Repo / area | Agent packet |
 | --- | --- | --- |
+| 24c | Demo scripts + prepare explicit `stream_id` | [plan/upcoming/step-24c-simplify-demo-flow.md](plan/upcoming/step-24c-simplify-demo-flow.md) |
 | 18 | Public sequencer E2E (local Store) | [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) |
 | 20 | Developer journey — **Track A** (Store integration) | [plan/upcoming/step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md) — script E2E + step-by-step dual-host commands ([N17](reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06), [N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)) |
 | 23 | Public Store provider (optional) | [plan/upcoming/step-23-public-store-provider.md](plan/upcoming/step-23-public-store-provider.md) |
 
-Reference (complete): [plan/upcoming/step-18b-rc5-unify-handoff.md](plan/upcoming/step-18b-rc5-unify-handoff.md),
+Reference (complete): [step-24b-rc5-rust-lee-unify.md](plan/completed/step-24b-rc5-rust-lee-unify.md),
+[plan/upcoming/step-18b-rc5-unify-handoff.md](plan/upcoming/step-18b-rc5-unify-handoff.md),
 [N16](reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06).
 
 **Optional stretch (if time):** Step 21 payment streams Basecamp UI, Step 22 UI journey doc —
@@ -72,6 +74,8 @@ Summary:
 | Rust FFI / policy only | `lez-payment-streams-core` tests + [step3-policy-and-implementor-notes.md](step3-policy-and-implementor-notes.md) |
 | LIP on-chain spec (19, done) | [step-19-lip155-onchain-spec.md](plan/completed/step-19-lip155-onchain-spec.md) + [feature-branch-pins.md](feature-branch-pins.md) |
 | LEZ harness / `program_tests` (24, done) | [step-24-lee-harness-upgrade.md](plan/completed/step-24-lee-harness-upgrade.md) + [architecture.md](../architecture.md) |
+| Rust LEZ pin unify rc5 (24b, done) | [step-24b-rc5-rust-lee-unify.md](plan/completed/step-24b-rc5-rust-lee-unify.md) + [N16](reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06) |
+| Demo lifecycle simplify (24c) | [step-24c-simplify-demo-flow.md](plan/upcoming/step-24c-simplify-demo-flow.md) |
 | Doc packet (20 / 22) | Step 20 = Track A; Step 22 = Track B (after 21) + [logos-docs doc packet template](https://github.com/logos-co/logos-docs/blob/main/resources/templates/doc-packet.md) |
 
 ## Always-on references

@@ -456,7 +456,7 @@ dependencies = [
 [[package]]
 name = "bridge_core"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60#62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=27360cb7d6ccb2bfbcca7d171bab8a3938490264#27360cb7d6ccb2bfbcca7d171bab8a3938490264"
 dependencies = [
  "lee_core",
  "serde",
@@ -658,7 +658,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 [[package]]
 name = "clock_core"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60#62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=27360cb7d6ccb2bfbcca7d171bab8a3938490264#27360cb7d6ccb2bfbcca7d171bab8a3938490264"
 dependencies = [
  "borsh",
  "lee_core",
@@ -1156,7 +1156,7 @@ checksum = "9f1f227452a390804cdb637b74a86990f2a7d7ba4b7d5693aac9b4dd6defd8d6"
 [[package]]
 name = "faucet_core"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60#62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=27360cb7d6ccb2bfbcca7d171bab8a3938490264#27360cb7d6ccb2bfbcca7d171bab8a3938490264"
 dependencies = [
  "lee_core",
  "serde",
@@ -1825,7 +1825,7 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 [[package]]
 name = "lee"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60#62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=27360cb7d6ccb2bfbcca7d171bab8a3938490264#27360cb7d6ccb2bfbcca7d171bab8a3938490264"
 dependencies = [
  "anyhow",
  "borsh",
@@ -1849,7 +1849,7 @@ dependencies = [
 [[package]]
 name = "lee_core"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60#62d9ba10f8f86db3a1f04b329a1bd9d5b893bf60"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=27360cb7d6ccb2bfbcca7d171bab8a3938490264#27360cb7d6ccb2bfbcca7d171bab8a3938490264"
 dependencies = [
  "base58",
  "borsh",

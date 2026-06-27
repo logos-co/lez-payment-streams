@@ -3336,6 +3336,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "lez-payment-streams-core"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+ "clock_core",
+ "hex",
+ "lee",
+ "lee_core",
+ "risc0-zkvm",
+ "serde",
+ "sha2",
+ "spel-framework-core",
+ "spel-framework-macros",
+]
+
+[[package]]
 name = "lez-testnet-submit"
 version = "0.1.0"
 dependencies = [
@@ -3347,7 +3363,7 @@ dependencies = [
  "hex",
  "lee",
  "lee_core",
- "risc0-zkvm",
+ "lez-payment-streams-core",
  "sequencer_service_rpc",
  "serde",
  "serde_json",
@@ -6808,6 +6824,36 @@ dependencies = [
  "log",
  "rand 0.8.6",
  "sha1",
+]
+
+[[package]]
+name = "spel-framework-core"
+version = "0.5.0"
+dependencies = [
+ "base58",
+ "borsh",
+ "bytemuck",
+ "lee_core",
+ "proc-macro2",
+ "risc0-zkvm",
+ "serde",
+ "serde_json",
+ "sha2",
+ "syn 2.0.118",
+ "thiserror 1.0.69",
+ "toml",
+]
+
+[[package]]
+name = "spel-framework-macros"
+version = "0.5.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "serde_json",
+ "sha2",
+ "spel-framework-core",
+ "syn 2.0.118",
 ]
 
 [[package]]

@@ -5,6 +5,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+export FIXTURE_MANIFEST="$REPO_ROOT/fixtures/localnet.json"
+
 FULL_RESET="${FULL_RESET:-0}"
 SKIP_VERIFY="${SKIP_VERIFY:-0}"
 SNAPSHOT_NAME="${SNAPSHOT_NAME:-funded}"

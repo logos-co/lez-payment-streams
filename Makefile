@@ -130,7 +130,7 @@ verify-step17: ## Step 17 local dual-host Store E2E (scripts/demo-e2e-local.sh)
 	chmod +x scripts/demo-e2e-local.sh scripts/e2e/*.py scripts/demo-localnet-prepare.sh \
 		scripts/prefund-localnet.sh scripts/restore-localnet.sh scripts/create-localnet-stream-fixture.sh \
 		scripts/snapshot-localnet.sh scripts/ensure-scaffold-lez-layout.sh
-	./scripts/demo-e2e-local.sh
+	CHAIN=local E2E_LATE_STREAM_CREATE=0 ./scripts/demo-e2e-local.sh
 
 prepare-localnet: ## Step 17b restore baseline + create stream (scripts/demo-localnet-prepare.sh)
 	chmod +x scripts/demo-localnet-prepare.sh scripts/prefund-localnet.sh scripts/restore-localnet.sh scripts/create-localnet-stream-fixture.sh
@@ -149,5 +149,5 @@ bootstrap-testnet: ## Step 18 one-time fixture bootstrap (Part B)
 	./scripts/bootstrap-testnet.sh
 
 verify-step18: ## Step 18 public sequencer E2E (Part B)
-	chmod +x scripts/verify-step18.sh scripts/demo-e2e-local.sh scripts/e2e/*.py
+	chmod +x scripts/verify-step18.sh scripts/demo-e2e-local.sh scripts/e2e/*.py scripts/testnet-preflight-topup.sh
 	./scripts/verify-step18.sh

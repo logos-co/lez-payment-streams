@@ -4,7 +4,7 @@
     "docs/integration-contracts.md",
     "integration-index.md"
   ],
-  "active_steps": [18, 20],
+  "active_steps": [18, 20, "24b"],
   "paused_steps": [],
   "cancelled_steps": [25],
   "optional_stretch_steps": [21, 22],
@@ -22,7 +22,8 @@
     "21": "docs/plan/upcoming/step-21-basecamp-ui.md",
     "22": "docs/plan/upcoming/step-22-ui-journey.md",
     "23": "docs/plan/upcoming/step-23-public-store-provider.md",
-    "24": "docs/plan/completed/step-24-lee-harness-upgrade.md"
+    "24": "docs/plan/completed/step-24-lee-harness-upgrade.md",
+    "24b": "docs/plan/upcoming/step-24b-rc5-rust-lee-unify.md"
   },
   "completed_normative": {
     "12": "docs/plan/completed/step-12-normative.md",
