@@ -96,10 +96,9 @@ if [[ ! -f "$WALLET_CONFIG" || ! -f "$WALLET_STORAGE" || ! -f "$GUEST_BIN" ]]; t
   exit "$fail"
 fi
 
-if ! python3 -c "import json; m=json.load(open('$MANIFEST')); exit(0 if m.get('stream_id') is not None else 1)" 2>/dev/null; then
-  echo "--- create stream for Step 13 proof path ---"
+echo "--- create stream at vault next_stream_id (Step 24c) ---"
+CREATE_FORCE=1 E2E_PER_RUN_STREAM=1 FIXTURE_MANIFEST="$MANIFEST" \
   "$REPO_ROOT/scripts/create-localnet-stream-fixture.sh"
-fi
 
 STREAM_ID="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['stream_id'])")"
 
