@@ -541,4 +541,4 @@ Resolve during implementation (smoke test or product call); do not block startin
 | E2E timing / poll diagnostics | yes (orchestrator + step17 runbook) |
 | `findActiveStreamForProvider` removed | yes |
 | Step 18 testnet E2E with unified lifecycle | open (Phase 4) |
-| verify-step12-dod / verify-step13-dod re-run | open |
+| verify-step12-dod / verify-step13-dod re-run | step 12 green 2026-06-28; step 13 pending |
