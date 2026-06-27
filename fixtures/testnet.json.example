@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "sequencer_url": "https://testnet.lez.logos.co/",
   "program_id_hex": "16b95d3701d256eecd41d5a55e4f570331994d787abf0cba44eec209e24f8a44",
   "deploy_tx_hash": "1787368626484789a2976a2aa8631d2b5b39c415c0a74b5a345474d1415f79b1",
@@ -7,10 +7,8 @@
   "owner_account_id": "",
   "provider_account_id": "",
   "vault_id": 0,
-  "stream_id": 0,
   "vault_config_account_id": "",
   "vault_holding_account_id": "",
-  "stream_config_account_id": "",
   "clock_10_account_id": "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs",
   "demo_deposit_amount": 2000,
   "stream_rate": 1,

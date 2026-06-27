@@ -47,8 +47,11 @@ PROGRAM_BIN="methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_st
 STATE_FILE=".lez_payment_streams-state"
 PROVIDER_FILE=".lez_payment_streams-fixture-provider"
 
-TOPUP_ROUNDS="${SEED_WALLET_TOPUP_ROUNDS:-14}"
+TOPUP_ROUNDS="${SEED_WALLET_TOPUP_ROUNDS:-}"
 DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-2000}"
+if [[ -z "$TOPUP_ROUNDS" ]]; then
+  TOPUP_ROUNDS=$(( (DEPOSIT_AMOUNT + 149) / 150 + 4 ))
+fi
 
 lgs init 2>/dev/null || true
 lgs setup
@@ -88,6 +91,9 @@ cargo run --quiet --manifest-path examples/Cargo.toml --bin seed_localnet_fixtur
   --program-bin "$PROGRAM_BIN" \
   --owner "$OWNER" \
   --deposit-amount "$DEPOSIT_AMOUNT"
+
+DEPOSIT_AMOUNT="$DEPOSIT_AMOUNT" FIXTURE_MANIFEST="$REPO_ROOT/fixtures/localnet.json" \
+  "$REPO_ROOT/scripts/write-vault-manifest.sh"
 
 lgs localnet stop
 SNAPSHOT_RESTART=0 "$REPO_ROOT/scripts/snapshot-localnet.sh" "$SNAPSHOT_NAME"

@@ -23,11 +23,12 @@ but you still need to show proof bytes. It is not the normal local demo path.
 
 | Mode | Goal | Chain | Module off-chain state |
 | --- | --- | --- | --- |
-| Smoke | Mapping, reads, `stream_proof` on seeded stream `0` | Step 17b: `./scripts/demo-localnet-prepare.sh` (restore + fresh stream) | New `--persistence-path` each run |
+| Smoke | Mapping, reads, `stream_proof` on a **per-run** stream id | Step 17b: vault-only prepare; E2E or Step 12 script creates at `next_stream_id` | New `--persistence-path` each run |
 | Full arc | Proposal, `createStream`, proof; Step 13 prepare → verify | Same prepare path; `FULL_RESET=1` rebuilds snapshot | Always wipe before the arc |
 
-Default reuse (Step 17b): restore funded baseline from `.scaffold/snapshots/funded/`, create stream
-`0` once per run — not reuse of an aged on-chain stream. Full pinata rebuild: `FULL_RESET=1`
+Default reuse (Step 17b + 24c): restore funded **vault-only** baseline from
+`.scaffold/snapshots/funded/`; each demo run creates a new stream at `next_stream_id` and teardown
+closes it (provider-signed close locally). Full pinata rebuild: `FULL_RESET=1`
 or `./scripts/demo-localnet-fresh.sh`.
 
 ## What to keep vs wipe
@@ -60,8 +61,9 @@ Optional wipe on full blank slate:
 
 ## Recovery ladder
 
-0. Step 17b fast path — `./scripts/demo-localnet-prepare.sh` (restore snapshot + create stream).
+0. Step 17b fast path — `./scripts/demo-localnet-prepare.sh` (restore vault-only snapshot).
    Invalid snapshot or guest rebuild → `FULL_RESET=1 ./scripts/demo-localnet-prepare.sh`.
+   Step 17 E2E creates the stream; do not expect stream `0` in the prepare manifest.
 1. Soft — New logoscore run with a fresh `--persistence-path`, re-register provider mapping,
    check stream status via `listMyStreams` or reads.
 2. Re-seed — Same chain: `make build deploy`, `./scripts/seed-localnet-fixture.sh`, clear
@@ -75,8 +77,9 @@ Signals to jump to step 3:
 - `./scripts/verify-step10a-dod.sh` fails.
 - `lgs localnet start` fails with missing `sequencer/service/configs/debug/sequencer_config.json`
   after Step 11d pin bump — run `./scripts/ensure-scaffold-lez-layout.sh` (links `sequencer` → `lez/sequencer` in the LEZ cache).
-- `prepareEligibilityForStoreQuery` returns `STREAM_DEPLETED` on manifest stream `0` and you
-  need an honest `stream_proof` without bypass.
+- `prepareEligibilityForStoreQuery` returns `STREAM_DEPLETED` on the **current run’s** stream after
+  wall-clock fold drift — prefer `make full-reset-localnet`, fresh snapshot, or Step 17
+  `refresh_stream_checkpoint` / continuation deposit rather than `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF`.
 - `make deploy` or `storage.json` parse errors.
 - Manifest program id stale after `make build`.
 

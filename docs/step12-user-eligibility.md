@@ -45,7 +45,7 @@ Same as Step 11b where chain I/O is involved:
 | --- | --- |
 | `FIXTURE_MANIFEST` | Default `fixtures/localnet.json` |
 | `MODULES` | `lgpm` + `logoscore -m` install dir |
-| `WALLET_CONFIG` / `WALLET_STORAGE` | Required for proposal path: `logos_execution_zone open` before `prepareEligibilityForStoreQuery` (`sign_public_payload`) |
+| `WALLET_CONFIG` / `WALLET_STORAGE` | Required for proposal path: `logos_execution_zone open` before `prepareEligibilityProofWithStreamProposalForStoreQuery` (`sign_public_payload`) |
 | `PAYMENT_STREAMS_GUEST_BIN` | On daemon when exercising `createStream` after a proposal |
 | `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF` | Demo-only escape hatch when stream is depleted; prefer `./scripts/demo-localnet-fresh.sh` instead |
 
@@ -160,7 +160,8 @@ Logoscore passes each argument as a separate string (Universal `QVariant` → `Q
 | Method | Arguments (logoscore order) | Success JSON (extra fields) |
 | --- | --- | --- |
 | `registerProviderMapping` | `provider_peer_id`, `provider_account_id_base58` | `"status":"ok"` only |
-| `prepareEligibilityForStoreQuery` | `canonical_request_hex`, `provider_peer_id` | `"kind"`: `"stream_proposal"` or `"stream_proof"`; `"bytes_hex"`: serialized protobuf `EligibilityProof` ([D1](../reference/decisions-and-notes.md#d1-store-wire-format)); optional `"stream_id"`, `"vault_id"` for demo scripts |
+| `prepareEligibilityProofWithStreamProposalForStoreQuery` | `canonical_request_hex`, `provider_peer_id` | `"kind":"stream_proposal"`; `"bytes_hex"`; optional `"stream_id"`, `"vault_id"` |
+| `prepareEligibilityProofWithStreamProofForStoreQuery` | `canonical_request_hex`, `provider_peer_id`, `stream_id` | `"kind":"stream_proof"`; `"bytes_hex"`; optional `"stream_id"`, `"vault_id"` |
 | `listMyStreams` | `vault_id` | `"streams"`: array of per-stream objects (inventory + folded status fields) |
 | `rediscoverStreams` | `vault_id` | `"streams"`: array; `"discovered_count"` |
 
@@ -174,7 +175,7 @@ Example (values illustrative):
 logoscore call payment_streams_module registerProviderMapping \
   '12D3KooWExamplePeerId' 'A4qQ6pXk4LcojwJsBa3qTRb4KjM17eufHajrRpU3chTY'
 
-logoscore call payment_streams_module prepareEligibilityForStoreQuery \
+logoscore call payment_streams_module prepareEligibilityProofWithStreamProposalForStoreQuery \
   '<pinned N8 test vector hex>' '12D3KooWExamplePeerId'
 ```
 
@@ -193,7 +194,8 @@ Eligibility error:
 | Method | Purpose |
 | --- | --- |
 | `registerProviderMapping` | `PeerId` → LEZ provider account (N5) |
-| `prepareEligibilityForStoreQuery` | N8 canonical request + `providerPeerId` → Store `EligibilityProof` bytes |
+| `prepareEligibilityProofWithStreamProposalForStoreQuery` | N8 canonical + `providerPeerId` → proposal `EligibilityProof` (Step 16 delivery) |
+| `prepareEligibilityProofWithStreamProofForStoreQuery` | Same + explicit `stream_id` → proof `EligibilityProof` (Track A E2E) |
 | `listMyStreams` | Local inventory + folded chain status for `vaultId` |
 | `rediscoverStreams` | Recovery scan `stream_id` 0, 1, … on chain |
 
@@ -217,12 +219,17 @@ pending-proposal keys `(vault_id, provider_id)` ([N5](../reference/decisions-and
 
 | Name | Source |
 | --- | --- |
-| `provider_peer_id` | Host / Step 16; lookup key for `prepareEligibilityForStoreQuery` |
+| `provider_peer_id` | Host / Step 16; lookup key for prepare methods |
 | LIP-155 `provider_id` | Derived from `provider_account_id_base58` (same octets as `StreamConfig.provider`) |
 
 One peer maps to one LEZ payee for the MVP. Multiple payees per peer is a later API extension.
 
-### `prepareEligibilityForStoreQuery`
+### Prepare methods (Step 24c)
+
+Two LogosAPI names (universal module glue does not export same-name overloads):
+
+- **`prepareEligibilityProofWithStreamProposalForStoreQuery`** — proposal path only (Step 16 outbound).
+- **`prepareEligibilityProofWithStreamProofForStoreQuery`** — proof path only; third arg is explicit `stream_id`.
 
 Builds the incentivization envelope, not bare `StreamProposal` / `StreamProof` messages alone.
 Per [D2](../reference/decisions-and-notes.md#d2-delivery-module-hook-design), Delivery treats
@@ -249,12 +256,11 @@ the same opaque blob (Delivery does not unwrap).
 Inner-only serialization remains valid inside the module and FFI tests; it does not cross the
 Delivery hook.
 
-Path selection (no extra error codes): if folded chain state shows an `ACTIVE` stream for
-the `(vault_id, provider_id)` pair, return the `stream_proof` arm. Pending non-expired proposal →
+Path selection is by **method name**, not chain scan. Proposal method: pending non-expired proposal →
 `PROPOSAL_PENDING`. Pending past `create_stream_deadline` → evict, return `PROPOSAL_EXPIRED`
 (that call does not mint a new proposal); the following call may issue a fresh `stream_proposal`.
-Duplicate `createStream` for an existing `stream_id` is a chain/wallet failure, not a new module
-code.
+Proof method: `readStreamAtId` at supplied id; no fallback to proposal. Duplicate `createStream`
+for an existing `stream_id` is a chain/wallet failure, not a new module code.
 
 Errors (machine-readable `code` in JSON): `UNKNOWN_PROVIDER`, `NO_ELIGIBLE_VAULT`,
 `PROPOSAL_PENDING`, `PROPOSAL_EXPIRED`, `STREAM_NOT_CONFIRMED`, `STREAM_DEPLETED`,
@@ -269,7 +275,7 @@ Demo policy ([N4](../reference/decisions-and-notes.md#n4-persistence-policy)):
 | File | `payment_streams_state.json` at root of `instancePersistencePath` |
 | Format | Single JSON object, `schema_version`: `1`, atomic write (temp + rename) |
 | Failure | Log error; continue in-memory only |
-| Eviction | No background timer. On load and on each `prepareEligibilityForStoreQuery` / `listMyStreams`, drop pending rows when clock-10 ≥ stored `create_stream_deadline` |
+| Eviction | No background timer. On load and on each prepare call / `listMyStreams`, drop pending rows when clock-10 ≥ stored `create_stream_deadline` |
 | Clock-10 fold | LEZ clock account timestamp is milliseconds; fold and deadline checks use `ms / 1000` (truncate). See [step-13-normative.md](plan/completed/step-13-normative.md) |
 | Session keys | Plaintext `session_private_key_hex` / `session_public_key_hex` (lowercase hex) in JSON; treat instance dir as sensitive |
 
@@ -339,7 +345,7 @@ That binary prints lowercase hex of the full N8 `canonical_payload`:
 For the reference fixture the wire is 138 bytes (276 hex characters).
 `verify-step12-dod.sh` and `step12-topup-and-prepare.sh` invoke this tool.
 
-Pass that full wire to `prepareEligibilityForStoreQuery` as `canonical_request_hex`.
+Pass that full wire to prepare methods as `canonical_request_hex`.
 Do not pass base64, the SHA-256 digest alone, or Borsh body without the domain prefix.
 Body-only input (~145 bytes) fails in the module FFI path
 (`store_eligibility_canonical_payload_digest_from_n8_wire` → `InvalidWireFrame`; sizing helpers
@@ -372,13 +378,13 @@ logoscore call payment_streams_module registerProviderMapping \
   '<provider_peer_id>' "$(python3 -c "import json; print(json.load(open('fixtures/localnet.json'))['provider_account_id'])")"
 
 # 2) proposal — canonical_request_hex from pinned N8 vector in verify-step12-dod.sh
-# logoscore call payment_streams_module prepareEligibilityForStoreQuery '<hex>' '<provider_peer_id>'
+# logoscore call payment_streams_module prepareEligibilityProofWithStreamProposalForStoreQuery '<hex>' '<provider_peer_id>'
 
 # 3) on-chain stream (manual) — vault_id from manifest; stream_id from proposal inventory
 # logoscore call payment_streams_module chainAction createStream '{...}'
 
 # 4) proof — same canonical_request_hex and provider_peer_id as step 2
-# logoscore call payment_streams_module prepareEligibilityForStoreQuery '<hex>' '<provider_peer_id>'
+# logoscore call payment_streams_module prepareEligibilityProofWithStreamProposalForStoreQuery '<hex>' '<provider_peer_id>'
 
 logoscore stop
 ```
@@ -416,7 +422,7 @@ export PAYMENT_STREAMS_GUEST_BIN="$REPO/methods/guest/target/riscv32im-risc0-zkv
 REQUIRE_STREAM_PROOF=1 ./scripts/verify-step12-dod.sh
 ```
 
-Uses `./scripts/step12-topup-and-prepare.sh` internally (`topUpStream` then `prepareEligibilityForStoreQuery`).
+Uses `./scripts/step12-topup-and-prepare.sh` internally (`topUpStream` then `prepareEligibilityProofWithStreamProofForStoreQuery`).
 Seeded stream `0` is often fully accrued on LEZ 510 clock units until top-up; that is expected for smoke mode.
 
 If `lgs localnet start` fails with missing `sequencer/service/configs/debug/sequencer_config.json`, run

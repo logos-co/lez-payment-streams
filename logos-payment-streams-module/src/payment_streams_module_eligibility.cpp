@@ -635,7 +635,7 @@ bool readClock10Timestamp(LogosAPIClient* client, quint64* outTs, QString* error
         }
         return false;
     }
-    *outTs = decoded.timestamp;
+    *outTs = foldClockForPolicy(decoded.timestamp);
     return true;
 }
 
@@ -731,44 +731,6 @@ bool readStreamAtId(LogosAPIClient* client,
 
 bool providerMatchesStream(const PsFfiDecodedStreamConfig& decoded, const uint8_t provider[32]) {
     return std::memcmp(decoded.provider, provider, 32) == 0;
-}
-
-bool findActiveStreamForProvider(LogosAPIClient* client,
-                                 const uint8_t programId[32],
-                                 const uint8_t owner[32],
-                                 quint64 vaultId,
-                                 const uint8_t provider[32],
-                                 quint64 scanUpTo,
-                                 ChainStreamView* out,
-                                 QString* errorOut) {
-    QList<quint64> candidates = inventoryStreamIdsForVault(vaultId);
-    for (quint64 sid = 0; sid < scanUpTo; ++sid) {
-        if (!candidates.contains(sid)) {
-            candidates.append(sid);
-        }
-    }
-    std::sort(candidates.begin(), candidates.end());
-    for (quint64 sid : candidates) {
-        ChainStreamView view;
-        QString localErr;
-        if (!readStreamAtId(client, programId, owner, vaultId, sid, &view, &localErr)) {
-            if (errorOut != nullptr) {
-                *errorOut = localErr;
-            }
-            return false;
-        }
-        if (!view.found || !providerMatchesStream(view.decoded, provider)) {
-            continue;
-        }
-        if (out != nullptr) {
-            *out = view;
-        }
-        return true;
-    }
-    if (out != nullptr) {
-        out->found = false;
-    }
-    return true;
 }
 
 QString eligibilityErrorForStreamState(const ChainStreamView& view) {
@@ -996,8 +958,8 @@ QString PaymentStreamsModuleImpl::registerProviderMapping(const QVariant& provid
     return makeOkJson({});
 }
 
-QString PaymentStreamsModuleImpl::prepareEligibilityForStoreQuery(const QVariant& canonicalRequestHex,
-                                                                  const QVariant& providerPeerId) {
+QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForStoreQuery(const QVariant& canonicalRequestHex,
+                                                                          const QVariant& providerPeerId) {
     LogosAPIClient* client = walletClientOrNull(modules().api);
     if (client == nullptr) {
         return makeEligibilityError(QStringLiteral("WALLET_SIGNING_FAILED"),
@@ -1082,78 +1044,6 @@ QString PaymentStreamsModuleImpl::prepareEligibilityForStoreQuery(const QVariant
         return makeEligibilityError(QStringLiteral("CHAIN_READ_FAILED"), QStringLiteral("vault config decode failed"));
     }
 
-    ChainStreamView activeView;
-    if (!findActiveStreamForProvider(client,
-                                     programId,
-                                     owner,
-                                     vaultId,
-                                     provider,
-                                     vaultCfg.next_stream_id,
-                                     &activeView,
-                                     &fixtureErr)) {
-        return makeEligibilityError(QStringLiteral("CHAIN_READ_FAILED"), fixtureErr);
-    }
-
-    if (activeView.found && providerMatchesStream(activeView.decoded, provider)) {
-        const QString streamErr = eligibilityErrorForStreamState(activeView);
-        if (!streamErr.isEmpty()) {
-            return streamErr;
-        }
-
-        uint8_t sessionSecret[32]{};
-        uint8_t sessionPublic[32]{};
-        if (!sessionKeysForVaultProvider(vaultId, providerIdHex, sessionSecret, sessionPublic)) {
-            if (ps_ffi_generate_session_keypair(sessionSecret, sessionPublic) != kFfiSuccess) {
-                return makePlainError(QStringLiteral("session key generation failed"));
-            }
-            persistSessionForActiveStream(vaultId, providerIdHex, activeView.streamId, sessionSecret, sessionPublic);
-            persistIfDirty();
-        }
-
-        QByteArray innerProof;
-        QString encErr;
-        if (!ffiBufferTwoPhase(
-                [&](uint8_t* ptr, size_t cap, size_t* len) {
-                    return ps_ffi_serialize_stream_proof_for_n8_wire(
-                        activeView.streamId,
-                        sessionSecret,
-                        reinterpret_cast<const uint8_t*>(n8Wire.constData()),
-                        static_cast<size_t>(n8Wire.size()),
-                        ptr,
-                        cap,
-                        len);
-                },
-                &innerProof,
-                &encErr)) {
-            return makePlainError(
-                QStringLiteral("%1 (n8_wire_bytes=%2)").arg(encErr).arg(n8Wire.size()));
-        }
-
-        QByteArray wrapped;
-        if (!ffiBufferTwoPhase(
-                [&](uint8_t* ptr, size_t cap, size_t* len) {
-                    return ps_ffi_serialize_eligibility_proof_stream_proof(
-                        reinterpret_cast<const uint8_t*>(innerProof.constData()),
-                        static_cast<size_t>(innerProof.size()),
-                        ptr,
-                        cap,
-                        len);
-                },
-                &wrapped,
-                &encErr)) {
-            return makePlainError(encErr);
-        }
-
-        QJsonObject payload;
-        payload.insert(QStringLiteral("kind"), QStringLiteral("stream_proof"));
-        payload.insert(QStringLiteral("bytes_hex"), QString::fromLatin1(wrapped.toHex()));
-        payload.insert(QStringLiteral("stream_id"), static_cast<qint64>(activeView.streamId));
-        payload.insert(QStringLiteral("vault_id"), static_cast<qint64>(vaultId));
-        addInventory(vaultId, activeView.streamId);
-        persistIfDirty();
-        return makeOkJson(payload);
-    }
-
     const QString holdingJson = invokeWalletString(client, "get_account_public", bytes32ToHexLower(vaultHoldingAccount));
     QString balanceHex;
     if (!parseWalletAccountJson(holdingJson, nullptr, &balanceHex)) {
@@ -1193,7 +1083,8 @@ QString PaymentStreamsModuleImpl::prepareEligibilityForStoreQuery(const QVariant
     fillServiceId(&proposal.params);
     proposal.params.rate = kDemoRate;
     proposal.params.allocation_lo = proposalAllocation;
-    proposal.params.create_stream_deadline = now + kDemoDeadlineOffset;
+    const quint64 policyNow = foldClockForPolicy(now);
+    proposal.params.create_stream_deadline = policyNow + kDemoDeadlineOffset;
     std::memcpy(proposal.session_public_key, sessionPublic, 32);
 
     uint8_t ownerDigest[32]{};
@@ -1257,6 +1148,120 @@ QString PaymentStreamsModuleImpl::prepareEligibilityForStoreQuery(const QVariant
     payload.insert(QStringLiteral("bytes_hex"), QString::fromLatin1(wrapped.toHex()));
     payload.insert(QStringLiteral("stream_id"), static_cast<qint64>(streamId));
     payload.insert(QStringLiteral("vault_id"), static_cast<qint64>(vaultId));
+    return makeOkJson(payload);
+}
+
+QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProofForStoreQuery(const QVariant& canonicalRequestHex,
+                                                                       const QVariant& providerPeerId,
+                                                                       const QVariant& streamIdVariant) {
+    LogosAPIClient* client = walletClientOrNull(modules().api);
+    if (client == nullptr) {
+        return makeEligibilityError(QStringLiteral("WALLET_SIGNING_FAILED"),
+                                    QStringLiteral("logos_execution_zone client unavailable (open wallet first)"));
+    }
+
+    const QString peer = providerPeerId.toString().trimmed();
+    QString mapErr;
+    const QString providerIdHex = providerIdHexForPeer(client, peer, &mapErr);
+    if (providerIdHex.isEmpty()) {
+        return makeEligibilityError(QStringLiteral("UNKNOWN_PROVIDER"), mapErr);
+    }
+
+    const QByteArray n8Wire = QByteArray::fromHex(canonicalRequestHex.toString().trimmed().toLatin1());
+    if (n8Wire.isEmpty()) {
+        return makePlainError(QStringLiteral("canonical_request_hex must be non-empty even-length hex"));
+    }
+
+    bool streamIdOk = false;
+    const quint64 streamId = variantToU64(streamIdVariant, &streamIdOk);
+    if (!streamIdOk) {
+        return makePlainError(QStringLiteral("stream_id must be a non-negative integer"));
+    }
+
+    QJsonObject manifest;
+    QString fixtureErr;
+    if (!loadFixtureManifest(&manifest, &fixtureErr)) {
+        return makePlainError(fixtureErr);
+    }
+    const QString ownerBase58 = manifest.value(QStringLiteral("owner_account_id")).toString().trimmed();
+    const quint64 vaultId = static_cast<quint64>(manifest.value(QStringLiteral("vault_id")).toInteger(0));
+
+    uint8_t programId[32]{};
+    uint8_t owner[32]{};
+    uint8_t provider[32]{};
+    if (!programIdBytes(programId, &fixtureErr) || !ownerBytesFromBase58(client, ownerBase58, owner, &fixtureErr) ||
+        !hex32FromQString(providerIdHex, provider)) {
+        return makePlainError(fixtureErr);
+    }
+
+    ChainStreamView view;
+    if (!readStreamAtId(client, programId, owner, vaultId, streamId, &view, &fixtureErr)) {
+        return makeEligibilityError(QStringLiteral("CHAIN_READ_FAILED"), fixtureErr);
+    }
+    if (!view.found) {
+        return makeEligibilityError(QStringLiteral("STREAM_NOT_FOUND"),
+                                    QStringLiteral("stream not initialized on chain"));
+    }
+    if (!providerMatchesStream(view.decoded, provider)) {
+        return makeEligibilityError(QStringLiteral("UNKNOWN_PROVIDER"),
+                                    QStringLiteral("stream provider does not match mapping"));
+    }
+
+    const QString streamErr = eligibilityErrorForStreamState(view);
+    if (!streamErr.isEmpty()) {
+        return streamErr;
+    }
+
+    uint8_t sessionSecret[32]{};
+    uint8_t sessionPublic[32]{};
+    if (!sessionKeysForVaultProvider(vaultId, providerIdHex, sessionSecret, sessionPublic)) {
+        if (ps_ffi_generate_session_keypair(sessionSecret, sessionPublic) != kFfiSuccess) {
+            return makePlainError(QStringLiteral("session key generation failed"));
+        }
+        persistSessionForActiveStream(vaultId, providerIdHex, streamId, sessionSecret, sessionPublic);
+        persistIfDirty();
+    }
+
+    QByteArray innerProof;
+    QString encErr;
+    if (!ffiBufferTwoPhase(
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
+                return ps_ffi_serialize_stream_proof_for_n8_wire(
+                    streamId,
+                    sessionSecret,
+                    reinterpret_cast<const uint8_t*>(n8Wire.constData()),
+                    static_cast<size_t>(n8Wire.size()),
+                    ptr,
+                    cap,
+                    len);
+            },
+            &innerProof,
+            &encErr)) {
+        return makePlainError(QStringLiteral("%1 (n8_wire_bytes=%2)").arg(encErr).arg(n8Wire.size()));
+    }
+
+    QByteArray wrapped;
+    if (!ffiBufferTwoPhase(
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
+                return ps_ffi_serialize_eligibility_proof_stream_proof(
+                    reinterpret_cast<const uint8_t*>(innerProof.constData()),
+                    static_cast<size_t>(innerProof.size()),
+                    ptr,
+                    cap,
+                    len);
+            },
+            &wrapped,
+            &encErr)) {
+        return makePlainError(encErr);
+    }
+
+    QJsonObject payload;
+    payload.insert(QStringLiteral("kind"), QStringLiteral("stream_proof"));
+    payload.insert(QStringLiteral("bytes_hex"), QString::fromLatin1(wrapped.toHex()));
+    payload.insert(QStringLiteral("stream_id"), static_cast<qint64>(streamId));
+    payload.insert(QStringLiteral("vault_id"), static_cast<qint64>(vaultId));
+    addInventory(vaultId, streamId);
+    persistIfDirty();
     return makeOkJson(payload);
 }
 

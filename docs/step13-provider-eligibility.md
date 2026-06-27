@@ -71,7 +71,7 @@ export PERSIST_DIR="$PWD/.scaffold/step13-persist-$(date +%s)"
 VERIFY_LOGOSCORE=1 ./scripts/verify-step13-dod.sh
 ```
 
-Script flow: register provider mapping, optional `topUpStream`, sync, `prepareEligibilityForStoreQuery`,
+Script flow: register provider mapping, optional `topUpStream`, sync, `prepareEligibilityProofWithStreamProofForStoreQuery`,
 then `verifyEligibilityForStoreQuery` with the same `bytes_hex` and N8 wire; tampered canonical
 must yield `PROOF_INVALID`.
 

@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-step17 verify-step18 verify-step18-testnet-read-smoke deploy-testnet bootstrap-testnet prepare-localnet
+.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-step17 verify-step17-back-to-back verify-step18 verify-step18-testnet-read-smoke deploy-testnet bootstrap-testnet prepare-localnet full-reset-localnet debug-sequencer-latency
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -40,7 +40,10 @@ help: ## Show this help
 	@echo "  make verify-step11d Run Step 11d DoD script (LEZ 510 wallet)"
 	@echo "  make verify-step12  Run Step 12 DoD script"
 	@echo "  make verify-step13  Run Step 13 DoD script"
-	@echo "  make verify-step17  Run Step 17 local E2E demo script"
+	@echo "  make verify-step17  Run Step 17 local E2E (restore snapshot + demo)"
+	@echo "  make verify-step17-back-to-back  verify-step17 then SKIP_SEED=1 (monotonic stream ids)"
+	@echo "  make full-reset-localnet  Rebuild funded snapshot (prefund, no stream)"
+	@echo "  make debug-sequencer-latency  RPC + block-rate probe (local 3040)"
 	@echo "  make verify-step18-testnet-read-smoke  Testnet read smoke (rc5; skips if RPC down)"
 	@echo "  make verify-step18  Full testnet E2E (Part B; needs fixtures/testnet.json)"
 	@echo "  make deploy-testnet One-time guest deploy on public testnet (Part B)"
@@ -130,9 +133,26 @@ verify-step17: ## Step 17 local dual-host Store E2E (scripts/demo-e2e-local.sh)
 	chmod +x scripts/demo-e2e-local.sh scripts/e2e/*.py scripts/demo-localnet-prepare.sh \
 		scripts/prefund-localnet.sh scripts/restore-localnet.sh scripts/create-localnet-stream-fixture.sh \
 		scripts/snapshot-localnet.sh scripts/ensure-scaffold-lez-layout.sh
-	CHAIN=local E2E_LATE_STREAM_CREATE=0 ./scripts/demo-e2e-local.sh
+	CHAIN=local ./scripts/demo-e2e-local.sh
 
-prepare-localnet: ## Step 17b restore baseline + create stream (scripts/demo-localnet-prepare.sh)
+verify-step17-back-to-back: ## Step 17 gate: restore run then continue chain (SKIP_SEED=1)
+	$(MAKE) verify-step17
+	@echo "Waiting for sequencer before second demo leg (no restore)…"
+	sleep 45
+	chmod +x scripts/e2e/continuation-owner-topup.sh
+	./scripts/e2e/continuation-owner-topup.sh
+	SKIP_BUILD=1 SKIP_SEED=1 RESTORE_LOCALNET=0 $(MAKE) verify-step17
+
+debug-sequencer-latency: ## Probe sequencer RPC latency and block production (scripts/e2e/sequencer_latency_probe.py)
+	chmod +x scripts/e2e/sequencer_latency_probe.py
+	REPO="$(CURDIR)" python3 scripts/e2e/sequencer_latency_probe.py
+
+full-reset-localnet: ## Step 17b stage A — wipe ledger, prefund vault-only, snapshot funded
+	chmod +x scripts/demo-localnet-prepare.sh scripts/prefund-localnet.sh scripts/snapshot-localnet.sh \
+		scripts/ensure-scaffold-lez-layout.sh
+	FULL_RESET=1 SKIP_VERIFY=1 SKIP_STREAM_CREATE=1 ./scripts/demo-localnet-prepare.sh
+
+prepare-localnet: ## Step 17b restore baseline + vault-only manifest (scripts/demo-localnet-prepare.sh)
 	chmod +x scripts/demo-localnet-prepare.sh scripts/prefund-localnet.sh scripts/restore-localnet.sh scripts/create-localnet-stream-fixture.sh
 	./scripts/demo-localnet-prepare.sh
 

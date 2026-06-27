@@ -7,7 +7,7 @@
 
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use base58::FromBase58;
 use clap::{Parser, Subcommand};
 use common::transaction::LeeTransaction;
@@ -17,10 +17,10 @@ use lee::{AccountId as LeeAccountId, PublicTransaction};
 use lee_core::account::Balance;
 use lee_core::program::ProgramId as LeeProgramId;
 use lez_payment_streams_core::{
-    create_stream_instruction_accounts, deposit_instruction_accounts,
+    close_stream_instruction_accounts, create_stream_instruction_accounts, deposit_instruction_accounts,
     derive_stream_config_account_id, derive_vault_account_ids,
-    initialize_vault_instruction_accounts, Instruction, StreamId, TokensPerSecond, VaultId,
-    VaultPrivacyTier, CLOCK_10_PROGRAM_ACCOUNT_ID,
+    initialize_vault_instruction_accounts, top_up_stream_instruction_accounts, Instruction,
+    StreamId, TokensPerSecond, VaultId, VaultPrivacyTier, CLOCK_10_PROGRAM_ACCOUNT_ID,
 };
 use lee::program::Program;
 use lee_core::account::AccountId as CoreAccountId;
@@ -45,7 +45,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Derive PDAs and write fixture JSON (no chain I/O).
+    /// Derive PDAs and write per-run fixture JSON (stream fields populated; no chain I/O).
     WriteManifest {
         #[arg(long)]
         program_bin: PathBuf,
@@ -57,10 +57,48 @@ enum Commands {
         vault_id: u64,
         #[arg(long, default_value = "0")]
         stream_id: u64,
+        #[arg(long, default_value_t = DEFAULT_DEPOSIT)]
+        deposit_amount: Balance,
+        #[arg(long, default_value_t = DEFAULT_STREAM_RATE)]
+        stream_rate: TokensPerSecond,
+        #[arg(long, default_value_t = DEFAULT_ALLOCATION)]
+        allocation: Balance,
         #[arg(long, default_value = DEFAULT_SEQUENCER)]
         sequencer_url: String,
         #[arg(long, default_value = "fixtures/localnet.json")]
         output: PathBuf,
+    },
+    /// Derive PDAs and write vault-only baseline manifest (schema v2; no stream fields).
+    WriteVaultManifest {
+        #[arg(long)]
+        program_bin: PathBuf,
+        #[arg(long)]
+        owner: String,
+        #[arg(long)]
+        provider: String,
+        #[arg(long, default_value = "0")]
+        vault_id: u64,
+        #[arg(long, default_value_t = DEFAULT_DEPOSIT)]
+        deposit_amount: Balance,
+        #[arg(long, default_value_t = DEFAULT_STREAM_RATE)]
+        stream_rate: TokensPerSecond,
+        #[arg(long, default_value_t = DEFAULT_ALLOCATION)]
+        allocation: Balance,
+        #[arg(long, default_value = DEFAULT_SEQUENCER)]
+        sequencer_url: String,
+        #[arg(long, default_value = "fixtures/localnet.json")]
+        output: PathBuf,
+    },
+    /// Print vault_config.next_stream_id from chain (stdout decimal).
+    ReadVaultNextStreamId {
+        #[arg(long)]
+        program_bin: PathBuf,
+        #[arg(long)]
+        owner: String,
+        #[arg(long, default_value = "0")]
+        vault_id: u64,
+        #[arg(long, default_value = DEFAULT_SEQUENCER)]
+        sequencer_url: String,
     },
     /// Initialize vault and deposit only (Step 17b baseline snapshot; no stream).
     PrefundOnchain {
@@ -76,6 +114,49 @@ enum Commands {
         skip_if_initialized: bool,
         #[arg(long)]
         force: bool,
+        #[arg(long, default_value = DEFAULT_SEQUENCER)]
+        sequencer_url: String,
+    },
+    /// Deposit into an existing vault (ignores stream PDAs on chain).
+    DepositOnchain {
+        #[arg(long)]
+        program_bin: PathBuf,
+        #[arg(long)]
+        owner: String,
+        #[arg(long, default_value = "0")]
+        vault_id: u64,
+        #[arg(long)]
+        deposit_amount: Balance,
+        #[arg(long, default_value = DEFAULT_SEQUENCER)]
+        sequencer_url: String,
+    },
+    /// Close stream on chain (owner wallet; provider is stream authority account).
+    CloseStreamOnchain {
+        #[arg(long)]
+        program_bin: PathBuf,
+        #[arg(long)]
+        owner: String,
+        #[arg(long)]
+        provider: String,
+        #[arg(long, default_value = "0")]
+        vault_id: u64,
+        #[arg(long)]
+        stream_id: u64,
+        #[arg(long, default_value = DEFAULT_SEQUENCER)]
+        sequencer_url: String,
+    },
+    /// Increase stream allocation on chain (folds accrual; refreshes accrued_as_of).
+    TopUpStreamOnchain {
+        #[arg(long)]
+        program_bin: PathBuf,
+        #[arg(long)]
+        owner: String,
+        #[arg(long, default_value = "0")]
+        vault_id: u64,
+        #[arg(long)]
+        stream_id: u64,
+        #[arg(long)]
+        increase_lo: Balance,
         #[arg(long, default_value = DEFAULT_SEQUENCER)]
         sequencer_url: String,
     },
@@ -143,10 +224,12 @@ struct LocalnetFixture {
     owner_account_id: String,
     provider_account_id: String,
     vault_id: u64,
-    stream_id: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stream_id: Option<u64>,
     vault_config_account_id: String,
     vault_holding_account_id: String,
-    stream_config_account_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stream_config_account_id: Option<String>,
     clock_10_account_id: String,
     demo_deposit_amount: Balance,
     stream_rate: TokensPerSecond,
@@ -215,7 +298,40 @@ fn program_id_from_bin(path: &PathBuf) -> Result<(CoreProgramId, String)> {
     Ok((pid, hex))
 }
 
-fn build_fixture(
+fn build_vault_baseline(
+    sequencer_url: &str,
+    program_id_hex: &str,
+    program_id: &CoreProgramId,
+    owner: CoreAccountId,
+    provider: CoreAccountId,
+    vault_id: VaultId,
+    deposit_amount: Balance,
+    stream_rate: TokensPerSecond,
+    allocation: Balance,
+) -> LocalnetFixture {
+    let (vault_config, vault_holding) = derive_vault_account_ids(program_id, owner, vault_id);
+    LocalnetFixture {
+        schema_version: 2,
+        sequencer_url: sequencer_url.to_string(),
+        program_id_hex: program_id_hex.to_string(),
+        owner_account_id: account_id_to_base58(owner),
+        provider_account_id: account_id_to_base58(provider),
+        vault_id,
+        stream_id: None,
+        vault_config_account_id: account_id_to_base58(vault_config),
+        vault_holding_account_id: account_id_to_base58(vault_holding),
+        stream_config_account_id: None,
+        clock_10_account_id: account_id_to_base58(CLOCK_10_PROGRAM_ACCOUNT_ID),
+        demo_deposit_amount: deposit_amount,
+        stream_rate,
+        allocation,
+        reserved_for_step_11b:
+            "Vault baseline only (Step 24c). Per-run stream_id written after create_stream-onchain."
+                .to_string(),
+    }
+}
+
+fn build_per_run_fixture(
     sequencer_url: &str,
     program_id_hex: &str,
     program_id: &CoreProgramId,
@@ -230,24 +346,50 @@ fn build_fixture(
     let (vault_config, vault_holding) = derive_vault_account_ids(program_id, owner, vault_id);
     let stream_config = derive_stream_config_account_id(program_id, vault_config, stream_id);
     LocalnetFixture {
-        schema_version: 1,
+        schema_version: 2,
         sequencer_url: sequencer_url.to_string(),
         program_id_hex: program_id_hex.to_string(),
         owner_account_id: account_id_to_base58(owner),
         provider_account_id: account_id_to_base58(provider),
         vault_id,
-        stream_id,
+        stream_id: Some(stream_id),
         vault_config_account_id: account_id_to_base58(vault_config),
         vault_holding_account_id: account_id_to_base58(vault_holding),
-        stream_config_account_id: account_id_to_base58(stream_config),
+        stream_config_account_id: Some(account_id_to_base58(stream_config)),
         clock_10_account_id: account_id_to_base58(CLOCK_10_PROGRAM_ACCOUNT_ID),
         demo_deposit_amount: deposit_amount,
         stream_rate,
         allocation,
         reserved_for_step_11b:
-            "Use a fresh vault_id (e.g. 1) or reset .scaffold/state/ for module-driven init tests."
+            "Per-run manifest after create_stream-onchain (Step 24c)."
                 .to_string(),
     }
+}
+
+fn build_fixture(
+    sequencer_url: &str,
+    program_id_hex: &str,
+    program_id: &CoreProgramId,
+    owner: CoreAccountId,
+    provider: CoreAccountId,
+    vault_id: VaultId,
+    stream_id: StreamId,
+    deposit_amount: Balance,
+    stream_rate: TokensPerSecond,
+    allocation: Balance,
+) -> LocalnetFixture {
+    build_per_run_fixture(
+        sequencer_url,
+        program_id_hex,
+        program_id,
+        owner,
+        provider,
+        vault_id,
+        stream_id,
+        deposit_amount,
+        stream_rate,
+        allocation,
+    )
 }
 
 fn write_manifest(path: &PathBuf, fixture: &LocalnetFixture) -> Result<()> {
@@ -488,6 +630,94 @@ async fn create_stream_onchain(
     Ok(())
 }
 
+async fn close_stream_onchain(
+    ctx: &OnchainContext,
+    provider: &str,
+    stream_id: StreamId,
+) -> Result<()> {
+    let provider_id = account_id_from_base58(provider)?;
+    let provider_lee = to_lee_account(provider_id);
+    let accounts = close_stream_instruction_accounts(
+        &ctx.program_id,
+        ctx.owner_id,
+        ctx.vault_id,
+        stream_id,
+        provider_id,
+        CLOCK_10_PROGRAM_ACCOUNT_ID,
+    );
+    submit_instruction(
+        &ctx.wallet,
+        ctx.lee_program_id,
+        accounts.iter().copied().map(to_lee_account).collect(),
+        Instruction::CloseStream {
+            vault_id: ctx.vault_id,
+            stream_id,
+        },
+        vec![provider_lee],
+    )
+    .await
+    .context("close_stream")?;
+    Ok(())
+}
+
+async fn deposit_vault(ctx: &OnchainContext, deposit_amount: Balance) -> Result<()> {
+    let init_accounts =
+        initialize_vault_instruction_accounts(&ctx.program_id, ctx.owner_id, ctx.vault_id);
+    let vault_config_lee = to_lee_account(init_accounts[0]);
+    let vault_ready = account_has_data(&ctx.wallet, vault_config_lee).await?;
+    if !vault_ready {
+        return Err(anyhow!("vault must be initialized before deposit"));
+    }
+    let auth_transfer = LeeProgram::authenticated_transfer_program().id();
+    let deposit_accounts =
+        deposit_instruction_accounts(&ctx.program_id, ctx.owner_id, ctx.vault_id);
+    submit_instruction(
+        &ctx.wallet,
+        ctx.lee_program_id,
+        deposit_accounts.iter().copied().map(to_lee_account).collect(),
+        Instruction::Deposit {
+            vault_id: ctx.vault_id,
+            amount: deposit_amount,
+            authenticated_transfer_program_id: auth_transfer,
+        },
+        vec![ctx.owner_lee],
+    )
+    .await
+    .context("deposit")?;
+    Ok(())
+}
+
+async fn top_up_stream_onchain(
+    ctx: &OnchainContext,
+    stream_id: StreamId,
+    increase_lo: Balance,
+) -> Result<()> {
+    if increase_lo == 0 {
+        bail!("top-up increase must be non-zero");
+    }
+    let accounts = top_up_stream_instruction_accounts(
+        &ctx.program_id,
+        ctx.owner_id,
+        ctx.vault_id,
+        stream_id,
+        CLOCK_10_PROGRAM_ACCOUNT_ID,
+    );
+    submit_instruction(
+        &ctx.wallet,
+        ctx.lee_program_id,
+        accounts.iter().copied().map(to_lee_account).collect(),
+        Instruction::TopUpStream {
+            vault_id: ctx.vault_id,
+            stream_id,
+            vault_total_allocated_increase: increase_lo,
+        },
+        vec![ctx.owner_lee],
+    )
+    .await
+    .context("top_up_stream")?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -498,13 +728,16 @@ async fn main() -> Result<()> {
             provider,
             vault_id,
             stream_id,
+            deposit_amount,
+            stream_rate,
+            allocation,
             sequencer_url,
             output,
         } => {
             let (program_id, program_id_hex) = program_id_from_bin(&program_bin)?;
             let owner_id = account_id_from_base58(&owner)?;
             let provider_id = account_id_from_base58(&provider)?;
-            let fixture = build_fixture(
+            let fixture = build_per_run_fixture(
                 &sequencer_url,
                 &program_id_hex,
                 &program_id,
@@ -512,11 +745,75 @@ async fn main() -> Result<()> {
                 provider_id,
                 vault_id,
                 stream_id,
-                DEFAULT_DEPOSIT,
-                DEFAULT_STREAM_RATE,
-                DEFAULT_ALLOCATION,
+                deposit_amount,
+                stream_rate,
+                allocation,
             );
             write_manifest(&output, &fixture)?;
+        },
+        Commands::WriteVaultManifest {
+            program_bin,
+            owner,
+            provider,
+            vault_id,
+            deposit_amount,
+            stream_rate,
+            allocation,
+            sequencer_url,
+            output,
+        } => {
+            let (program_id, program_id_hex) = program_id_from_bin(&program_bin)?;
+            let owner_id = account_id_from_base58(&owner)?;
+            let provider_id = account_id_from_base58(&provider)?;
+            let fixture = build_vault_baseline(
+                &sequencer_url,
+                &program_id_hex,
+                &program_id,
+                owner_id,
+                provider_id,
+                vault_id,
+                deposit_amount,
+                stream_rate,
+                allocation,
+            );
+            write_manifest(&output, &fixture)?;
+        },
+        Commands::ReadVaultNextStreamId {
+            program_bin,
+            owner,
+            vault_id,
+            sequencer_url: _,
+        } => {
+            ensure_wallet_home_env()?;
+            let ctx = open_onchain(&program_bin, &owner, vault_id).await?;
+            let init_accounts =
+                initialize_vault_instruction_accounts(&ctx.program_id, ctx.owner_id, ctx.vault_id);
+            let vault_cfg_lee = to_lee_account(init_accounts[0]);
+            let acc = ctx
+                .wallet
+                .sequencer_client
+                .get_account(vault_cfg_lee)
+                .await
+                .context("get vault config account")?;
+            if acc.data.is_empty() {
+                bail!("vault config account has no data");
+            }
+            use borsh::BorshDeserialize;
+            use lez_payment_streams_core::VaultConfig;
+            let cfg = VaultConfig::try_from_slice(&acc.data)
+                .map_err(|e| anyhow!("decode VaultConfig: {e}"))?;
+            println!("{}", cfg.next_stream_id);
+        },
+        Commands::DepositOnchain {
+            program_bin,
+            owner,
+            vault_id,
+            deposit_amount,
+            sequencer_url: _,
+        } => {
+            ensure_wallet_home_env()?;
+            let ctx = open_onchain(&program_bin, &owner, vault_id).await?;
+            deposit_vault(&ctx, deposit_amount).await?;
         },
         Commands::PrefundOnchain {
             program_bin,
@@ -531,6 +828,30 @@ async fn main() -> Result<()> {
             let skip_if_initialized = skip_if_initialized && !force;
             let ctx = open_onchain(&program_bin, &owner, vault_id).await?;
             prefund_vault(&ctx, deposit_amount, skip_if_initialized).await?;
+        },
+        Commands::CloseStreamOnchain {
+            program_bin,
+            owner,
+            provider,
+            vault_id,
+            stream_id,
+            sequencer_url: _,
+        } => {
+            ensure_wallet_home_env()?;
+            let ctx = open_onchain(&program_bin, &owner, vault_id).await?;
+            close_stream_onchain(&ctx, &provider, stream_id).await?;
+        },
+        Commands::TopUpStreamOnchain {
+            program_bin,
+            owner,
+            vault_id,
+            stream_id,
+            increase_lo,
+            sequencer_url: _,
+        } => {
+            ensure_wallet_home_env()?;
+            let ctx = open_onchain(&program_bin, &owner, vault_id).await?;
+            top_up_stream_onchain(&ctx, stream_id, increase_lo).await?;
         },
         Commands::CreateStreamOnchain {
             program_bin,

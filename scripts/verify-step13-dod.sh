@@ -96,6 +96,13 @@ if [[ ! -f "$WALLET_CONFIG" || ! -f "$WALLET_STORAGE" || ! -f "$GUEST_BIN" ]]; t
   exit "$fail"
 fi
 
+if ! python3 -c "import json; m=json.load(open('$MANIFEST')); exit(0 if m.get('stream_id') is not None else 1)" 2>/dev/null; then
+  echo "--- create stream for Step 13 proof path ---"
+  "$REPO_ROOT/scripts/create-localnet-stream-fixture.sh"
+fi
+
+STREAM_ID="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['stream_id'])")"
+
 rm -rf "$PERSIST_DIR"
 mkdir -p "$PERSIST_DIR"
 
@@ -121,16 +128,9 @@ timeout "$LOGOSCORE_E2E_TIMEOUT" nix shell github:logos-co/logos-logoscore-cli -
     sleep 2
   fi
   logoscore call payment_streams_module registerProviderMapping '$PROVIDER_PEER_ID' '$PROVIDER_B58' >/dev/null
-  TOPUP_JSON=\$(python3 -c \"import json; m=json.load(open('$MANIFEST')); print(json.dumps({'signer': m['owner_account_id'], 'vault_id': int(m['vault_id']), 'stream_id': int(m['stream_id']), 'increase_lo': 50, 'increase_hi': 0})))\")
-  echo TOPUP:\$(logoscore call payment_streams_module chainAction topUpStream \"\$TOPUP_JSON\" 2>&1 | tail -1)
-  height=\$(curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
-    -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getLastBlockId\",\"params\":[]}' \
-    | python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get(\"result\"); print(r if isinstance(r,int) else (r or \"\"))' 2>/dev/null || true)
-  if [[ -n \"\$height\" ]]; then
-    logoscore call logos_execution_zone sync_to_block \"\$height\" >/dev/null 2>&1 || true
-  fi
-  sleep 5
-  PREP=\$(logoscore call payment_streams_module prepareEligibilityForStoreQuery '$N8_WIRE_HEX' '$PROVIDER_PEER_ID' 2>&1 | tail -1)
+  logoscore call payment_streams_module rediscoverStreams \"\$(python3 -c \"import json; print(json.load(open('$MANIFEST'))['vault_id'])\")\" >/dev/null
+  sleep 3
+  PREP=\$(logoscore call payment_streams_module prepareEligibilityProofWithStreamProofForStoreQuery '$N8_WIRE_HEX' '$PROVIDER_PEER_ID' '$STREAM_ID' 2>&1 | tail -1)
   echo PREP:\$PREP
   BYTES_HEX=\$(echo \"\$PREP\" | python3 -c \"import json,sys; d=json.loads(sys.stdin.read()); inner=json.loads(d.get('result','{}')); print(inner.get('bytes_hex',''))\" 2>/dev/null || true)
   echo BYTES:\$BYTES_HEX
@@ -167,11 +167,11 @@ outer=json.loads(line)
 inner=json.loads(outer.get('result','{}'))
 sys.exit(0 if inner.get('code')=='STREAM_DEPLETED' else 1)
 " 2>/dev/null; then
-    skip "prepare → verify cross-test (stream 0 depleted; ./scripts/demo-localnet-fresh.sh)"
+    skip "prepare → verify cross-test (stream depleted; create fresh stream)"
     echo "=== done (exit $fail) ==="
     exit "$fail"
   else
-    bad "prepareEligibilityForStoreQuery failed before verify"
+    bad "prepareEligibilityProofWithStreamProofForStoreQuery failed before verify"
     echo "$PREP_LINE" >&2
     tail -15 "$SMOKE_FILE" >&2 || true
   fi

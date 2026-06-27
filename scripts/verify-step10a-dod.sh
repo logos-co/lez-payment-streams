@@ -66,8 +66,12 @@ if [[ -f "$MANIFEST" ]]; then
   check_pda_initialized "vault_config" "$VC"
   VH="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['vault_holding_account_id'])")"
   check_pda_initialized "vault_holding" "$VH"
-  SC="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['stream_config_account_id'])")"
-  check_pda_initialized "stream_config" "$SC"
+  if python3 -c "import json; m=json.load(open('$MANIFEST')); exit(0 if 'stream_config_account_id' in m and m.get('stream_config_account_id') else 1)" 2>/dev/null; then
+    SC="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['stream_config_account_id'])")"
+    check_pda_initialized "stream_config" "$SC"
+  else
+    ok "vault-only manifest (no stream_config PDA check)"
+  fi
 else
   bad "missing $MANIFEST (run ./scripts/seed-localnet-fixture.sh)"
 fi

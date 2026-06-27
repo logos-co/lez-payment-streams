@@ -169,7 +169,7 @@ Default developer path (overlay on): omit `SKIP_LIBLOGOSDELIVERY_OVERLAY` when
 rate/allocation fix. Earlier overlay/hermetic paths verified 2026-06-18 with
 `SKIP_LIBLOGOSDELIVERY_OVERLAY=1` and `logos-delivery` `39b467ec` in the module lock.
 
-After user `prepareEligibilityForStoreQuery`, run `scripts/e2e/seed_provider_acceptance.py` to
+After user `prepareEligibilityProofWithStreamProofForStoreQuery`, run `scripts/e2e/seed_provider_acceptance.py` to
 copy `session_public_key_hex` into provider `provider_acceptances` (dual-host warm-up), then
 reload `payment_streams_module` on the provider host. The script selects the negotiation matching
 the current manifest provider (newest-first), so a stale negotiation from a prior session under a
@@ -317,20 +317,41 @@ messages ([N3c](reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-
 
 Re-enable user `setEligibilityProvider` before the happy path if order is reversed in the script.
 
-## Phase B — provider claim
+## Phase B — teardown (close then claim)
 
-On provider host (manifest `vault_id` / `stream_id` for stream `0`):
+Step 24c runs teardown in the **`core`** phase before exit (default `E2E_PHASE=all`).
+
+Close (local default `E2E_CLOSE_VIA=seed`):
+
+- Seed path: `close-stream-onchain` with **stream provider** as authority signer (provider key lives
+  in `.scaffold/wallet` from prefund). Orchestrator calls `release_logoscore_wallet` on the user
+  host while seed runs.
+- Fallback: provider host `chainAction closeStream` with JSON
+  `{"signer":"<owner>","vault_id":N,"stream_id":N,"authority":"<provider_account_id>"}`.
+- Success: on-chain `stream_state == Closed` for the run’s stream PDA (see `demo_close_stream_verify`
+  in the artifact). `total_allocated_lo` may stay high until claim when the stream accrued during
+  the demo.
+
+Claim (provider host, same manifest `vault_id` / `stream_id` as the run):
 
 ```bash
+logoscore "${LC_PROVIDER[@]}" call payment_streams_module chainAction claim \
+  '{"provider":"<provider_account_id>","vault_id":0,"stream_id":<run_stream_id>}'
+```
+
+If accrued is zero after close, the orchestrator logs `demo_claim` with
+`skipped: true`, `reason: zero_accrued` (still exit 0 when Store DoD passed).
+
+Legacy manual claim-only snippet (superseded by close-then-claim in the script):
+
+```bash
+# Prefer: make verify-step17 (orchestrator owns stream_id from manifest)
 logoscore "${LC_PROVIDER[@]}" call payment_streams_module chainAction claim \
   '{"provider":"<provider_account_id>","vault_id":0,"stream_id":0}'
 ```
 
-Requires provider signer in wallet storage. Log `tx_hash` in the artifact. If accrual is zero,
-document SKIP with reason (still exit 0 only if core Store DoD already passed and claim failure
-is explained — prefer top-up or query before claim so claim is non-vacuous).
-
-Script flag: `E2E_PHASE=core|claim|all` (default `all`).
+Script flag: `E2E_PHASE=core|claim|all` (default `all`). Claim-only phase is legacy; `core` includes
+close and claim.
 
 ## Log artifact
 
@@ -343,7 +364,9 @@ JSON-lines, one object per phase, e.g.:
 {"phase":"provider_ad","ok":true,"provider_peer_id":"…","provider_store_multiaddr":"…"}
 {"phase":"store_query_success","ok":true,"message_count":1,"status":200}
 {"phase":"store_query_missing_proof","ok":true,"status":null,"message_count":0}
-{"phase":"claim","ok":true,"tx_hash":"…"}
+{"phase":"demo_close_stream","ok":true,"stream_id":0,"via":"seed_close_stream_onchain"}
+{"phase":"vault_liquidity_after_close","ok":true,"total_allocated_lo":0,"unallocated_lo":2000}
+{"phase":"demo_claim","ok":true,"skipped":true,"reason":"zero_accrued","stream_id":0}
 ```
 
 On a failed `store_query_success`, the orchestrator adds a diagnostic line with the provider's
@@ -355,15 +378,81 @@ real verdict (the client-visible error is only `BAD_REQUEST`):
 
 Script exit code: non-zero if any required phase has `"ok":false`.
 
+## Run duration and fast iteration
+
+Local block production is not the main cost of a healthy Step 17 run. The debug sequencer uses
+Bedrock-driven block creation (`block_create_timeout` 15s in LEZ debug config), but when the
+chain is healthy a `createStream` confirms in seconds. Multi-minute or 20+ minute runs usually
+stack unrelated waits:
+
+| Source | Typical cost | Notes |
+|--------|--------------|--------|
+| `prefund-localnet.sh` / `FULL_RESET` | ~10+ min | Pinata rounds + deploy; not per-rerun if snapshot is fresh |
+| Stale snapshot restore | Extra prefund or `STREAM_DEPLETED` | Ledger clock vs wall time; see `fold_gap_seconds` in artifacts |
+| Seed `create-localnet-stream-fixture.sh` | Up to **3 × `E2E_SUBPROC_TIMEOUT_S`** (default 600s) | Retries on wallet `TxPoller` miss |
+| Wallet `TxPoller` (seed path) | ~**120 s** worst case per attempt (E2E overrides) | Exponential backoff from 250 ms, cap `E2E_WALLET_POLL_MAX_DELAY` (default 8s); rebuild `wallet` from LEZ with updated `poller.rs` |
+| Orchestrator | ~1–4 min when green | `PUBLISH_WAIT_S=15`, dual daemons, storeQuery up to 120s, teardown |
+| Nix module build | Minutes | Skip with `SKIP_BUILD=1` after first install |
+
+Debug the sequencer before blaming “slow blocks”:
+
+```bash
+make debug-sequencer-latency
+# or: REPO=$PWD SEQ_PROBE_WINDOW_S=8 python3 scripts/e2e/sequencer_latency_probe.py
+```
+
+If `block_delta_over_*` is zero, fix localnet (restart sequencer, check Bedrock) before re-running E2E.
+
+E2E artifacts now include `run_config`, `timing_mark`, `create_stream_poll_budget`, per-seed
+`create_stream_seed_attempt`, and `run_total` elapsed seconds.
+
+Fast loop after one green run (same ledger, monotonic stream ids):
+
+```bash
+SKIP_BUILD=1 SKIP_SEED=1 RESTORE_LOCALNET=0 ./scripts/demo-e2e-local.sh
+```
+
+Continuation defaults use seed create (not `chainAction`-only). The Makefile gate runs owner pinata
+between legs: `make verify-step17-back-to-back`.
+
+Fail faster while debugging create confirm (does not fix a stalled sequencer):
+
+```bash
+export E2E_SUBPROC_TIMEOUT_S=120
+export E2E_STREAM_FUNDABLE_WAIT_S=15
+```
+
+Seed create polling (copied wallet only):
+
+```bash
+export E2E_WALLET_POLL_MAX_DELAY=8s
+export E2E_WALLET_POLL_MAX_ATTEMPTS=22
+```
+
+Requires a `wallet` binary built from LEZ with exponential `TxPoller` (`logos-execution-zone/lez/wallet/src/poller.rs`).
+
 ## Verify entrypoint
 
 ```bash
+# Restore funded snapshot, new stream at vault next_stream_id, full demo (close then claim)
 make verify-step17
+
+# Step 24c gate: second run on same ledger (no restore; next_stream_id increments)
+make verify-step17-back-to-back
+
+# Rebuild vault-only snapshot (after LEZ pin / guest ImageID change, or polluted ledger)
+make full-reset-localnet
 ```
 
+Local prepare policy (Step 17b + 24c):
+
+- First run (or after reset): `demo-localnet-prepare` restores `.scaffold/snapshots/funded/` and writes a vault-only manifest (no stream fields).
+- Repeat demos on the same chain: `SKIP_SEED=1` or `RESTORE_LOCALNET=0` so the orchestrator does not rewind rocksdb; each run creates at `next_stream_id`.
+- E2E artifacts include `plan_demo_stream`, `baseline_before_create`, `checkpoint_after_create`, `demo_close_stream`, `vault_liquidity_after_close`, `demo_claim`.
+- Env: `E2E_CLOSE_VIA=seed` (default local) or `chainaction`; `E2E_STRICT_SEQUENCER_TX_WAIT=1` to require `getTransaction` after wallet submit.
+
 Equivalent: `./scripts/demo-e2e-local.sh` (phases `E2E_PHASE=core|claim|all`, default `all`).
-Requires local LEZ on `127.0.0.1:3040` and Step 10a fixture (script seeds via
-`demo-localnet-fresh.sh` when needed).
+Requires local LEZ on `127.0.0.1:3040` and a valid funded snapshot (or `make full-reset-localnet` once).
 
 ## Related
 

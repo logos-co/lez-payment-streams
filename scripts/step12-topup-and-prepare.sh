@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Top up stream 0 (when chain writes work), then verify prepareEligibilityForStoreQuery.
-# Depleted stream: run ./scripts/demo-localnet-fresh.sh (see docs/demo-localnet-recovery.md).
+# Create per-run stream (if needed), then verify prepareEligibilityProofWithStreamProofForStoreQuery → stream_proof.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -15,6 +14,21 @@ export MANIFEST="${FIXTURE_MANIFEST:-fixtures/localnet.json}"
 export PERSIST_DIR="${PERSIST_DIR:-$REPO/.scaffold/step12-persist-topup}"
 PROVIDER_PEER_ID="${PROVIDER_PEER_ID:-step12-demo-provider-peer}"
 DEMO_BYPASS="${PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF:-0}"
+
+python3 -c "
+import json
+from pathlib import Path
+p = Path('''$MANIFEST''')
+m = json.loads(p.read_text())
+for k in ('stream_id', 'stream_config_account_id'):
+    m.pop(k, None)
+p.write_text(json.dumps(m, indent=2) + '\n')
+"
+
+echo "--- create stream for proof path (Step 24c, chain next_stream_id) ---"
+export CREATE_FORCE=1
+export E2E_PER_RUN_STREAM=1
+"$REPO/scripts/create-localnet-stream-fixture.sh"
 
 OWNER="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['owner_account_id'])")"
 PROVIDER_B58="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['provider_account_id'])")"
@@ -49,6 +63,7 @@ nix shell github:logos-co/logos-logoscore-cli --command bash -c "
   fi
 
   logoscore call payment_streams_module registerProviderMapping '$PROVIDER_PEER_ID' '$PROVIDER_B58' >/dev/null
+  logoscore call payment_streams_module rediscoverStreams '$VAULT_ID' >/dev/null
 
   if [[ \"\${TRY_TOPUP:-1}\" == \"1\" ]]; then
     echo '--- topUpStream (optional) ---'
@@ -56,8 +71,8 @@ nix shell github:logos-co/logos-logoscore-cli --command bash -c "
     sleep 2
   fi
 
-  echo '--- prepareEligibilityForStoreQuery ---'
-  PREP=\$(logoscore call payment_streams_module prepareEligibilityForStoreQuery '$N8_WIRE_HEX' '$PROVIDER_PEER_ID' 2>&1 | tail -1)
+  echo '--- prepareEligibilityProofWithStreamProofForStoreQuery ---'
+  PREP=\$(logoscore call payment_streams_module prepareEligibilityProofWithStreamProofForStoreQuery '$N8_WIRE_HEX' '$PROVIDER_PEER_ID' '$STREAM_ID' 2>&1 | tail -1)
   echo \"\$PREP\"
   echo \"\$PREP\" | python3 -c \"
 import json,sys
@@ -66,8 +81,6 @@ outer=json.loads(line)
 inner=json.loads(outer.get('result','{}'))
 if inner.get('status')!='ok':
   print('VERIFY_FAIL', inner.get('code'), inner.get('message'))
-  if inner.get('code')=='STREAM_DEPLETED':
-    print('HINT: ./scripts/demo-localnet-fresh.sh')
   sys.exit(1)
 if inner.get('kind')!='stream_proof':
   print('VERIFY_FAIL expected stream_proof got', inner.get('kind'))

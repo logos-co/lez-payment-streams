@@ -3630,6 +3630,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base58",
+ "borsh",
  "clap",
  "common 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=27360cb7d6ccb2bfbcca7d171bab8a3938490264)",
  "hex",

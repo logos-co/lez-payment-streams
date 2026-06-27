@@ -97,7 +97,7 @@ pub(crate) fn stream_params_from_ffi(
     Ok(StreamParams::new(
         params.rate,
         balance_from_lo_hi(params.allocation_lo, params.allocation_hi),
-        params.create_stream_deadline,
+        chain_timestamp_to_fold_seconds(params.create_stream_deadline),
         params.service_id_bytes[..sid_len_usize].to_vec(),
     ))
 }
@@ -260,7 +260,7 @@ pub unsafe extern "C" fn payment_streams_ffi_proposal_satisfies_policy(
             ffi_snapshot.vault_total_allocated_lo,
             ffi_snapshot.vault_total_allocated_hi,
         ),
-        ffi_snapshot.now,
+        chain_timestamp_to_fold_seconds(ffi_snapshot.now),
     );
 
     match proposal_satisfies_policy(&check_inputs_snapshot) {
@@ -290,9 +290,9 @@ pub unsafe extern "C" fn payment_streams_ffi_create_stream_deadline_satisfies_po
     }
 
     match create_stream_deadline_satisfies_policy_as_of(
-        params_create_stream_deadline,
+        chain_timestamp_to_fold_seconds(params_create_stream_deadline),
         policy_max_create_stream_deadline_delay,
-        check_time,
+        chain_timestamp_to_fold_seconds(check_time),
     ) {
         Ok(()) => PaymentStreamsFfiStatus::Success,
         Err(reason) => {
@@ -426,5 +426,15 @@ mod timestamp_tests {
     fn lez_510_ms_clock_normalized_to_seconds() {
         assert_eq!(chain_timestamp_to_fold_seconds(1_781_710_693_910), 1_781_710_693);
         assert_eq!(chain_timestamp_to_fold_seconds(105), 105);
+    }
+
+    #[test]
+    fn proposal_deadline_ms_normalized_like_clock() {
+        let now_ms = 1_781_710_693_910_u64;
+        let deadline_ms = now_ms + 600_000;
+        assert_eq!(
+            chain_timestamp_to_fold_seconds(deadline_ms),
+            chain_timestamp_to_fold_seconds(now_ms) + 600
+        );
     }
 }

@@ -151,6 +151,13 @@ QJsonObject vaultHoldingToJson(const PsFfiDecodedVaultHolding& decoded) {
     return obj;
 }
 
+quint64 chainTimestampToFoldSeconds(quint64 ts) {
+    if (ts > 1'000'000'000'000ULL) {
+        return ts / 1000;
+    }
+    return ts;
+}
+
 QJsonObject streamConfigToJson(const PsFfiDecodedStreamConfig& decoded) {
     QJsonObject obj;
     obj.insert(QStringLiteral("version"), static_cast<qint64>(decoded.version));
@@ -163,14 +170,19 @@ QJsonObject streamConfigToJson(const PsFfiDecodedStreamConfig& decoded) {
     obj.insert(QStringLiteral("allocation_hi"), static_cast<qint64>(decoded.allocation_hi));
     obj.insert(QStringLiteral("accrued_lo"), static_cast<qint64>(decoded.accrued_lo));
     obj.insert(QStringLiteral("accrued_hi"), static_cast<qint64>(decoded.accrued_hi));
+    // On-chain checkpoint (LEZ 510+ ms); fold math uses seconds (see accrued_as_of_seconds).
     obj.insert(QStringLiteral("accrued_as_of"), static_cast<qint64>(decoded.accrued_as_of));
+    obj.insert(QStringLiteral("accrued_as_of_seconds"),
+               static_cast<qint64>(chainTimestampToFoldSeconds(decoded.accrued_as_of)));
     return obj;
 }
 
 QJsonObject clockToJson(const PsFfiDecodedClock& decoded) {
     QJsonObject obj;
     obj.insert(QStringLiteral("block_id"), static_cast<qint64>(decoded.block_id));
+    // Already normalized to seconds by ps_ffi_decode_clock (LEZ 510+ ms on wire).
     obj.insert(QStringLiteral("timestamp"), static_cast<qint64>(decoded.timestamp));
+    obj.insert(QStringLiteral("timestamp_seconds"), static_cast<qint64>(decoded.timestamp));
     return obj;
 }
 

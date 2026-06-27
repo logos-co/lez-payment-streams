@@ -22,7 +22,7 @@ Proof bytes are LIP-155 payment-stream `EligibilityProof` (not the legacy
 
 - MVP hooks are synchronous blocking C function pointers at the liblogosdelivery boundary ([N3](reference/decisions-and-notes.md#n3-provider-side-verification-latency-and-blocking-hooks))
 - Opaque bytes on the hook are the full serialized `EligibilityProof` (not inner arms alone)
-- Outbound: provider libp2p `PeerId` to `prepareEligibilityForStoreQuery`
+- Outbound (Step 16): provider libp2p `PeerId` to `prepareEligibilityProofWithStreamProposalForStoreQuery`
 - Inbound: requester `PeerId` to `verifyEligibilityForStoreQuery` (logged only in MVP)
 - Inbound `out_desc`: Step 16 copies verify JSON `message` on failure; empty ⇒ default phrase (D2)
 - Registration introspection: exact method names via `getPluginMethods` (D2)
@@ -47,7 +47,8 @@ completion event ([N3a](reference/decisions-and-notes.md#n3a-step-16-threading--
 
 | Method | Role |
 | --- | --- |
-| `prepareEligibilityForStoreQuery` | User / outbound: returns `bytes_hex` (`EligibilityProof`) |
+| `prepareEligibilityProofWithStreamProposalForStoreQuery` | User / outbound (Step 16 delivery): vault proposal → `"kind":"stream_proposal"`. Two args: `canonical_request_hex`, `provider_peer_id`. |
+| `prepareEligibilityProofWithStreamProofForStoreQuery` | User / Track A E2E: stream proof → `"kind":"stream_proof"`. Three args; third = `stream_id`. See [Prepare methods](#prepare-methods--step-24c). |
 | `verifyEligibilityForStoreQuery` | Provider / inbound: returns `eligibility` verdict |
 | `registerProviderMapping` | User routing: `PeerId` → payee base58 (host before outbound queries; Step 17 demo) |
 | `listMyStreams`, `rediscoverStreams` | Inventory / refresh |
@@ -69,6 +70,60 @@ N8 tool:
 ```bash
 cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex
 ```
+
+## Prepare methods — Step 24c
+
+Normative detail: [step-24c-simplify-demo-flow.md](plan/upcoming/step-24c-simplify-demo-flow.md).
+
+Universal modules (`interface: universal`) use `logos-cpp-generator` glue: **one LogosAPI name per
+method** (C++ overloads with the same name are not exported). Public methods in `*_impl.h` must be
+**single-line declarations** (the generator skips wrapped multi-line signatures). Proposal and proof
+are separate methods:
+
+| Method | Args | Path |
+| --- | --- | --- |
+| `prepareEligibilityProofWithStreamProposalForStoreQuery` | `n8_hex`, `provider_peer_id` | `stream_proposal` only |
+| `prepareEligibilityProofWithStreamProofForStoreQuery` | `n8_hex`, `provider_peer_id`, `stream_id` | `stream_proof` only |
+
+- `logoscore call` forwards every token after `<module> <method>` as a JSON argument array.
+- Step 16 / delivery outbound prepare calls **`prepareEligibilityProofWithStreamProposalForStoreQuery`** (two args).
+- Track A E2E orchestrator calls **`prepareEligibilityProofWithStreamProofForStoreQuery`** after per-run `create_stream`.
+- Smoke: `lm methods` on the plugin must list **both** method names with distinct signatures.
+
+Examples:
+
+```bash
+# Proposal (Step 12 Case A, vault-only fixture)
+logoscore call payment_streams_module prepareEligibilityProofWithStreamProposalForStoreQuery '<n8_hex>' '<provider_peer_id>'
+
+# Proof (Step 17/18 after create_stream)
+logoscore call payment_streams_module prepareEligibilityProofWithStreamProofForStoreQuery '<n8_hex>' '<provider_peer_id>' <stream_id>
+```
+
+## Chain teardown (Step 24c local E2E)
+
+Close then claim for the **run’s** `stream_id` (not a fixed stream 0).
+
+Local seed close (fixture helper):
+
+```bash
+# Provider must sign; authority account = provider_account_id from manifest
+cargo run -q --manifest-path examples/Cargo.toml --bin seed_localnet_fixture -- \
+  close-stream-onchain --program-bin "$PAYMENT_STREAMS_GUEST_BIN" \
+  --owner "$OWNER" --provider "$PROVIDER" --vault-id 0 --stream-id "$STREAM_ID"
+```
+
+Logoscore (provider host):
+
+```bash
+logoscore call payment_streams_module chainAction closeStream \
+  '{"signer":"<owner>","vault_id":0,"stream_id":<id>,"authority":"<provider_account_id>"}'
+logoscore call payment_streams_module chainAction claim \
+  '{"provider":"<provider_account_id>","vault_id":0,"stream_id":<id>}'
+```
+
+Owner-as-both-signer-and-authority close is invalid for the six-account layout unless the product
+adds a distinct authority slot; Track A E2E uses the stream provider key from prefund.
 
 ## JSON — user prepare (Step 12)
 

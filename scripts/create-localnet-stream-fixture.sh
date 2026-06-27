@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Step 17b — create stream 0 on restored/prefunded baseline and write fixtures/localnet.json.
+# Step 17b — create on-chain stream at per-run stream_id and write fixtures/localnet.json.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -57,14 +57,28 @@ if [[ ! -f "$PROVIDER_FILE" ]]; then
 fi
 PROVIDER="$(cat "$PROVIDER_FILE")"
 
-echo "Creating stream 0 (rate=$STREAM_RATE allocation=$STREAM_ALLOCATION)…"
+if [[ -z "${STREAM_ID:-}" ]]; then
+  STREAM_ID="$(cargo run --quiet --manifest-path examples/Cargo.toml --bin seed_localnet_fixture -- read-vault-next-stream-id \
+    --program-bin "$PROGRAM_BIN" \
+    --owner "$SIGNER_ID")"
+fi
+
+CREATE_EXTRA=()
+# Step 24c / E2E: never silently skip create when a stream PDA already exists (stale snapshot).
+if [[ "${CREATE_FORCE:-0}" == "1" || "${E2E_PER_RUN_STREAM:-0}" == "1" ]]; then
+  CREATE_EXTRA+=(--force)
+fi
+
+echo "Creating stream ${STREAM_ID} (rate=$STREAM_RATE allocation=$STREAM_ALLOCATION)…"
 cargo run --quiet --manifest-path examples/Cargo.toml --bin seed_localnet_fixture -- create-stream-onchain \
   --program-bin "$PROGRAM_BIN" \
   --owner "$SIGNER_ID" \
   --provider "$PROVIDER" \
+  --stream-id "$STREAM_ID" \
   --deposit-amount "$DEPOSIT_AMOUNT" \
   --stream-rate "$STREAM_RATE" \
   --allocation "$STREAM_ALLOCATION" \
+  "${CREATE_EXTRA[@]}" \
   --write-manifest "$MANIFEST"
 
 echo "Done. Manifest: $MANIFEST"

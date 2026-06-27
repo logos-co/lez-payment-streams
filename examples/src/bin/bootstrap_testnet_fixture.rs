@@ -68,10 +68,12 @@ struct TestnetFixture {
     owner_account_id: String,
     provider_account_id: String,
     vault_id: u64,
-    stream_id: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stream_id: Option<u64>,
     vault_config_account_id: String,
     vault_holding_account_id: String,
-    stream_config_account_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stream_config_account_id: Option<String>,
     clock_10_account_id: String,
     demo_deposit_amount: Balance,
     stream_rate: TokensPerSecond,
@@ -279,7 +281,7 @@ async fn main() -> Result<()> {
 
     let vault_ready = account_has_data_helper(&args, init_accounts[0])?;
     let holding_ready = account_has_data_helper(&args, vault_holding)?;
-    let stream_ready = account_has_data_helper(&args, stream_accounts[2])?;
+    let _stream_ready = account_has_data_helper(&args, stream_accounts[2])?;
 
     if !vault_ready {
         let json = build_submit_json(
@@ -310,40 +312,22 @@ async fn main() -> Result<()> {
         eprintln!("vault holding funded; skip deposit");
     }
 
-    if stream_ready && skip_if_initialized {
-        eprintln!("stream exists; skip create_stream");
-    } else if !stream_ready {
-        let json = build_submit_json(
-            &stream_accounts,
-            &Instruction::CreateStream {
-                vault_id,
-                stream_id,
-                provider: provider_id,
-                rate: args.stream_rate,
-                allocation: args.stream_allocation,
-            },
-            owner_id,
-            &[],
-        )?;
-        submit_via_helper(&args, &json)?;
-    }
-
     let fixture = TestnetFixture {
-        schema_version: 1,
+        schema_version: 2,
         sequencer_url: args.sequencer_url.clone(),
         program_id_hex,
         owner_account_id: account_id_to_base58(owner_id),
         provider_account_id: account_id_to_base58(provider_id),
         vault_id,
-        stream_id,
+        stream_id: None,
         vault_config_account_id: account_id_to_base58(init_accounts[0]),
         vault_holding_account_id: account_id_to_base58(vault_holding),
-        stream_config_account_id: account_id_to_base58(stream_accounts[2]),
+        stream_config_account_id: None,
         clock_10_account_id: account_id_to_base58(CLOCK_10_PROGRAM_ACCOUNT_ID),
         demo_deposit_amount: args.deposit_amount,
         stream_rate: args.stream_rate,
         stream_allocation: args.stream_allocation,
-        reserved_for_step_18: "bootstrap_testnet_fixture (Part B)".to_string(),
+        reserved_for_step_18: "Vault baseline only (Step 24c). Per-run stream created in E2E.".to_string(),
     };
 
     if let Some(parent) = args.write_manifest.parent() {

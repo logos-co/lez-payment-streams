@@ -8,7 +8,8 @@ Status: Complete (2026-06-19). The full local dual-host gate is green via `make 
 localnet fixture: paid `storeQuery` returns `statusCode:200` with messages, missing-proof is
 rejected, and provider claim writes a `tx_hash`. Fixture prepare is
 [Step 17b](step-17b-localnet-snapshot-restore.md) (`demo-localnet-prepare.sh`;
-default restore + fresh stream `0`; `FULL_RESET=1` or `demo-localnet-fresh.sh` rebuilds snapshot).
+default restore + vault-only manifest; per-run stream in E2E — [Step 24c](../upcoming/step-24c-simplify-demo-flow.md);
+`FULL_RESET=1` or `demo-localnet-fresh.sh` rebuilds snapshot).
 After a **guest rebuild** (`make build`) or LEZ pin change, run `FULL_RESET=1` prepare before E2E
 (snapshot `program_id_hex` must match the deployed ImageID; restore-only prepare fails otherwise).
 JSON-lines artifacts land under `.scaffold/e2e/artifacts/`. The 2026-06-18 checkpoint reported the
@@ -23,12 +24,13 @@ runbook [Hermetic run](../../step17-e2e-local.md#hermetic-run-hand-off)).
 Module bridge invokes eligibility on the `LogosAPIClient` thread ([N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
 Seed economics (full rebuild): deposit `2000` / allocation `1800` / rate `1`, pinata rounds `14`
 in [`scripts/seed-localnet-fixture.sh`](../../../scripts/seed-localnet-fixture.sh). Repeat runs
-restore the funded baseline and recreate stream `0` ([N15](../../reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19)).
+restore the funded vault baseline; each E2E run creates at `next_stream_id` and teardown closes
+([Step 24c](../upcoming/step-24c-simplify-demo-flow.md), [N15](../../reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19)).
 
 Post-Complete hardening (not gating): re-run the hermetic path (`SKIP_LIBLOGOSDELIVERY_OVERLAY=1`)
 after the fix and drop the default overlay once hermetic installs are routine; align delivery
 `.lgx` layout with `logoscore` if `MODULE_LOAD_FAILED` appears on clean machines only.
-Stale-stream depletion on back-to-back runs is addressed by Step 17b snapshot restore (2026-06-19).
+Back-to-back monotonic stream ids: `make verify-step17-back-to-back` (Step 24c).
 
 ### Step 17, End-to-end demo wiring
 

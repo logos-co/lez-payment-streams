@@ -38,7 +38,7 @@ guest: Step 19 (`rfc-index` branch `feat/payment-streams-onchain-part`); see
 | Payment streams UI + user journey — Track B (protocol only, optional) | 21–22 (optional stretch; [N18](docs/reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)) |
 | Public hosted Store provider (optional) | 23 |
 | LEZ in-process harness (`program_tests`, rc5 `lee`) | 24 + 24b (complete) |
-| Deterministic demo lifecycle (fresh stream, explicit prepare id) | 24c (planned) |
+| Deterministic demo lifecycle (fresh stream, explicit prepare id) | 24c local complete — [step-24c-simplify-demo-flow.md](docs/plan/upcoming/step-24c-simplify-demo-flow.md) |
 
 Step 25 (in-process demo coordinator module) is **won't fix**
 ([cancelled packet](docs/plan/cancelled/step-25-demo-coordination-module.md)).
@@ -162,12 +162,11 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 23 | Public Store provider | Optional — [step-23-public-store-provider.md](docs/plan/upcoming/step-23-public-store-provider.md) |
 | 24 | LEZ `lee` harness @ 510 | Complete — [step-24](docs/plan/completed/step-24-lee-harness-upgrade.md) |
 | 24b | Rust `lee` / guest unify on rc5 | Complete — [step-24b-rc5-rust-lee-unify.md](docs/plan/completed/step-24b-rc5-rust-lee-unify.md) |
-| 24c | Simplify demo flow (fresh stream / explicit prepare) | Planned — [step-24c-simplify-demo-flow.md](docs/plan/upcoming/step-24c-simplify-demo-flow.md) |
+| 24c | Simplify demo flow (fresh stream / explicit prepare) | Local complete — [step-24c-simplify-demo-flow.md](docs/plan/upcoming/step-24c-simplify-demo-flow.md) (testnet Phase 4 open) |
 | 25 | Demo coordination Logos module | Won't fix — [cancelled/step-25](docs/plan/cancelled/step-25-demo-coordination-module.md), [N17](docs/reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06) |
 
-Execution order: Steps through 17, 17b, 18b, 19, 24, and 24b are complete. Recommended before
-Step 20 doc finalization: **Step 24c** (demo lifecycle). Parallel: Step 18 Part B DoD on testnet.
-Then Step 20 (Track A). Optional 23; optional stretch Steps 21–22 (Track B). Step 25 won't fix.
+Execution order: Steps through 17, 17b, 18b, 19, 24, 24b, and **24c local gate** are complete.
+Parallel: Step 18 Part B DoD on testnet. Then Step 20 (Track A). Optional 23; optional stretch Steps 21–22 (Track B). Step 25 won't fix.
 Entry: [`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md). Local demos:
 [`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 
@@ -205,7 +204,7 @@ Agent packet: [step-16.md](docs/plan/completed/step-16.md).
 
 ### Step 17 — E2E demo local LEZ (complete)
 
-DoD: `make verify-step17` — paid Store, missing-proof reject, claim `tx_hash`.
+DoD: `make verify-step17-back-to-back` — restore run plus `SKIP_SEED=1` run (monotonic stream ids); paid Store, missing-proof reject, close then claim.
 Runbook: [step17-e2e-local.md](docs/step17-e2e-local.md). Packet:
 [step-17.md](docs/plan/completed/step-17.md).
 
@@ -261,6 +260,7 @@ Completed (pointers): [Step 17](docs/plan/completed/step-17.md),
 | `./scripts/verify-step13-dod.sh` | 13 |
 | `./scripts/demo-localnet-prepare.sh` | 17b / 17 fixture |
 | `./scripts/demo-e2e-local.sh` | 17 dual-host E2E |
+| `make verify-step17-back-to-back` | 17 + 24c — restore run then continuation on same ledger |
 
 `make verify-step17` → [scripts/demo-e2e-local.sh](scripts/demo-e2e-local.sh) →
 [scripts/e2e/run_local_e2e.py](scripts/e2e/run_local_e2e.py) ([N17](docs/reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06),

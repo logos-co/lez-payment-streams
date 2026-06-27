@@ -75,7 +75,7 @@ _lm_methods() {
   fi
 }
 
-for method in registerProviderMapping prepareEligibilityForStoreQuery listMyStreams rediscoverStreams; do
+for method in registerProviderMapping prepareEligibilityProofWithStreamProposalForStoreQuery prepareEligibilityProofWithStreamProofForStoreQuery listMyStreams rediscoverStreams; do
   if _lm_methods "$PS_PLUGIN" | grep -q "$method"; then
     ok "lm methods lists $method"
   else
@@ -168,16 +168,14 @@ timeout "$LOGOSCORE_E2E_TIMEOUT" nix shell github:logos-co/logos-logoscore-cli -
     sleep 2
   fi
   echo REG:\$(logoscore call payment_streams_module registerProviderMapping '$PROVIDER_PEER_ID' '$PROVIDER_B58' 2>&1 | tail -1)
-  TOPUP_JSON=\$(python3 -c \"import json; m=json.load(open('$MANIFEST')); print(json.dumps({'signer': m['owner_account_id'], 'vault_id': int(m['vault_id']), 'stream_id': int(m['stream_id']), 'increase_lo': 50, 'increase_hi': 0}))\")
-  echo TOPUP:\$(logoscore call payment_streams_module chainAction topUpStream \"\$TOPUP_JSON\" 2>&1 | tail -1)
   height=\$(curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
     -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getLastBlockId\",\"params\":[]}' \
     | python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get(\"result\"); print(r if isinstance(r,int) else (r or \"\"))' 2>/dev/null || true)
   if [[ -n \"\$height\" ]]; then
     logoscore call logos_execution_zone sync_to_block \"\$height\" >/dev/null 2>&1 || true
   fi
-  sleep 5
-  echo PREP:\$(logoscore call payment_streams_module prepareEligibilityForStoreQuery '$N8_WIRE_HEX' '$PROVIDER_PEER_ID' 2>&1 | tail -1)
+  sleep 2
+  echo PREP:\$(logoscore call payment_streams_module prepareEligibilityProofWithStreamProposalForStoreQuery '$N8_WIRE_HEX' '$PROVIDER_PEER_ID' 2>&1 | tail -1)
   echo LIST:\$(logoscore call payment_streams_module listMyStreams \"\$(python3 -c \"import json; print(json.load(open('$MANIFEST'))['vault_id'])\")\" 2>&1 | tail -1)
   logoscore stop 2>/dev/null || true
 " >"$SMOKE_FILE" 2>&1 || echo LOGOSCORE_TIMEOUT >>"$SMOKE_FILE"
@@ -195,46 +193,28 @@ else
   fi
 
   PREP_LINE="$(rg '^PREP:' "$SMOKE_FILE" | tail -1 | sed 's/^PREP://')"
-  TOPUP_LINE="$(rg '^TOPUP:' "$SMOKE_FILE" | tail -1 | sed 's/^TOPUP://' || true)"
-  if echo "$TOPUP_LINE" | python3 -c "
-import json,sys
-line=sys.stdin.read().strip()
-if not line: sys.exit(1)
-outer=json.loads(line)
-inner=json.loads(outer.get('result','{}'))
-sys.exit(0 if inner.get('success') else 1)
-" 2>/dev/null; then
-    ok "chainAction topUpStream (restore unaccrued for stream_proof smoke)"
-  else
-    skip "chainAction topUpStream (optional; needed when seeded stream 0 is fully accrued)"
-  fi
-
   if echo "$PREP_LINE" | python3 -c "
 import json,sys
 line=sys.stdin.read().strip()
 outer=json.loads(line)
 inner=json.loads(outer.get('result','{}'))
-if inner.get('status')=='ok' and inner.get('kind')=='stream_proof':
+if inner.get('status')=='ok' and inner.get('kind')=='stream_proposal':
   sys.exit(0)
-if inner.get('code')=='STREAM_DEPLETED':
-  sys.exit(2)
 sys.exit(1)
 " 2>/dev/null; then
-    ok "prepareEligibilityForStoreQuery stream_proof (seeded stream)"
-  elif echo "$PREP_LINE" | grep -q 'STREAM_DEPLETED' || echo "$PREP_LINE" | python3 -c "
+    ok "prepareEligibilityProofWithStreamProposalForStoreQuery stream_proposal (vault baseline)"
+  elif echo "$PREP_LINE" | python3 -c "
 import json,sys
 line=sys.stdin.read().strip()
 outer=json.loads(line)
 inner=json.loads(outer.get('result','{}'))
-sys.exit(0 if inner.get('code')=='STREAM_DEPLETED' else 1)
+if inner.get('code')=='NO_ELIGIBLE_VAULT':
+  sys.exit(2)
+sys.exit(1)
 " 2>/dev/null; then
-    if [[ "$REQUIRE_STREAM_PROOF" == "1" ]]; then
-      bad "prepareEligibilityForStoreQuery STREAM_DEPLETED (run ./scripts/demo-localnet-fresh.sh)"
-    else
-      skip "prepareEligibilityForStoreQuery (stream 0 depleted; ./scripts/demo-localnet-fresh.sh then REQUIRE_STREAM_PROOF=1)"
-    fi
+    skip "prepareEligibilityProofWithStreamProposalForStoreQuery (NO_ELIGIBLE_VAULT — restore vault snapshot)"
   else
-    bad "prepareEligibilityForStoreQuery failed"
+    bad "prepareEligibilityProofWithStreamProposalForStoreQuery failed (expected stream_proposal on vault-only manifest)"
     echo "$PREP_LINE" >&2
   fi
 

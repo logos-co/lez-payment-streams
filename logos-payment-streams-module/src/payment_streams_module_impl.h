@@ -21,7 +21,8 @@ public:
     QString chainAction(const QVariant& operation, const QVariant& paramsJson);
 
     QString registerProviderMapping(const QVariant& providerPeerId, const QVariant& providerAccountIdBase58);
-    QString prepareEligibilityForStoreQuery(const QVariant& canonicalRequestHex, const QVariant& providerPeerId);
+    QString prepareEligibilityProofWithStreamProposalForStoreQuery(const QVariant& canonicalRequestHex, const QVariant& providerPeerId);
+    QString prepareEligibilityProofWithStreamProofForStoreQuery(const QVariant& canonicalRequestHex, const QVariant& providerPeerId, const QVariant& streamId);
     QString verifyEligibilityForStoreQuery(const QVariant& proofBytes, const QVariant& canonicalRequestBytes, const QVariant& requesterPeerId);
     QString listMyStreams(const QVariant& vaultId);
     QString rediscoverStreams(const QVariant& vaultId);

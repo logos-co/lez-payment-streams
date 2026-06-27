@@ -35,6 +35,11 @@ fi
 E2E_PHASE="${E2E_PHASE:-all}"
 SKIP_BUILD="${SKIP_BUILD:-0}"
 SKIP_SEED="${SKIP_SEED:-0}"
+RESTORE_LOCALNET="${RESTORE_LOCALNET:-1}"
+if [[ "$CHAIN" != "testnet" && "$RESTORE_LOCALNET" == "0" ]]; then
+  SKIP_SEED=1
+fi
+export E2E_CREATE_VIA="${E2E_CREATE_VIA:-seed}"
 
 E2E_BASE="${E2E_BASE:-$REPO/.scaffold/e2e}"
 export MODULES_USER="${MODULES_USER:-$E2E_BASE/user/modules}"
@@ -102,28 +107,12 @@ ensure_fixture() {
     return 0
   fi
   if [[ "$SKIP_SEED" == "1" && -f "$FIXTURE_MANIFEST" ]]; then
-    log_phase seed 1 '{"skipped":true}'
+    log_phase seed 1 '{"skipped":true,"restore_localnet":false}'
     return 0
   fi
-  echo "--- prepare localnet (Step 17b restore + stream) ---"
-  export E2E_LATE_STREAM_CREATE="${E2E_LATE_STREAM_CREATE:-1}"
-  skip_stream=0
-  if [[ "$E2E_LATE_STREAM_CREATE" == "1" ]]; then
-    skip_stream=1
-  fi
-  FULL_RESET="${FULL_RESET:-0}" SKIP_VERIFY="${SKIP_VERIFY:-1}" SKIP_STREAM_CREATE="$skip_stream" \
+  echo "--- prepare localnet (Step 17b restore + vault baseline) ---"
+  FULL_RESET="${FULL_RESET:-0}" SKIP_VERIFY="${SKIP_VERIFY:-1}" SKIP_STREAM_CREATE=1 \
     "$REPO/scripts/demo-localnet-prepare.sh"
-  if [[ "$E2E_LATE_STREAM_CREATE" == "1" ]]; then
-    echo "--- fixture manifest stub (stream on chain at proof time) ---"
-    # shellcheck disable=SC1090
-    source "$REPO/.lez_payment_streams-state"
-    PROVIDER="$(cat "$REPO/.lez_payment_streams-fixture-provider")"
-    cargo run --quiet --manifest-path "$REPO/examples/Cargo.toml" --bin seed_localnet_fixture -- write-manifest \
-      --program-bin "$PAYMENT_STREAMS_GUEST_BIN" \
-      --owner "$SIGNER_ID" \
-      --provider "$PROVIDER" \
-      --output "$FIXTURE_MANIFEST"
-  fi
   if [[ ! -f "$FIXTURE_MANIFEST" ]]; then
     log_phase seed 0 '{"error":"missing manifest"}'
     exit 1
@@ -196,7 +185,7 @@ if [[ -z "${N8_WIRE_HEX:-}" ]]; then
   export N8_WIRE_HEX="$(cargo run -q -p lez-payment-streams-core --bin n8_canonical_wire_hex)"
 fi
 
-export ARTIFACT E2E_PHASE SKIP_BUILD SKIP_SEED N8_WIRE_HEX
+export ARTIFACT E2E_PHASE SKIP_BUILD SKIP_SEED N8_WIRE_HEX RESTORE_LOCALNET E2E_CREATE_VIA
 
 nix shell \
   github:logos-co/logos-package-manager \
@@ -204,6 +193,8 @@ nix shell \
   --command bash -c "
     export REPO='$REPO' ARTIFACT='$ARTIFACT' E2E_PHASE='$E2E_PHASE'
     export SKIP_BUILD='$SKIP_BUILD' SKIP_SEED='$SKIP_SEED' N8_WIRE_HEX='$N8_WIRE_HEX'
+    export RESTORE_LOCALNET='${RESTORE_LOCALNET:-1}'
+    export E2E_CREATE_VIA='${E2E_CREATE_VIA}'
     export MODULES_USER='$MODULES_USER' MODULES_PROVIDER='$MODULES_PROVIDER'
     export LOGOSCORE_CONFIG_USER='$LOGOSCORE_CONFIG_USER' LOGOSCORE_CONFIG_PROVIDER='$LOGOSCORE_CONFIG_PROVIDER'
     export PERSIST_USER='$PERSIST_USER' PERSIST_PROVIDER='$PERSIST_PROVIDER'
@@ -214,7 +205,6 @@ nix shell \
     export PAYMENT_STREAMS_GUEST_BIN='$PAYMENT_STREAMS_GUEST_BIN' E2E_PROVIDER_AD='$E2E_PROVIDER_AD'
     export CHAIN='$CHAIN'
     export PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF='${PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF:-0}'
-    export E2E_LATE_STREAM_CREATE='${E2E_LATE_STREAM_CREATE:-1}'
     export DELIVERY_MODULE_ROOT='${DELIVERY_MODULE_ROOT:-$REPO/../logos-delivery-module}'
     export SKIP_LIBLOGOSDELIVERY_OVERLAY='${SKIP_LIBLOGOSDELIVERY_OVERLAY:-0}'
     export N8_WIRE_HEX='$N8_WIRE_HEX' FIXTURE_MANIFEST='$FIXTURE_MANIFEST'
