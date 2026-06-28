@@ -819,4 +819,4 @@ builtin program ids aligned with the 510-era lineage, not rc3 dual-pin tooling.
 - **Phase 9:** retire `tools/lez-testnet-submit` when module `chainAction` on testnet needs no helper.
 - **Status (2026-06):** merged to `master`; Step 24b unified Rust/guest on rc5. `make verify-step17` uses `CHAIN=local`; `make verify-step18` exercises public testnet Part B (see [step18-public-sequencer-e2e.md](../step18-public-sequencer-e2e.md)).
 
-Handoff: [step-18b-rc5-unify-handoff.md](../plan/upcoming/step-18b-rc5-unify-handoff.md).
+Handoff: [step-18b-rc5-unify-handoff.md](../plan/completed/step-18b-rc5-unify-handoff.md).

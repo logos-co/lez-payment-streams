@@ -94,4 +94,4 @@ several runs without reclaiming.
 - Claim CLI: `examples/src/bin/seed_localnet_fixture.rs` (`claim-onchain`).
 - Core semantics: `lez-payment-streams-core/src/stream_config.rs`
   (`claim_at_time`, test `n_closed_residual_succeeds`).
-- Testnet packet: [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md).
+- Testnet packet: [plan/completed/step-18-public-testnet-demo.md](plan/completed/step-18-public-testnet-demo.md).

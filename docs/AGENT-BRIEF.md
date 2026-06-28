@@ -13,26 +13,23 @@ Payment streams is a **universal LEZ payment protocol**; Store eligibility is **
 use case** (Track A). Optional Basecamp UI (Track B) covers protocol-only flows, not Store.
 
 Program outcomes and track split: [N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
-Index: [integration-index.md](../integration-index.md#program-outcomes).
+Index: [integration-index.md](../integration-index.md).
 
 ## Active work (execution order)
 
-Steps 1–13, 11d, Steps 14–16 on the delivery forks, Steps 17–17b, 18b, 19, 24, 24b, and 24c are complete.
+Steps 1–13, 11d, Steps 14–16 on the delivery forks, Steps 17–17b, 18, 18b, 19, 24, 24b, and 24c are complete.
 
-Step 18 Part B (public testnet E2E with local Store) uses the same operational LEZ pin as Step 17
-(rc5 on `master`). Active work: Step 18 Part B testnet DoD, Step 20 (Track A). Step 20 testnet
-journey rows need Step 18 DoD.
+Active work: Step 20 (Track A — Store integration developer journey).
 
 | Step | Repo / area | Agent packet |
 | --- | --- | --- |
-| 18 | Public sequencer E2E (local Store) | [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) |
 | 20 | Developer journey — **Track A** (Store integration) | [plan/upcoming/step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md) — script E2E + step-by-step dual-host commands ([N17](reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06), [N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)) |
 | 23 | Public Store provider (optional) | [plan/upcoming/step-23-public-store-provider.md](plan/upcoming/step-23-public-store-provider.md) |
 
-Reference (24c, complete): [step-24c-simplify-demo-flow.md](plan/completed/step-24c-simplify-demo-flow.md).
-Reference (complete): [step-24b-rc5-rust-lee-unify.md](plan/completed/step-24b-rc5-rust-lee-unify.md),
-[plan/upcoming/step-18b-rc5-unify-handoff.md](plan/upcoming/step-18b-rc5-unify-handoff.md),
-[N16](reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06).
+Reference (complete): [step-18-public-testnet-demo.md](plan/completed/step-18-public-testnet-demo.md),
+[step-18b-rc5-unify-handoff.md](plan/completed/step-18b-rc5-unify-handoff.md),
+[step-24c-simplify-demo-flow.md](plan/completed/step-24c-simplify-demo-flow.md),
+[step-24b-rc5-rust-lee-unify.md](plan/completed/step-24b-rc5-rust-lee-unify.md).
 
 **Optional stretch (if time):** Step 21 payment streams Basecamp UI, Step 22 UI journey doc —
 **Track B** protocol only ([N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)); payee claim assumes stream ids shared **out of band**.
@@ -66,8 +63,8 @@ Summary:
 | Localnet / verify failure | [demo-localnet-recovery.md](demo-localnet-recovery.md) + relevant `verify-step*-dod.sh` |
 | Step 17b snapshot / fast reuse | [plan/completed/step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md) + [N15](reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) |
 | Step 17 E2E dual-host (done) | [plan/completed/step-17.md](plan/completed/step-17.md) + [step17-e2e-local.md](step17-e2e-local.md) + [N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18) |
-| Step 18b rc5 unify | [step-18b-rc5-unify-handoff.md](plan/upcoming/step-18b-rc5-unify-handoff.md) (complete) then [step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) |
-| Step 18 public sequencer | [plan/upcoming/step-18-public-testnet-demo.md](plan/upcoming/step-18-public-testnet-demo.md) + [step18-public-sequencer-e2e.md](step18-public-sequencer-e2e.md) |
+| Step 18b rc5 unify | [step-18b-rc5-unify-handoff.md](plan/completed/step-18b-rc5-unify-handoff.md) (complete) then [step-18-public-testnet-demo.md](plan/completed/step-18-public-testnet-demo.md) |
+| Step 18 public sequencer | [plan/completed/step-18-public-testnet-demo.md](plan/completed/step-18-public-testnet-demo.md) + [step18-public-sequencer-e2e.md](step18-public-sequencer-e2e.md) |
 | Step 20 developer journey (Track A) | [plan/upcoming/step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md) + [step17-e2e-local.md](step17-e2e-local.md) + [N17](reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06) + [N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06) |
 | Step 21–22 payment streams UI (Track B, optional) | [step-21-basecamp-ui.md](plan/upcoming/step-21-basecamp-ui.md), [step-22-ui-journey.md](plan/upcoming/step-22-ui-journey.md) + [N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06) |
 | Step 23 hosted provider | [plan/upcoming/step-23-public-store-provider.md](plan/upcoming/step-23-public-store-provider.md) |

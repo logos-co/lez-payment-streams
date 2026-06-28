@@ -70,4 +70,4 @@ Definition of done (Step 16 — bridge only):
 - Unit tests and logoscore checks cover the wiring described above.
 
 Out of scope per [N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18):
-[step-17.md](../completed/step-17.md), [step-18-public-testnet-demo.md](../upcoming/step-18-public-testnet-demo.md).
+[step-17.md](../completed/step-17.md), [step-18-public-testnet-demo.md](../completed/step-18-public-testnet-demo.md).

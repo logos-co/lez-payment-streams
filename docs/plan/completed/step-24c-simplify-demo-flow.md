@@ -4,7 +4,7 @@ Completed packet. Index: [integration-index.md](../../../integration-index.md).
 Prerequisites: Step 17/17b scripts; Step 24b (rc5 guest + tooling).
 Related: [step-17b-localnet-snapshot-restore.md](step-17b-localnet-snapshot-restore.md),
 [step17-e2e-local.md](../../step17-e2e-local.md),
-[step-18-public-testnet-demo.md](../upcoming/step-18-public-testnet-demo.md),
+[step-18-public-testnet-demo.md](../completed/step-18-public-testnet-demo.md),
 [testnet-claim-known-issue.md](../../testnet-claim-known-issue.md).
 
 ## Status (2026-06-28)

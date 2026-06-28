@@ -153,10 +153,10 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 16 | `delivery_module` routing | Complete — [step-16.md](docs/plan/completed/step-16.md) |
 | 17 | E2E demo (local LEZ) | Complete — [step-17.md](docs/plan/completed/step-17.md), [step17-e2e-local.md](docs/step17-e2e-local.md) |
 | 17b | Localnet snapshot restore | Complete — [step-17b](docs/plan/completed/step-17b-localnet-snapshot-restore.md), [N15](docs/reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) |
-| 18b | rc5 LEZ pin unify | Complete — [step-18b-rc5-unify-handoff.md](docs/plan/upcoming/step-18b-rc5-unify-handoff.md), [N16](docs/reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06) |
-| 18 | Public sequencer E2E | Part B — [step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md), [step18-public-sequencer-e2e.md](docs/step18-public-sequencer-e2e.md) |
+| 18b | rc5 LEZ pin unify | Complete — [step-18b-rc5-unify-handoff.md](docs/plan/completed/step-18b-rc5-unify-handoff.md), [N16](docs/reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06) |
+| 18 | Public sequencer E2E | Complete — [step-18-public-testnet-demo.md](docs/plan/completed/step-18-public-testnet-demo.md), [step18-public-sequencer-e2e.md](docs/step18-public-sequencer-e2e.md) |
 | 19 | LIP-155 on-chain spec | Complete — [step-19](docs/plan/completed/step-19-lip155-onchain-spec.md) |
-| 20 | Developer journey (Track A — Store integration) | After Step 18 DoD — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
+| 20 | Developer journey (Track A — Store integration) | **Active** — [step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md) |
 | 21 | Payment streams Basecamp UI (Track B) | Optional stretch — [step-21-basecamp-ui.md](docs/plan/upcoming/step-21-basecamp-ui.md) |
 | 22 | Payment streams UI journey (Track B) | Optional stretch — [step-22-ui-journey.md](docs/plan/upcoming/step-22-ui-journey.md) |
 | 23 | Public Store provider | Optional — [step-23-public-store-provider.md](docs/plan/upcoming/step-23-public-store-provider.md) |
@@ -165,8 +165,8 @@ Cross-step APIs without reading full D/N: [`docs/integration-contracts.md`](docs
 | 24c | Simplify demo flow (fresh stream / explicit prepare) | Complete — [step-24c-simplify-demo-flow.md](docs/plan/completed/step-24c-simplify-demo-flow.md) (testnet claim optional — [testnet-claim-known-issue.md](docs/testnet-claim-known-issue.md)) |
 | 25 | Demo coordination Logos module | Won't fix — [cancelled/step-25](docs/plan/cancelled/step-25-demo-coordination-module.md), [N17](docs/reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06) |
 
-Execution order: Steps through 17, 17b, 18b, 19, 24, 24b, and 24c are complete.
-Parallel: Step 18 Part B DoD on testnet. Then Step 20 (Track A). Optional 23; optional stretch Steps 21–22 (Track B). Step 25 won't fix.
+Execution order: Steps through 18, 18b, 19, 24, 24b, and 24c are complete.
+Active: Step 20 (Track A). Optional 23; optional stretch Steps 21–22 (Track B). Step 25 won't fix.
 Entry: [`docs/AGENT-BRIEF.md`](docs/AGENT-BRIEF.md). Local demos:
 [`demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 
@@ -232,20 +232,20 @@ Scaffolding on `feat/step18-public-testnet`. Do not block Step 20 on testnet.
 Public sequencer at `https://testnet.lez.logos.co/` (lez jsonrpsee). Org guest deploy complete
 for ELF 576576 B; `program_id_hex` `79b1dd5c441caede8f9f82c30de637aba465f94cc43817b1105c8c48c77d0fc9`.
 Remaining: read smoke, per-operator bootstrap, `make verify-step18`. Packet:
-[step-18-public-testnet-demo.md](docs/plan/upcoming/step-18-public-testnet-demo.md).
+[step-18-public-testnet-demo.md](docs/plan/completed/step-18-public-testnet-demo.md).
 
 ## Upcoming steps (pointers)
 
 - [Step 20](docs/plan/upcoming/step-20-developer-journey.md) — Track A developer journey (**next**)
 - [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) — Track B payment streams UI (optional)
 - [Step 22](docs/plan/upcoming/step-22-ui-journey.md) — Track B UI journey doc (optional, after 21)
-- [Step 18](docs/plan/upcoming/step-18-public-testnet-demo.md) — public LEZ E2E (paused)
 - [Step 23](docs/plan/upcoming/step-23-public-store-provider.md) — optional hosted provider
 
 Closed: [Step 25 cancelled](docs/plan/cancelled/step-25-demo-coordination-module.md).
 
 Completed (pointers): [Step 17](docs/plan/completed/step-17.md),
 [Step 17b](docs/plan/completed/step-17b-localnet-snapshot-restore.md),
+[Step 18](docs/plan/completed/step-18-public-testnet-demo.md),
 [Step 19](docs/plan/completed/step-19-lip155-onchain-spec.md),
 [Step 24](docs/plan/completed/step-24-lee-harness-upgrade.md).
 

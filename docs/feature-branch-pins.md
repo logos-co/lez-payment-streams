@@ -174,7 +174,7 @@ Rebuild the Step 17b funded snapshot after a LEZ pin or guest ImageID change:
 
 Local E2E, module `.lgx`, and public testnet share LEZ `v0.2.0-rc5` (`27360cb7…`). See
 [step18-public-sequencer-e2e.md](step18-public-sequencer-e2e.md) and
-[step-18b-rc5-unify-handoff.md](plan/upcoming/step-18b-rc5-unify-handoff.md).
+[step-18b-rc5-unify-handoff.md](plan/completed/step-18b-rc5-unify-handoff.md).
 
 | Artifact | Pin / ref | Role |
 | --- | --- | --- |
