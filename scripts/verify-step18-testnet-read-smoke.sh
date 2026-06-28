@@ -61,7 +61,7 @@ if [[ -z "$CLOCK_BASE58" && -f "$MANIFEST" ]]; then
   CLOCK_BASE58="$(python3 -c "import json; print(json.load(open('$MANIFEST')).get('clock_10_account_id',''))")"
 fi
 if [[ -z "$CLOCK_BASE58" ]]; then
-  CLOCK_BASE58="4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs"
+  CLOCK_BASE58="4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWNU"
 fi
 
 WALLET_CONFIG_TESTNET="$(mktemp)"

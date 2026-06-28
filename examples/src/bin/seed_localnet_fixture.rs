@@ -19,11 +19,11 @@ use lee::{AccountId as LeeAccountId, PublicTransaction};
 use lee_core::account::Balance;
 use lee_core::program::ProgramId as LeeProgramId;
 use lez_payment_streams_core::{
-    close_stream_instruction_accounts, create_stream_instruction_accounts, deposit_instruction_accounts,
-    derive_stream_config_account_id, derive_vault_account_ids,
+    claim_instruction_accounts, close_stream_instruction_accounts, create_stream_instruction_accounts,
+    deposit_instruction_accounts, derive_stream_config_account_id, derive_vault_account_ids,
     initialize_vault_instruction_accounts, top_up_stream_instruction_accounts, ClockAccountData,
     Instruction, StreamId, TokensPerSecond, VaultConfig, VaultId, VaultPrivacyTier,
-    CLOCK_10_PROGRAM_ACCOUNT_ID,
+    CLOCK_01_PROGRAM_ACCOUNT_ID,
 };
 use lee::program::Program;
 use lee_core::account::AccountId as CoreAccountId;
@@ -146,6 +146,21 @@ enum Commands {
     },
     /// Close stream on chain (owner wallet; provider is stream authority account).
     CloseStreamOnchain {
+        #[arg(long)]
+        program_bin: PathBuf,
+        #[arg(long)]
+        owner: String,
+        #[arg(long)]
+        provider: String,
+        #[arg(long, default_value = "0")]
+        vault_id: u64,
+        #[arg(long)]
+        stream_id: u64,
+        #[arg(long, default_value = DEFAULT_SEQUENCER)]
+        sequencer_url: String,
+    },
+    /// Claim accrued earnings on chain (provider is the claim authority).
+    ClaimOnchain {
         #[arg(long)]
         program_bin: PathBuf,
         #[arg(long)]
@@ -333,7 +348,7 @@ fn build_vault_baseline(
         vault_config_account_id: account_id_to_base58(vault_config),
         vault_holding_account_id: account_id_to_base58(vault_holding),
         stream_config_account_id: None,
-        clock_10_account_id: account_id_to_base58(CLOCK_10_PROGRAM_ACCOUNT_ID),
+        clock_10_account_id: account_id_to_base58(CLOCK_01_PROGRAM_ACCOUNT_ID),
         demo_deposit_amount: deposit_amount,
         stream_rate,
         allocation,
@@ -368,7 +383,7 @@ fn build_per_run_fixture(
         vault_config_account_id: account_id_to_base58(vault_config),
         vault_holding_account_id: account_id_to_base58(vault_holding),
         stream_config_account_id: Some(account_id_to_base58(stream_config)),
-        clock_10_account_id: account_id_to_base58(CLOCK_10_PROGRAM_ACCOUNT_ID),
+        clock_10_account_id: account_id_to_base58(CLOCK_01_PROGRAM_ACCOUNT_ID),
         demo_deposit_amount: deposit_amount,
         stream_rate,
         allocation,
@@ -488,7 +503,7 @@ fn wall_unix_seconds() -> u64 {
 }
 
 async fn read_clock10_timestamp(wallet: &WalletCore) -> Result<u64> {
-    let clock_lee = to_lee_account(CLOCK_10_PROGRAM_ACCOUNT_ID);
+    let clock_lee = to_lee_account(CLOCK_01_PROGRAM_ACCOUNT_ID);
     let acc = wallet
         .sequencer_client
         .get_account(clock_lee)
@@ -601,7 +616,7 @@ async fn prefund_vault(
         ctx.owner_id,
         ctx.vault_id,
         0,
-        CLOCK_10_PROGRAM_ACCOUNT_ID,
+        CLOCK_01_PROGRAM_ACCOUNT_ID,
     );
     let stream_config_lee = to_lee_account(stream_accounts[2]);
 
@@ -687,7 +702,7 @@ async fn create_stream_onchain(
         ctx.owner_id,
         ctx.vault_id,
         stream_id,
-        CLOCK_10_PROGRAM_ACCOUNT_ID,
+        CLOCK_01_PROGRAM_ACCOUNT_ID,
     );
     let stream_config_lee = to_lee_account(stream_accounts[2]);
 
@@ -755,7 +770,7 @@ async fn close_stream_onchain(
         ctx.vault_id,
         stream_id,
         provider_id,
-        CLOCK_10_PROGRAM_ACCOUNT_ID,
+        CLOCK_01_PROGRAM_ACCOUNT_ID,
     );
     submit_instruction(
         &ctx.wallet,
@@ -769,6 +784,36 @@ async fn close_stream_onchain(
     )
     .await
     .context("close_stream")?;
+    Ok(())
+}
+
+async fn claim_onchain(
+    ctx: &OnchainContext,
+    provider: &str,
+    stream_id: StreamId,
+) -> Result<()> {
+    let provider_id = account_id_from_base58(provider)?;
+    let provider_lee = to_lee_account(provider_id);
+    let accounts = claim_instruction_accounts(
+        &ctx.program_id,
+        ctx.owner_id,
+        ctx.vault_id,
+        stream_id,
+        provider_id,
+        CLOCK_01_PROGRAM_ACCOUNT_ID,
+    );
+    submit_instruction(
+        &ctx.wallet,
+        ctx.lee_program_id,
+        accounts.iter().copied().map(to_lee_account).collect(),
+        Instruction::Claim {
+            vault_id: ctx.vault_id,
+            stream_id,
+        },
+        vec![provider_lee],
+    )
+    .await
+    .context("claim")?;
     Ok(())
 }
 
@@ -812,7 +857,7 @@ async fn top_up_stream_onchain(
         ctx.owner_id,
         ctx.vault_id,
         stream_id,
-        CLOCK_10_PROGRAM_ACCOUNT_ID,
+        CLOCK_01_PROGRAM_ACCOUNT_ID,
     );
     submit_instruction(
         &ctx.wallet,
@@ -961,6 +1006,18 @@ async fn main() -> Result<()> {
             ensure_wallet_home_env()?;
             let ctx = open_onchain(&program_bin, &owner, vault_id).await?;
             close_stream_onchain(&ctx, &provider, stream_id).await?;
+        },
+        Commands::ClaimOnchain {
+            program_bin,
+            owner,
+            provider,
+            vault_id,
+            stream_id,
+            sequencer_url: _,
+        } => {
+            ensure_wallet_home_env()?;
+            let ctx = open_onchain(&program_bin, &owner, vault_id).await?;
+            claim_onchain(&ctx, &provider, stream_id).await?;
         },
         Commands::TopUpStreamOnchain {
             program_bin,

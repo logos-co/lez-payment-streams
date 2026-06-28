@@ -91,8 +91,14 @@ is shared across operators for a given guest ELF, not per-operator.
 - `wallet check-health` with rc5 CLI and testnet `sequencer_addr` is a valid smoke check when
   wallet home is `.scaffold/e2e/testnet-wallet/`.
 - Manifest policy: committed `fixtures/testnet.json.example`; gitignored per-operator
-  `fixtures/testnet.json` after bootstrap. Example `clock_10_account_id` is testnet CLOCK_10
-  (`4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs`); do not copy from `localnet.json`.
+  `fixtures/testnet.json` after bootstrap. The example `clock_10_account_id` value is the testnet
+  Clock01 id (`4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWNU`): the demo reads the clock every
+  block via Clock01 so the create-time fold stays small (see
+  [step-24c-simplify-demo-flow.md](../completed/step-24c-simplify-demo-flow.md)). The field name
+  is a legacy key; do not copy from `localnet.json`.
+- Demo claim policy: on testnet the provider `claim` is optional. A run is green through create,
+  fundable, paid Store query, and close; claim is not reliably confirming on testnet. See
+  [testnet-claim-known-issue.md](../../testnet-claim-known-issue.md).
 
 #### Verified org deploy log (2026-06-25)
 
@@ -208,8 +214,9 @@ Open policy choices (record in runbook when decided; not blockers for local demo
 
 - `fixtures/testnet.json.example` in git; operator-specific `fixtures/testnet.json` gitignored
   unless the org commits a shared non-secret manifest after one-time bootstrap.
-- `clock_10_account_id` in the manifest must match testnet CLOCK_10 (see
-  `fixtures/testnet.json.example`), not copied blindly from `fixtures/localnet.json`.
+- `clock_10_account_id` in the manifest must match the testnet Clock01 id used by the demo (see
+  `fixtures/testnet.json.example`), not copied blindly from `fixtures/localnet.json`. The field
+  name is a legacy key whose value now points at Clock01.
 
 #### What stays local vs what moves to testnet
 

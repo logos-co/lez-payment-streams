@@ -121,7 +121,7 @@ Step 17b reuses a funded vault-only snapshot; each run creates at `next_stream_i
 
 Superseded (historical): deposit `2400` / allocation `1800` / 16 pinata rounds — replaced to keep
 allocation a small share of the vault and avoid fold-jump workarounds
-([Step 24c](plan/upcoming/step-24c-simplify-demo-flow.md)).
+([Step 24c](plan/completed/step-24c-simplify-demo-flow.md)).
 
 Demo provider policy (localnet):
 

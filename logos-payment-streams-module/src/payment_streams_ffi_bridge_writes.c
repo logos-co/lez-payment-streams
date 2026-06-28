@@ -9,7 +9,7 @@ static uint32_t map_status(PaymentStreamsFfiPaymentStreamsFfiStatus status) {
 
 uint32_t ps_ffi_fixed_clock_10_account_id(uint8_t out_account_id_bytes[32]) {
     return map_status(payment_streams_ffi_fixed_clock_account_id(
-        PAYMENT_STREAMS_FFI_CLOCK_ACCOUNT_CHOICE_CLOCK10, out_account_id_bytes));
+        PAYMENT_STREAMS_FFI_CLOCK_ACCOUNT_CHOICE_CLOCK01, out_account_id_bytes));
 }
 
 uint32_t ps_ffi_authenticated_transfer_program_id(uint8_t out_bytes[32]) {

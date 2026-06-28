@@ -91,7 +91,7 @@ cargo run --bin seed_localnet_fixture -- write-manifest \
 3. `make program-id` matches `program_id_hex` in `fixtures/localnet.json`.
 4. JSON-RPC `getAccount` on manifest vault config, vault holding, and stream config PDAs
    returns non-empty `data` (see step1 findings for raw base58 id format).
-5. `CLOCK_10` id in manifest: `4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs`.
+5. clock id in manifest (demo now uses Clock01): `4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWNU`.
 
 ## Troubleshooting
 

@@ -14,7 +14,7 @@
 
 namespace {
 
-constexpr const char* kDefaultClock10Base58 = "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs";
+constexpr const char* kDefaultClock10Base58 = "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWNU";
 
 QString makeErrorJson(const QString& message) {
     QJsonObject obj;

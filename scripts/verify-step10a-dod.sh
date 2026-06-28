@@ -57,10 +57,10 @@ if [[ -f "$MANIFEST" ]]; then
     bad "program_id_hex mismatch (manifest=$PROG_MANIFEST make=$PROG_MAKE)"
   fi
   CLOCK="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['clock_10_account_id'])")"
-  if [[ "$CLOCK" == "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs" ]]; then
-    ok "CLOCK_10 in manifest"
+  if [[ "$CLOCK" == "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWNU" ]]; then
+    ok "CLOCK_01 in manifest"
   else
-    bad "CLOCK_10 unexpected: $CLOCK"
+    bad "CLOCK_01 unexpected: $CLOCK"
   fi
   VC="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['vault_config_account_id'])")"
   check_pda_initialized "vault_config" "$VC"

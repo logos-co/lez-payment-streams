@@ -9,7 +9,7 @@
   "vault_config_account_id": "REPLACE_AFTER_SEED",
   "vault_holding_account_id": "REPLACE_AFTER_SEED",
   "stream_config_account_id": "REPLACE_AFTER_SEED",
-  "clock_10_account_id": "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs",
+  "clock_10_account_id": "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWNU",
   "demo_deposit_amount": 100,
   "stream_rate": 1,
   "allocation": 80,

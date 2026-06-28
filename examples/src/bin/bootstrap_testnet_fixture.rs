@@ -14,7 +14,7 @@ use lez_payment_streams_core::{
     derive_vault_account_ids,
     initialize_vault_instruction_accounts, instruction_bytes_for_public_transaction,
     Instruction, TokensPerSecond, VaultPrivacyTier,
-    CLOCK_10_PROGRAM_ACCOUNT_ID,
+    CLOCK_01_PROGRAM_ACCOUNT_ID,
 };
 use serde::Deserialize;
 use serde::Serialize;
@@ -58,10 +58,14 @@ struct Args {
     skip_if_initialized: bool,
     #[arg(long)]
     force: bool,
+    /// Step 24c E2E: submit CreateStream only and patch an existing vault baseline manifest.
+    #[arg(long, default_value_t = false)]
+    create_stream_only: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct TestnetFixture {
+    #[serde(default)]
     schema_version: u32,
     sequencer_url: String,
     program_id_hex: String,
@@ -240,6 +244,70 @@ fn account_has_data_helper(args: &Args, account_id: lee_core::account::AccountId
     Ok(parsed.success && parsed.has_data)
 }
 
+fn run_create_stream_only(
+    args: &Args,
+    program_id: &CoreProgramId,
+    owner_id: lee_core::account::AccountId,
+    provider_id: lee_core::account::AccountId,
+) -> Result<()> {
+    let skip_if_initialized = args.skip_if_initialized && !args.force;
+    let stream_accounts = create_stream_instruction_accounts(
+        program_id,
+        owner_id,
+        args.vault_id,
+        args.stream_id,
+        CLOCK_01_PROGRAM_ACCOUNT_ID,
+    );
+    let stream_ready = account_has_data_helper(args, stream_accounts[2])?;
+    if skip_if_initialized && stream_ready {
+        eprintln!(
+            "Stream config {} already initialized; skipping create_stream.",
+            account_id_to_base58(stream_accounts[2]),
+        );
+    } else if stream_ready {
+        bail!(
+            "stream config {} already exists (use --force for E2E retry)",
+            account_id_to_base58(stream_accounts[2]),
+        );
+    } else {
+        let json = build_submit_json(
+            &stream_accounts,
+            &Instruction::CreateStream {
+                vault_id: args.vault_id,
+                stream_id: args.stream_id,
+                provider: provider_id,
+                rate: args.stream_rate,
+                allocation: args.stream_allocation,
+            },
+            owner_id,
+            &[],
+        )?;
+        submit_via_helper(args, &json)?;
+    }
+
+    if !args.write_manifest.is_file() {
+        bail!(
+            "manifest {} missing (run bootstrap-testnet first)",
+            args.write_manifest.display()
+        );
+    }
+    let mut fixture: TestnetFixture =
+        serde_json::from_str(&std::fs::read_to_string(&args.write_manifest)?)
+            .context("parse existing testnet manifest")?;
+    fixture.stream_id = Some(args.stream_id);
+    fixture.stream_config_account_id = Some(account_id_to_base58(stream_accounts[2]));
+    fixture.stream_rate = args.stream_rate;
+    fixture.stream_allocation = args.stream_allocation;
+    fixture.reserved_for_step_18 =
+        "E2E per-run stream (Step 24c / bootstrap create-stream-only)".to_string();
+    std::fs::write(
+        &args.write_manifest,
+        serde_json::to_string_pretty(&fixture)?,
+    )?;
+    eprintln!("Updated {} (stream_id={})", args.write_manifest.display(), args.stream_id);
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
@@ -264,6 +332,10 @@ async fn main() -> Result<()> {
     let vault_id = args.vault_id;
     let stream_id = args.stream_id;
 
+    if args.create_stream_only {
+        return run_create_stream_only(&args, &program_id, owner_id, provider_id);
+    }
+
     let auth_hex = resolve_auth_transfer_hex(&args)?;
     let auth_transfer = program_id_from_hex32(&auth_hex)?;
     let auth_elf_hex = resolve_auth_transfer_elf_hex(&args)?;
@@ -276,7 +348,7 @@ async fn main() -> Result<()> {
         owner_id,
         vault_id,
         stream_id,
-        CLOCK_10_PROGRAM_ACCOUNT_ID,
+        CLOCK_01_PROGRAM_ACCOUNT_ID,
     );
 
     let vault_ready = account_has_data_helper(&args, init_accounts[0])?;
@@ -323,7 +395,7 @@ async fn main() -> Result<()> {
         vault_config_account_id: account_id_to_base58(init_accounts[0]),
         vault_holding_account_id: account_id_to_base58(vault_holding),
         stream_config_account_id: None,
-        clock_10_account_id: account_id_to_base58(CLOCK_10_PROGRAM_ACCOUNT_ID),
+        clock_10_account_id: account_id_to_base58(CLOCK_01_PROGRAM_ACCOUNT_ID),
         demo_deposit_amount: args.deposit_amount,
         stream_rate: args.stream_rate,
         stream_allocation: args.stream_allocation,

@@ -73,7 +73,7 @@ cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex
 
 ## Prepare methods — Step 24c
 
-Normative detail: [step-24c-simplify-demo-flow.md](plan/upcoming/step-24c-simplify-demo-flow.md).
+Normative detail: [step-24c-simplify-demo-flow.md](plan/completed/step-24c-simplify-demo-flow.md).
 
 Universal modules (`interface: universal`) use `logos-cpp-generator` glue: **one LogosAPI name per
 method** (C++ overloads with the same name are not exported). Public methods in `*_impl.h` must be

@@ -17,7 +17,7 @@ stale-stream depletion on back-to-back runs.
 | State | Contents |
 | --- | --- |
 | Funded baseline | Deployed program, owner balance, vault init + deposit, **no** stream |
-| Per-run | New stream at `next_stream_id`; Clock10 synced before create ([Step 24c](../upcoming/step-24c-simplify-demo-flow.md)) |
+| Per-run | New stream at `next_stream_id`; demo clock synced before create ([Step 24c](step-24c-simplify-demo-flow.md)) |
 
 Ledger authority: `~/.cache/logos-scaffold/repos/lez/<pin>/rocksdb/` (stop sequencer before
 copy). Validity: `snapshot.json` (`lez_pin`, `program_id_hex`, owner/provider ids, deposit,
@@ -67,6 +67,6 @@ Step 17 entrypoint `make verify-step17` calls `demo-localnet-prepare` via
 ## Status
 
 Complete (2026-06-19). Step 24c extended restore with clock sync, conservative deposit sizing,
-and verify lifecycle teardown on the same chain ([step-24c-simplify-demo-flow.md](../upcoming/step-24c-simplify-demo-flow.md)).
+and verify lifecycle teardown on the same chain ([step-24c-simplify-demo-flow.md](step-24c-simplify-demo-flow.md)).
 
 Decision record: [N15](../../reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19).

@@ -442,7 +442,7 @@ Three root causes surfaced through that observability, in order:
 - `STREAM_NOT_ACTIVE` / stream depleted. The seed fixture allocated `400` at rate `1`
   (≈400 s), so the stream depleted before or during a run. Fixed at the time by larger seed
   sizing (deposit `2400` / allocation `1800`). **Superseded (2026-06-28):** conservative
-  `1000` / `200` defaults plus clock sync after restore ([Step 24c](../plan/upcoming/step-24c-simplify-demo-flow.md));
+  `1000` / `200` defaults plus clock sync after restore ([Step 24c](../plan/completed/step-24c-simplify-demo-flow.md));
   per-run streams and teardown replace a single long-lived stream `0`.
 - `PROOF_INVALID` / session public key unknown. `scripts/e2e/seed_provider_acceptance.py` picked a
   stale negotiation row when `PERSIST_USER` was reused. Hardened to match the current manifest

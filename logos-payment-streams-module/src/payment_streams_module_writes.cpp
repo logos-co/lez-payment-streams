@@ -202,7 +202,7 @@ bool ensureFixtureLoaded(QString* errorOut) {
                             .toString()
                             .trimmed();
     if (cfg.clock10Base58.isEmpty()) {
-        cfg.clock10Base58 = QStringLiteral("4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs");
+        cfg.clock10Base58 = QStringLiteral("4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWNU");
     }
     if (cfg.programIdHex.size() != 64) {
         if (errorOut != nullptr) {

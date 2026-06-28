@@ -17,7 +17,7 @@ Index: [integration-index.md](../integration-index.md#program-outcomes).
 
 ## Active work (execution order)
 
-Steps 1–13, 11d, Steps 14–16 on the delivery forks, Steps 17–17b, 18b, 19, 24, 24b, and **24c local gate** are complete.
+Steps 1–13, 11d, Steps 14–16 on the delivery forks, Steps 17–17b, 18b, 19, 24, 24b, and 24c are complete.
 
 Step 18 Part B (public testnet E2E with local Store) uses the same operational LEZ pin as Step 17
 (rc5 on `master`). Active work: Step 18 Part B testnet DoD, Step 20 (Track A). Step 20 testnet
@@ -29,7 +29,7 @@ journey rows need Step 18 DoD.
 | 20 | Developer journey — **Track A** (Store integration) | [plan/upcoming/step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md) — script E2E + step-by-step dual-host commands ([N17](reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06), [N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)) |
 | 23 | Public Store provider (optional) | [plan/upcoming/step-23-public-store-provider.md](plan/upcoming/step-23-public-store-provider.md) |
 
-Reference (24c): [step-24c-simplify-demo-flow.md](plan/upcoming/step-24c-simplify-demo-flow.md).
+Reference (24c, complete): [step-24c-simplify-demo-flow.md](plan/completed/step-24c-simplify-demo-flow.md).
 Reference (complete): [step-24b-rc5-rust-lee-unify.md](plan/completed/step-24b-rc5-rust-lee-unify.md),
 [plan/upcoming/step-18b-rc5-unify-handoff.md](plan/upcoming/step-18b-rc5-unify-handoff.md),
 [N16](reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06).
@@ -75,7 +75,7 @@ Summary:
 | LIP on-chain spec (19, done) | [step-19-lip155-onchain-spec.md](plan/completed/step-19-lip155-onchain-spec.md) + [feature-branch-pins.md](feature-branch-pins.md) |
 | LEZ harness / `program_tests` (24, done) | [step-24-lee-harness-upgrade.md](plan/completed/step-24-lee-harness-upgrade.md) + [architecture.md](../architecture.md) |
 | Rust LEZ pin unify rc5 (24b, done) | [step-24b-rc5-rust-lee-unify.md](plan/completed/step-24b-rc5-rust-lee-unify.md) + [N16](reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06) |
-| Demo lifecycle simplify (24c, local gate done) | [step-24c-simplify-demo-flow.md](plan/upcoming/step-24c-simplify-demo-flow.md) |
+| Demo lifecycle simplify (24c, complete) | [step-24c-simplify-demo-flow.md](plan/completed/step-24c-simplify-demo-flow.md) |
 | Doc packet (20 / 22) | Step 20 = Track A; Step 22 = Track B (after 21) + [logos-docs doc packet template](https://github.com/logos-co/logos-docs/blob/main/resources/templates/doc-packet.md) |
 
 ## Always-on references
