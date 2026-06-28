@@ -69,7 +69,7 @@ Optional wipe on full blank slate:
 2. Re-seed — Same chain: `make build deploy`, `./scripts/seed-localnet-fixture.sh`, clear
    module persist dirs, refresh manifest.
 3. Blank slate — `./scripts/demo-localnet-fresh.sh` or `FULL_RESET=1 ./scripts/demo-localnet-prepare.sh`
-   (rebuild snapshot: stop localnet, wipe ledger + `.scaffold/state/`, prefund, snapshot, create stream).
+   (rebuild vault-only snapshot: stop localnet, wipe ledger + `.scaffold/state/`, prefund, snapshot).
 4. Run demo — `logoscore` with a new `--persistence-path`, `open` wallet, then Step 12 calls.
 
 Signals to jump to step 3:
@@ -77,9 +77,10 @@ Signals to jump to step 3:
 - `./scripts/verify-step10a-dod.sh` fails.
 - `lgs localnet start` fails with missing `sequencer/service/configs/debug/sequencer_config.json`
   after Step 11d pin bump — run `./scripts/ensure-scaffold-lez-layout.sh` (links `sequencer` → `lez/sequencer` in the LEZ cache).
-- `prepareEligibilityForStoreQuery` returns `STREAM_DEPLETED` on the **current run’s** stream after
-  wall-clock fold drift — prefer `make full-reset-localnet`, fresh snapshot, or Step 17
-  `refresh_stream_checkpoint` / continuation deposit rather than `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF`.
+- `prepareEligibilityForStoreQuery` returns `STREAM_DEPLETED` on the current run’s stream after
+  long idle time or wrong run order — run `./scripts/demo-localnet-prepare.sh` (clock sync runs on
+  restore), tear down prior streams, or `make full-reset-localnet` if the vault sizing is wrong.
+  Do not use `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF` for normal local demos.
 - `make deploy` or `storage.json` parse errors.
 - Manifest program id stale after `make build`.
 
@@ -142,6 +143,9 @@ See [`step13-provider-eligibility.md`](step13-provider-eligibility.md).
 | `scripts/reinit-scaffold-wallet.sh` | Recreate scaffold wallet storage (does not reset sequencer state alone) |
 | `scripts/ensure-scaffold-lez-layout.sh` | Symlink `sequencer` for LEZ 510+ layout after `lgs setup` |
 | `scripts/seed-localnet-fixture.sh` | Idempotent on-chain seed when chain is already up |
+| `scripts/wait-clock-synced.sh` | After restore, wait for Clock10 ≈ wall time (pinata nudge if idle) |
+| `scripts/wait-chain-settle.sh` | Owner nonce settle before seed create/close |
+| `scripts/demo-stream-teardown-localnet.sh` | Provider-signed close + vault-only manifest |
 
 ## Testnet contrast
 

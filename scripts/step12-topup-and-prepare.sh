@@ -26,9 +26,32 @@ p.write_text(json.dumps(m, indent=2) + '\n')
 "
 
 echo "--- create stream for proof path (Step 24c, chain next_stream_id) ---"
+"$REPO/scripts/sync-seed-wallet-after-logoscore.sh" || true
+logoscore stop 2>/dev/null || true
+sleep 2
+if [[ -f "$REPO/scripts/e2e/continuation-owner-topup.sh" ]]; then
+  E2E_CONTINUATION_PINATA_ROUNDS="${VERIFY_CREATE_PINATA_ROUNDS:-6}" \
+    "$REPO/scripts/e2e/continuation-owner-topup.sh" >/dev/null 2>&1 || true
+fi
+if [[ -f "$WALLET_CONFIG" ]]; then
+  python3 -c "
+import json
+from pathlib import Path
+p = Path('$WALLET_CONFIG')
+d = json.loads(p.read_text())
+d['seq_poll_timeout'] = '${VERIFY_WALLET_POLL_TIMEOUT:-8s}'
+d['seq_tx_poll_max_blocks'] = int('${VERIFY_WALLET_POLL_MAX_BLOCKS:-22}')
+p.write_text(json.dumps(d, indent=4) + '\n')
+"
+fi
 export CREATE_FORCE=1
 export E2E_PER_RUN_STREAM=1
 "$REPO/scripts/create-localnet-stream-fixture.sh"
+
+teardown_verify_stream() {
+  FIXTURE_MANIFEST="$MANIFEST" "$REPO/scripts/demo-stream-teardown-localnet.sh" || true
+}
+trap teardown_verify_stream EXIT
 
 OWNER="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['owner_account_id'])")"
 PROVIDER_B58="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['provider_account_id'])")"

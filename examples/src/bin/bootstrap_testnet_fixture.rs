@@ -44,11 +44,11 @@ struct Args {
     vault_id: u64,
     #[arg(long, default_value = "0")]
     stream_id: u64,
-    #[arg(long, default_value_t = 2000)]
+    #[arg(long, default_value_t = 1000)]
     deposit_amount: Balance,
     #[arg(long, default_value_t = 1)]
     stream_rate: TokensPerSecond,
-    #[arg(long, default_value_t = 1800)]
+    #[arg(long, default_value_t = 200)]
     stream_allocation: Balance,
     #[arg(long, default_value = DEFAULT_SEQUENCER)]
     sequencer_url: String,

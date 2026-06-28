@@ -48,7 +48,7 @@ STATE_FILE=".lez_payment_streams-state"
 PROVIDER_FILE=".lez_payment_streams-fixture-provider"
 
 TOPUP_ROUNDS="${SEED_WALLET_TOPUP_ROUNDS:-}"
-DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-2000}"
+DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-1000}"
 if [[ -z "$TOPUP_ROUNDS" ]]; then
   TOPUP_ROUNDS=$(( (DEPOSIT_AMOUNT + 149) / 150 + 4 ))
 fi

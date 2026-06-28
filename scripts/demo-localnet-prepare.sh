@@ -21,10 +21,6 @@ if [[ "$FULL_RESET" == "1" ]]; then
   "$REPO_ROOT/scripts/prefund-localnet.sh" "$SNAPSHOT_NAME"
 else
   if [[ -f "$SNAP_DIR/snapshot.json" ]] && localnet_snapshot_validate_metadata "$REPO_ROOT" "$SNAP_DIR"; then
-    if localnet_snapshot_stale_for_restore "$SNAP_DIR"; then
-      echo "Snapshot older than SNAPSHOT_MAX_AGE_S (${SNAPSHOT_MAX_AGE_S:-1800}) — rebuilding funded baseline (clock drift)…"
-      "$REPO_ROOT/scripts/prefund-localnet.sh" "$SNAPSHOT_NAME"
-    fi
     "$REPO_ROOT/scripts/restore-localnet.sh" "$SNAPSHOT_NAME"
   else
     echo "No valid snapshot at $SNAP_DIR — running prefund (one-time stage A)…"
@@ -37,7 +33,7 @@ if [[ "${SKIP_STREAM_CREATE:-1}" != "1" ]]; then
   "$REPO_ROOT/scripts/create-localnet-stream-fixture.sh"
 else
   echo "SKIP_STREAM_CREATE=1 — vault baseline only (stream created in E2E orchestrator)"
-  DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-2000}" FIXTURE_MANIFEST="$FIXTURE_MANIFEST" \
+  DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-1000}" FIXTURE_MANIFEST="$FIXTURE_MANIFEST" \
     "$REPO_ROOT/scripts/write-vault-manifest.sh"
 fi
 

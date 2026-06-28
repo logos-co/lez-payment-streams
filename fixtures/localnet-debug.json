@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "sequencer_url": "http://127.0.0.1:3040",
+  "program_id_hex": "16b95d3701d256eecd41d5a55e4f570331994d787abf0cba44eec209e24f8a44",
+  "owner_account_id": "uY4sSnYjU9yqPFjhZa2aqPTx71fijaREJTeGux7db2U",
+  "provider_account_id": "D2F53tMFCGT2sZ9aHMmxB6fVsWrtKbUf4N9VJ6jUGqsj",
+  "vault_id": 0,
+  "stream_id": 0,
+  "vault_config_account_id": "6ZJqJPb1B6XJeXqedYKNAiFqSh8E1YwgnLcm76dMoLC7",
+  "vault_holding_account_id": "HmrsJushW2wgBh5zckdeEZJUtnhjnoVJ9SfVDZf5k8KP",
+  "stream_config_account_id": "3ip1RzcQsRxuRuJrEYfbkuaqcDtzmeaKP26sApjaHE89",
+  "clock_10_account_id": "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWSs",
+  "demo_deposit_amount": 500,
+  "stream_rate": 1,
+  "allocation": 400,
+  "reserved_for_step_11b": "Use a fresh vault_id (e.g. 1) or reset .scaffold/state/ for module-driven init tests."
+}

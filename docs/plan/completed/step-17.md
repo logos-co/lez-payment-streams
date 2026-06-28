@@ -22,8 +22,8 @@ Delivery install uses `nix build …#lgx` + `lgpm install` for all three modules
 ([N13](../../reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18),
 runbook [Hermetic run](../../step17-e2e-local.md#hermetic-run-hand-off)).
 Module bridge invokes eligibility on the `LogosAPIClient` thread ([N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
-Seed economics (full rebuild): deposit `2000` / allocation `1800` / rate `1`, pinata rounds `14`
-in [`scripts/seed-localnet-fixture.sh`](../../../scripts/seed-localnet-fixture.sh). Repeat runs
+Seed economics (full rebuild, superseded values in parentheses): deposit `1000` / allocation
+`200` / rate `1` via `prefund-localnet.sh` and env defaults (was `2000` / `1800`). Repeat runs
 restore the funded vault baseline; each E2E run creates at `next_stream_id` and teardown closes
 ([Step 24c](../upcoming/step-24c-simplify-demo-flow.md), [N15](../../reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19)).
 

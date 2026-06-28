@@ -15,9 +15,9 @@ MANIFEST="${FIXTURE_MANIFEST:-fixtures/localnet.json}"
 WALLET_HOME="${LEE_WALLET_HOME_DIR:-$REPO_ROOT/.scaffold/wallet}"
 export LEE_WALLET_HOME_DIR="$WALLET_HOME"
 
-DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-2000}"
+DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-1000}"
 STREAM_RATE="${SEED_STREAM_RATE:-1}"
-STREAM_ALLOCATION="${SEED_STREAM_ALLOCATION:-1800}"
+STREAM_ALLOCATION="${SEED_STREAM_ALLOCATION:-200}"
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -70,12 +70,19 @@ if [[ "${CREATE_FORCE:-0}" == "1" || "${E2E_PER_RUN_STREAM:-0}" == "1" ]]; then
 fi
 
 echo "Creating stream ${STREAM_ID} (rate=$STREAM_RATE allocation=$STREAM_ALLOCATION)…"
+logoscore stop 2>/dev/null || true
+sleep 1
+# Step 24c: let any pending owner tx from a prior logoscore smoke fold before the seed
+# fetches the committed nonce, otherwise the create tx is dropped as a duplicate nonce.
+SEQUENCER_URL="${SEQUENCER_URL:-}" FIXTURE_MANIFEST="$MANIFEST" \
+  "$REPO_ROOT/scripts/wait-chain-settle.sh" "$SIGNER_ID" || true
+SEQUENCER_URL="${SEQUENCER_URL:-}" \
+  "$REPO_ROOT/scripts/wait-clock-synced.sh"
 cargo run --quiet --manifest-path examples/Cargo.toml --bin seed_localnet_fixture -- create-stream-onchain \
   --program-bin "$PROGRAM_BIN" \
   --owner "$SIGNER_ID" \
   --provider "$PROVIDER" \
   --stream-id "$STREAM_ID" \
-  --deposit-amount "$DEPOSIT_AMOUNT" \
   --stream-rate "$STREAM_RATE" \
   --allocation "$STREAM_ALLOCATION" \
   "${CREATE_EXTRA[@]}" \

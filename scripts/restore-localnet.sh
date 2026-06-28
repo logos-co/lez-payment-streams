@@ -80,6 +80,8 @@ rm -f "$REPO_ROOT/fixtures/localnet.json"
 "$REPO_ROOT/scripts/ensure-scaffold-lez-layout.sh"
 lgs localnet start
 
+"$REPO_ROOT/scripts/wait-clock-synced.sh"
+
 if ! lgs wallet -- check-health >/dev/null 2>&1; then
   echo "WARN: wallet check-health failed after restore (see step10a troubleshooting)" >&2
 fi

@@ -39,7 +39,7 @@ DAEMON_START_WAIT_S = 6
 # Provider verify rejects streams with zero unaccrued allocation; accrual runs between
 # prepare and verify, so proof must be minted immediately before storeQuery.
 def min_unaccrued_lo_for_proof(manifest: dict) -> int:
-    alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 80)))
+    alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 200)))
     return max(64, min(alloc // 4, 50_000))
 
 
@@ -237,10 +237,10 @@ def default_topup_increase_lo(manifest: dict) -> int:
     alloc = int(
         manifest.get(
             "stream_allocation",
-            manifest.get("allocation", 1800),
+            manifest.get("allocation", 200),
         )
     )
-    return max(400, alloc // 2)
+    return max(100, alloc // 2)
 
 
 class E2EError(Exception):
@@ -1054,54 +1054,6 @@ def bump_stream_allocation_on_chain(
     logoscore_cmd(cfg, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
 
 
-def refresh_stream_checkpoint_if_clock_drifted(
-    cfg: Path,
-    manifest: dict,
-    vault_id: int,
-    stream_id: int,
-    seq_url: str,
-    artifact: Path,
-    max_fold_gap_s: int = 30,
-    *,
-    repo: Path | None = None,
-) -> None:
-    """After restore, LEZ clock can catch up to wall time while stream accrued_as_of stays at snapshot era."""
-    clock = module_json_call(cfg, "readClock10Decoded")
-    clock_ts = int((clock.get("decoded") or {}).get("timestamp", 0) or 0)
-    clock_s = chain_timestamp_to_fold_seconds(clock_ts)
-    pda = manifest.get("stream_config_account_id")
-    if not pda:
-        return
-    stream_json = module_json_call(cfg, "readStreamConfigDecoded", str(pda))
-    dec = stream_json.get("decoded") if isinstance(stream_json.get("decoded"), dict) else {}
-    checkpoint_s = chain_timestamp_to_fold_seconds(int(dec.get("accrued_as_of", 0) or 0))
-    gap = max(0, clock_s - checkpoint_s)
-    if gap <= max_fold_gap_s:
-        return
-    log_artifact(
-        artifact,
-        "refresh_stream_checkpoint",
-        True,
-        stream_id=stream_id,
-        fold_gap_seconds=gap,
-        action="topUpStream",
-    )
-    increase = default_topup_increase_lo(manifest) if continuation_e2e_run() else 1
-    bump_stream_allocation_on_chain(
-        cfg,
-        manifest,
-        vault_id,
-        stream_id,
-        seq_url,
-        increase_lo=increase,
-        repo=repo,
-    )
-    for _ in range(4):
-        sync_wallet(cfg, seq_url)
-        time.sleep(2)
-    logoscore_cmd(cfg, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
-
-
 def manifest_stream_id(manifest: dict) -> int:
     sid = manifest.get("stream_id")
     if sid is None:
@@ -1388,7 +1340,7 @@ def ensure_continuation_vault_funded(
 
 
 def continuation_stream_allocation_lo(manifest: dict, cfg: Path | None = None) -> int:
-    default = int(manifest.get("stream_allocation", manifest.get("allocation", 1800)))
+    default = int(manifest.get("stream_allocation", manifest.get("allocation", 200)))
     if not continuation_e2e_run():
         return default
     cap = int(os.environ.get("E2E_CONTINUATION_ALLOCATION_LO", str(default)))
@@ -1525,7 +1477,7 @@ def precreate_stream_before_daemons(
     strip_snapshot_stream_fields(manifest, manifest_path)
     reload_payment_streams_wallet(cfg_user, seq_url)
     create_id = vault_next_stream_id(cfg_user, manifest)
-    target_alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 1800)))
+    target_alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 200)))
     ensure_continuation_vault_funded(cfg_user, manifest, seq_url, artifact, target_alloc + 50)
     log_artifact(
         artifact,
@@ -1668,25 +1620,6 @@ def create_demo_stream_for_run(
         logoscore_cmd(cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
         log_chain_baseline_before_create(cfg_user, manifest, vault_id, create_id, artifact)
         log_chain_checkpoint_after_create(cfg_user, manifest, create_id, artifact)
-        if chain == "local":
-            if continuation_e2e_run():
-                for round_i in range(4):
-                    refresh_stream_checkpoint_if_clock_drifted(
-                        cfg_user,
-                        manifest,
-                        vault_id,
-                        create_id,
-                        seq_url,
-                        artifact,
-                        max_fold_gap_s=0 if round_i else 30,
-                        repo=repo,
-                    )
-                    if check_stream_fundable(cfg_user, vault_id, create_id, manifest)["fundable"]:
-                        break
-            else:
-                refresh_stream_checkpoint_if_clock_drifted(
-                    cfg_user, manifest, vault_id, create_id, seq_url, artifact, repo=repo
-                )
         wait_for_stream_fundable(cfg_user, vault_id, create_id, manifest, seq_url, artifact)
         return
     log_artifact(
@@ -1928,10 +1861,6 @@ def create_demo_stream_for_run(
             f"manifest stream_id {stream_id} != planned create id {create_id} (per-run create mismatch)"
         )
     log_chain_checkpoint_after_create(cfg_user, manifest, stream_id, artifact)
-    if chain == "local":
-        refresh_stream_checkpoint_if_clock_drifted(
-            cfg_user, manifest, vault_id, stream_id, seq_url, artifact, repo=repo
-        )
     wait_for_stream_fundable(cfg_user, vault_id, stream_id, manifest, seq_url, artifact)
 
 
@@ -2018,7 +1947,7 @@ def demo_teardown(
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
     vault_id = int(manifest["vault_id"])
     stream_id = manifest_stream_id(manifest)
-    stream_alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 1800)))
+    stream_alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 200)))
     chain = os.environ.get("CHAIN", "local").strip().lower()
     close_applied = False
     if chain == "local" and os.environ.get("E2E_CLOSE_VIA", "seed").strip().lower() != "chainaction":

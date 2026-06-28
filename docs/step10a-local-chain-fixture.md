@@ -51,9 +51,10 @@ The script:
 6. Writes `fixtures/localnet.json` (gitignored).
 
 Step 17b (repeat runs): [`step-17b-localnet-snapshot-restore.md`](plan/completed/step-17b-localnet-snapshot-restore.md)
-splits fund vs stream — `prefund-onchain`, `create-stream-onchain`, and `seed-onchain` on
-`seed_localnet_fixture`. Operators use `./scripts/demo-localnet-prepare.sh` (restore snapshot +
-create stream) or `FULL_RESET=1` to rebuild `.scaffold/snapshots/funded/`.
+splits fund vs stream — `prefund-onchain`, `create-stream-onchain` (stream params only), and
+`seed-onchain` on `seed_localnet_fixture`. Operators use `./scripts/demo-localnet-prepare.sh`
+(vault-only restore) plus per-run create in E2E or verify scripts, or `FULL_RESET=1` to rebuild
+`.scaffold/snapshots/funded/`.
 
 Idempotent resume: if vault `0` exists but stream `0` does not, re-run the seed script without
 `SEED_FORCE` (deposit + `create_stream` only).

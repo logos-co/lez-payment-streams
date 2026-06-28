@@ -440,12 +440,10 @@ Policy rejects carry `reject_reason=N` (the FFI `PolicyRejectReason` discriminan
 Three root causes surfaced through that observability, in order:
 
 - `STREAM_NOT_ACTIVE` / stream depleted. The seed fixture allocated `400` at rate `1`
-  (≈400 s), so the stream depleted before or during a run. Fixed by sizing the seed to deposit
-  `2400` / allocation `1800` / rate `1` (≈30 min runway) in
-  [`scripts/seed-localnet-fixture.sh`](../../scripts/seed-localnet-fixture.sh). The depletion
-  bypass `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF` is now genuinely unnecessary for the demo;
-  its check was also made symmetric across prepare and verify with explicit truthy parsing
-  (`1`/`true`/`yes`/`on`).
+  (≈400 s), so the stream depleted before or during a run. Fixed at the time by larger seed
+  sizing (deposit `2400` / allocation `1800`). **Superseded (2026-06-28):** conservative
+  `1000` / `200` defaults plus clock sync after restore ([Step 24c](../plan/upcoming/step-24c-simplify-demo-flow.md));
+  per-run streams and teardown replace a single long-lived stream `0`.
 - `PROOF_INVALID` / session public key unknown. `scripts/e2e/seed_provider_acceptance.py` picked a
   stale negotiation row when `PERSIST_USER` was reused. Hardened to match the current manifest
   provider, newest-first.
@@ -464,7 +462,8 @@ Fix: snapshot a **pre-stream** funded baseline (vault `0` deposited, no stream `
 sequencer is stopped, copying `~/.cache/logos-scaffold/repos/lez/<scaffold.toml pin>/rocksdb/`
 plus `.scaffold/wallet`, `.scaffold/state`, and fixture owner/provider state files into
 `.scaffold/snapshots/funded/`. Each run restores that baseline and runs
-`create-stream-onchain` so stream `0` accrual starts at restore time.
+`create-stream-onchain` at `next_stream_id` after `wait-clock-synced` (Clock10 ≈ wall time;
+supersedes relying on restore-time accrual anchor alone).
 
 Validity keys in `snapshot.json`: `lez_pin`, `program_id_hex` (same guard as Step 10a),
 owner/provider account ids, deposit and stream params. Mismatch → operator runs

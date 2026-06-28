@@ -6,9 +6,11 @@
 //! Uses LEZ 491 wallet + `lee` crates (same pin as `scaffold.toml`); requires `LEE_WALLET_HOME_DIR`.
 
 use std::path::PathBuf;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, bail, Context, Result};
 use base58::FromBase58;
+use borsh::BorshDeserialize;
 use clap::{Parser, Subcommand};
 use common::transaction::LeeTransaction;
 use lee::program::Program as LeeProgram;
@@ -19,8 +21,9 @@ use lee_core::program::ProgramId as LeeProgramId;
 use lez_payment_streams_core::{
     close_stream_instruction_accounts, create_stream_instruction_accounts, deposit_instruction_accounts,
     derive_stream_config_account_id, derive_vault_account_ids,
-    initialize_vault_instruction_accounts, top_up_stream_instruction_accounts, Instruction,
-    StreamId, TokensPerSecond, VaultId, VaultPrivacyTier, CLOCK_10_PROGRAM_ACCOUNT_ID,
+    initialize_vault_instruction_accounts, top_up_stream_instruction_accounts, ClockAccountData,
+    Instruction, StreamId, TokensPerSecond, VaultConfig, VaultId, VaultPrivacyTier,
+    CLOCK_10_PROGRAM_ACCOUNT_ID,
 };
 use lee::program::Program;
 use lee_core::account::AccountId as CoreAccountId;
@@ -32,9 +35,9 @@ use wallet::WalletCore;
 const DEFAULT_SEQUENCER: &str = "http://127.0.0.1:3040";
 /// Local pinata topup is ~150 tokens per claim on typical scaffold localnets. Demo scripts
 /// pass explicit deposit/topup counts (see `scripts/seed-localnet-fixture.sh`).
-const DEFAULT_DEPOSIT: Balance = 450;
+const DEFAULT_DEPOSIT: Balance = 1000;
 const DEFAULT_STREAM_RATE: TokensPerSecond = 1;
-const DEFAULT_ALLOCATION: Balance = 400;
+const DEFAULT_ALLOCATION: Balance = 200;
 
 #[derive(Parser)]
 #[command(name = "seed_localnet_fixture")]
@@ -88,6 +91,17 @@ enum Commands {
         sequencer_url: String,
         #[arg(long, default_value = "fixtures/localnet.json")]
         output: PathBuf,
+    },
+    /// Poll until on-chain Clock10 timestamp is within skew of wall time (post-restore gate).
+    WaitClockSynced {
+        #[arg(long, default_value_t = 5)]
+        max_skew_s: u64,
+        #[arg(long, default_value_t = 120)]
+        timeout_s: u64,
+        #[arg(long, default_value_t = 2)]
+        poll_s: u64,
+        #[arg(long, default_value = DEFAULT_SEQUENCER)]
+        sequencer_url: String,
     },
     /// Print vault_config.next_stream_id from chain (stdout decimal).
     ReadVaultNextStreamId {
@@ -172,8 +186,6 @@ enum Commands {
         vault_id: u64,
         #[arg(long, default_value = "0")]
         stream_id: u64,
-        #[arg(long, default_value_t = DEFAULT_DEPOSIT)]
-        deposit_amount: Balance,
         #[arg(long, default_value_t = DEFAULT_STREAM_RATE)]
         stream_rate: TokensPerSecond,
         #[arg(long, default_value_t = DEFAULT_ALLOCATION)]
@@ -460,6 +472,99 @@ async fn account_has_data(wallet: &WalletCore, account_id: LeeAccountId) -> Resu
     Ok(!acc.data.is_empty())
 }
 
+fn chain_timestamp_to_unix_seconds(ts: u64) -> u64 {
+    if ts >= 1_000_000_000_000 {
+        ts / 1000
+    } else {
+        ts
+    }
+}
+
+fn wall_unix_seconds() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or(Duration::ZERO)
+        .as_secs()
+}
+
+async fn read_clock10_timestamp(wallet: &WalletCore) -> Result<u64> {
+    let clock_lee = to_lee_account(CLOCK_10_PROGRAM_ACCOUNT_ID);
+    let acc = wallet
+        .sequencer_client
+        .get_account(clock_lee)
+        .await
+        .context("get Clock10 account")?;
+    if acc.data.is_empty() {
+        bail!("Clock10 account has no data");
+    }
+    let parsed = ClockAccountData::try_from_slice(&acc.data)
+        .map_err(|e| anyhow!("decode ClockAccountData: {e}"))?;
+    Ok(parsed.timestamp)
+}
+
+async fn wait_clock_synced(wallet: &WalletCore, max_skew_s: u64, timeout_s: u64, poll_s: u64) -> Result<()> {
+    let deadline = wall_unix_seconds().saturating_add(timeout_s);
+    loop {
+        let clock_raw = read_clock10_timestamp(wallet).await?;
+        let clock_s = chain_timestamp_to_unix_seconds(clock_raw);
+        let wall_s = wall_unix_seconds();
+        let skew = wall_s.saturating_sub(clock_s);
+        eprintln!("wait-clock-synced: wall={wall_s} clock={clock_s} skew={skew}s (max {max_skew_s})");
+        if skew <= max_skew_s {
+            return Ok(());
+        }
+        if wall_s >= deadline {
+            bail!(
+                "Clock10 still {skew}s behind wall time after {timeout_s}s (clock={clock_s}, wall={wall_s})"
+            );
+        }
+        tokio::time::sleep(Duration::from_secs(poll_s.max(1))).await;
+    }
+}
+
+async fn vault_unallocated_lo(ctx: &OnchainContext) -> Result<Balance> {
+    let init_accounts =
+        initialize_vault_instruction_accounts(&ctx.program_id, ctx.owner_id, ctx.vault_id);
+    let (_, vault_holding) =
+        derive_vault_account_ids(&ctx.program_id, ctx.owner_id, ctx.vault_id);
+    let vault_cfg_lee = to_lee_account(init_accounts[0]);
+    let vault_holding_lee = to_lee_account(vault_holding);
+
+    let cfg_acc = ctx
+        .wallet
+        .sequencer_client
+        .get_account(vault_cfg_lee)
+        .await
+        .context("get vault config account")?;
+    if cfg_acc.data.is_empty() {
+        bail!("vault config account has no data");
+    }
+    let vault_cfg = VaultConfig::try_from_slice(&cfg_acc.data)
+        .map_err(|e| anyhow!("decode VaultConfig: {e}"))?;
+
+    let holding_acc = ctx
+        .wallet
+        .sequencer_client
+        .get_account(vault_holding_lee)
+        .await
+        .context("get vault holding account")?;
+    let holding_bal = holding_acc.balance;
+    let total_allocated = vault_cfg.total_allocated;
+    Ok(holding_bal.saturating_sub(total_allocated))
+}
+
+async fn vault_holding_balance_lo(ctx: &OnchainContext) -> Result<Balance> {
+    let (_, vault_holding) =
+        derive_vault_account_ids(&ctx.program_id, ctx.owner_id, ctx.vault_id);
+    let holding_acc = ctx
+        .wallet
+        .sequencer_client
+        .get_account(to_lee_account(vault_holding))
+        .await
+        .context("get vault holding account")?;
+    Ok(holding_acc.balance)
+}
+
 async fn open_onchain(
     program_bin: &PathBuf,
     owner: &str,
@@ -608,6 +713,13 @@ async fn create_stream_onchain(
         return Err(anyhow!(
             "stream config {} already exists (use fresh baseline restore)",
             account_id_to_base58(stream_accounts[2]),
+        ));
+    }
+
+    let unallocated = vault_unallocated_lo(ctx).await?;
+    if allocation > unallocated {
+        return Err(anyhow!(
+            "vault unallocated {unallocated} < requested allocation {allocation}; run deposit-onchain"
         ));
     }
 
@@ -798,11 +910,20 @@ async fn main() -> Result<()> {
             if acc.data.is_empty() {
                 bail!("vault config account has no data");
             }
-            use borsh::BorshDeserialize;
-            use lez_payment_streams_core::VaultConfig;
             let cfg = VaultConfig::try_from_slice(&acc.data)
                 .map_err(|e| anyhow!("decode VaultConfig: {e}"))?;
             println!("{}", cfg.next_stream_id);
+        },
+        Commands::WaitClockSynced {
+            max_skew_s,
+            timeout_s,
+            poll_s,
+            sequencer_url: _,
+        } => {
+            ensure_wallet_home_env()?;
+            let wallet = WalletCore::from_env().context("open wallet for clock poll")?;
+            wait_clock_synced(&wallet, max_skew_s, timeout_s, poll_s).await?;
+            eprintln!("Clock10 synced to wall time (skew <= {max_skew_s}s)");
         },
         Commands::DepositOnchain {
             program_bin,
@@ -859,7 +980,6 @@ async fn main() -> Result<()> {
             provider,
             vault_id,
             stream_id,
-            deposit_amount,
             stream_rate,
             allocation,
             skip_if_initialized,
@@ -880,6 +1000,7 @@ async fn main() -> Result<()> {
             )
             .await?;
             let provider_id = account_id_from_base58(&provider)?;
+            let demo_deposit_amount = vault_holding_balance_lo(&ctx).await?;
             let fixture = build_fixture(
                 &sequencer_url,
                 &ctx.program_id_hex,
@@ -888,7 +1009,7 @@ async fn main() -> Result<()> {
                 provider_id,
                 vault_id,
                 stream_id,
-                deposit_amount,
+                demo_deposit_amount,
                 stream_rate,
                 allocation,
             );
@@ -922,6 +1043,7 @@ async fn main() -> Result<()> {
             )
             .await?;
             let provider_id = account_id_from_base58(&provider)?;
+            let demo_deposit_amount = vault_holding_balance_lo(&ctx).await?;
             let fixture = build_fixture(
                 &sequencer_url,
                 &ctx.program_id_hex,
@@ -930,7 +1052,7 @@ async fn main() -> Result<()> {
                 provider_id,
                 vault_id,
                 stream_id,
-                deposit_amount,
+                demo_deposit_amount,
                 stream_rate,
                 allocation,
             );

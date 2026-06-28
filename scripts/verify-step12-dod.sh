@@ -233,5 +233,10 @@ else
   bad "missing payment_streams_state.json under $PERSIST_DIR"
 fi
 
+if [[ "${SKIP_VERIFY_STREAM_TEARDOWN:-0}" != "1" ]] &&
+  python3 -c "import json; m=json.load(open('$MANIFEST')); exit(0 if m.get('stream_id') is not None else 1)" 2>/dev/null; then
+  FIXTURE_MANIFEST="$MANIFEST" "$REPO_ROOT/scripts/demo-stream-teardown-localnet.sh" || true
+fi
+
 echo "=== done (exit $fail) ==="
 exit "$fail"

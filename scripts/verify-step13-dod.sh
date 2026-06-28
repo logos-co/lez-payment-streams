@@ -97,16 +97,26 @@ if [[ ! -f "$WALLET_CONFIG" || ! -f "$WALLET_STORAGE" || ! -f "$GUEST_BIN" ]]; t
 fi
 
 echo "--- create stream at vault next_stream_id (Step 24c) ---"
+logoscore stop 2>/dev/null || true
+sleep 2
 CREATE_FORCE=1 E2E_PER_RUN_STREAM=1 FIXTURE_MANIFEST="$MANIFEST" \
   "$REPO_ROOT/scripts/create-localnet-stream-fixture.sh"
 
 STREAM_ID="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['stream_id'])")"
 
-rm -rf "$PERSIST_DIR"
-mkdir -p "$PERSIST_DIR"
+teardown_verify_stream() {
+  FIXTURE_MANIFEST="$MANIFEST" "$REPO_ROOT/scripts/demo-stream-teardown-localnet.sh" || true
+}
 
 SMOKE_FILE="$(mktemp)"
-trap 'rm -f "$SMOKE_FILE"' EXIT
+verify_step13_cleanup() {
+  rm -f "$SMOKE_FILE"
+  teardown_verify_stream
+}
+trap verify_step13_cleanup EXIT
+
+rm -rf "$PERSIST_DIR"
+mkdir -p "$PERSIST_DIR"
 
 timeout "$LOGOSCORE_E2E_TIMEOUT" nix shell github:logos-co/logos-logoscore-cli --command bash -c "
   set -uo pipefail
@@ -138,6 +148,7 @@ timeout "$LOGOSCORE_E2E_TIMEOUT" nix shell github:logos-co/logos-logoscore-cli -
     TAMPERED=\$(python3 -c \"h='$N8_WIRE_HEX'; print(h[:-2]+('a' if h[-2:]!='aa' else 'bb'))\")
     echo BAD:\$(logoscore call payment_streams_module verifyEligibilityForStoreQuery \"\$BYTES_HEX\" \"\$TAMPERED\" '$PROVIDER_PEER_ID' 2>&1 | tail -1)
   fi
+  logoscore call logos_execution_zone close >/dev/null 2>&1 || true
   logoscore stop 2>/dev/null || true
 " >"$SMOKE_FILE" 2>&1 || echo LOGOSCORE_TIMEOUT >>"$SMOKE_FILE"
 

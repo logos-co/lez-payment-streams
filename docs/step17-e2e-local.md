@@ -159,7 +159,7 @@ Failure triage without overlay:
 | --- | --- |
 | Provider `BAD_REQUEST`, empty inbound proof | Stale `liblogosdelivery.so` (lock below `39b467ec`) or wrong file in `delivery_module/` |
 | Client `BAD_REQUEST` on a query *with* proof | Provider verifier rejected. The client only sees `BAD_REQUEST`; the orchestrator logs the real verdict in the `store_query_eligibility_verdict` artifact line (calls the provider verifier directly). Read `eligibility` + `message` (policy rejects include `reject_reason=N`). |
-| `verify` / prepare → `STREAM_NOT_ACTIVE` | Fixture stream `0` depleted; run `./scripts/demo-localnet-fresh.sh` or fresh `PERSIST_*`. Default allocation `1800` (≈30 min) keeps a fresh seed + run depletion-free. |
+| `verify` / prepare → `STREAM_NOT_ACTIVE` | Stream depleted or wrong id; fresh prepare + per-run create, or `demo-localnet-fresh.sh`. Default allocation `200` at rate `1` (~200 s runway per stream). |
 | `verify` → `PARAMS_REJECTED` (`reject_reason=4`) | `RateBelowAcceptedParams`: on-chain rate below the accepted/proposal rate. Fixed 2026-06-19 (`fillServiceId` no longer clobbers rate/allocation). If it recurs, the stream's on-chain rate genuinely differs from `kDemoRate` for the proposal arm. |
 | `MODULE_LOAD_FAILED` for `delivery_module` | Incomplete `lgpm` install or missing bundled `.so` in module dir |
 

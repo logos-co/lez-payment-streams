@@ -105,15 +105,23 @@ only if the demo script changes (inventory is already keyed by `vault_id`).
 
 ## Default stream terms
 
-Normative demo numbers for Step 12, Step 13 local verifier, and `verify-step12-dod.sh`.
-Align with [`fixtures/localnet.json`](../fixtures/localnet.json) and
-[`seed_localnet_fixture.rs`](../examples/src/bin/seed_localnet_fixture.rs). Each local pinata
-claim is about 150 tokens; the seed script runs `SEED_WALLET_TOPUP_ROUNDS` (default 16) before
-on-chain deposit (`TOPUP_ROUNDS * 150` must cover `SEED_DEPOSIT_AMOUNT`). Defaults are deposit
-`2400`, stream `0` allocation `1800`, rate `1` (demo `min_rate` floor). Rough unaccrued runway at
-rate `1` is on the order of `allocation` seconds (≈30 min) until eligibility sees
-`STREAM_DEPLETED`; the 30 min window keeps a fresh seed plus an E2E run depletion-free, and the
-`600`-token unallocated headroom (`2400-1800`) lets the E2E top-up loop refill mid-run.
+Normative demo numbers for Step 12, Step 13 local verifier, and E2E (2026-06-28 sizing).
+Align with [`seed_localnet_fixture.rs`](../examples/src/bin/seed_localnet_fixture.rs) and env
+overrides in prefund / create scripts.
+
+| Setting | Default | Notes |
+| --- | --- | --- |
+| `SEED_DEPOSIT_AMOUNT` | `1000` | Vault deposit on prefund / full seed |
+| `SEED_STREAM_ALLOCATION` | `200` | Per-run stream allocation (rate `1`) |
+| `SEED_STREAM_RATE` | `1` | Demo `min_rate` floor |
+| Pinata rounds | `(deposit/150)+4` in `prefund-localnet.sh` | ~150 tokens per local claim |
+
+Step 17b reuses a funded vault-only snapshot; each run creates at `next_stream_id` with
+`SEED_STREAM_ALLOCATION`. After close, unaccrued returns to the vault for back-to-back verifies.
+
+Superseded (historical): deposit `2400` / allocation `1800` / 16 pinata rounds — replaced to keep
+allocation a small share of the vault and avoid fold-jump workarounds
+([Step 24c](plan/upcoming/step-24c-simplify-demo-flow.md)).
 
 Demo provider policy (localnet):
 
@@ -127,12 +135,12 @@ Demo provider policy (localnet):
 
 | Path | `stream_id` | `rate` | `allocation` | `create_stream_deadline` |
 | --- | --- | --- | --- | --- |
-| Proof-only on Step 10a seed | `0` (on-chain) | `1` | `1800` (on-chain) | n/a |
+| Proof-only (per-run stream on restored vault) | `next_stream_id` | `1` | `200` (default) | n/a |
 | Full arc on same seeded vault | next free (e.g. `1`) | `10` | `15` | `clock10_timestamp + 600` |
 | Fresh vault (testnet one-shot) | `0` | `1` | `80` | `clock10_timestamp + 600` |
 
-After Step 10a seed, vault holding matches `demo_deposit_amount` (default `2400`) and
-`total_allocated` is `1800`, so unallocated is `600`; the full-arc allocation `15` stays within solvency.
+After prefund, vault holding matches on-chain balance; `create-stream-onchain` does not deposit.
+Unallocated must cover each new stream allocation (preflight in seed binary).
 
 `createStream` via `chainAction` must use the same `vault_id`, `stream_id`, provider, rate,
 and allocation as the persisted proposal.

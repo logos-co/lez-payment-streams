@@ -33,9 +33,9 @@ localnet_snapshot_program_id_hex() {
 localnet_snapshot_write_metadata() {
   local repo="$1"
   local snap_dir="$2"
-  local deposit="${SEED_DEPOSIT_AMOUNT:-2000}"
+  local deposit="${SEED_DEPOSIT_AMOUNT:-1000}"
   local rate="${SEED_STREAM_RATE:-1}"
-  local alloc="${SEED_STREAM_ALLOCATION:-1800}"
+  local alloc="${SEED_STREAM_ALLOCATION:-200}"
   local owner="" provider=""
   if [[ -f "$repo/.lez_payment_streams-state" ]]; then
     # shellcheck disable=SC1090
@@ -102,29 +102,4 @@ localnet_snapshot_validate_metadata() {
     return 1
   fi
   return 0
-}
-
-# Restored ledger clock is pinned at snapshot capture time; LEZ clock catches up to wall time on
-# restart, so create_stream accrued_as_of can lag and fold looks depleted. Re-prefund when old.
-localnet_snapshot_stale_for_restore() {
-  local snap_dir="$1"
-  local meta="$snap_dir/snapshot.json"
-  local max_age_s="${SNAPSHOT_MAX_AGE_S:-1800}"
-  if [[ "$max_age_s" == "0" ]]; then
-    return 1
-  fi
-  if [[ ! -f "$meta" ]]; then
-    return 0
-  fi
-  python3 - "$meta" "$max_age_s" <<'PY'
-import json, sys, datetime
-meta_path, max_age_s = sys.argv[1], int(sys.argv[2])
-doc = json.load(open(meta_path, encoding="utf-8"))
-created = doc.get("created_at")
-if not created:
-    sys.exit(0)
-ts = datetime.datetime.fromisoformat(created.replace("Z", "+00:00"))
-age = (datetime.datetime.now(datetime.timezone.utc) - ts).total_seconds()
-sys.exit(0 if age > max_age_s else 1)
-PY
 }

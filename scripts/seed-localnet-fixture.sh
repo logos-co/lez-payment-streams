@@ -68,10 +68,10 @@ OWNER="$SIGNER_ID"
 echo "Funding owner Public/$OWNER (pinata; repeat for larger demo deposit)…"
 # Each pinata claim grants ~150 tokens on typical scaffold localnets.
 # Step 17b restore reuses a prefunded snapshot; these defaults apply to full seed / FULL_RESET.
-TOPUP_ROUNDS="${SEED_WALLET_TOPUP_ROUNDS:-14}"
-DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-2000}"
+TOPUP_ROUNDS="${SEED_WALLET_TOPUP_ROUNDS:-11}"
+DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-1000}"
 STREAM_RATE="${SEED_STREAM_RATE:-1}"
-STREAM_ALLOCATION="${SEED_STREAM_ALLOCATION:-1800}"
+STREAM_ALLOCATION="${SEED_STREAM_ALLOCATION:-200}"
 for ((round = 1; round <= TOPUP_ROUNDS; round++)); do
   echo "  topup round ${round}/${TOPUP_ROUNDS}…"
   lgs wallet topup --address "Public/$OWNER"
