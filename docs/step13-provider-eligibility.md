@@ -5,7 +5,7 @@ Status: complete for integration DoD (feature in tree, `./scripts/archive/verify
 localnet when stream `0` is not fully accrued (same recovery story as Step 12).
 
 Provider inbound verifier for Store eligibility bytes. Normative design: [plan/completed/step-13-normative.md](plan/completed/step-13-normative.md).
-Index: [integration-index.md](../integration-index.md).
+Index: [program-index.md](development-map/program-index.md).
 
 Prerequisites: Step 12 user path green (`./scripts/archive/verify-step12-dod.sh`), Steps 10a–11b chain
 fixture, Step 11c signing, installed `payment_streams_module` `.lgx`, guest ELF
@@ -78,7 +78,7 @@ must yield `PROOF_INVALID`.
 Strict cross-test (honest `stream_proof` on seeded stream `0`, not SKIP on depleted):
 
 ```bash
-./scripts/archive/demo-localnet-fresh.sh
+make full-reset-localnet
 export PAYMENT_STREAMS_GUEST_BIN="$PWD/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"
 export PERSIST_DIR="$PWD/.scaffold/step13-persist-$(date +%s)"
 VERIFY_LOGOSCORE=1 ./scripts/archive/verify-step13-dod.sh
@@ -91,7 +91,7 @@ prepare returned `STREAM_DEPLETED` or skipped.
 Optional faster re-seed when you already trust the chain layout:
 
 ```bash
-SKIP_VERIFY=1 ./scripts/archive/demo-localnet-fresh.sh
+SKIP_VERIFY=1 make full-reset-localnet
 VERIFY_LOGOSCORE=1 ./scripts/archive/verify-step13-dod.sh
 ```
 
@@ -99,7 +99,7 @@ VERIFY_LOGOSCORE=1 ./scripts/archive/verify-step13-dod.sh
 
 | Symptom | Likely cause | Action |
 | --- | --- | --- |
-| Cross-test SKIP (stream depleted) | Stream `0` fully accrued on long-lived localnet | `./scripts/archive/demo-localnet-fresh.sh`, new `PERSIST_DIR`, re-run verify |
+| Cross-test SKIP (stream depleted) | Stream `0` fully accrued on long-lived localnet | `make full-reset-localnet`, new `PERSIST_DIR`, re-run verify |
 | `verify` → `STREAM_NOT_ACTIVE` / depleted after OK prepare | Chain accrued between calls on depleted fixture | Fresh seed; run prepare and verify in one logoscore session without extra delay |
 | `UNKNOWN_PROVIDER` / base58 failed | Wallet not open or LEZ module not loaded | `logoscore load-module logos_execution_zone`, `open` wallet before PS calls |
 | `proofBytes … must be non-empty` | Prepare failed; no `bytes_hex` | Fix prepare path first (`REQUIRE_STREAM_PROOF=1` Step 12 helper) |

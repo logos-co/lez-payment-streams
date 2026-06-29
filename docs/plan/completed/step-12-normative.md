@@ -1,7 +1,7 @@
 # Step 12 — normative plan excerpt
 
 Operator commands: [step12-user-eligibility.md](../step12-user-eligibility.md).
-This file keeps closed design choices and DoD detail for audits; agents on Step 14+ should read [integration-contracts.md](../integration-contracts.md) instead.
+This file keeps closed design choices and DoD detail for audits; agents on Step 14+ should read [integration-contracts.md](../reference/integration-contracts.md) instead.
 
 ### Step 12, Session keys and user-side proof construction
 
@@ -25,13 +25,13 @@ Step 12 is complete for this integration plan:
 - Feature: session keygen FFI, `EligibilityProof` wrapper serialize, module methods
   (`registerProviderMapping`, `prepareEligibilityForStoreQuery`, `listMyStreams`,
   `rediscoverStreams`), N4 persistence, N8 tool (`n8_canonical_wire_hex`).
-- Verify: `./scripts/verify-step12-dod.sh` (offline + logoscore); strict `stream_proof` via
+- Verify: `make verify-step12` (offline + logoscore); strict `stream_proof` via
   `REQUIRE_STREAM_PROOF=1` and `./scripts/step12-topup-and-prepare.sh` after Step 11d wallet stack.
 - Runbooks: [`docs/step12-user-eligibility.md`](docs/step12-user-eligibility.md),
   [`docs/demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
 
 Not in Step 12 scope: Step 16 `delivery_module` auto-invoke; Step 13 provider verifier cross-test
-(lives in `./scripts/verify-step13-dod.sh`, not Step 12 DoD); full Step 17 demo without top-up
+(lives in `make verify-step13`, not Step 12 DoD); full Step 17 demo without top-up
 helper on aged stream `0`.
 
 #### Quick reference
@@ -209,7 +209,7 @@ After code changes, rebuild and reload via
 
 Landed (current tree):
 
-1. `./scripts/verify-step12-dod.sh` with `VERIFY_LOGOSCORE=0` exits 0: N8 digest test, FFI
+1. `make verify-step12` with `VERIFY_LOGOSCORE=0` exits 0: N8 digest test, FFI
    session keygen + eligibility wrapper tests, N8 wire tool, installed module plugin, four
    Step 12 methods in `lm methods`.
 2. With `VERIFY_LOGOSCORE=1` and `REQUIRE_STREAM_PROOF=1`: logoscore path via
@@ -235,7 +235,7 @@ the proof against actual on-chain stream state (Step 13; recommended cross-test)
 
 After the Step 11d wallet pin bump:
 
-1. `./scripts/verify-step12-dod.sh` supports `REQUIRE_STREAM_PROOF=1` (top-up + prepare via
+1. `make verify-step12` supports `REQUIRE_STREAM_PROOF=1` (top-up + prepare via
    `step12-topup-and-prepare.sh`). Default logoscore smoke allows SKIP on depleted stream when
    `REQUIRE_STREAM_PROOF=0`.
 2. Demo scripts document `PAYMENT_STREAMS_GUEST_BIN`, `ensure-scaffold-lez-layout.sh`, and

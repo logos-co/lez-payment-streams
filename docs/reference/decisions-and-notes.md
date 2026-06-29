@@ -1,7 +1,7 @@
 # Decisions and notes
 
 Normative decisions (D1–D6) and carry-forward notes (N1–N12) for payment-streams integration.
-Index: [integration-index.md](../../integration-index.md). Cross-step APIs: [integration-contracts.md](../integration-contracts.md).
+Index: [program-index.md](../development-map/program-index.md). Cross-step APIs: [integration-contracts.md](integration-contracts.md).
 Plan excerpts: [plan/README.md](../plan/README.md).
 
 ## Decisions and Notes
@@ -411,7 +411,8 @@ Symptoms on the provider: inbound eligibility hook with `proof_len=0`, verify JS
 `BAD_REQUEST` (400). Direct `logoscore call payment_streams_module verifyEligibilityForStoreQuery`
 on the same host still passed because proof and N8 were supplied on the CLI path.
 
-Mitigations (demo script [`scripts/archive/demo-e2e-local.sh`](../scripts/archive/demo-e2e-local.sh)):
+Mitigations (`make verify-step17` / [`scripts/e2e.sh`](../scripts/e2e.sh) `local run`; archived
+[`scripts/archive/demo-e2e-local.sh`](../scripts/archive/demo-e2e-local.sh)):
 
 - Default: after `lgpm install` of the delivery `.lgx`, optionally overlay
   `make liblogosdelivery` from sibling `logos-delivery` (`LOGOS_DELIVERY_ROOT`) unless
@@ -467,9 +468,10 @@ supersedes relying on restore-time accrual anchor alone).
 
 Validity keys in `snapshot.json`: `lez_pin`, `program_id_hex` (same guard as Step 10a),
 owner/provider account ids, deposit and stream params. Mismatch → operator runs
-`FULL_RESET=1` (prefund + snapshot rebuild). Default demo path:
-[`scripts/archive/demo-localnet-prepare.sh`](../../scripts/archive/demo-localnet-prepare.sh); legacy full rebuild:
-[`scripts/archive/demo-localnet-fresh.sh`](../../scripts/archive/demo-localnet-fresh.sh) sets `FULL_RESET=1`.
+`make full-reset-localnet` (prefund + snapshot rebuild). Default demo path:
+`make prepare-localnet` (formerly [`scripts/archive/demo-localnet-prepare.sh`](../../scripts/archive/demo-localnet-prepare.sh));
+full rebuild: `make full-reset-localnet` (formerly
+[`scripts/archive/demo-localnet-fresh.sh`](../../scripts/archive/demo-localnet-fresh.sh), which set `FULL_RESET=1`).
 
 Plan packet: [step-17b-localnet-snapshot-restore.md](../plan/completed/step-17b-localnet-snapshot-restore.md).
 
@@ -520,7 +522,7 @@ branch name `feat/payment-streams-store-eligibility` on both delivery repos; Ste
 `ref=feat/payment-streams-store-eligibility`; do not reuse `feat/liblogosdelivery-query-store`.
 Pin table:
 [`feature-branch-pins.md`](feature-branch-pins.md) (flake lock rev documented there).
-Summary: [integration-index.md](../../integration-index.md#delivery-integration-branches).
+Summary: [program-index.md](../development-map/program-index.md#delivery-integration-branches).
 
 `logos-chat` is not a reusable Store path.
 We checked it at `origin/main` (`3a5f508`) and at the `logos-chat-module`
@@ -759,15 +761,16 @@ coordinator module) is **won't fix**; do not implement `payment_streams_demo_coo
 
 Dual-host paid Store demo coordination stays on the **host**, not in a Logos module.
 
-- **Regression / one-command demo:** [`scripts/archive/demo-e2e-local.sh`](../../scripts/archive/demo-e2e-local.sh)
-  (`make verify-step17`) — fixture prepare, build/install, then
-  [`scripts/e2e/run_local_e2e.py`](../../scripts/e2e/run_local_e2e.py).
+- **Regression / one-command demo:** `make verify-step17` /
+  [`scripts/e2e.sh`](../../scripts/e2e.sh) `local run` — fixture prepare, build/install, then
+  [`scripts/e2e/run_local_e2e.py`](../../scripts/e2e/run_local_e2e.py) (archived entry:
+  [`scripts/archive/demo-e2e-local.sh`](../../scripts/archive/demo-e2e-local.sh)).
 - **Cross-host sequencing:** the Python orchestrator (or an operator following Step 20 /
   [step17-e2e-local.md](../../step17-e2e-local.md)) calls `logoscore` with
   `LOGOSCORE_CONFIG_USER` vs `LOGOSCORE_CONFIG_PROVIDER`. Each daemon loads
   `logos_execution_zone`, `payment_streams_module`, and `delivery_module` only.
 - **Product APIs:** eligibility and Store integration are
-  `payment_streams_module` + `delivery_module` ([integration-contracts.md](../integration-contracts.md)).
+  `payment_streams_module` + `delivery_module` ([integration-contracts.md](integration-contracts.md)).
   A future third-party Logos app module may compose those APIs; that is **not** part of this
   integration plan (Step 25 closed — [cancelled packet](../plan/cancelled/step-25-demo-coordination-module.md)).
 - **Step 20 developer journey:** document (1) one-script E2E, (2) equivalent step-by-step

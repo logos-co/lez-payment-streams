@@ -1,6 +1,6 @@
 # Step 24c — simplify demo flow (fresh stream per run)
 
-Completed packet. Index: [integration-index.md](../../../integration-index.md).
+Completed packet. Index: [program-index.md](../../development-map/program-index.md).
 Prerequisites: Step 17/17b scripts; Step 24b (rc5 guest + tooling).
 Related: [step-17b-localnet-snapshot-restore.md](step-17b-localnet-snapshot-restore.md),
 [step17-e2e-local.md](../../step17-e2e-local.md),
@@ -34,10 +34,10 @@ with claim treated as optional.
 ## Operator sequence (same chain, no restore between 13 and 12)
 
 ```text
-./scripts/restore-localnet.sh funded
-./scripts/demo-localnet-prepare.sh
-./scripts/verify-step13-dod.sh
-REQUIRE_STREAM_PROOF=1 ./scripts/verify-step12-dod.sh
+./scripts/lifecycle.sh snapshot restore funded
+make prepare-localnet
+make verify-step13
+REQUIRE_STREAM_PROOF=1 make verify-step12
 ```
 
 This sequence passes on localnet after the testnet-faithful harness updates.
@@ -58,9 +58,9 @@ outcome section for why the demo moved off `Clock10`.
 | Piece | Role |
 | --- | --- |
 | `seed_localnet_fixture wait-clock-synced` | Poll the demo clock until wall skew is at most `MAX_CLOCK_SKEW_S` (default 5) |
-| `scripts/wait-clock-synced.sh` | Calls the subcommand; nudges block production via pinata top-ups when the sequencer is idle (clock only advances in blocks) |
-| `scripts/restore-localnet.sh` | Runs clock sync after `lgs localnet start` |
-| `scripts/create-localnet-stream-fixture.sh` | Clock sync again before seed create (defense in depth) |
+| `scripts/archive/wait-clock-synced.sh` | Calls the subcommand; nudges block production via pinata top-ups when the sequencer is idle (clock only advances in blocks) |
+| [`scripts/lifecycle.sh`](../../../scripts/lifecycle.sh) `snapshot restore` | Clock sync after restore (via archived restore helper or e2e prepare) |
+| `scripts/archive/create-localnet-stream-fixture.sh` | Clock sync again before seed create (defense in depth) |
 
 Retired: snapshot age rebuild (`SNAPSHOT_MAX_AGE_S` prefund) and E2E
 `refresh_stream_checkpoint_if_clock_drifted` top-up workaround. Use `wait-clock-synced.sh`
@@ -70,10 +70,10 @@ after restore instead.
 
 | Piece | Role |
 | --- | --- |
-| `scripts/wait-chain-settle.sh` | Waits for owner nonce / blocks after logoscore smokes so seed create/close does not reuse a stale committed nonce |
+| `scripts/archive/wait-chain-settle.sh` | Waits for owner nonce / blocks after logoscore smokes so seed create/close does not reuse a stale committed nonce |
 
-Wired before seed create and close in `create-localnet-stream-fixture.sh` and
-`demo-stream-teardown-localnet.sh`.
+Wired before seed create and close in `scripts/archive/create-localnet-stream-fixture.sh` and
+`scripts/archive/demo-stream-teardown-localnet.sh`.
 
 ### Conservative vault sizing (defaults)
 
@@ -149,8 +149,8 @@ seed path with `chainAction` fallback and optional on testnet
 (`E2E_CLAIM_OPTIONAL`); continuation leg pinata + `ensure_continuation_vault_funded`; artifacts
 `create_demo_stream`, `demo_close_stream`, `demo_claim`.
 
-Scripts: `demo-localnet-prepare.sh` vault-only (`SKIP_STREAM_CREATE=1`);
-`create-localnet-stream-fixture.sh` with `CREATE_FORCE` / `E2E_PER_RUN_STREAM`; seed
+Scripts: `make prepare-localnet` / [`scripts/e2e.sh`](../../../scripts/e2e.sh) `local prepare` (vault-only baseline; per-run stream in orchestrator);
+[`scripts/archive/create-localnet-stream-fixture.sh`](../../../scripts/archive/create-localnet-stream-fixture.sh) with `CREATE_FORCE` / `E2E_PER_RUN_STREAM`; seed
 `close-stream-onchain`, `claim-onchain`, `deposit-onchain`, `top-up-stream-onchain`,
 `wait-clock-synced`.
 
@@ -158,8 +158,8 @@ Makefile: `full-reset-localnet`, `verify-step17-back-to-back` (leg 2 `SKIP_SEED=
 topup).
 
 Docs touched: [step17-e2e-local.md](../../step17-e2e-local.md),
-[integration-index.md](../../../integration-index.md),
-[integration-contracts.md](../../integration-contracts.md),
+[program-index.md](../../development-map/program-index.md),
+[integration-contracts.md](../../reference/integration-contracts.md),
 [demo-localnet-recovery.md](../../demo-localnet-recovery.md),
 [testnet-claim-known-issue.md](../../testnet-claim-known-issue.md).
 
@@ -169,10 +169,10 @@ Docs touched: [step17-e2e-local.md](../../step17-e2e-local.md),
 
 | Gate | Command | Last known result |
 | --- | --- | --- |
-| Step 10a | `./scripts/verify-step10a-dod.sh` after prepare | Green |
-| Step 12 default | `./scripts/verify-step12-dod.sh` | Green |
-| Step 12 strict proof | `REQUIRE_STREAM_PROOF=1 ./scripts/verify-step12-dod.sh` after Step 13 on same chain | Green |
-| Step 13 | `./scripts/verify-step13-dod.sh` | Green; teardown close confirmed in logs |
+| Step 10a | `make verify-step10a` after prepare | Green |
+| Step 12 default | `make verify-step12` | Green |
+| Step 12 strict proof | `REQUIRE_STREAM_PROOF=1 make verify-step12` after Step 13 on same chain | Green |
+| Step 13 | `make verify-step13` | Green; teardown close confirmed in logs |
 | Step 17 | `SKIP_BUILD=1 make verify-step17` | Green |
 | Back-to-back | `SKIP_BUILD=1 make verify-step17-back-to-back` | Green |
 | Step 18 testnet | `make verify-step18` | Green through create, fundable, paid Store query, close; claim optional (see known issue) |

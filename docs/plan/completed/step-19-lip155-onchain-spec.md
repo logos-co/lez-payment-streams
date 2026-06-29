@@ -1,6 +1,6 @@
 # Step 19 — plan excerpt (complete)
 
-Normative packet for agents. Index: [integration-index.md](../../../integration-index.md).
+Normative packet for agents. Index: [program-index.md](../../development-map/program-index.md).
 
 Status: complete. Canonical LIP-155 text lives on `logos-lips` / `rfc-index` branch
 `feat/payment-streams-onchain-part` at rev `345c8eef` (local clone `lez-related/rfc-index`).
@@ -69,7 +69,7 @@ Editor decisions (Step 19):
   Security carry binding and privacy narrative.
 
 Prerequisite: on-chain guest and `lez-payment-streams-core` accepted as complete
-([`architecture.md`](../../../architecture.md),
+([`architecture.md`](../../on-chain/architecture.md),
 [`docs/archive/implementation-plan-on-chain.md](../../archive/implementation-plan-on-chain.md)).
 
 Scheduling: ran in parallel with Steps 17–18. Step 20 may cite the branch pin above;
@@ -84,7 +84,7 @@ an optional merge PR lands.
 
 Reference implementation (informative for PR review, not LIP body):
 guest handlers, `instruction.rs`, `program_tests`, and
-[`architecture.md`](../../../architecture.md).
+[`architecture.md`](../../on-chain/architecture.md).
 On-chain MUST/SHALL in the LIP MUST align with this reference LEZ program; where the LIP is
 silent on layout, the demo program is the conformance artifact.
 Document wallet-vs-guest policy explicitly (for example shielded-only
@@ -174,7 +174,7 @@ Not in scope:
 
 - Any file outside `docs/anoncomms/raw/payment-streams.md` (including `handoff.md` and
   `architecture.md` in `lez-payment-streams`).
-- Logos Store integration ([`integration-contracts.md`](../../integration-contracts.md)).
+- Logos Store integration ([`integration-contracts.md`](../../reference/integration-contracts.md)).
 - Rewriting the full off-chain protocol except signing-requirement clarity, LEZ integration
   cross-links, and Implementation Considerations LEZ bytes.
 - Full Borsh preimage layouts under Off-Chain or On-Chain (Implementation Considerations only).

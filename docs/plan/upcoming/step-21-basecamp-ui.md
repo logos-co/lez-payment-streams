@@ -1,6 +1,6 @@
 # Step 21 — plan excerpt
 
-Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
+Active-work packet for agents. Index: [program-index.md](../../development-map/program-index.md).
 
 **Optional stretch** after Step 20 — time-boxed; not required for integration milestone closure.
 Track split: [N18](../../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
@@ -26,7 +26,7 @@ Architectural context:
   **`logos_execution_zone`** via LogosAPI only — no `delivery_module`, no script orchestrator,
   no demo coordinator (Step 25 won't fix).
 - Thin wrapper: buttons/forms map to existing LogosAPI (`chainAction`, reads, `listMyStreams`,
-  `rediscoverStreams`) per [integration-contracts.md](../../integration-contracts.md).
+  `rediscoverStreams`) per [integration-contracts.md](../../reference/integration-contracts.md).
 - **Single Basecamp / single `logoscore`** for typical flows; counterparty service is **out of
   band** (not modeled in UI).
 

@@ -1,7 +1,7 @@
 # Legacy payment streams plugin bootstrap (archived)
 
 Status: outdated (2026-06-08). Superseded by Step 9 in
-[`integration-index.md`](../../integration-index.md) and
+[`program-index.md`](../development-map/program-index.md) and
 [`docs/logos-runtime-guide.md`](../logos-runtime-guide.md).
 
 This records the original Legacy bootstrap plan (pre–Step 9): a Legacy `PluginInterface` Qt plugin
@@ -167,4 +167,4 @@ Step 7 repeats the same `getClient` plus `invokeRemoteMethod` pattern inside ded
 - `logos-delivery-module/src/delivery_module_plugin.h` - Dependency module (legacy pattern)
 - `logos-execution-zone-module/src/logos_execution_zone_wallet_module.h` - Dependency module (legacy pattern)
 - GitHub Issue #31 in `logos-delivery-module` - Documents `LogosModules` wrapper crash in core sidecars
-- `logos-architecture-overview.md` Section "Module Implementation Patterns" - Pattern comparison
+- [logos-architecture-overview.md](../reference/logos-architecture-overview.md) Section "Module Implementation Patterns" - Pattern comparison

@@ -8,7 +8,7 @@ not a blocker for Step 12 DoD.
 
 Session keys, persisted negotiation state, and Store `EligibilityProof` bytes (LIP-155
 `stream_proposal` / `stream_proof` arms) for the paid Store demo. Step 12 in
-[`integration-index.md`](../integration-index.md).
+[`program-index.md`](development-map/program-index.md).
 
 Runbook for operators and implementors. Behavior matches the plan.
 
@@ -47,7 +47,7 @@ Same as Step 11b where chain I/O is involved:
 | `MODULES` | `lgpm` + `logoscore -m` install dir |
 | `WALLET_CONFIG` / `WALLET_STORAGE` | Required for proposal path: `logos_execution_zone open` before `prepareEligibilityProofWithStreamProposalForStoreQuery` (`sign_public_payload`) |
 | `PAYMENT_STREAMS_GUEST_BIN` | On daemon when exercising `createStream` after a proposal |
-| `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF` | Demo-only escape hatch when stream is depleted; prefer `./scripts/archive/demo-localnet-fresh.sh` instead |
+| `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF` | Demo-only escape hatch when stream is depleted; prefer `make full-reset-localnet` instead |
 
 ## User vault (demo)
 
@@ -65,7 +65,7 @@ config). `vault_id` comes from the manifest (local default `0` after Step 10a se
 
 Local demos: see [`demo-localnet-recovery.md`](demo-localnet-recovery.md). Chain and manifest
 are disposable; wipe `payment_streams_state.json` (fresh `--persistence-path`) each demo unless
-you continue one session. Blank slate: `./scripts/archive/demo-localnet-fresh.sh`.
+you continue one session. Blank slate: `make full-reset-localnet`.
 
 On-chain state (vault holding, existing streams) persists for the life of that network:
 
@@ -400,7 +400,7 @@ logoscore stop
 ## Definition of done
 
 Recovery policy: [`demo-localnet-recovery.md`](demo-localnet-recovery.md). If logoscore smoke
-skips `stream_proof` due to `STREAM_DEPLETED`, run `./scripts/archive/demo-localnet-fresh.sh` and retry
+skips `stream_proof` due to `STREAM_DEPLETED`, run `make full-reset-localnet` and retry
 with `REQUIRE_STREAM_PROOF=1` (runs top-up then prepare).
 
 ```bash
@@ -423,7 +423,7 @@ Skip live chain:
 VERIFY_LOGOSCORE=0 ./scripts/archive/verify-step12-dod.sh
 ```
 
-Strict `stream_proof` on localnet (after `./scripts/archive/demo-localnet-fresh.sh` and wallet `.lgx` reinstall):
+Strict `stream_proof` on localnet (after `make full-reset-localnet` and wallet `.lgx` reinstall):
 
 ```bash
 export PAYMENT_STREAMS_GUEST_BIN="$REPO/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"

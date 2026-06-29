@@ -22,9 +22,9 @@ rc3 writes) is retired from docs and scripts.
 | Deploy tx hash | `1787368626484789a2976a2aa8631d2b5b39c415c0a74b5a345474d1415f79b1` |
 | Deploy block | 3284 |
 
-Read order: [`docs/AGENT-BRIEF.md`](../../AGENT-BRIEF.md) → Step 18 plan →
+Read order: [`AGENTS.md`](../../../AGENTS.md) → Step 18 plan →
 [step18-public-sequencer-e2e.md](../../step18-public-sequencer-e2e.md) →
-[integration-index.md](../../../integration-index.md).
+[program-index.md](../../development-map/program-index.md).
 
 ## Why dual-pin was abandoned (historical)
 

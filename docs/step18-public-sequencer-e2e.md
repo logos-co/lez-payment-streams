@@ -1,7 +1,10 @@
 # Step 18 — public sequencer E2E (local Store and relay)
 
+Product runbook: [store-integration/runbook-testnet.md](store-integration/runbook-testnet.md).
+Tier 1: `make verify-step18` via [verification-matrix.md](verification-matrix.md).
+
 Operator runbook for `CHAIN=testnet`. Local dual-host layout matches
-[step17-e2e-local.md](step17-e2e-local.md). CI default remains `make verify-step17`.
+[step17-e2e-local.md](step17-e2e-local.md). CI default for local remains `make verify-step17`.
 
 ## LEZ pin (single operational)
 
@@ -100,7 +103,7 @@ export WALLET_STORAGE="$PWD/.scaffold/e2e/testnet-wallet/storage.json"
 make verify-step18
 ```
 
-Does not start local LEZ, `make deploy`, `make setup`, or `demo-localnet-fresh.sh`.
+Does not start local LEZ, `make deploy`, `make setup`, or localnet prepare (`make prepare-localnet` / `make full-reset-localnet`).
 
 Stream depletion on testnet is real; the orchestrator may top up via `chainAction` (same as Step 17
 late-stream path).

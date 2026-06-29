@@ -9,7 +9,7 @@ stale-stream depletion on back-to-back runs.
 - **Stage A (once per LEZ pin + guest ImageID):** fund vault `0` without stream `0`, snapshot
   ledger + wallet + scaffold state to `.scaffold/snapshots/funded/`.
 - **Per demo run (superseded by Step 24c):** restore vault-only baseline; create at
-  `next_stream_id` after `wait-clock-synced.sh`; teardown closes the run’s stream. Step 10a
+  `next_stream_id` after clock sync; teardown closes the run’s stream. Step 10a
   verify uses vault PDAs only (no stream in prepare manifest).
 
 ## Design
@@ -25,27 +25,32 @@ rate/allocation).
 
 ## Operator commands
 
+Post–Step 24c, localnet prepare and Step 17 E2E go through [`scripts/e2e.sh`](../../../scripts/e2e.sh).
+Legacy wrappers live under `scripts/archive/` (see [scripts/README.md](../../../scripts/README.md)).
+
 ```bash
 # Default prepare (restore if snapshot valid, else prefund once)
-./scripts/demo-localnet-prepare.sh
+make prepare-localnet
 
 # Rebuild snapshot from scratch (pinata + prefund)
-FULL_RESET=1 ./scripts/demo-localnet-prepare.sh
+make full-reset-localnet
 
-# Same as FULL_RESET prepare (legacy name)
-./scripts/demo-localnet-fresh.sh
-
-# Stage A only
-./scripts/prefund-localnet.sh funded
-
-# Manual snapshot / restore
-./scripts/snapshot-localnet.sh funded
-./scripts/restore-localnet.sh funded
-./scripts/create-localnet-stream-fixture.sh
+# Full Flow B demo (prepare + dual-host run; see e2e.sh for teardown)
+make verify-step17
 ```
 
-Step 17 entrypoint `make verify-step17` calls `demo-localnet-prepare` via
-`demo-e2e-local.sh` (`FULL_RESET` threads through env).
+Manual snapshot (equivalent to stage A pieces):
+
+```bash
+FULL_RESET=1 ./scripts/e2e.sh local prepare   # prefund + snapshot save
+./scripts/lifecycle.sh snapshot restore funded
+```
+
+Per-run stream create is owned by [`scripts/e2e/run_local_e2e.py`](../../../scripts/e2e/run_local_e2e.py),
+not prepare.
+
+`make verify-step17` runs `./scripts/e2e.sh local run`, which calls `local prepare` then the Python
+orchestrator (`FULL_RESET` threads through prepare when set).
 
 ## Seed binary
 
@@ -57,11 +62,11 @@ Step 17 entrypoint `make verify-step17` calls `demo-localnet-prepare` via
 
 ## Verification
 
-1. `FULL_RESET=1 ./scripts/demo-localnet-prepare.sh`
-2. `./scripts/demo-localnet-prepare.sh` twice (second run must not call pinata)
+1. `make full-reset-localnet`
+2. `make prepare-localnet` twice (second run must not call pinata)
 3. `make verify-step17` back-to-back
 4. After guest rebuild (`make build`) or LEZ pin change: restore-only prepare fails until
-   `FULL_RESET=1` (vault/program mismatch on the restored ledger). Re-run prefund, snapshot, then
+   `make full-reset-localnet` (vault/program mismatch on the restored ledger). Re-run prefund, snapshot, then
    normal restore path — e.g. after [Step 24](step-24-lee-harness-upgrade.md) harness guest bump.
 
 ## Status

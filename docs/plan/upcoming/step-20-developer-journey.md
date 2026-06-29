@@ -1,6 +1,6 @@
 # Step 20 — plan excerpt
 
-Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
+Active-work packet for agents. Index: [development-map/program-index.md](../development-map/program-index.md).
 
 ### Step 20, Developer journey doc packet
 
@@ -44,7 +44,7 @@ calls in their own Logos app module; that pattern is mentioned briefly but not i
 Publish two tiers in one doc packet (or two linked sections):
 
 1. **One-command path** — reproduce the full demo with fixture prepare + verify entrypoint
-   (`make verify-step17` or `./scripts/demo-e2e-local.sh`), pointing at
+   (`make verify-step17` or `./scripts/e2e/run_local_e2e.py`), pointing at
    [`scripts/e2e/run_local_e2e.py`](../../../scripts/e2e/run_local_e2e.py) as the dual-host
    orchestrator. Success criteria: JSON-lines artifact phases
    (`store_query_success`, `store_query_missing_proof`, `claim`) under
@@ -55,7 +55,7 @@ Publish two tiers in one doc packet (or two linked sections):
    check, claim). Lift command order and JSON shapes from the runbook and from the script
    (script is normative for ordering until the journey is validated).
 
-Both tiers must cite [integration-contracts.md](../../integration-contracts.md) for method names
+Both tiers must cite [integration-contracts.md](../../reference/integration-contracts.md) for method names
 and encodings; do not duplicate full contract tables in the packet.
 
 Deliver:

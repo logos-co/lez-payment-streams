@@ -1,109 +1,71 @@
 # lez-payment-streams
 
-LEZ implementation of payment streams.
-A SPEL program built with [spel-framework](https://github.com/logos-co/spel).
-Protocol semantics are defined in [LIP-155](https://lip.logos.co/anoncomms/raw/payment-streams.html).
-For the rationale behind design choices and a suggested reading order, see [architecture.md](architecture.md).
+LIP-155 payment streams on the Logos Execution Zone (LEZ): an on-chain SPEL program, a Logos
+`payment_streams_module` for vault and stream lifecycle, and a reference integration that uses
+payment streams as Store eligibility (RFC 73 wire pattern).
 
-## Code Map
+Protocol specification: [LIP-155](https://lip.logos.co/anoncomms/raw/payment-streams.html).
 
-| Path | Concern |
-|---|---|
-| `methods/guest/src/bin/lez_payment_streams.rs` | Guest program: `#[lez_program]` module, `#[instruction]` handlers, account attributes |
-| `lez-payment-streams-core/src/` | Shared types and pure logic: `VaultConfig`, `VaultHolding`, `StreamConfig`, `Instruction`, error codes, accrual math |
-| `lez-payment-streams-core/src/program_tests/` | In-process `V03State` tests: transparent flows always-on; PP flows behind `--features pp-program-tests` |
+## Documentation map
 
-| `lez-payment-streams-core/src/test_helpers.rs` | Test harness helpers: keypairs, state setup, guest deployment, transaction builders |
-| `examples/src/bin/` | IDL generator and CLI wrapper |
+| Pillar | Topic |
+| --- | --- |
+| [On-chain program](docs/on-chain/) | Guest, `lez-payment-streams-core`, review guide |
+| [Payment streams module](docs/payment-streams-module/) | Logos module + wallet; generic stream payments |
+| [Store integration](docs/store-integration/) | `delivery_module`, eligibility, dual-host demo |
+| [Development map](docs/development-map/) | Step program, historical runbooks, plan packets |
 
-The workspace directories use hyphenated Cargo package names (`lez-payment-streams-core`, `lez-payment-streams-ffi`);
-Rust code still imports `lez_payment_streams_core` for the protocol library crate.
+Reference: [integration contracts](docs/reference/integration-contracts.md),
+[decisions and notes](docs/reference/decisions-and-notes.md),
+[Logos architecture overview](docs/reference/logos-architecture-overview.md),
+[naming conventions](docs/reference/naming-conventions.md).
 
-For semantics review, one distinction matters early:
-`close_stream` may be initiated by the vault owner or the provider,
-while `claim` is provider-specific.
-Closing releases only the unaccrued remainder.
-Claiming pays out accrued funds.
+Agents: [AGENTS.md](AGENTS.md).
 
+## Verification
 
-## Logos module package (Nix)
+Supported gates are documented in [docs/verification-matrix.md](docs/verification-matrix.md)
+(script stack: [scripts/README.md](scripts/README.md)).
 
-The workspace root `flake.nix` exposes `packages.<system>.payment-streams-ffi` only.
-To build the payment-streams Logos Core plugin bundle (`.lgx`), use the nested flake:
+| Tier | Flow | Chain | Make target |
+| --- | --- | --- | --- |
+| Required | Module only (Flow A) | Localnet | `make verify-module-local` |
+| Required | Store integration (Flow B) | Localnet | `make verify-step17-back-to-back` |
+| Required | Store integration (Flow B) | Localnet | `make verify-step17` |
+| Advanced | Store integration (Flow B) | Testnet | `make verify-step18` |
+| Future | Module only (Flow A) | Testnet | unsupported |
+
+On-chain unit tests (no logoscore): `RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib`
+after rebuilding the guest when needed.
+
+## In this repository
+
+| Path | Role |
+| --- | --- |
+| `methods/guest/`, `lez-payment-streams-core/` | LIP-155 guest and shared logic |
+| `logos-payment-streams-module/` | Universal Logos module (`.lgx`) |
+| `scripts/e2e.sh`, `scripts/module-e2e-local.sh` | Verification automation |
+| `scripts/e2e/run_local_e2e.py` | Flow B dual-host orchestrator |
+
+Store wire and hooks ship on sibling repos `logos-delivery` and `logos-delivery-module`
+(branch `feat/payment-streams-store-eligibility`; see [feature-branch-pins.md](docs/feature-branch-pins.md)).
+
+## Build (on-chain)
+
+```bash
+cargo risczero build --manifest-path methods/guest/Cargo.toml
+RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib
+```
+
+Logos module package:
 
 ```bash
 nix build ./logos-payment-streams-module#lgx
 ```
 
-(Run from the `lez-payment-streams` repo root, or `cd logos-payment-streams-module` and use `nix build .#lgx`.)
+Deploy and CLI helpers: `make build`, `make idl`, `make deploy` (local LEZ wallet; see
+[setup](docs/payment-streams-module/setup.md)).
 
-Logos runtime (install, module, dev loop): [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md)
-(integration plan Steps 7, 9–11). See [`docs/README.md`](docs/README.md) for all integration docs.
+## License
 
-Logos stack integration (LIP-155 demo, Store eligibility, module wiring) is planned in
-[`integration-index.md`](integration-index.md) with context in [`handoff.md`](handoff.md).
-Store queries through `delivery_module` are blocked on upstream `queryStore` landing on
-`master`; this repo does not ship or pin our own `queryStore` FFI PR branch.
-
-
-## Running Tests
-
-After any change to the guest binary or to types shared with the guest,
-rebuild the guest ELF before testing:
-
-```bash
-cargo risczero build --manifest-path methods/guest/Cargo.toml
-```
-
-Run tests:
-
-```bash
-# Default (transparent program_tests only). Uses RISC0 dev proving for any guest proofs.
-RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib
-
-# Narrow filter when iterating on harness cases
-RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib program_tests
-```
-
-`RISC0_DEV_MODE=1` skips zk proof generation in the RISC Zero zkVM harness and should be used for all routine test runs.
-
-Optional privacy-preserving program tests compile only with `--features pp-program-tests`; they intentionally panic unless `RISC0_DEV_MODE=1` so local or CI jobs never regress into full zk proving accidentally.
-
-```bash
-RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib \
-  --features pp-program-tests pp_program_tests
-```
-
-Full zk proving stays reserved for release or dedicated proving jobs.
-
-## Prerequisites (Integration Only)
-
-- Rust + [risc0 toolchain](https://dev.risczero.com/api/zkvm/install)
-- [LSSA wallet CLI](https://github.com/logos-blockchain/lssa) (`wallet` binary)
-- A running sequencer
-
-Local `cargo test` does not require a wallet or sequencer.
-
-
-## Quick Start (Integration)
-
-```bash
-# Build guest and IDL
-make build
-make idl
-
-# Deploy
-make deploy
-
-# Show CLI help
-make cli ARGS="--help"
-```
-
-# License
-
-Licensed under either of:
-
-- MIT License – see [LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT
-- Apache License 2.0 – see [LICENSE-APACHE-v2](LICENSE-APACHE-v2) or http://www.apache.org/licenses/LICENSE-2.0
-
-at your option.
+Licensed under either of MIT ([LICENSE-MIT](LICENSE-MIT)) or Apache 2.0 ([LICENSE-APACHE-v2](LICENSE-APACHE-v2)) at your option.

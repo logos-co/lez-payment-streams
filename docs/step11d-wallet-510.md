@@ -90,7 +90,7 @@ See [`step11b-chain-writes.md`](step11b-chain-writes.md) for env vars and E2E sc
 Fresh blank slate before strict E2E:
 
 ```bash
-./scripts/archive/demo-localnet-fresh.sh
+make full-reset-localnet
 ```
 
 Then Step 12 with a new persistence dir (see [`demo-localnet-recovery.md`](demo-localnet-recovery.md)).

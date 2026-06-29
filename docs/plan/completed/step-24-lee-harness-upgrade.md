@@ -1,6 +1,6 @@
 # Step 24 — plan excerpt (complete)
 
-Normative packet for agents. Index: [integration-index.md](../../../integration-index.md).
+Normative packet for agents. Index: [program-index.md](../../development-map/program-index.md).
 
 Status: complete on `lez-payment-streams` `master` (LEE @ PR 510 pin `62d9ba10…`, transparent
 `program_tests`, vendored SPEL on `lee_core`).
@@ -49,7 +49,7 @@ Scheduling:
 - Step 19 LIP PR does not depend on Step 24; Step 24 helps LIP review by restoring
   `program_tests` as a guest binding gate.
 - Optional: bump Nix / `scaffold.toml` to a newer LEZ `rev` only in the same PR as the Rust
-  pin, with `./scripts/verify-step10a-dod.sh` and `make verify-step17` re-run.
+  pin, with `make verify-step10a` and `make verify-step17` re-run.
 
 #### Scope (in repo)
 
@@ -126,14 +126,14 @@ Out of scope:
    - `cargo test -p lez-payment-streams-core --features host` (transparent; PP per team choice)
    - Off-chain / N8 tests unchanged: `store_eligibility_digest_matches_n8_reference_fixture`,
      `n8_canonical_wire_hex` output
-   - `./scripts/verify-step10a-dod.sh`
-   - `./scripts/verify-step12-dod.sh` and `./scripts/verify-step13-dod.sh`
+   - `make verify-step10a`
+   - `make verify-step12` and `make verify-step13`
    - `make verify-step17` (or documented equivalent) on unchanged module/Nix pins
 
 10. **Documentation cleanup**
-    - Update [architecture.md](../../../architecture.md) or harness comments that say
+    - Update [architecture.md](../../on-chain/architecture.md) or harness comments that say
       `nssa::V03State` where `lee::V03State` is now accurate.
-    - Note completion in [integration-index.md](../../../integration-index.md) step map.
+    - Note completion in [program-index.md](../../development-map/program-index.md) step map.
     - Optional decision note N16 in [decisions-and-notes.md](../../reference/decisions-and-notes.md)
       when the pin lands (not required for DoD).
 

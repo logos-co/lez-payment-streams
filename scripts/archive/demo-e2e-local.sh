@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Step 17 — local dual-host paid Store E2E (see docs/step17-e2e-local.md).
+# Archived wrapper. Prefer: make verify-step17  (./scripts/e2e.sh local run)
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

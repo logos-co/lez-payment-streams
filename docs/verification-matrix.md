@@ -6,6 +6,10 @@ Each narrative is one flow; each flow can target one chain.
 The operator model is `prepare(chain)` then `run(mode, chain)`,
 selected with the `CHAIN` and `MODE` environment variables on `scripts/e2e.sh`.
 
+See [reference/naming-conventions.md](reference/naming-conventions.md) for Flow A/B vs N18 Track A/B.
+
+## Terminology
+
 - Flow A — module only (`MODE=module`).
   Single-host payment-streams happy path through `payment_streams_module`
   `chainAction`: vault init, deposit, stream create, pause, resume, top-up,
@@ -52,7 +56,7 @@ make verify-module-local
 
 # Flow B — Store integration, localnet
 make verify-step17
-make verify-step17-back-to-back   # restore run, then continue on the same ledger
+make verify-step17-back-to-back   # deterministic lifecycle on one ledger (see step-24c packet)
 # equivalent: MODE=store CHAIN=local ./scripts/e2e.sh local run
 
 # Flow B — Store integration, testnet (advanced)
@@ -74,7 +78,5 @@ make verify-step18
   Flow A writes `vault_init`, `deposit`, `create_stream`, `claim`, and
   `module_e2e_complete`; Flow B writes `store_query_success`,
   `store_query_missing_proof`, and `claim`.
-- Flow A is revived and modernized from
-  [`scripts/archive/step11b-logoscore-e2e.sh`](../scripts/archive/step11b-logoscore-e2e.sh)
-  into [`scripts/module-e2e-local.sh`](../scripts/module-e2e-local.sh) on the
-  unified stack.
+- Flow A is implemented in [`scripts/module-e2e-local.sh`](../scripts/module-e2e-local.sh) on the
+  unified stack (see [payment-streams-module/runbook.md](payment-streams-module/runbook.md)).

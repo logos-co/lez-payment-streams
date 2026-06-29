@@ -29,7 +29,7 @@ Local clone: `lez-related/rfc-index`. Step 20 doc packets should link this branc
 
 Branch from upstream `master` in each delivery repo; avoid release-tag baselines and the
 retired `feat/liblogosdelivery-query-store` branch. Branch name priority:
-[integration-index.md](../integration-index.md#delivery-integration-branches).
+[program-index.md](development-map/program-index.md#delivery-integration-branches).
 Point the module flake's `logos-delivery` input at the integration branch (same name on
 `logos-messaging/logos-delivery`). Configured in `logos-delivery-module/flake.nix`:
 
@@ -41,7 +41,7 @@ logos-delivery.url =
 Commit `flake.lock` after changing the input; the lock file records the resolved `rev` at update
 time (branch tip moves until you re-lock). Steps 17–18 E2E cite locked revs where needed; optional
 Step 23 hosted provider uses the same delivery pins. Wallet pins follow the table in the next section.
-Workflow detail: [integration-index.md](../integration-index.md#delivery-integration-branches).
+Workflow detail: [program-index.md](development-map/program-index.md#delivery-integration-branches).
 
 ### Delivery flake lock (logos-delivery-module)
 
@@ -163,7 +163,7 @@ as the wallet stack (operational pin `v0.2.0-rc5`).
 `[repos.lez].pin` must match the LEZ `rev` in `nix/payment-streams-ffi.nix` (Step 10a / 11d / 18b).
 After bumping either pin, re-run `lgs setup` from this repo so `wallet` and localnet match the operational LEZ rev.
 Rebuild the Step 17b funded snapshot after a LEZ pin or guest ImageID change:
-`FULL_RESET=1 ./scripts/archive/demo-localnet-prepare.sh` ([step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md)).
+`make full-reset-localnet` ([step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md)).
 
 ### Payment-streams Logos module (`logos-payment-streams-module/flake.nix`)
 

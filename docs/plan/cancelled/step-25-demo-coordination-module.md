@@ -1,6 +1,6 @@
 # Step 25 — demo coordination Logos module (won't fix)
 
-Status: **Won't fix** (2026-06). Index: [integration-index.md](../../../integration-index.md).
+Status: **Won't fix** (2026-06). Index: [program-index.md](../../development-map/program-index.md).
 
 Decision: [N17](../../reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06).
 Active demo and developer journey use **external orchestration** (Step 17 scripts), not an
@@ -22,7 +22,7 @@ An in-process Logos module (`runDemo`, dual-host sequencing via LogosAPI) to rep
 
 ## What we ship instead
 
-- Regression gate: `make verify-step17` → [`scripts/demo-e2e-local.sh`](../../../scripts/demo-e2e-local.sh)
+- Regression gate: `make verify-step17` → [`scripts/e2e.sh`](../../../scripts/e2e.sh) (`local run`; formerly [`scripts/archive/demo-e2e-local.sh`](../../../scripts/archive/demo-e2e-local.sh))
   + [`scripts/e2e/run_local_e2e.py`](../../../scripts/e2e/run_local_e2e.py).
 - Documentation: Step 20 developer journey (one-script path + step-by-step `logoscore` commands
   on user and provider hosts).

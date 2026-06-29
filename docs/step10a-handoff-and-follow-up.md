@@ -56,13 +56,13 @@ Search `.scaffold/logs/sequencer.log` for the failing tx hash from seed stdout.
 Preferred one-shot entry for demos:
 
 ```bash
-./scripts/archive/demo-localnet-fresh.sh
+make full-reset-localnet
 ```
 
 Wallet storage parse errors or deploy failures:
 
 ```bash
-REINIT_WALLET=1 ./scripts/archive/demo-localnet-fresh.sh
+REINIT_WALLET=1 make full-reset-localnet
 ```
 
 Manual equivalent:

@@ -1,15 +1,16 @@
 # Step 17 — plan excerpt (complete)
 
-Normative packet for agents. Index: [integration-index.md](../../../integration-index.md).
-Operator runbook: [step17-e2e-local.md](../../step17-e2e-local.md).
+Normative packet for agents. Index: [development-map/program-index.md](../../development-map/program-index.md).
+Operator runbook: [store-integration/runbook-localnet.md](../../store-integration/runbook-localnet.md),
+[step17-e2e-local.md](../../step17-e2e-local.md).
 
 Status: Complete (2026-06-19). The full local dual-host gate is green via `make verify-step17`
-(`scripts/demo-e2e-local.sh` + `scripts/e2e/run_local_e2e.py`) on a clean tree plus a prepared
+(`scripts/e2e.sh` local run + `scripts/e2e/run_local_e2e.py`) on a clean tree plus a prepared
 localnet fixture: paid `storeQuery` returns `statusCode:200` with messages, missing-proof is
 rejected, and provider claim writes a `tx_hash`. Fixture prepare is
-[Step 17b](step-17b-localnet-snapshot-restore.md) (`demo-localnet-prepare.sh`;
+[Step 17b](step-17b-localnet-snapshot-restore.md) (`make prepare-localnet` / `scripts/e2e.sh local prepare`;
 default restore + vault-only manifest; per-run stream in E2E — [Step 24c](step-24c-simplify-demo-flow.md);
-`FULL_RESET=1` or `demo-localnet-fresh.sh` rebuilds snapshot).
+`FULL_RESET=1` rebuilds snapshot via `e2e.sh local prepare`).
 After a **guest rebuild** (`make build`) or LEZ pin change, run `FULL_RESET=1` prepare before E2E
 (snapshot `program_id_hex` must match the deployed ImageID; restore-only prepare fails otherwise).
 JSON-lines artifacts land under `.scaffold/e2e/artifacts/`. The 2026-06-18 checkpoint reported the
@@ -57,7 +58,7 @@ Do not require a full proposal → `createStream` arc on every run. The script s
 
 - detect whether the Step 10a fixture is usable (`fixtures/localnet.json`, sequencer up, stream
   `0` eligible for `stream_proof` or recover via top-up),
-- if not, run the same blank-slate / seed path as [`demo-localnet-fresh.sh`](../../../scripts/demo-localnet-fresh.sh) (deploy program, seed manifest).
+- if not, run the same blank-slate / seed path as `make full-reset-localnet` (deploy program, seed manifest; formerly [`scripts/archive/demo-localnet-fresh.sh`](../../../scripts/archive/demo-localnet-fresh.sh)).
 
 Reuse seeded stream `0` for the happy-path Store query when chain state allows.
 
@@ -82,7 +83,11 @@ Build and install `.lgx` packages for `logos_execution_zone` (patched wrapper),
 `payment_streams_module`, and `delivery_module` from the Step 16 integration branch into
 **both** module directories (same artifacts, two install roots).
 
-Create `scripts/demo-e2e-local.sh` that:
+Create `scripts/demo-e2e-local.sh` that (implemented post–Step 24c as
+[`scripts/e2e.sh`](../../../scripts/e2e.sh) `local run` +
+[`scripts/e2e/run_local_e2e.py`](../../../scripts/e2e/run_local_e2e.py); archived wrapper
+[`scripts/archive/demo-e2e-local.sh`](../../../scripts/archive/demo-e2e-local.sh)):
+
 
 - ensures local LEZ + program + fixture (seed-if-needed above),
 - builds/installs modules into `MODULES_USER` and `MODULES_PROVIDER`,
@@ -109,7 +114,7 @@ If implementation scope is too large for one change set, split delivery:
 
 | Phase | Artifact | Scope |
 | --- | --- | --- |
-| 17A | `scripts/demo-e2e-local.sh` (or `--phase core`) | Dual host, hooks, Store success + missing-proof failure, logs |
+| 17A | `make verify-step17` / `scripts/e2e.sh local run` (or `E2E_PHASE=core`) | Dual host, hooks, Store success + missing-proof failure, logs |
 | 17B | same script `--phase claim` or follow-up commit | Provider `claim` + log lines for chain txs |
 
 Do not renumber Steps 18–23; 17B is a sub-phase of Step 17 only.
@@ -135,8 +140,9 @@ Definition of done:
 4. Claim (phase B): provider `chainAction` `claim` succeeds for manifest vault/stream when
    preconditions are met (document in artifact).
 5. Artifact: script exits 0 on a clean workspace and writes
-   `.scaffold/e2e/artifacts/demo-e2e-local-<timestamp>.log` (JSON-lines phases; see runbook).
+   `.scaffold/e2e/artifacts/e2e-<timestamp>.log` (JSON-lines phases; see runbook; legacy name
+   `demo-e2e-local-*.log` from archived wrapper).
 
 Follow-on: Step 18 (public sequencer, local P2P), Step 19 (LIP on-chain), Step 20 (developer
 journey); optional Steps 21–22 (UI), Step 23 (hosted Store provider). See
-[integration-index.md](../../../integration-index.md#program-outcomes).
+[program-index.md](../../development-map/program-index.md#program-outcomes).

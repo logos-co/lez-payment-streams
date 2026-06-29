@@ -1,6 +1,6 @@
 # Step 18 — plan excerpt
 
-Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
+Active-work packet for agents. Index: [program-index.md](../../development-map/program-index.md).
 
 #### Integration status
 
@@ -14,7 +14,7 @@ rows may cite this step; local Step 17 uses the same operational pin for localne
 ### Step 18, Public sequencer E2E (local Store and relay)
 
 Prerequisite: Step 17 definition of done satisfied on local LEZ
-(`scripts/demo-e2e-local.sh`, [N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+([`scripts/e2e.sh`](../../../scripts/e2e.sh) `local run`; archived `scripts/archive/demo-e2e-local.sh`, [N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
 
 Branch: `feat/step18-public-testnet` from `master`. All changes are additive and gated by a
 `CHAIN` selector (`CHAIN=local` default, `CHAIN=testnet` for this step). The local-LEZ path
@@ -86,7 +86,7 @@ is shared across operators for a given guest ELF, not per-operator.
   [feature-branch-pins.md](../../feature-branch-pins.md) and [N16](../../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06).
 - Guest ELF (current tree): **576576** bytes; ImageID / `program_id_hex`
   `79b1dd5c441caede8f9f82c30de637aba465f94cc43817b1105c8c48c77d0fc9` (`make program-id`).
-- Read gate: `./scripts/verify-step18-testnet-read-smoke.sh` — rc5 module `open`, `sync_to_block`,
+- Read gate: `make verify-step18-testnet-read-smoke` — rc5 module `open`, `sync_to_block`,
   `get_account_public` on testnet; PASS (not skip-only) before bootstrap.
 - `wallet check-health` with rc5 CLI and testnet `sequencer_addr` is a valid smoke check when
   wallet home is `.scaffold/e2e/testnet-wallet/`.
@@ -228,7 +228,7 @@ Open policy choices (record in runbook when decided; not blockers for local demo
 | Eligibility hooks | Local provider verifier + user provider registration | Same module behavior; chain reads and writes against testnet via rc5 wallet + helper when `CHAIN=testnet` |
 | Program on chain | Deploy per local seed (every fresh reset) | Deploy once on testnet; stable `program_id_hex` in fixture |
 | Vault/stream bootstrap | `seed-onchain` / `prefund-onchain` + `create-stream-onchain` per fresh seed | One-time `bootstrap-testnet`; reused across runs |
-| Chain reset | `demo-localnet-fresh.sh` / `FULL_RESET=1` wipes ledger | Never reset testnet chain; only reset local `PERSIST_*` |
+| Chain reset | `make full-reset-localnet` wipes local ledger | Never reset testnet chain; only reset local `PERSIST_*` |
 
 #### Configuration that must match (sync checklist)
 
@@ -268,7 +268,7 @@ Step 18b merge).
 
 Work proceeds in phases on `feat/step18-public-testnet`. After each phase in Part A, the
 local-LEZ regression gate must still be green (see non-regression guard below). Part B needs
-the public testnet RPC reachable; run `./scripts/verify-step18-testnet-read-smoke.sh` (PASS,
+the public testnet RPC reachable; run `make verify-step18-testnet-read-smoke` (PASS,
 not skip) before Part B chain writes.
 
 #### Part A — no live public testnet required
@@ -337,10 +337,10 @@ not skip) before Part B chain writes.
 
 ##### Phase 5 — Demo and Makefile wiring (local CI unchanged)
 
-14. Teach `scripts/demo-e2e-local.sh` (or a new `scripts/demo-e2e-testnet.sh`) to read `CHAIN`
+14. Teach [`scripts/e2e.sh`](../../../scripts/e2e.sh) (`local run` / `testnet run`; implemented) to read `CHAIN`
     and pick `FIXTURE_MANIFEST` / `WALLET_CONFIG` accordingly. When `CHAIN=testnet`:
-    - Skip `lgs localnet start`, `demo-localnet-fresh.sh`, `demo-localnet-prepare.sh`, and
-      snapshot restore.
+    - Skip `lgs localnet start`, localnet prepare (`make prepare-localnet` /
+      `make full-reset-localnet`), and snapshot restore.
     - Skip `make deploy` / `make setup` (program is already deployed, accounts already
       funded).
     - Still run `nix build` + `lgpm install` for the three modules, and still start two local
@@ -395,7 +395,7 @@ not skip) before Part B chain writes.
 
 23. `make verify-step18` (wired at `ca1ba7f`; requires bootstrap complete). Intended flow:
     read smoke gate, dual-host demo with `CHAIN=testnet`. Must not start a local sequencer or
-    call `make deploy` / `make setup` / `demo-localnet-fresh.sh`.
+    call `make deploy` / `make setup` / localnet full reset (`make full-reset-localnet`).
 
 #### Deferred (not Part A or B implementation on the feature branch)
 
@@ -427,8 +427,8 @@ not skip) before Part B chain writes.
   run; document one-time vs repeatable steps explicitly; document Phase 9 helper retirement.
 - Testnet wallet template(s): `sequencer_addr` aligned with manifest `sequencer_url` (per-host
   copies under `.scaffold/e2e/` or documented paths).
-- `scripts/demo-e2e-testnet.sh` or `CHAIN=testnet` in the Step 17 orchestrator: no
-  `lgs localnet start` / `demo-localnet-fresh.sh` on the chain path; still starts two local
+- `CHAIN=testnet` via [`scripts/e2e.sh`](../../../scripts/e2e.sh) `testnet run` (Step 17 orchestrator): no
+  `lgs localnet start` / `make full-reset-localnet` on the chain path; still starts two local
   `logoscore` hosts; CI default remains Step 17 local LEZ.
 - Makefile targets `deploy-testnet`, `bootstrap-testnet`, `verify-step18` (names tentative).
 
@@ -461,7 +461,7 @@ Before merging `feat/step18-public-testnet` to `master`:
   or `local`.
 - Run `make verify-step18` on the branch against testnet once bootstrap succeeds. Confirm it
   does not start a local sequencer and does not call `make deploy` / `make setup` /
-  `demo-localnet-fresh.sh`. Until bootstrap and verify pass, local `make verify-step17` remains
+  `make full-reset-localnet`. Until bootstrap and verify pass, local `make verify-step17` remains
   the merge gate for guest correctness.
 - Confirm `verify-step10a-dod.sh` and `verify-step10b-dod.sh` still assert `127.0.0.1:3040`
   and are not parameterized for testnet (they are the local-LEZ gate).

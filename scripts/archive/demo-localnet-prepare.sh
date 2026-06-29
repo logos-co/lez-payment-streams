@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Step 17b / 24c — restore vault baseline only; per-run stream is created in E2E orchestrator.
+# Prefer: make prepare-localnet  (./scripts/e2e.sh local prepare)
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

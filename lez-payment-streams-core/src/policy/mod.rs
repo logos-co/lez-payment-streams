@@ -1,4 +1,4 @@
-//! Stream folding facade and deterministic provider predicates (`integration-index.md` Step 3a).
+//! Stream folding facade and deterministic provider predicates (`docs/development-map/program-index.md` Step 3a).
 
 mod predicates;
 

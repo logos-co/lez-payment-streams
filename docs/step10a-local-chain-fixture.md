@@ -52,8 +52,8 @@ The script:
 
 Step 17b (repeat runs): [`step-17b-localnet-snapshot-restore.md`](plan/completed/step-17b-localnet-snapshot-restore.md)
 splits fund vs stream — `prefund-onchain`, `create-stream-onchain` (stream params only), and
-`seed-onchain` on `seed_localnet_fixture`. Operators use `./scripts/archive/demo-localnet-prepare.sh`
-(vault-only restore) plus per-run create in E2E or verify scripts, or `FULL_RESET=1` to rebuild
+`seed-onchain` on `seed_localnet_fixture`. Operators use `make prepare-localnet`
+(vault-only restore) plus per-run create in E2E or verify scripts, or `make full-reset-localnet` to rebuild
 `.scaffold/snapshots/funded/`.
 
 Idempotent resume: if vault `0` exists but stream `0` does not, re-run the seed script without
@@ -197,8 +197,7 @@ Acceptable for Step 10a; optional later improvements (after fixture DoD is green
   [step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md)
   and [demo-localnet-recovery.md](demo-localnet-recovery.md).
 - Stop localnet without deleting `.scaffold/state/` to keep chain data between ad-hoc sessions.
-- Full reset (pinata + prefund + snapshot): `FULL_RESET=1 ./scripts/archive/demo-localnet-prepare.sh`
-  or `./scripts/archive/demo-localnet-fresh.sh`. Legacy wipe of `.scaffold/state/` alone does not reset
+- Full reset (pinata + prefund + snapshot): `make full-reset-localnet`. Legacy wipe of `.scaffold/state/` alone does not reset
   the LEZ RocksDB ledger.
 
 ## Step 11b note

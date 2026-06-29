@@ -1,9 +1,9 @@
 # Step 16 — plan excerpt
 
 Status: complete on `logos-delivery-module` (`bf104a6bfde35ce4fcae5081278d1996ebf5e3c1`).
-Completed agent packet. Index: [integration-index.md](../../../integration-index.md).
+Completed agent packet. Index: [program-index.md](../../development-map/program-index.md).
 Normative bridge policy: [Resolved implementation decisions](#resolved-implementation-decisions-2025-06-18)
-and [integration-contracts.md](../../integration-contracts.md).
+and [integration-contracts.md](../../reference/integration-contracts.md).
 
 ### Step 16, Generic eligibility routing in `logos-delivery-module`
 
@@ -22,7 +22,7 @@ and add `storeQuery(queryJson, providerAddr)` backed by `logosdelivery_store_que
 Do not wait on upstream N6; the API is added on our forks only.
 Pin the `logos-delivery` flake input to
 `feat/payment-streams-store-eligibility`
-([delivery integration branches](../../../integration-index.md#delivery-integration-branches),
+([delivery integration branches](../../development-map/program-index.md#delivery-integration-branches),
 [feature-branch-pins.md](../../feature-branch-pins.md)).
 
 Implement trampolines that call
@@ -51,7 +51,7 @@ Detail: [N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--appr
 | Inbound verifier | Sync `callModule` from the verifier trampoline (liblogosdelivery async thread; owner not blocked on store-query sem). |
 | NULL `proof_hex` | Always delegate to the module with empty `proofBytes` ([N3c](../../reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)). |
 | Outbound `storeQuery` | Async like `start` / `stop`: dispatch FFI, complete on typed event with StoreQueryResponse JSON ([N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)). |
-| `storeQuery` args | `(queryJson, providerAddr)` per [integration-contracts.md](../../integration-contracts.md). |
+| `storeQuery` args | `(queryJson, providerAddr)` per [integration-contracts.md](../../reference/integration-contracts.md). |
 | Registration | `setEligibilityVerifier` / `setEligibilityProvider`; `getPluginMethods` before commit; failed set leaves prior registration. |
 | Hook lifecycle | [N3b](../../reference/decisions-and-notes.md#n3b-step-16-hook-registration-lifecycle-2025-06-18) (within [N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18) threading constraints). |
 | Verification scope | [N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18): bridge only in Step 16; full stack in Step 17+. |

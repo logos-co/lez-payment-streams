@@ -1,7 +1,10 @@
 # Step 17 — local E2E demo (operator)
 
+Product runbook: [store-integration/runbook-localnet.md](store-integration/runbook-localnet.md).
+Tier 1: `make verify-step17` / `make verify-step17-back-to-back` via [verification-matrix.md](verification-matrix.md).
+
 Plan excerpt: [plan/completed/step-17.md](plan/completed/step-17.md). Contracts:
-[integration-contracts.md](integration-contracts.md).
+[reference/integration-contracts.md](reference/integration-contracts.md).
 
 ## Goal
 
@@ -130,8 +133,8 @@ Prerequisites:
 - Host Rust toolchain (script computes `N8_WIRE_HEX` via `cargo run` before the nix tooling
   shell).
 - Guest ELF: `make build` once if `PAYMENT_STREAMS_GUEST_BIN` is missing.
-- Local LEZ sequencer on `127.0.0.1:3040` (script calls `demo-localnet-fresh.sh` when fixture
-  checks fail).
+- Local LEZ sequencer on `127.0.0.1:3040` (prepare uses `make full-reset-localnet` or
+  `make prepare-localnet` when fixture restore is needed).
 - Patched wallet `.lgx` inputs resolve via nix (`scripts/archive/build-wallet-lgx.sh` on first run).
 
 Command (from repo root):
@@ -160,7 +163,7 @@ Failure triage without overlay:
 | --- | --- |
 | Provider `BAD_REQUEST`, empty inbound proof | Stale `liblogosdelivery.so` (lock below `39b467ec`) or wrong file in `delivery_module/` |
 | Client `BAD_REQUEST` on a query *with* proof | Provider verifier rejected. The client only sees `BAD_REQUEST`; the orchestrator logs the real verdict in the `store_query_eligibility_verdict` artifact line (calls the provider verifier directly). Read `eligibility` + `message` (policy rejects include `reject_reason=N`). |
-| `verify` / prepare → `STREAM_NOT_ACTIVE` | Stream depleted or wrong id; fresh prepare + per-run create, or `demo-localnet-fresh.sh`. Default allocation `200` at rate `1` (~200 s runway per stream). |
+| `verify` / prepare → `STREAM_NOT_ACTIVE` | Stream depleted or wrong id; fresh prepare + per-run create, or `make full-reset-localnet`. Default allocation `200` at rate `1` (~200 s runway per stream). |
 | `verify` → `PARAMS_REJECTED` (`reject_reason=4`) | `RateBelowAcceptedParams`: on-chain rate below the accepted/proposal rate. Fixed 2026-06-19 (`fillServiceId` no longer clobbers rate/allocation). If it recurs, the stream's on-chain rate genuinely differs from `kDemoRate` for the proposal arm. |
 | `MODULE_LOAD_FAILED` for `delivery_module` | Incomplete `lgpm` install or missing bundled `.so` in module dir |
 
@@ -356,7 +359,8 @@ close and claim.
 
 ## Log artifact
 
-Path: `.scaffold/e2e/artifacts/demo-e2e-local-<timestamp>.log`
+Path: `.scaffold/e2e/artifacts/e2e-<timestamp>.log` (legacy archived runs used
+`demo-e2e-local-<timestamp>.log`)
 
 JSON-lines, one object per phase, e.g.:
 

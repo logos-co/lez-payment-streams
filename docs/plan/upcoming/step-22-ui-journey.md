@@ -1,6 +1,6 @@
 # Step 22 — plan excerpt
 
-Active-work packet for agents. Index: [integration-index.md](../../../integration-index.md).
+Active-work packet for agents. Index: [program-index.md](../../development-map/program-index.md).
 
 **Optional stretch** — execute only after Step 21 ships. Track split:
 [N18](../../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).

@@ -1,9 +1,13 @@
 {
   "default_read_order": [
-    "docs/AGENT-BRIEF.md",
-    "docs/integration-contracts.md",
-    "integration-index.md"
+    "AGENTS.md",
+    "docs/verification-matrix.md",
+    "docs/reference/integration-contracts.md",
+    "docs/development-map/program-index.md"
   ],
+  "development_map": "docs/development-map/README.md",
+  "program_index": "docs/development-map/program-index.md",
+  "verification_matrix": "docs/verification-matrix.md",
   "active_steps": [20],
   "paused_steps": [],
   "cancelled_steps": [25],
@@ -13,7 +17,7 @@
     "16": "docs/plan/completed/step-16.md",
     "17": "docs/plan/completed/step-17.md",
     "17b": "docs/plan/completed/step-17b-localnet-snapshot-restore.md",
-    "17_runbook": "docs/step17-e2e-local.md",
+    "17_runbook": "docs/store-integration/runbook-localnet.md",
     "18": "docs/plan/completed/step-18-public-testnet-demo.md",
     "18b": "docs/plan/completed/step-18b-rc5-unify-handoff.md",
     "19": "docs/plan/completed/step-19-lip155-onchain-spec.md",

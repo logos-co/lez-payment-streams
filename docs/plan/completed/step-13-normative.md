@@ -1,7 +1,7 @@
 # Step 13 — normative plan excerpt
 
 Operator commands: [step13-provider-eligibility.md](../step13-provider-eligibility.md).
-Agents on Step 14+ should read [integration-contracts.md](../integration-contracts.md) instead.
+Agents on Step 14+ should read [integration-contracts.md](../reference/integration-contracts.md) instead.
 
 ### Step 13, Provider-side proof verification
 
@@ -214,7 +214,7 @@ Side effects and out of scope for Step 13:
 Verification scripts (mirror Step 12):
 
 - `VERIFY_LOGOSCORE=0`: FFI unit tests including new parse helper; existing verify/policy tests.
-- `VERIFY_LOGOSCORE=1`: `./scripts/verify-step13-dod.sh` on one logoscore instance — mandatory
+- `VERIFY_LOGOSCORE=1`: `make verify-step13` on one logoscore instance — mandatory
   happy path: `prepareEligibilityForStoreQuery` → `verifyEligibilityForStoreQuery` with the same
   `bytes_hex` and N8 canonical hex; assert `eligibility":"OK"` on seeded `stream_proof`. Mandatory
   negative: one tampered signature or canonical byte → `PROOF_INVALID`. Optional local cases (not
@@ -244,10 +244,10 @@ and the documented eligibility status code on each failure mode
 Tampered or malformed proofs must fail with `PROOF_INVALID` without stream PDA reads; proposal-path
 vault reads after successful crypto are in scope (see [Implementor approach](#implementor-approach-mvp-demo)).
 `payment_streams_ffi_parse_eligibility_proof_bytes` ships in Step 13 FFI.
-`./scripts/verify-step13-dod.sh` exits 0 with `VERIFY_LOGOSCORE=0`; with localnet up, logoscore
+`make verify-step13` exits 0 with `VERIFY_LOGOSCORE=0`; with localnet up, logoscore
 prepare → verify cross-test returns `eligibility":"OK"` on the seeded stream proof path.
 
 Status: complete in tree — runbook [`docs/step13-provider-eligibility.md`](docs/step13-provider-eligibility.md),
 `make verify-step13`. Logoscore cross-test may SKIP on depleted stream `0` until
-`./scripts/demo-localnet-fresh.sh` (same recovery as Step 12 strict `stream_proof`).
+`make full-reset-localnet` (same recovery as Step 12 strict `stream_proof`).
 

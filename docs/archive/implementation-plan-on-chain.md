@@ -1,9 +1,9 @@
 # On-chain program implementation plan (archived)
 
 Historical checklist for the LEZ SPEL guest program and `lez-payment-streams-core`.
-Store / Logos integration is separate: [integration-index.md](../../integration-index.md).
+Store / Logos integration is separate: [program-index.md](../development-map/program-index.md).
 
-This work is largely complete; use [architecture.md](../../architecture.md) and [README.md](../../README.md) for current review order.
+This work is largely complete; use [architecture.md](../on-chain/architecture.md) and [README.md](../../README.md) for current review order.
 
 ## Steps
 

@@ -1,5 +1,9 @@
 # Logos runtime guide
 
+Historical install spine for Steps 7, 9–13 (development map). Product setup:
+[payment-streams-module/setup.md](payment-streams-module/setup.md). Verification:
+[verification-matrix.md](verification-matrix.md).
+
 Build, install, and exercise `logos_execution_zone` and `payment_streams_module` in
 `logoscore` (integration plan Steps 7, 9–13; Steps 10–11 for chain fixture and module I/O).
 
@@ -8,7 +12,7 @@ Step 10b operator detail (wallet `open` against Step 10a `.scaffold/wallet`, DoD
 
 Related: [`feature-branch-pins.md`](feature-branch-pins.md),
 [`step8-universal-legacy-probe-results.md`](step8-universal-legacy-probe-results.md),
-[`integration-index.md`](../integration-index.md).
+[`development-map/program-index.md`](development-map/program-index.md).
 
 ## Part 1 — First-time install (Step 7)
 
@@ -378,7 +382,7 @@ New Universal API methods belong on the impl class; wallet stays dynamic.
 
 - [`logos-universal-legacy-probe`](../logos-universal-legacy-probe/) — probe template
 - [`step1-findings-scaffold-rpc.md`](step1-findings-scaffold-rpc.md) — LEZ localnet and RPC
-- [`integration-index.md`](../integration-index.md) — step map and status
+- [`program-index.md`](development-map/program-index.md) — step map and status
 
 ---
 

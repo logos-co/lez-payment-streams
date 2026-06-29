@@ -1,6 +1,6 @@
 # Step 24b — unify Rust `lee` / LEZ deps on rc5
 
-Normative handoff for agents. Index: [integration-index.md](../../../integration-index.md).
+Normative handoff for agents. Index: [program-index.md](../../development-map/program-index.md).
 Prerequisite: Step 18b complete (operational Nix / scaffold / wallet / testnet scripts on rc5).
 Related: [step-24-lee-harness-upgrade.md](../completed/step-24-lee-harness-upgrade.md),
 [N16](../../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06),
@@ -30,7 +30,7 @@ harness lag). Step 24b closes that gap.
 - Guest ELF rebuilt (`make build`); `make program-id` recorded in the completion note (below).
 - `cargo test -p lez-payment-streams-core --features host` passes (transparent `program_tests`;
   PP tests per policy in [Step 24 pitfalls](../completed/step-24-lee-harness-upgrade.md)).
-- `./scripts/verify-step10a-dod.sh`, `verify-step12-dod.sh`, `verify-step13-dod.sh` pass.
+- `make verify-step10a`, `verify-step12-dod.sh`, `verify-step13-dod.sh` pass.
 - **`make verify-step17`** passes (local LEZ dual-host Store E2E).
 - **`make verify-step18-testnet-read-smoke`**, **`make bootstrap-testnet`** (if manifest stale),
   **`make verify-step18`** pass (public testnet chain + local Store).
@@ -156,7 +156,7 @@ run `make program-id` — do not assume equality without measuring.
 snapshot:
 
 ```bash
-FULL_RESET=1 ./scripts/demo-localnet-prepare.sh
+make full-reset-localnet
 ```
 
 (or project-documented equivalent in [step-17b-localnet-snapshot-restore.md](../completed/step-17b-localnet-snapshot-restore.md)).
@@ -261,7 +261,7 @@ nix build ./logos-payment-streams-module#lgx
 If guest ImageID changed locally:
 
 ```bash
-FULL_RESET=1 ./scripts/demo-localnet-prepare.sh
+make full-reset-localnet
 ```
 
 **Gate:** `make verify-step17`.
@@ -269,7 +269,7 @@ FULL_RESET=1 ./scripts/demo-localnet-prepare.sh
 ### Phase 5 — Testnet E2E
 
 ```bash
-./scripts/verify-step18-testnet-read-smoke.sh
+make verify-step18-testnet-read-smoke
 # If manifest stale or program_id_hex changed:
 make bootstrap-testnet
 export CHAIN=testnet FIXTURE_MANIFEST=fixtures/testnet.json
@@ -286,9 +286,9 @@ make verify-step18
    operational and Rust pins unified; Phase 9 helper retirement unchanged.
 3. [step18-public-sequencer-e2e.md](../../step18-public-sequencer-e2e.md) — remove harness-lag
    paragraph under LEZ pin.
-4. [integration-index.md](../../../integration-index.md) — Step 24b complete; Step 24 note
+4. [program-index.md](../../development-map/program-index.md) — Step 24b complete; Step 24 note
    superseded for pin policy by 24b completion record.
-5. [AGENT-BRIEF.md](../../AGENT-BRIEF.md) — remove 510/Rust lag from active work if present.
+5. [AGENTS.md](../../../AGENTS.md) — remove 510/Rust lag from active work if present.
 6. Move this packet to `docs/plan/completed/` when DoD met (team convention).
 
 ## Regression checklist (copy for PR)
@@ -296,11 +296,11 @@ make verify-step18
 ```bash
 cargo test -p lez-payment-streams-core --features host
 cargo test -p lez-payment-streams-ffi
-./scripts/verify-step10a-dod.sh
-./scripts/verify-step12-dod.sh
-./scripts/verify-step13-dod.sh
+make verify-step10a
+make verify-step12
+make verify-step13
 make verify-step17
-./scripts/verify-step18-testnet-read-smoke.sh
+make verify-step18-testnet-read-smoke
 make verify-step18   # CHAIN=testnet, manifest, wallet env per runbook
 ```
 
@@ -339,9 +339,9 @@ touched.
 | `deploy_tx_hash` (if redeployed) | record from wallet `deploy-program` stdout when captured |
 | `deploy_block_id` (if redeployed) | record from explorer when captured |
 | Explorer URL (if redeployed) | `https://explorer.testnet.lez.logos.co/` |
-| `./scripts/verify-step10a-dod.sh` | pass (`FIXTURE_MANIFEST=fixtures/localnet.json`) |
+| `make verify-step10a` | pass (`FIXTURE_MANIFEST=fixtures/localnet.json`) |
 | `make verify-step17` | fail on depleted local stream in this session; use `CHAIN=local E2E_LATE_STREAM_CREATE=0` + fresh `FULL_RESET=1 prepare-localnet` |
-| `make verify-step18` | pass (core, `E2E_PHASE=core`, artifact `demo-e2e-local-20260626T165856.log`); default `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF=0` blocked until testnet top-up restores unaccrued (see [step18-public-sequencer-e2e.md](../../step18-public-sequencer-e2e.md)) |
+| `make verify-step18` | pass (core, `E2E_PHASE=core`, artifact `e2e-20260626T165856.log`; legacy name `demo-e2e-local-*.log`); default `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF=0` blocked until testnet top-up restores unaccrued (see [step18-public-sequencer-e2e.md](../../step18-public-sequencer-e2e.md)) |
 | `tools/lez-testnet-submit` | aligned with `seed_localnet_fixture` (`try_new` + `TxPoller`); vendored SPEL patch in standalone `Cargo.toml` |
 | Date | 2026-06-26 |
 

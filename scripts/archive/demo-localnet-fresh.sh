@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Blank-slate localnet fixture for demos (see docs/demo-localnet-recovery.md).
-# Step 17b: full chain rebuild + snapshot; for default restore path use demo-localnet-prepare.sh.
+# Legacy wrapper: sets FULL_RESET=1 and execs demo-localnet-prepare.sh.
+# Prefer: make full-reset-localnet
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

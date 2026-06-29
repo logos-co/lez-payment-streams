@@ -28,8 +28,8 @@ but you still need to show proof bytes. It is not the normal local demo path.
 
 Default reuse (Step 17b + 24c): restore funded **vault-only** baseline from
 `.scaffold/snapshots/funded/`; each demo run creates a new stream at `next_stream_id` and teardown
-closes it (provider-signed close locally). Full pinata rebuild: `FULL_RESET=1`
-or `./scripts/archive/demo-localnet-fresh.sh`.
+closes it (provider-signed close locally). Full pinata rebuild: `make full-reset-localnet`
+(`FULL_RESET=1 ./scripts/e2e.sh local prepare`).
 
 ## What to keep vs wipe
 
@@ -78,7 +78,7 @@ Signals to jump to step 3:
 - `lgs localnet start` fails with missing `sequencer/service/configs/debug/sequencer_config.json`
   after Step 11d pin bump — run `./scripts/archive/ensure-scaffold-lez-layout.sh` (links `sequencer` → `lez/sequencer` in the LEZ cache).
 - `prepareEligibilityForStoreQuery` returns `STREAM_DEPLETED` on the current run’s stream after
-  long idle time or wrong run order — run `./scripts/archive/demo-localnet-prepare.sh` (clock sync runs on
+  long idle time or wrong run order — run `make prepare-localnet` (clock sync runs on
   restore), tear down prior streams, or `make full-reset-localnet` if the vault sizing is wrong.
   Do not use `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF` for normal local demos.
 - `make deploy` or `storage.json` parse errors.
@@ -86,24 +86,21 @@ Signals to jump to step 3:
 
 ## One-shot blank slate
 
-From repo root:
+From repo root (unified prepare — replaces archived `demo-localnet-fresh.sh`):
 
 ```bash
-chmod +x scripts/archive/demo-localnet-fresh.sh
-./scripts/archive/demo-localnet-fresh.sh
+make full-reset-localnet
 ```
 
-Wallet storage broken:
+Wallet storage broken — reinit wallet, then rebuild baseline:
 
 ```bash
-REINIT_WALLET=1 ./scripts/archive/demo-localnet-fresh.sh
+./scripts/archive/reinit-scaffold-wallet.sh
+make full-reset-localnet
 ```
 
-Skip Step 10a verify at the end (faster, after you trust seed):
-
-```bash
-SKIP_VERIFY=1 ./scripts/archive/demo-localnet-fresh.sh
-```
+Skip Step 10a verify at the end of archived prepare (faster, after you trust seed): use
+`make prepare-localnet`; the modern prepare path does not invoke `verify-step10a-dod.sh`.
 
 Then Step 12 smoke (set `PAYMENT_STREAMS_GUEST_BIN` to the built guest `.bin`):
 
@@ -138,12 +135,16 @@ See [`step13-provider-eligibility.md`](step13-provider-eligibility.md).
 
 | Script | Role |
 | --- | --- |
-| `scripts/archive/demo-localnet-fresh.sh` | Blank-slate chain + seed + optional wallet reinit + 10a verify |
+| [`scripts/e2e.sh`](../scripts/e2e.sh) | Prepare / run / teardown (`make prepare-localnet`, `make verify-step17`) |
+| [`scripts/lifecycle.sh`](../scripts/lifecycle.sh) | Localnet, snapshot save/restore/validate |
+| [`scripts/fixture.sh`](../scripts/fixture.sh) | Prefund, vault ensure, manifest (Flow B prepare) |
+| `scripts/archive/demo-localnet-fresh.sh` | Legacy wrapper → `make full-reset-localnet` |
+| `scripts/archive/demo-localnet-prepare.sh` | Legacy wrapper → `make prepare-localnet` |
 | `scripts/archive/clear-demo-module-persist.sh` | Remove known Step 12 logoscore persist dirs under `.scaffold/` |
 | `scripts/archive/reinit-scaffold-wallet.sh` | Recreate scaffold wallet storage (does not reset sequencer state alone) |
 | `scripts/archive/ensure-scaffold-lez-layout.sh` | Symlink `sequencer` for LEZ 510+ layout after `lgs setup` |
 | `scripts/seed-localnet-fixture.sh` | Idempotent on-chain seed when chain is already up |
-| `scripts/archive/wait-clock-synced.sh` | After restore, wait for Clock10 ≈ wall time (pinata nudge if idle) |
+| `scripts/archive/wait-clock-synced.sh` | After restore, wait for demo clock ≈ wall time (pinata nudge if idle) |
 | `scripts/archive/wait-chain-settle.sh` | Owner nonce settle before seed create/close |
 | `scripts/archive/demo-stream-teardown-localnet.sh` | Provider-signed close + vault-only manifest |
 
