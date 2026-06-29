@@ -9,7 +9,7 @@ SNAPSHOT_NAME="${1:-funded}"
 SNAP_DIR="$REPO_ROOT/.scaffold/snapshots/$SNAPSHOT_NAME"
 
 # shellcheck source=scripts/localnet-snapshot-common.sh
-source "$REPO_ROOT/scripts/localnet-snapshot-common.sh"
+source "$REPO_ROOT/scripts/archive/localnet-snapshot-common.sh"
 
 export LEE_WALLET_HOME_DIR="${LEE_WALLET_HOME_DIR:-$REPO_ROOT/.scaffold/wallet}"
 ROCKSDB="$(localnet_snapshot_rocksdb_dir "$REPO_ROOT")"
@@ -77,10 +77,10 @@ done
 
 rm -f "$REPO_ROOT/fixtures/localnet.json"
 
-"$REPO_ROOT/scripts/ensure-scaffold-lez-layout.sh"
+"$REPO_ROOT/scripts/archive/ensure-scaffold-lez-layout.sh"
 lgs localnet start
 
-"$REPO_ROOT/scripts/wait-clock-synced.sh"
+"$REPO_ROOT/scripts/archive/wait-clock-synced.sh"
 
 if ! lgs wallet -- check-health >/dev/null 2>&1; then
   echo "WARN: wallet check-health failed after restore (see step10a troubleshooting)" >&2

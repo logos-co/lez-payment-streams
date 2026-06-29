@@ -79,6 +79,7 @@ Summary:
 
 - [integration-index.md](../integration-index.md) — step map, status, links
 - [integration-contracts.md](integration-contracts.md) — method names, encodings, wire tags
+- [verification-matrix.md](verification-matrix.md) — 2x2 verify matrix (flow x chain), support tiers
 - [logos-architecture-overview.md](../logos-architecture-overview.md) — hosts, FFI vs LogosAPI
 
 ## Historical depth (load on demand)

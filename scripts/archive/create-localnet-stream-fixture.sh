@@ -31,7 +31,7 @@ require_cmd wallet
 
 if ! lgs localnet status 2>/dev/null | grep -qi running; then
   echo "Starting localnet…"
-  "$REPO_ROOT/scripts/ensure-scaffold-lez-layout.sh"
+  "$REPO_ROOT/scripts/archive/ensure-scaffold-lez-layout.sh"
   lgs localnet start
 fi
 
@@ -75,9 +75,9 @@ sleep 1
 # Step 24c: let any pending owner tx from a prior logoscore smoke fold before the seed
 # fetches the committed nonce, otherwise the create tx is dropped as a duplicate nonce.
 SEQUENCER_URL="${SEQUENCER_URL:-}" FIXTURE_MANIFEST="$MANIFEST" \
-  "$REPO_ROOT/scripts/wait-chain-settle.sh" "$SIGNER_ID" || true
+  "$REPO_ROOT/scripts/archive/wait-chain-settle.sh" "$SIGNER_ID" || true
 SEQUENCER_URL="${SEQUENCER_URL:-}" \
-  "$REPO_ROOT/scripts/wait-clock-synced.sh"
+  "$REPO_ROOT/scripts/archive/wait-clock-synced.sh"
 cargo run --quiet --manifest-path examples/Cargo.toml --bin seed_localnet_fixture -- create-stream-onchain \
   --program-bin "$PROGRAM_BIN" \
   --owner "$SIGNER_ID" \

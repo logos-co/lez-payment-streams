@@ -89,7 +89,7 @@ Status helpers derive vault/stream PDAs from fixture `program_id_hex`, owner bas
 
 ## E2E lifecycle
 
-`./scripts/step11b-logoscore-e2e.sh` (invoked from `./scripts/verify-step11b-dod.sh`):
+`./scripts/archive/step11b-logoscore-e2e.sh` (invoked from `./scripts/archive/verify-step11b-dod.sh`):
 
 - Copies seeded storage from `WALLET_SEED_STORAGE` into `.scaffold/wallet-logoscore-e2e/`
 - Uses manifest `owner_account_id` and `provider_account_id` (base58)
@@ -106,7 +106,7 @@ sanity check for `get_account_public` + decode.
 ## Definition of done
 
 ```bash
-./scripts/verify-step11b-dod.sh
+./scripts/archive/verify-step11b-dod.sh
 ```
 
 Offline checks: `lm methods` on the PS plugin lists `chainAction`; wallet plugin strings
@@ -115,5 +115,5 @@ include `PAYMENT_STREAMS_GUEST_BIN` (use `rg -F` on the `.so`, not `strings | rg
 Skip live chain:
 
 ```bash
-VERIFY_LOGOSCORE=0 ./scripts/verify-step11b-dod.sh
+VERIFY_LOGOSCORE=0 ./scripts/archive/verify-step11b-dod.sh
 ```

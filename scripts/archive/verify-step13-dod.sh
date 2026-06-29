@@ -100,12 +100,12 @@ echo "--- create stream at vault next_stream_id (Step 24c) ---"
 logoscore stop 2>/dev/null || true
 sleep 2
 CREATE_FORCE=1 E2E_PER_RUN_STREAM=1 FIXTURE_MANIFEST="$MANIFEST" \
-  "$REPO_ROOT/scripts/create-localnet-stream-fixture.sh"
+  "$REPO_ROOT/scripts/archive/create-localnet-stream-fixture.sh"
 
 STREAM_ID="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['stream_id'])")"
 
 teardown_verify_stream() {
-  FIXTURE_MANIFEST="$MANIFEST" "$REPO_ROOT/scripts/demo-stream-teardown-localnet.sh" || true
+  FIXTURE_MANIFEST="$MANIFEST" "$REPO_ROOT/scripts/archive/demo-stream-teardown-localnet.sh" || true
 }
 
 SMOKE_FILE="$(mktemp)"

@@ -1,14 +1,14 @@
 # Step 10a — progress handoff and follow-up
 
 Status: fixture tooling and LEZ guest alignment are in tree. Step 10a DoD is green when
-`./scripts/verify-step10a-dod.sh` exits 0 after a full seed on the pinned LEZ localnet (see
+`./scripts/archive/verify-step10a-dod.sh` exits 0 after a full seed on the pinned LEZ localnet (see
 [`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md)). Current LEZ pin: `scaffold.toml`
 (matches [PR 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510) merge after Step 11d).
 
 ## What is in tree
 
 - Operator path: `scaffold.toml`, `spel.toml`, `scripts/seed-localnet-fixture.sh`,
-  `scripts/verify-step10a-dod.sh`, `scripts/reinit-scaffold-wallet.sh`,
+  `scripts/archive/verify-step10a-dod.sh`, `scripts/archive/reinit-scaffold-wallet.sh`,
   `examples/src/bin/seed_localnet_fixture.rs`, `fixtures/localnet.json.example`.
 - Runbook: [`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md).
 - Public PDA prefix (LEE vs NSSA): vendored
@@ -56,13 +56,13 @@ Search `.scaffold/logs/sequencer.log` for the failing tx hash from seed stdout.
 Preferred one-shot entry for demos:
 
 ```bash
-./scripts/demo-localnet-fresh.sh
+./scripts/archive/demo-localnet-fresh.sh
 ```
 
 Wallet storage parse errors or deploy failures:
 
 ```bash
-REINIT_WALLET=1 ./scripts/demo-localnet-fresh.sh
+REINIT_WALLET=1 ./scripts/archive/demo-localnet-fresh.sh
 ```
 
 Manual equivalent:
@@ -76,7 +76,7 @@ export LEE_WALLET_HOME_DIR="$PWD/.scaffold/wallet"
 lgs localnet start   # or ./scripts/seed-localnet-fixture.sh from repo root
 make build idl deploy
 ./scripts/seed-localnet-fixture.sh
-./scripts/verify-step10a-dod.sh
+./scripts/archive/verify-step10a-dod.sh
 ```
 
 See also [`demo-localnet-recovery.md`](demo-localnet-recovery.md).
@@ -93,6 +93,6 @@ plan.
 
 ## Next step
 
-After `./scripts/verify-step10a-dod.sh` exits 0, follow [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md)
-and run `./scripts/verify-step10b-dod.sh`. When Step 10b DoD is green, proceed to integration plan
+After `./scripts/archive/verify-step10a-dod.sh` exits 0, follow [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md)
+and run `./scripts/archive/verify-step10b-dod.sh`. When Step 10b DoD is green, proceed to integration plan
 Step 11a. Do not commit `fixtures/localnet.json` (gitignored).

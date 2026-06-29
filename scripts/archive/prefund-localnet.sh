@@ -6,7 +6,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 # shellcheck source=scripts/localnet-snapshot-common.sh
-source "$REPO_ROOT/scripts/localnet-snapshot-common.sh"
+source "$REPO_ROOT/scripts/archive/localnet-snapshot-common.sh"
 
 export LEE_WALLET_HOME_DIR="${LEE_WALLET_HOME_DIR:-$REPO_ROOT/.scaffold/wallet}"
 ROCKSDB="$(localnet_snapshot_rocksdb_dir "$REPO_ROOT")"
@@ -14,7 +14,7 @@ SNAPSHOT_NAME="${1:-funded}"
 
 echo "=== prefund localnet (snapshot=$SNAPSHOT_NAME) ==="
 
-"$REPO_ROOT/scripts/ensure-scaffold-lez-layout.sh"
+"$REPO_ROOT/scripts/archive/ensure-scaffold-lez-layout.sh"
 
 if command -v lgs >/dev/null 2>&1; then
   lgs localnet stop 2>/dev/null || true
@@ -37,7 +37,7 @@ rm -f .lez_payment_streams-fixture-provider
 
 REINIT_WALLET="${REINIT_WALLET:-0}"
 if [[ "$REINIT_WALLET" == "1" ]]; then
-  "$REPO_ROOT/scripts/reinit-scaffold-wallet.sh"
+  "$REPO_ROOT/scripts/archive/reinit-scaffold-wallet.sh"
 fi
 
 LEZ_PIN="$(localnet_snapshot_lez_pin "$REPO_ROOT")"
@@ -93,9 +93,9 @@ cargo run --quiet --manifest-path examples/Cargo.toml --bin seed_localnet_fixtur
   --deposit-amount "$DEPOSIT_AMOUNT"
 
 DEPOSIT_AMOUNT="$DEPOSIT_AMOUNT" FIXTURE_MANIFEST="$REPO_ROOT/fixtures/localnet.json" \
-  "$REPO_ROOT/scripts/write-vault-manifest.sh"
+  "$REPO_ROOT/scripts/archive/write-vault-manifest.sh"
 
 lgs localnet stop
-SNAPSHOT_RESTART=0 "$REPO_ROOT/scripts/snapshot-localnet.sh" "$SNAPSHOT_NAME"
+SNAPSHOT_RESTART=0 "$REPO_ROOT/scripts/archive/snapshot-localnet.sh" "$SNAPSHOT_NAME"
 
 echo "=== prefund done: .scaffold/snapshots/$SNAPSHOT_NAME ==="

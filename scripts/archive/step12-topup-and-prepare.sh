@@ -46,10 +46,10 @@ p.write_text(json.dumps(d, indent=4) + '\n')
 fi
 export CREATE_FORCE=1
 export E2E_PER_RUN_STREAM=1
-"$REPO/scripts/create-localnet-stream-fixture.sh"
+"$REPO/scripts/archive/create-localnet-stream-fixture.sh"
 
 teardown_verify_stream() {
-  FIXTURE_MANIFEST="$MANIFEST" "$REPO/scripts/demo-stream-teardown-localnet.sh" || true
+  FIXTURE_MANIFEST="$MANIFEST" "$REPO/scripts/archive/demo-stream-teardown-localnet.sh" || true
 }
 trap teardown_verify_stream EXIT
 

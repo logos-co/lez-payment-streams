@@ -16,6 +16,7 @@ long procedural blocks in both places.
 | [`integration-contracts.md`](integration-contracts.md) | LogosAPI names, encodings, wire tags |
 | [`context-manifest.json`](context-manifest.json) | Machine read-order manifest |
 | [`../integration-index.md`](../integration-index.md) | Master index (steps, status, verify scripts) |
+| [`verification-matrix.md`](verification-matrix.md) | 2x2 verification matrix (flow x chain) with support tiers |
 | [`../integration-plan.md`](../integration-plan.md) | Redirect to integration index |
 | [`archive/implementation-plan-on-chain.md`](archive/implementation-plan-on-chain.md) | Archived on-chain SPEL guest milestone list |
 | [`plan/README.md`](plan/README.md) | Completed vs upcoming plan excerpts |

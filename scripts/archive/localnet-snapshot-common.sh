@@ -85,7 +85,7 @@ localnet_snapshot_validate_metadata() {
   want_prog="$(localnet_snapshot_program_id_hex "$repo")"
   if [[ "$pin" != "$want_pin" ]]; then
     echo "ERROR: snapshot lez_pin=$pin does not match scaffold.toml pin=$want_pin" >&2
-    echo "Remedy: FULL_RESET=1 make verify-step17 (or ./scripts/demo-localnet-prepare.sh with FULL_RESET=1)" >&2
+    echo "Remedy: FULL_RESET=1 make verify-step17 (or ./scripts/archive/demo-localnet-prepare.sh with FULL_RESET=1)" >&2
     return 1
   fi
   if [[ -z "$want_prog" ]]; then

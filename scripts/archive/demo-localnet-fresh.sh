@@ -5,4 +5,4 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export FULL_RESET=1
-exec "$REPO_ROOT/scripts/demo-localnet-prepare.sh"
+exec "$REPO_ROOT/scripts/archive/demo-localnet-prepare.sh"

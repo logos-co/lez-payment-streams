@@ -97,7 +97,7 @@ fi
 
 if ! curl -sf -X POST http://127.0.0.1:3040 -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}' >/dev/null; then
-  skip "logoscore smoke (sequencer not reachable; ./scripts/demo-localnet-fresh.sh)"
+  skip "logoscore smoke (sequencer not reachable; ./scripts/archive/demo-localnet-fresh.sh)"
   echo "=== done (exit $fail) ==="
   exit "$fail"
 fi
@@ -128,7 +128,7 @@ if [[ "$REQUIRE_STREAM_PROOF" == "1" ]]; then
   if MODULES="$MODULES" WALLET_CONFIG="$WALLET_CONFIG" WALLET_STORAGE="$WALLET_STORAGE" \
     PAYMENT_STREAMS_GUEST_BIN="$GUEST_BIN" PERSIST_DIR="$PERSIST_DIR" MANIFEST="$MANIFEST" \
     TRY_TOPUP=1 PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF=0 \
-    "$REPO_ROOT/scripts/step12-topup-and-prepare.sh" >/tmp/step12-verify-topup.log 2>&1; then
+    "$REPO_ROOT/scripts/archive/step12-topup-and-prepare.sh" >/tmp/step12-verify-topup.log 2>&1; then
     ok "registerProviderMapping + topUpStream + prepareEligibility stream_proof"
   else
     bad "stream_proof path failed (see /tmp/step12-verify-topup.log)"
@@ -235,7 +235,7 @@ fi
 
 if [[ "${SKIP_VERIFY_STREAM_TEARDOWN:-0}" != "1" ]] &&
   python3 -c "import json; m=json.load(open('$MANIFEST')); exit(0 if m.get('stream_id') is not None else 1)" 2>/dev/null; then
-  FIXTURE_MANIFEST="$MANIFEST" "$REPO_ROOT/scripts/demo-stream-teardown-localnet.sh" || true
+  FIXTURE_MANIFEST="$MANIFEST" "$REPO_ROOT/scripts/archive/demo-stream-teardown-localnet.sh" || true
 fi
 
 echo "=== done (exit $fail) ==="

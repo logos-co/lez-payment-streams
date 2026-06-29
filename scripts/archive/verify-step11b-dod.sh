@@ -123,7 +123,7 @@ timeout "$E2E_TIMEOUT" nix shell github:logos-co/logos-logoscore-cli --command b
   export STREAM_ID='$LIFECYCLE_STREAM_ID'
   export WALLET_E2E_DIR='${WALLET_E2E_DIR:-$REPO/.scaffold/wallet-logoscore-e2e}'
   export WALLET_E2E_PASSWORD='${WALLET_E2E_PASSWORD:-scaffold-local-dev}'
-  bash '$REPO/scripts/step11b-logoscore-e2e.sh'
+  bash '$REPO/scripts/archive/step11b-logoscore-e2e.sh'
 " >"$E2E_FILE" 2>&1 || echo E2E_TIMEOUT_OR_FAIL >>"$E2E_FILE"
 
 check_submit_line() {

@@ -115,7 +115,7 @@ Add: [`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md), [`docs/step1-
 | `logos-payment-streams-module` | Universal Qt module, wallet via `logos_execution_zone` |
 | `logos-delivery` / `liblogosdelivery` | Store protocol + eligibility hooks (14–15) |
 | `logos-delivery-module` | `delivery_module` + routing (16) |
-| `scripts/demo-e2e-local.sh`, `scripts/e2e/run_local_e2e.py` | Track A: dual-host Store integration orchestration (Step 17, Step 20) |
+| `scripts/e2e.sh`, `scripts/e2e/run_local_e2e.py` | Track A: dual-host Store integration orchestration (Step 17, Step 20) |
 | `payment_streams_ui` (optional) | Track B: Basecamp UI over `payment_streams_module` only (Step 21) |
 | `lgs` / `logoscore` / `lgpm` / `lm` | Localnet, host, install, introspection |
 
@@ -251,18 +251,27 @@ Completed (pointers): [Step 17](docs/plan/completed/step-17.md),
 
 ## Verify scripts (logoscore path)
 
-| Script | Step |
-| --- | --- |
-| `./scripts/verify-step10a-dod.sh` | 10a fixture |
-| `./scripts/verify-step10b-dod.sh` | 10b wallet |
-| `./scripts/verify-step11a-dod.sh` … `11d` | 11a–d |
-| `./scripts/verify-step12-dod.sh` | 12 |
-| `./scripts/verify-step13-dod.sh` | 13 |
-| `./scripts/demo-localnet-prepare.sh` | 17b / 17 fixture |
-| `./scripts/demo-e2e-local.sh` | 17 dual-host E2E |
-| `make verify-step17-back-to-back` | 17 + 24c — restore run then continuation on same ledger |
+Active verification uses the unified script stack
+(`scripts/e2e.sh`, `scripts/lifecycle.sh`, `scripts/fixture.sh`, `scripts/lib/common.sh`).
+The 2x2 matrix (flow x chain) is documented in
+[`docs/verification-matrix.md`](docs/verification-matrix.md).
 
-`make verify-step17` → [scripts/demo-e2e-local.sh](scripts/demo-e2e-local.sh) →
-[scripts/e2e/run_local_e2e.py](scripts/e2e/run_local_e2e.py) ([N17](docs/reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06),
-[step17-e2e-local.md](docs/step17-e2e-local.md)). `make prepare-localnet` →
-[scripts/demo-localnet-prepare.sh](scripts/demo-localnet-prepare.sh).
+| Entry | Cell | Step |
+| --- | --- | --- |
+| `make verify-module-local` | Flow A (module only) x localnet | 11 / 24c |
+| `make verify-step17` | Flow B (Store) x localnet | 17 |
+| `make verify-step17-back-to-back` | Flow B x localnet (continuation on same ledger) | 17 + 24c |
+| `make verify-step18` | Flow B (Store) x testnet (advanced) | 18 |
+| Flow A x testnet | future work (unsupported) | — |
+
+`make verify-step17` → [scripts/e2e.sh](scripts/e2e.sh) `local run` →
+[scripts/e2e/run_local_e2e.py](scripts/e2e/run_local_e2e.py)
+([N17](docs/reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06),
+[step17-e2e-local.md](docs/step17-e2e-local.md)).
+`make verify-module-local` → [scripts/e2e.sh](scripts/e2e.sh) `MODE=module local run` →
+[scripts/module-e2e-local.sh](scripts/module-e2e-local.sh).
+`make prepare-localnet` → [scripts/e2e.sh](scripts/e2e.sh) `local prepare`.
+
+Completed-step DoD scripts (10a–13) are archived under
+[`scripts/archive/`](scripts/archive/) and run via the matching `make verify-step1*`
+targets; they are historical and not part of the external runbooks.

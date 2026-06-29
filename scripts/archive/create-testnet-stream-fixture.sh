@@ -6,7 +6,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 # shellcheck source=scripts/testnet-common.sh
-source "$REPO_ROOT/scripts/testnet-common.sh"
+source "$REPO_ROOT/scripts/archive/testnet-common.sh"
 
 require_testnet_rpc
 
@@ -51,7 +51,7 @@ fi
 
 echo "Creating testnet stream ${STREAM_ID} (rate=$STREAM_RATE allocation=$STREAM_ALLOCATION)…"
 SEQUENCER_URL="${SEQUENCER_URL:-$SEQ_URL}" FIXTURE_MANIFEST="$MANIFEST" \
-  "$REPO_ROOT/scripts/wait-chain-settle.sh" "$OWNER" || true
+  "$REPO_ROOT/scripts/archive/wait-chain-settle.sh" "$OWNER" || true
 
 cargo run --quiet --manifest-path examples/Cargo.toml --bin bootstrap_testnet_fixture -- \
   --program-bin "$PROGRAM_BIN" \

@@ -13,28 +13,28 @@ SNAPSHOT_NAME="${SNAPSHOT_NAME:-funded}"
 SNAP_DIR="$REPO_ROOT/.scaffold/snapshots/$SNAPSHOT_NAME"
 
 # shellcheck source=scripts/localnet-snapshot-common.sh
-source "$REPO_ROOT/scripts/localnet-snapshot-common.sh"
+source "$REPO_ROOT/scripts/archive/localnet-snapshot-common.sh"
 
 echo "=== demo localnet prepare (FULL_RESET=$FULL_RESET) ==="
 
 if [[ "$FULL_RESET" == "1" ]]; then
-  "$REPO_ROOT/scripts/prefund-localnet.sh" "$SNAPSHOT_NAME"
+  "$REPO_ROOT/scripts/archive/prefund-localnet.sh" "$SNAPSHOT_NAME"
 else
   if [[ -f "$SNAP_DIR/snapshot.json" ]] && localnet_snapshot_validate_metadata "$REPO_ROOT" "$SNAP_DIR"; then
-    "$REPO_ROOT/scripts/restore-localnet.sh" "$SNAPSHOT_NAME"
+    "$REPO_ROOT/scripts/archive/restore-localnet.sh" "$SNAPSHOT_NAME"
   else
     echo "No valid snapshot at $SNAP_DIR — running prefund (one-time stage A)…"
-    "$REPO_ROOT/scripts/prefund-localnet.sh" "$SNAPSHOT_NAME"
-    "$REPO_ROOT/scripts/restore-localnet.sh" "$SNAPSHOT_NAME"
+    "$REPO_ROOT/scripts/archive/prefund-localnet.sh" "$SNAPSHOT_NAME"
+    "$REPO_ROOT/scripts/archive/restore-localnet.sh" "$SNAPSHOT_NAME"
   fi
 fi
 
 if [[ "${SKIP_STREAM_CREATE:-1}" != "1" ]]; then
-  "$REPO_ROOT/scripts/create-localnet-stream-fixture.sh"
+  "$REPO_ROOT/scripts/archive/create-localnet-stream-fixture.sh"
 else
   echo "SKIP_STREAM_CREATE=1 — vault baseline only (stream created in E2E orchestrator)"
   DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-1000}" FIXTURE_MANIFEST="$FIXTURE_MANIFEST" \
-    "$REPO_ROOT/scripts/write-vault-manifest.sh"
+    "$REPO_ROOT/scripts/archive/write-vault-manifest.sh"
 fi
 
 if [[ "$SKIP_VERIFY" == "1" ]]; then

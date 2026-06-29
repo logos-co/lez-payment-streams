@@ -147,7 +147,7 @@ From repo root after LEZ bump:
 ```bash
 lgs setup
 nix build .#payment-streams-ffi
-./scripts/build-wallet-lgx.sh
+./scripts/archive/build-wallet-lgx.sh
 nix build ./logos-payment-streams-module#lgx
 ```
 
@@ -163,7 +163,7 @@ as the wallet stack (operational pin `v0.2.0-rc5`).
 `[repos.lez].pin` must match the LEZ `rev` in `nix/payment-streams-ffi.nix` (Step 10a / 11d / 18b).
 After bumping either pin, re-run `lgs setup` from this repo so `wallet` and localnet match the operational LEZ rev.
 Rebuild the Step 17b funded snapshot after a LEZ pin or guest ImageID change:
-`FULL_RESET=1 ./scripts/demo-localnet-prepare.sh` ([step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md)).
+`FULL_RESET=1 ./scripts/archive/demo-localnet-prepare.sh` ([step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md)).
 
 ### Payment-streams Logos module (`logos-payment-streams-module/flake.nix`)
 
@@ -202,7 +202,7 @@ nix build ./logos-payment-streams-module/nix/flakes/logos-execution-zone-module-
 # Payment-streams Logos module bundle
 nix build ./logos-payment-streams-module#lgx
 
-./scripts/verify-step11d-dod.sh
+./scripts/archive/verify-step11d-dod.sh
 ```
 
 For `lgpm`, `logoscore`, and the Step 7+ loop see [`logos-runtime-guide.md`](logos-runtime-guide.md).

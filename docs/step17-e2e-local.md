@@ -59,21 +59,22 @@ user and provider can diverge later (pins, delivery builds, testnet wallets).
 
 ## Fixture — prepare (Step 17b)
 
-Before dual-host messaging, `demo-e2e-local.sh` runs
-[`scripts/demo-localnet-prepare.sh`](../scripts/demo-localnet-prepare.sh):
+Before dual-host messaging, `make verify-step17` runs the prepare phase
+([`scripts/e2e.sh`](../scripts/e2e.sh) `local prepare`, also `make prepare-localnet`):
 
 - **Default:** restore `.scaffold/snapshots/funded/` when `snapshot.json` matches LEZ pin and
-  `make program-id`, then `create-localnet-stream-fixture.sh` (one chain tx, no pinata).
+  `make program-id`, then `fixture.sh vault ensure` + `vault manifest` (vault-only baseline). The
+  per-run stream is created by the orchestrator at `next_stream_id`.
 - **No snapshot / invalid snapshot:** prefund once (pinata + `prefund-onchain` + snapshot), then
-  restore + create stream.
-- **`FULL_RESET=1`:** rebuild snapshot from scratch (same as `./scripts/demo-localnet-fresh.sh`).
+  restore + ensure vault.
+- **`FULL_RESET=1`:** rebuild snapshot from scratch (`make full-reset-localnet`).
 
 Per-run cost: restore (directory copy + sequencer restart) + one `CreateStream`.
 
-`SKIP_SEED=1` skips prepare entirely (manifest must already match a fresh stream).
+`SKIP_SEED=1` (with `RESTORE_LOCALNET=0`) skips restore/reseed and continues on the live ledger.
 
 If Step 12 strict path would hit `STREAM_DEPLETED` on an old chain without restore, run
-`./scripts/demo-localnet-prepare.sh` or `FULL_RESET=1 make verify-step17`.
+`make prepare-localnet` or `FULL_RESET=1 make verify-step17`.
 
 ## Build and install
 
@@ -81,16 +82,16 @@ Primary entrypoint:
 
 ```bash
 make verify-step17
-# or: ./scripts/demo-e2e-local.sh
+# or: MODE=store CHAIN=local ./scripts/e2e.sh local run
 ```
 
 The script (`SKIP_BUILD=1` to reuse installed modules) builds/installs from `REPO` using pins in
 [feature-branch-pins.md](feature-branch-pins.md). Implementation:
-[`scripts/demo-e2e-local.sh`](../scripts/demo-e2e-local.sh).
+[`scripts/e2e.sh`](../scripts/e2e.sh).
 
 1. `nix build ./logos-payment-streams-module#lgx` → `lgpm install --force` into
    `MODULES_USER` and `MODULES_PROVIDER`.
-2. Patched wallet `.lgx` from `scripts/build-wallet-lgx.sh` (built on first run if missing) →
+2. Patched wallet `.lgx` from `scripts/archive/build-wallet-lgx.sh` (built on first run if missing) →
    both module dirs via `lgpm`.
 3. `nix build "$DELIVERY_MODULE_ROOT#lgx"` → `lgpm install` into both module dirs. The bundle
    includes `delivery_module_plugin.so`, `liblogosdelivery.so`, and runtime deps (`librln`,
@@ -103,7 +104,7 @@ The script (`SKIP_BUILD=1` to reuse installed modules) builds/installs from `REP
    libs, set `SKIP_LIBLOGOSDELIVERY_OVERLAY=1` ([N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
 
 Orchestration: [`scripts/e2e/run_local_e2e.py`](../scripts/e2e/run_local_e2e.py) via
-[`scripts/demo-e2e-local.sh`](../scripts/demo-e2e-local.sh) (JSON-lines artifact under
+[`scripts/e2e.sh`](../scripts/e2e.sh) (JSON-lines artifact under
 `.scaffold/e2e/artifacts/`). This runbook is **Track A** — Store + eligibility integration
 ([N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
 Payment-streams-only Basecamp UI is **Track B** (Steps 21–22), not described here.
@@ -131,7 +132,7 @@ Prerequisites:
 - Guest ELF: `make build` once if `PAYMENT_STREAMS_GUEST_BIN` is missing.
 - Local LEZ sequencer on `127.0.0.1:3040` (script calls `demo-localnet-fresh.sh` when fixture
   checks fail).
-- Patched wallet `.lgx` inputs resolve via nix (`build-wallet-lgx.sh` on first run).
+- Patched wallet `.lgx` inputs resolve via nix (`scripts/archive/build-wallet-lgx.sh` on first run).
 
 Command (from repo root):
 
@@ -409,7 +410,7 @@ E2E artifacts now include `run_config`, `timing_mark`, `create_stream_poll_budge
 Fast loop after one green run (same ledger, monotonic stream ids):
 
 ```bash
-SKIP_BUILD=1 SKIP_SEED=1 RESTORE_LOCALNET=0 ./scripts/demo-e2e-local.sh
+SKIP_BUILD=1 SKIP_SEED=1 RESTORE_LOCALNET=0 MODE=store CHAIN=local ./scripts/e2e.sh local run
 ```
 
 Continuation defaults use seed create (not `chainAction`-only). The Makefile gate runs owner pinata
@@ -446,12 +447,12 @@ make full-reset-localnet
 
 Local prepare policy (Step 17b + 24c):
 
-- First run (or after reset): `demo-localnet-prepare` restores `.scaffold/snapshots/funded/` and writes a vault-only manifest (no stream fields).
+- First run (or after reset): `scripts/e2e.sh local prepare` restores `.scaffold/snapshots/funded/` and writes a vault-only manifest (no stream fields).
 - Repeat demos on the same chain: `SKIP_SEED=1` or `RESTORE_LOCALNET=0` so the orchestrator does not rewind rocksdb; each run creates at `next_stream_id`.
 - E2E artifacts include `plan_demo_stream`, `baseline_before_create`, `checkpoint_after_create`, `demo_close_stream`, `vault_liquidity_after_close`, `demo_claim`.
 - Env: `E2E_CLOSE_VIA=seed` (default local) or `chainaction`; `E2E_STRICT_SEQUENCER_TX_WAIT=1` to require `getTransaction` after wallet submit.
 
-Equivalent: `./scripts/demo-e2e-local.sh` (phases `E2E_PHASE=core|claim|all`, default `all`).
+Equivalent: `MODE=store CHAIN=local ./scripts/e2e.sh local run` (phases `E2E_PHASE=core|claim|all`, default `all`).
 Requires local LEZ on `127.0.0.1:3040` and a valid funded snapshot (or `make full-reset-localnet` once).
 
 ## Related

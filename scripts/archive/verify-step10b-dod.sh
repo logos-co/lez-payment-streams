@@ -24,7 +24,7 @@ echo "=== Step 10b DoD verification ==="
 if [[ -f "$WALLET_LGX" ]]; then
   ok "patched wallet .lgx present ($WALLET_LGX)"
 else
-  bad "missing wallet .lgx (run ./scripts/build-wallet-lgx.sh)"
+  bad "missing wallet .lgx (run ./scripts/archive/build-wallet-lgx.sh)"
 fi
 
 if [[ -f docs/step10b-wallet-runtime.md ]]; then

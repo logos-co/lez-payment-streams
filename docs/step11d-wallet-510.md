@@ -1,6 +1,6 @@
 # Step 11d — wallet runtime at LEZ PR 510
 
-Status: landed in tree (pins, wrapper patches, `./scripts/verify-step11d-dod.sh`).
+Status: landed in tree (pins, wrapper patches, `./scripts/archive/verify-step11d-dod.sh`).
 Strict 11b E2E on a fresh fixture may still need `REINIT_WALLET=1` and reinstalled `.lgx` after
 `lgs setup`. Step 12 strict verify uses `REQUIRE_STREAM_PROOF=1` (see
 [`step12-user-eligibility.md`](step12-user-eligibility.md)).
@@ -34,7 +34,7 @@ lgs setup
 nix build .#payment-streams-ffi
 
 # Rebuild patched wallet + payment_streams .lgx
-./scripts/build-wallet-lgx.sh
+./scripts/archive/build-wallet-lgx.sh
 nix build ./logos-payment-streams-module#lgx
 ```
 
@@ -82,15 +82,15 @@ See [`step11b-chain-writes.md`](step11b-chain-writes.md) for env vars and E2E sc
 ## Verification
 
 ```bash
-./scripts/verify-step11d-dod.sh
-./scripts/verify-step10b-dod.sh
-./scripts/verify-step11b-dod.sh
+./scripts/archive/verify-step11d-dod.sh
+./scripts/archive/verify-step10b-dod.sh
+./scripts/archive/verify-step11b-dod.sh
 ```
 
 Fresh blank slate before strict E2E:
 
 ```bash
-./scripts/demo-localnet-fresh.sh
+./scripts/archive/demo-localnet-fresh.sh
 ```
 
 Then Step 12 with a new persistence dir (see [`demo-localnet-recovery.md`](demo-localnet-recovery.md)).
@@ -98,7 +98,7 @@ Then Step 12 with a new persistence dir (see [`demo-localnet-recovery.md`](demo-
 ## Definition of done
 
 1. Patched wallet `.lgx` builds against LEZ ≥ 510; `lm methods` lists deploy + JSON public submit.
-2. `./scripts/verify-step11d-dod.sh` exits 0 (offline checks; logoscore section when localnet is up).
+2. `./scripts/archive/verify-step11d-dod.sh` exits 0 (offline checks; logoscore section when localnet is up).
 3. Re-run 10b / 11b verifies on the upgraded stack after `lgs setup` and reinstalling `.lgx` files.
-4. Step 12 strict verify: `REQUIRE_STREAM_PROOF=1 ./scripts/verify-step12-dod.sh` (or `make verify-step12`
+4. Step 12 strict verify: `REQUIRE_STREAM_PROOF=1 ./scripts/archive/verify-step12-dod.sh` (or `make verify-step12`
    with env set) after fresh fixture when localnet is up.

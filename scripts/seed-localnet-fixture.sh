@@ -28,7 +28,7 @@ require_cmd() {
 require_cmd lgs
 require_cmd wallet
 
-"$REPO_ROOT/scripts/ensure-scaffold-lez-layout.sh"
+"$REPO_ROOT/scripts/archive/ensure-scaffold-lez-layout.sh"
 
 if ! lgs localnet status 2>/dev/null | grep -qi running; then
   echo "Starting localnet (lgs init/setup as needed)…"
@@ -103,5 +103,5 @@ cargo run --quiet --manifest-path examples/Cargo.toml --bin seed_localnet_fixtur
   --write-manifest "$MANIFEST"
 
 echo "Done. Manifest: $MANIFEST"
-echo "Fresh blank slate: ./scripts/demo-localnet-fresh.sh"
+echo "Fresh blank slate: make full-reset-localnet"
 echo "Reset chain only: lgs localnet stop && rm -rf .scaffold/state/ && rm -f $STATE_FILE $PROVIDER_FILE $MANIFEST"

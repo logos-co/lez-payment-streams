@@ -29,7 +29,7 @@ but you still need to show proof bytes. It is not the normal local demo path.
 Default reuse (Step 17b + 24c): restore funded **vault-only** baseline from
 `.scaffold/snapshots/funded/`; each demo run creates a new stream at `next_stream_id` and teardown
 closes it (provider-signed close locally). Full pinata rebuild: `FULL_RESET=1`
-or `./scripts/demo-localnet-fresh.sh`.
+or `./scripts/archive/demo-localnet-fresh.sh`.
 
 ## What to keep vs wipe
 
@@ -61,24 +61,24 @@ Optional wipe on full blank slate:
 
 ## Recovery ladder
 
-0. Step 17b fast path — `./scripts/demo-localnet-prepare.sh` (restore vault-only snapshot).
-   Invalid snapshot or guest rebuild → `FULL_RESET=1 ./scripts/demo-localnet-prepare.sh`.
+0. Step 17b fast path — `make prepare-localnet` (`scripts/e2e.sh local prepare`, restore vault-only snapshot).
+   Invalid snapshot or guest rebuild → `make full-reset-localnet` (`FULL_RESET=1 scripts/e2e.sh local prepare`).
    Step 17 E2E creates the stream; do not expect stream `0` in the prepare manifest.
 1. Soft — New logoscore run with a fresh `--persistence-path`, re-register provider mapping,
    check stream status via `listMyStreams` or reads.
 2. Re-seed — Same chain: `make build deploy`, `./scripts/seed-localnet-fixture.sh`, clear
    module persist dirs, refresh manifest.
-3. Blank slate — `./scripts/demo-localnet-fresh.sh` or `FULL_RESET=1 ./scripts/demo-localnet-prepare.sh`
+3. Blank slate — `make full-reset-localnet` (`FULL_RESET=1 scripts/e2e.sh local prepare`)
    (rebuild vault-only snapshot: stop localnet, wipe ledger + `.scaffold/state/`, prefund, snapshot).
 4. Run demo — `logoscore` with a new `--persistence-path`, `open` wallet, then Step 12 calls.
 
 Signals to jump to step 3:
 
-- `./scripts/verify-step10a-dod.sh` fails.
+- `./scripts/archive/verify-step10a-dod.sh` fails.
 - `lgs localnet start` fails with missing `sequencer/service/configs/debug/sequencer_config.json`
-  after Step 11d pin bump — run `./scripts/ensure-scaffold-lez-layout.sh` (links `sequencer` → `lez/sequencer` in the LEZ cache).
+  after Step 11d pin bump — run `./scripts/archive/ensure-scaffold-lez-layout.sh` (links `sequencer` → `lez/sequencer` in the LEZ cache).
 - `prepareEligibilityForStoreQuery` returns `STREAM_DEPLETED` on the current run’s stream after
-  long idle time or wrong run order — run `./scripts/demo-localnet-prepare.sh` (clock sync runs on
+  long idle time or wrong run order — run `./scripts/archive/demo-localnet-prepare.sh` (clock sync runs on
   restore), tear down prior streams, or `make full-reset-localnet` if the vault sizing is wrong.
   Do not use `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF` for normal local demos.
 - `make deploy` or `storage.json` parse errors.
@@ -89,20 +89,20 @@ Signals to jump to step 3:
 From repo root:
 
 ```bash
-chmod +x scripts/demo-localnet-fresh.sh
-./scripts/demo-localnet-fresh.sh
+chmod +x scripts/archive/demo-localnet-fresh.sh
+./scripts/archive/demo-localnet-fresh.sh
 ```
 
 Wallet storage broken:
 
 ```bash
-REINIT_WALLET=1 ./scripts/demo-localnet-fresh.sh
+REINIT_WALLET=1 ./scripts/archive/demo-localnet-fresh.sh
 ```
 
 Skip Step 10a verify at the end (faster, after you trust seed):
 
 ```bash
-SKIP_VERIFY=1 ./scripts/demo-localnet-fresh.sh
+SKIP_VERIFY=1 ./scripts/archive/demo-localnet-fresh.sh
 ```
 
 Then Step 12 smoke (set `PAYMENT_STREAMS_GUEST_BIN` to the built guest `.bin`):
@@ -110,26 +110,26 @@ Then Step 12 smoke (set `PAYMENT_STREAMS_GUEST_BIN` to the built guest `.bin`):
 ```bash
 export PAYMENT_STREAMS_GUEST_BIN="$PWD/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"
 export PERSIST_DIR="$PWD/.scaffold/step12-persist-$(date +%s)"
-./scripts/verify-step12-dod.sh
+./scripts/archive/verify-step12-dod.sh
 ```
 
 After a fresh reset, require honest `stream_proof` in DoD smoke (fail on depleted instead of skip):
 
 ```bash
-REQUIRE_STREAM_PROOF=1 ./scripts/verify-step12-dod.sh
+REQUIRE_STREAM_PROOF=1 ./scripts/archive/verify-step12-dod.sh
 ```
 
 Or offline only:
 
 ```bash
-VERIFY_LOGOSCORE=0 ./scripts/verify-step12-dod.sh
+VERIFY_LOGOSCORE=0 ./scripts/archive/verify-step12-dod.sh
 ```
 
 Step 13 provider cross-test (after fresh reset when stream `0` is not depleted):
 
 ```bash
 export PERSIST_DIR="$PWD/.scaffold/step13-persist-$(date +%s)"
-VERIFY_LOGOSCORE=1 ./scripts/verify-step13-dod.sh
+VERIFY_LOGOSCORE=1 ./scripts/archive/verify-step13-dod.sh
 ```
 
 See [`step13-provider-eligibility.md`](step13-provider-eligibility.md).
@@ -138,14 +138,14 @@ See [`step13-provider-eligibility.md`](step13-provider-eligibility.md).
 
 | Script | Role |
 | --- | --- |
-| `scripts/demo-localnet-fresh.sh` | Blank-slate chain + seed + optional wallet reinit + 10a verify |
-| `scripts/clear-demo-module-persist.sh` | Remove known Step 12 logoscore persist dirs under `.scaffold/` |
-| `scripts/reinit-scaffold-wallet.sh` | Recreate scaffold wallet storage (does not reset sequencer state alone) |
-| `scripts/ensure-scaffold-lez-layout.sh` | Symlink `sequencer` for LEZ 510+ layout after `lgs setup` |
+| `scripts/archive/demo-localnet-fresh.sh` | Blank-slate chain + seed + optional wallet reinit + 10a verify |
+| `scripts/archive/clear-demo-module-persist.sh` | Remove known Step 12 logoscore persist dirs under `.scaffold/` |
+| `scripts/archive/reinit-scaffold-wallet.sh` | Recreate scaffold wallet storage (does not reset sequencer state alone) |
+| `scripts/archive/ensure-scaffold-lez-layout.sh` | Symlink `sequencer` for LEZ 510+ layout after `lgs setup` |
 | `scripts/seed-localnet-fixture.sh` | Idempotent on-chain seed when chain is already up |
-| `scripts/wait-clock-synced.sh` | After restore, wait for Clock10 ≈ wall time (pinata nudge if idle) |
-| `scripts/wait-chain-settle.sh` | Owner nonce settle before seed create/close |
-| `scripts/demo-stream-teardown-localnet.sh` | Provider-signed close + vault-only manifest |
+| `scripts/archive/wait-clock-synced.sh` | After restore, wait for Clock10 ≈ wall time (pinata nudge if idle) |
+| `scripts/archive/wait-chain-settle.sh` | Owner nonce settle before seed create/close |
+| `scripts/archive/demo-stream-teardown-localnet.sh` | Provider-signed close + vault-only manifest |
 
 ## Testnet contrast
 

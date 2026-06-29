@@ -60,7 +60,7 @@ fi
 
 WALLET_PLUGIN="$MODULES/logos_execution_zone/logos_execution_zone_plugin.so"
 if [[ ! -f "$WALLET_PLUGIN" ]]; then
-  skip "logos_execution_zone not installed (./scripts/build-wallet-lgx.sh && lgpm install)"
+  skip "logos_execution_zone not installed (./scripts/archive/build-wallet-lgx.sh && lgpm install)"
 else
   ok "logos_execution_zone plugin present"
   if nix shell github:logos-co/logos-module#lm --command bash -c "

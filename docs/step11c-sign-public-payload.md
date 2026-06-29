@@ -3,7 +3,7 @@
 Adds `wallet_ffi_sign_public_payload` to the Rust FFI layer
 and exposes it as `Q_INVOKABLE sign_public_payload` on the Qt wallet module.
 
-Prerequisites: Step 10b green (`./scripts/verify-step10b-dod.sh` exits 0).
+Prerequisites: Step 10b green (`./scripts/archive/verify-step10b-dod.sh` exits 0).
 
 ## What is added
 
@@ -65,8 +65,8 @@ The `lez-wallet-ffi-patched/flake.nix` LEZ input matches `scaffold.toml` and
 Same patched wallet `.lgx` as Step 10b:
 
 ```bash
-chmod +x scripts/build-wallet-lgx.sh
-./scripts/build-wallet-lgx.sh
+chmod +x scripts/archive/build-wallet-lgx.sh
+./scripts/archive/build-wallet-lgx.sh
 ```
 
 Install and `MODULES` layout: [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md#install-into-modules).
@@ -85,7 +85,7 @@ lm methods "$MODULES/logos_execution_zone/logos_execution_zone_plugin.so" \
 Requires Step 10a localnet running and `smoke_verify` built:
 
 ```bash
-./scripts/verify-step11c-dod.sh
+./scripts/archive/verify-step11c-dod.sh
 ```
 
 The script:

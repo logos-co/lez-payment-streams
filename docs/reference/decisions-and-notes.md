@@ -411,7 +411,7 @@ Symptoms on the provider: inbound eligibility hook with `proof_len=0`, verify JS
 `BAD_REQUEST` (400). Direct `logoscore call payment_streams_module verifyEligibilityForStoreQuery`
 on the same host still passed because proof and N8 were supplied on the CLI path.
 
-Mitigations (demo script [`scripts/demo-e2e-local.sh`](../scripts/demo-e2e-local.sh)):
+Mitigations (demo script [`scripts/archive/demo-e2e-local.sh`](../scripts/archive/demo-e2e-local.sh)):
 
 - Default: after `lgpm install` of the delivery `.lgx`, optionally overlay
   `make liblogosdelivery` from sibling `logos-delivery` (`LOGOS_DELIVERY_ROOT`) unless
@@ -468,8 +468,8 @@ supersedes relying on restore-time accrual anchor alone).
 Validity keys in `snapshot.json`: `lez_pin`, `program_id_hex` (same guard as Step 10a),
 owner/provider account ids, deposit and stream params. Mismatch → operator runs
 `FULL_RESET=1` (prefund + snapshot rebuild). Default demo path:
-[`scripts/demo-localnet-prepare.sh`](../../scripts/demo-localnet-prepare.sh); legacy full rebuild:
-[`scripts/demo-localnet-fresh.sh`](../../scripts/demo-localnet-fresh.sh) sets `FULL_RESET=1`.
+[`scripts/archive/demo-localnet-prepare.sh`](../../scripts/archive/demo-localnet-prepare.sh); legacy full rebuild:
+[`scripts/archive/demo-localnet-fresh.sh`](../../scripts/archive/demo-localnet-fresh.sh) sets `FULL_RESET=1`.
 
 Plan packet: [step-17b-localnet-snapshot-restore.md](../plan/completed/step-17b-localnet-snapshot-restore.md).
 
@@ -611,7 +611,7 @@ This mirrors the `hash_public_pinned` test
 in `nssa/src/public_transaction/message.rs`
 that spells out the expected Borsh encoding byte by byte.
 
-Step 12 demos and `./scripts/verify-step12-dod.sh` use the same field values via Rust:
+Step 12 demos and `./scripts/archive/verify-step12-dod.sh` use the same field values via Rust:
 `cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex` prints lowercase hex of the
 full `canonical_payload` (32-byte domain prefix + Borsh body, 138 bytes for the
 reference demo fixture). LogosAPI `canonicalRequestBytes` must be that full
@@ -688,7 +688,7 @@ matches host PDA derivation (FFI tests) and 491 localnet
 Then simplify: remove `vendor/spel-framework-core`, remove both
 `[patch."https://github.com/logos-co/spel.git"]` entries, bump the SPEL
 pin if needed, `make build`, full 10a chain reset, and
-`./scripts/verify-step10a-dod.sh` exit 0.
+`./scripts/archive/verify-step10a-dod.sh` exit 0.
 
 The guest deposit `authenticated_transfer` enum encoding is implemented in tree; SPEL-on-LEE may
 allow removing that shim later — verify deposit on 491 before deleting it.
@@ -714,7 +714,7 @@ Wallet submit and module shape
   (see [N11](#n11-universal-module-public-api)). `signing_requirements` are derived
   from the signer vs the FFI-planned account list.
 - Submit-level JSON only (`success`, `tx_hash`, `error`) from writes. Callers and
-  `./scripts/verify-step11b-dod.sh` use wallet `sync_to_block` when sequencer height is
+  `./scripts/archive/verify-step11b-dod.sh` use wallet `sync_to_block` when sequencer height is
   available, retries on status `chainAction`, and may SKIP status when derived PDAs are not yet
   readable after successful submits.
 
@@ -759,7 +759,7 @@ coordinator module) is **won't fix**; do not implement `payment_streams_demo_coo
 
 Dual-host paid Store demo coordination stays on the **host**, not in a Logos module.
 
-- **Regression / one-command demo:** [`scripts/demo-e2e-local.sh`](../../scripts/demo-e2e-local.sh)
+- **Regression / one-command demo:** [`scripts/archive/demo-e2e-local.sh`](../../scripts/archive/demo-e2e-local.sh)
   (`make verify-step17`) — fixture prepare, build/install, then
   [`scripts/e2e/run_local_e2e.py`](../../scripts/e2e/run_local_e2e.py).
 - **Cross-host sequencing:** the Python orchestrator (or an operator following Step 20 /

@@ -24,7 +24,7 @@ Manifest policy: committed `fixtures/testnet.json.example` (chain constants + or
 `program_id_hex`); gitignored `fixtures/testnet.json` per operator after
 `make bootstrap-testnet`. Per-operator owner/provider/vault/stream ids.
 
-Run `./scripts/verify-step18-testnet-read-smoke.sh` (PASS, not skip-only) before Part B bootstrap.
+Run `./scripts/archive/verify-step18-testnet-read-smoke.sh` (PASS, not skip-only) before Part B bootstrap.
 `wallet check-health` against testnet with rc5 CLI and unified wallet storage is a valid gate.
 
 ## Part A vs Part B
@@ -82,7 +82,7 @@ First-time funding: unset `TESTNET_SKIP_PINATA` or fund owner manually. Repeat r
 Default gate: `make verify-step18` sets `E2E_PHASE=core` (paid Store + missing-proof path),
 `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF=0`, and runs an in-orchestrator testnet
 `topUpStream` when unaccrued allocation is low. Optional standalone preflight:
-`TESTNET_SKIP_PREFLIGHT_TOPUP=0 ./scripts/testnet-preflight-topup.sh` (same top-up via ephemeral
+`TESTNET_SKIP_PREFLIGHT_TOPUP=0 ./scripts/archive/testnet-preflight-topup.sh` (same top-up via ephemeral
 logoscore; default skip because the dual-host orchestrator top-ups after daemons start).
 
 ### Depleted-stream bypass (demo only — remove when top-up is reliable)
@@ -128,7 +128,7 @@ and re-run `make bootstrap-testnet`.
 3. `prepareEligibility` / module chain reads against manifest ids
 4. Dual-host Store path (relay, filter, paid Store) — same split as Step 17
 5. Stream accrual / depletion — default `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF=0`; orchestrator
-   top-up (`chainAction` / `scripts/testnet-preflight-topup.sh`); rebootstrap if vault holding
+   top-up (`chainAction` / `scripts/archive/testnet-preflight-topup.sh`); rebootstrap if vault holding
    cannot fund top-up
 
 Do not re-open signing unless Phase 1 testnet smoke regresses.

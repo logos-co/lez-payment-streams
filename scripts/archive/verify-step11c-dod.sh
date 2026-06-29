@@ -25,7 +25,7 @@ echo "=== Step 11c DoD verification ==="
 if [[ -f "$WALLET_LGX" ]]; then
   ok "patched wallet .lgx present"
 else
-  bad "missing wallet .lgx (run ./scripts/build-wallet-lgx.sh --impure)"
+  bad "missing wallet .lgx (run ./scripts/archive/build-wallet-lgx.sh --impure)"
 fi
 
 if [[ -f docs/step11c-sign-public-payload.md ]]; then

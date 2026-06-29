@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-step17 verify-step17-back-to-back verify-step18 verify-step18-testnet-read-smoke deploy-testnet bootstrap-testnet prepare-localnet full-reset-localnet debug-sequencer-latency
+.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-module-local verify-step17 verify-step17-back-to-back verify-step18 verify-step18-testnet-read-smoke deploy-testnet bootstrap-testnet prepare-localnet full-reset-localnet debug-sequencer-latency
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -38,17 +38,22 @@ help: ## Show this help
 	@echo "  make verify-step10b Run Step 10b DoD script"
 	@echo "  make verify-step11a Run Step 11a DoD script"
 	@echo "  make verify-step11d Run Step 11d DoD script (LEZ 510 wallet)"
-	@echo "  make verify-step12  Run Step 12 DoD script"
-	@echo "  make verify-step13  Run Step 13 DoD script"
-	@echo "  make verify-step17  Run Step 17 local E2E (restore snapshot + demo)"
+	@echo "  make verify-step12  Run Step 12 DoD script (archived)"
+	@echo "  make verify-step13  Run Step 13 DoD script (archived)"
+	@echo ""
+	@echo "  Verification matrix (mode x chain) — see docs/verification-matrix.md:"
+	@echo "  make verify-module-local  Flow A (module only) local happy path"
+	@echo "  make verify-step17        Flow B (Store) local E2E (restore snapshot + demo)"
 	@echo "  make verify-step17-back-to-back  verify-step17 then SKIP_SEED=1 (monotonic stream ids)"
+	@echo "  make verify-step18        Flow B (Store) testnet E2E (advanced; needs fixtures/testnet.json)"
+	@echo "  # Flow A on testnet is future work (unsupported); see docs/testnet-claim-known-issue.md"
+	@echo ""
 	@echo "  make full-reset-localnet  Rebuild funded snapshot (prefund, no stream)"
 	@echo "  make debug-sequencer-latency  RPC + block-rate probe (local 3040)"
 	@echo "  make verify-step18-testnet-read-smoke  Testnet read smoke (rc5; skips if RPC down)"
-	@echo "  make verify-step18  Full testnet E2E (Part B; needs fixtures/testnet.json)"
 	@echo "  make deploy-testnet One-time guest deploy on public testnet (Part B)"
 	@echo "  make bootstrap-testnet One-time vault/stream bootstrap (Part B)"
-	@echo "  make prepare-localnet  Step 17b restore + create stream (see demo-localnet-prepare.sh)"
+	@echo "  make prepare-localnet  Step 17b restore + create stream (scripts/e2e.sh local prepare)"
 	@echo "  make clean       Remove saved state"
 	@echo ""
 	@echo "Example:"
@@ -104,34 +109,38 @@ clean: ## Remove saved state
 seed-fixture: ## Step 10a local chain fixture (scripts/seed-localnet-fixture.sh)
 	./scripts/seed-localnet-fixture.sh
 
-wallet-lgx: ## Step 10b patched logos_execution_zone .lgx (scripts/build-wallet-lgx.sh)
-	./scripts/build-wallet-lgx.sh
+wallet-lgx: ## Step 10b patched logos_execution_zone .lgx (scripts/archive/build-wallet-lgx.sh)
+	./scripts/archive/build-wallet-lgx.sh
 
-verify-step10a: ## Step 10a definition of done (scripts/verify-step10a-dod.sh)
-	./scripts/verify-step10a-dod.sh
+verify-step10a: ## Step 10a definition of done (archived; scripts/archive/verify-step10a-dod.sh)
+	./scripts/archive/verify-step10a-dod.sh
 
-verify-step10b: ## Step 10b definition of done (scripts/verify-step10b-dod.sh)
-	./scripts/verify-step10b-dod.sh
+verify-step10b: ## Step 10b definition of done (archived; scripts/archive/verify-step10b-dod.sh)
+	./scripts/archive/verify-step10b-dod.sh
 
-verify-step11a: ## Step 11a definition of done (scripts/verify-step11a-dod.sh)
-	chmod +x scripts/verify-step11a-dod.sh
-	./scripts/verify-step11a-dod.sh
+verify-step11a: ## Step 11a definition of done (archived; scripts/archive/verify-step11a-dod.sh)
+	chmod +x scripts/archive/verify-step11a-dod.sh
+	./scripts/archive/verify-step11a-dod.sh
 
-verify-step11d: ## Step 11d definition of done (scripts/verify-step11d-dod.sh)
-	chmod +x scripts/verify-step11d-dod.sh scripts/deploy-program-logoscore.sh scripts/ensure-scaffold-lez-layout.sh
-	./scripts/verify-step11d-dod.sh
+verify-step11d: ## Step 11d definition of done (archived; scripts/archive/verify-step11d-dod.sh)
+	chmod +x scripts/archive/verify-step11d-dod.sh scripts/deploy-program-logoscore.sh scripts/archive/ensure-scaffold-lez-layout.sh
+	./scripts/archive/verify-step11d-dod.sh
 
-verify-step12: ## Step 12 definition of done (scripts/verify-step12-dod.sh)
-	chmod +x scripts/verify-step12-dod.sh scripts/step12-topup-and-prepare.sh scripts/ensure-scaffold-lez-layout.sh
-	./scripts/verify-step12-dod.sh
+verify-step12: ## Step 12 definition of done (archived; scripts/archive/verify-step12-dod.sh)
+	chmod +x scripts/archive/verify-step12-dod.sh scripts/archive/step12-topup-and-prepare.sh scripts/archive/ensure-scaffold-lez-layout.sh
+	./scripts/archive/verify-step12-dod.sh
 
-verify-step13: ## Step 13 definition of done (scripts/verify-step13-dod.sh)
-	chmod +x scripts/verify-step13-dod.sh scripts/step12-topup-and-prepare.sh
-	./scripts/verify-step13-dod.sh
+verify-step13: ## Step 13 definition of done (archived; scripts/archive/verify-step13-dod.sh)
+	chmod +x scripts/archive/verify-step13-dod.sh scripts/archive/step12-topup-and-prepare.sh
+	./scripts/archive/verify-step13-dod.sh
 
-verify-step17: ## Step 17 local dual-host Store E2E (scripts/e2e.sh local run)
+verify-module-local: ## Flow A (module only) local happy path (MODE=module scripts/e2e.sh local run)
+	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e-local.sh
+	MODE=module CHAIN=local ./scripts/e2e.sh local run
+
+verify-step17: ## Flow B (Store) local dual-host E2E (scripts/e2e.sh local run)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
-	CHAIN=local ./scripts/e2e.sh local run
+	MODE=store CHAIN=local ./scripts/e2e.sh local run
 
 verify-step17-back-to-back: ## Step 17 gate: restore run then continue chain (SKIP_SEED=1)
 	$(MAKE) verify-step17
@@ -153,18 +162,18 @@ prepare-localnet: ## Step 17b restore funded baseline (scripts/e2e.sh local prep
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh
 	SKIP_BUILD=1 CHAIN=local ./scripts/e2e.sh local prepare
 
-verify-step18-testnet-read-smoke: ## Step 18 dual-pin read smoke (scripts/verify-step18-testnet-read-smoke.sh)
-	chmod +x scripts/verify-step18-testnet-read-smoke.sh
-	./scripts/verify-step18-testnet-read-smoke.sh
+verify-step18-testnet-read-smoke: ## Step 18 dual-pin read smoke (scripts/archive/verify-step18-testnet-read-smoke.sh)
+	chmod +x scripts/archive/verify-step18-testnet-read-smoke.sh scripts/archive/testnet-common.sh
+	./scripts/archive/verify-step18-testnet-read-smoke.sh
 
 deploy-testnet: ## Step 18 one-time program deploy (Part B)
 	chmod +x scripts/deploy-testnet.sh
 	./scripts/deploy-testnet.sh
 
-bootstrap-testnet: ## Step 18 one-time fixture bootstrap (Part B)
-	chmod +x scripts/bootstrap-testnet.sh
-	./scripts/bootstrap-testnet.sh
+bootstrap-testnet: ## Step 18 one-time fixture bootstrap (Part B; scripts/archive/bootstrap-testnet.sh)
+	chmod +x scripts/archive/bootstrap-testnet.sh scripts/archive/testnet-common.sh
+	./scripts/archive/bootstrap-testnet.sh
 
-verify-step18: ## Step 18 public sequencer E2E (Part B)
-	chmod +x scripts/verify-step18.sh scripts/demo-e2e-local.sh scripts/e2e/*.py scripts/testnet-preflight-topup.sh
-	./scripts/verify-step18.sh
+verify-step18: ## Flow B (Store) public sequencer E2E (advanced; scripts/e2e.sh testnet run)
+	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
+	MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run

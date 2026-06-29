@@ -5,8 +5,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-# shellcheck source=scripts/testnet-common.sh
-source "$REPO_ROOT/scripts/testnet-common.sh"
+# shellcheck source=scripts/archive/testnet-common.sh
+source "$REPO_ROOT/scripts/archive/testnet-common.sh"
 
 require_testnet_rpc
 ensure_testnet_wallet

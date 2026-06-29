@@ -45,7 +45,7 @@ sleep 1
 # Step 24c: settle the chain so the close tx uses an authoritative committed nonce
 # (a pending owner tx from the verify smoke would otherwise drop the close as a duplicate).
 SEQUENCER_URL="${SEQUENCER_URL:-}" FIXTURE_MANIFEST="$MANIFEST" \
-  "$REPO_ROOT/scripts/wait-chain-settle.sh" "$OWNER" || true
+  "$REPO_ROOT/scripts/archive/wait-chain-settle.sh" "$OWNER" || true
 
 echo "--- teardown: close stream $STREAM_ID (provider authority) ---"
 if [[ ! -f "$PROGRAM_BIN" ]]; then

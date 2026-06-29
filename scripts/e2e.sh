@@ -15,6 +15,13 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/lib/common.sh
 source "$REPO_ROOT/scripts/lib/common.sh"
 
+# Flow selector for the 2x2 verification matrix:
+#   MODE=store  (default) — dual-host Store integration (Flow B, Python orchestrator)
+#   MODE=module           — single-host payment-streams happy path (Flow A)
+MODE="${MODE:-store}"
+
+ps_is_module_mode() { [[ "$MODE" == "module" ]]; }
+
 # ============================================================================
 # Build command
 # ============================================================================
@@ -37,13 +44,21 @@ cmd_build() {
   # Build wallet module (patched)
   ps_log_info "Building logos_execution_zone (wallet)..."
   if [[ ! -f "$REPO_ROOT/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out/"*.lgx ]]; then
-    "$REPO_ROOT/scripts/build-wallet-lgx.sh"
+    "$REPO_ROOT/scripts/archive/build-wallet-lgx.sh"
   fi
   local wallet_lgx
   wallet_lgx="$(readlink -f "$REPO_ROOT/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out/"*.lgx)"
   ps_install_lgx "$wallet_lgx" "$modules_user"
   ps_install_lgx "$wallet_lgx" "$modules_provider"
-  
+
+  # Flow A (module only) needs neither delivery_module nor the liblogosdelivery
+  # overlay: it exercises payment_streams_module chainAction directly.
+  if ps_is_module_mode; then
+    ps_log_info "MODE=module — skipping delivery_module + liblogosdelivery overlay"
+    ps_log_info "Build complete"
+    return 0
+  fi
+
   # Build delivery_module
   ps_log_info "Building delivery_module..."
   local dm_root="${DELIVERY_MODULE_ROOT:-$REPO_ROOT/../logos-delivery-module}"
@@ -101,6 +116,17 @@ cmd_prepare() {
 
 cmd_prepare_local() {
   ps_log_info "Preparing localnet..."
+
+  # Flow A drives its own vault lifecycle through the module (initializeVault,
+  # deposit, createStream); it only needs localnet up. The Store-flow vault
+  # snapshot/prefund baseline below does not apply.
+  if ps_is_module_mode; then
+    if [[ "$($REPO_ROOT/scripts/lifecycle.sh localnet status)" != "running" ]]; then
+      "$REPO_ROOT/scripts/lifecycle.sh" localnet start
+    fi
+    ps_log_info "Local prepare complete (module mode)"
+    return 0
+  fi
 
   local snapshot_name="${SNAPSHOT_NAME:-funded}"
 
@@ -187,7 +213,25 @@ cmd_prepare_testnet() {
 
 cmd_run() {
   ps_log_info "Starting E2E run..."
-  
+
+  # Flow A (module only): single-host happy path, no Store / dual-host / N8.
+  if ps_is_module_mode; then
+    if ps_is_testnet; then
+      ps_fatal "MODE=module is localnet only (A-testnet is future work)"
+    fi
+    export MODULES_USER="${MODULES_USER:-$REPO_ROOT/.scaffold/e2e/user/modules}"
+    export ARTIFACT="${ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
+    mkdir -p "$(dirname "$ARTIFACT")"
+    ps_log_info "Launching module happy path (Flow A)..."
+    MODULES="$MODULES_USER" ARTIFACT="$ARTIFACT" \
+      "$REPO_ROOT/scripts/module-e2e-local.sh" || {
+        ps_log_error "Module E2E run failed"
+        return 1
+      }
+    ps_log_info "Module E2E complete. Artifact: $ARTIFACT"
+    return 0
+  fi
+
   # Ensure N8 wire hex
   if [[ -z "${N8_WIRE_HEX:-}" ]]; then
     ps_log_info "Computing N8 wire..."
@@ -296,13 +340,23 @@ Categories:
 
 Environment:
   CHAIN              — local or testnet (default: local)
+  MODE               — store (dual-host Store, Flow B) or module
+                       (single-host payment-streams happy path, Flow A);
+                       default: store. MODE=module is localnet only.
   SKIP_BUILD         — Skip module build (default: 0)
   SKIP_TEARDOWN      — Skip cleanup (default: 0)
   E2E_PHASE          — core, claim, or all (default: all)
 
+Verification matrix (mode x chain):
+  MODE=module CHAIN=local  $0 local run   # Flow A, localnet (make verify-module-local)
+  MODE=store  CHAIN=local  $0 local run   # Flow B, localnet (make verify-step17)
+  MODE=store  CHAIN=testnet $0 testnet run # Flow B, testnet (advanced)
+  MODE=module CHAIN=testnet                # Flow A, testnet — future work (unsupported)
+
 Examples:
-  $0 local run                    # Full local E2E
+  $0 local run                    # Full local E2E (Store)
   $0 local prepare                # Just setup
+  MODE=module $0 local run        # Module-only happy path
   CHAIN=testnet $0 testnet run    # Testnet E2E
   $0 build                        # Build modules only
 EOF

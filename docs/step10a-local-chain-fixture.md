@@ -23,8 +23,8 @@ Scaffold RPC detail: [`step1-findings-scaffold-rpc.md`](step1-findings-scaffold-
 Re-init (backs up old storage, creates 491 storage, clears fixture owner state):
 
 ```bash
-chmod +x scripts/reinit-scaffold-wallet.sh
-./scripts/reinit-scaffold-wallet.sh
+chmod +x scripts/archive/reinit-scaffold-wallet.sh
+./scripts/archive/reinit-scaffold-wallet.sh
 ```
 
 Optional: set `SCAFFOLD_WALLET_SETUP_PASSWORD` before running (default is a local-dev placeholder). Save the recovery phrase printed on first init if you change the password flow manually.
@@ -52,7 +52,7 @@ The script:
 
 Step 17b (repeat runs): [`step-17b-localnet-snapshot-restore.md`](plan/completed/step-17b-localnet-snapshot-restore.md)
 splits fund vs stream — `prefund-onchain`, `create-stream-onchain` (stream params only), and
-`seed-onchain` on `seed_localnet_fixture`. Operators use `./scripts/demo-localnet-prepare.sh`
+`seed-onchain` on `seed_localnet_fixture`. Operators use `./scripts/archive/demo-localnet-prepare.sh`
 (vault-only restore) plus per-run create in E2E or verify scripts, or `FULL_RESET=1` to rebuild
 `.scaffold/snapshots/funded/`.
 
@@ -108,7 +108,7 @@ You only need to align owner manually when something is out of sync, for example
 - `.lez_payment_streams-state` still lists a `SIGNER_ID` from an old wallet before re-init;
 - you run `seed-onchain` yourself with `--owner` that is not in `wallet account list`.
 
-Fix: run `./scripts/reinit-scaffold-wallet.sh` (clears fixture owner state), or remove
+Fix: run `./scripts/archive/reinit-scaffold-wallet.sh` (clears fixture owner state), or remove
 `.lez_payment_streams-state` and re-run the seed script. For manual `seed-onchain`, set
 `--owner` to a base58 id from `wallet account list` under the same `LEE_WALLET_HOME_DIR`
 you use for signing.
@@ -165,8 +165,8 @@ for an older binary. Delete `fixtures/localnet.json` and complete a full seed, o
 Verify DoD locally:
 
 ```bash
-chmod +x scripts/verify-step10a-dod.sh
-./scripts/verify-step10a-dod.sh
+chmod +x scripts/archive/verify-step10a-dod.sh
+./scripts/archive/verify-step10a-dod.sh
 ```
 
 ## Seed binary and workspace `Cargo.lock`
@@ -197,8 +197,8 @@ Acceptable for Step 10a; optional later improvements (after fixture DoD is green
   [step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md)
   and [demo-localnet-recovery.md](demo-localnet-recovery.md).
 - Stop localnet without deleting `.scaffold/state/` to keep chain data between ad-hoc sessions.
-- Full reset (pinata + prefund + snapshot): `FULL_RESET=1 ./scripts/demo-localnet-prepare.sh`
-  or `./scripts/demo-localnet-fresh.sh`. Legacy wipe of `.scaffold/state/` alone does not reset
+- Full reset (pinata + prefund + snapshot): `FULL_RESET=1 ./scripts/archive/demo-localnet-prepare.sh`
+  or `./scripts/archive/demo-localnet-fresh.sh`. Legacy wipe of `.scaffold/state/` alone does not reset
   the LEZ RocksDB ledger.
 
 ## Step 11b note
@@ -208,5 +208,5 @@ Demo vault `0` is for Step 11a decode tests. Module-driven lifecycle in 11b shou
 
 ## Step 10b (wallet in logoscore)
 
-After `./scripts/verify-step10a-dod.sh` exits 0, install the patched wallet `.lgx` and run
-[`step10b-wallet-runtime.md`](step10b-wallet-runtime.md) / `./scripts/verify-step10b-dod.sh`.
+After `./scripts/archive/verify-step10a-dod.sh` exits 0, install the patched wallet `.lgx` and run
+[`step10b-wallet-runtime.md`](step10b-wallet-runtime.md) / `./scripts/archive/verify-step10b-dod.sh`.

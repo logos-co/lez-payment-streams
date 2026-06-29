@@ -52,11 +52,11 @@ logoscore stop
 ## Definition of done (automated)
 
 ```bash
-./scripts/verify-step11a-dod.sh
+./scripts/archive/verify-step11a-dod.sh
 ```
 
 Skip live chain checks when localnet is down:
 
 ```bash
-VERIFY_LOGOSCORE=0 ./scripts/verify-step11a-dod.sh
+VERIFY_LOGOSCORE=0 ./scripts/archive/verify-step11a-dod.sh
 ```

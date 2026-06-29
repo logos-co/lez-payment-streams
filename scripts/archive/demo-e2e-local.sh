@@ -12,7 +12,7 @@ export CHAIN
 if [[ "$CHAIN" == "testnet" ]]; then
   export FIXTURE_MANIFEST="${FIXTURE_MANIFEST:-$REPO/fixtures/testnet.json}"
   # shellcheck source=scripts/testnet-common.sh
-  source "$REPO/scripts/testnet-common.sh"
+  source "$REPO/scripts/archive/testnet-common.sh"
   ensure_testnet_wallet
   export WALLET_CONFIG="${WALLET_CONFIG:-$TESTNET_WALLET_DIR/wallet_config.json}"
   export WALLET_STORAGE="${WALLET_STORAGE:-$TESTNET_WALLET_DIR/storage.json}"
@@ -112,7 +112,7 @@ ensure_fixture() {
   fi
   echo "--- prepare localnet (Step 17b restore + vault baseline) ---"
   FULL_RESET="${FULL_RESET:-0}" SKIP_VERIFY="${SKIP_VERIFY:-1}" SKIP_STREAM_CREATE=1 \
-    "$REPO/scripts/demo-localnet-prepare.sh"
+    "$REPO/scripts/archive/demo-localnet-prepare.sh"
   if [[ ! -f "$FIXTURE_MANIFEST" ]]; then
     log_phase seed 0 '{"error":"missing manifest"}'
     exit 1
@@ -142,7 +142,7 @@ build_and_install() {
 
   echo "--- build logos_execution_zone (patched wallet) ---"
   if ! compgen -G "$REPO/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out/"*.lgx >/dev/null; then
-    "$REPO/scripts/build-wallet-lgx.sh"
+    "$REPO/scripts/archive/build-wallet-lgx.sh"
   fi
   local wallet_lgx
   wallet_lgx="$(readlink -f "$REPO/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out/"*.lgx)"
@@ -178,7 +178,7 @@ build_and_install() {
 }
 
 chmod +x "$REPO_ROOT/scripts/e2e/"*.py 2>/dev/null || true
-chmod +x "$REPO_ROOT/scripts/demo-e2e-local.sh"
+chmod +x "$REPO_ROOT/scripts/archive/demo-e2e-local.sh"
 
 # N8 wire + orchestrator need host cargo; tooling nix shell for lgpm/logoscore only.
 if [[ -z "${N8_WIRE_HEX:-}" ]]; then

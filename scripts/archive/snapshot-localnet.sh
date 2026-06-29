@@ -10,7 +10,7 @@ SNAP_DIR="$REPO_ROOT/.scaffold/snapshots/$SNAPSHOT_NAME"
 RESTART="${SNAPSHOT_RESTART:-1}"
 
 # shellcheck source=scripts/localnet-snapshot-common.sh
-source "$REPO_ROOT/scripts/localnet-snapshot-common.sh"
+source "$REPO_ROOT/scripts/archive/localnet-snapshot-common.sh"
 
 ROCKSDB="$(localnet_snapshot_rocksdb_dir "$REPO_ROOT")"
 
@@ -84,7 +84,7 @@ localnet_snapshot_write_metadata "$REPO_ROOT" "$SNAP_DIR"
 echo "Wrote $SNAP_DIR/snapshot.json"
 
 if [[ "$RESTART" == "1" ]]; then
-  "$REPO_ROOT/scripts/ensure-scaffold-lez-layout.sh"
+  "$REPO_ROOT/scripts/archive/ensure-scaffold-lez-layout.sh"
   lgs localnet start
 fi
 

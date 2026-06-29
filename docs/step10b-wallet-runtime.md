@@ -12,7 +12,7 @@ Step 10a prerequisite: [`step10a-local-chain-fixture.md`](step10a-local-chain-fi
 
 ## Prerequisites
 
-- Step 10a green: `./scripts/verify-step10a-dod.sh` exits 0 and `fixtures/localnet.json` exists.
+- Step 10a green: `./scripts/archive/verify-step10a-dod.sh` exits 0 and `fixtures/localnet.json` exists.
 - Nix (wallet bundle can take several minutes on first build).
 - Shared module install dir (`MODULES`) — same path for `lgpm` and `logoscore -m` (see runtime guide).
 - Tooling via `nix shell` (`lgpm`, `logoscore`, `lm`).
@@ -22,8 +22,8 @@ Step 10a prerequisite: [`step10a-local-chain-fixture.md`](step10a-local-chain-fi
 From repo root:
 
 ```bash
-chmod +x scripts/build-wallet-lgx.sh
-./scripts/build-wallet-lgx.sh
+chmod +x scripts/archive/build-wallet-lgx.sh
+./scripts/archive/build-wallet-lgx.sh
 ```
 
 Equivalent manual command:
@@ -103,7 +103,7 @@ export WALLET_STORAGE="$REPO/.scaffold/wallet/storage.json"
 - `sequencer_addr`: `http://127.0.0.1:3040`
 
 That file is created by `lgs init` / `lgs setup` in this repo. Encrypted `storage.json` uses the
-pinned LEZ wallet format; if seed fails to load storage, run [`scripts/reinit-scaffold-wallet.sh`](../scripts/reinit-scaffold-wallet.sh)
+pinned LEZ wallet format; if seed fails to load storage, run [`scripts/archive/reinit-scaffold-wallet.sh`](../scripts/archive/reinit-scaffold-wallet.sh)
 and re-seed (see Step 10a runbook).
 
 Storage password for CLI `wallet` matches `SCAFFOLD_WALLET_SETUP_PASSWORD` (default
@@ -150,7 +150,7 @@ logoscore stop
 ## Definition of done (automated)
 
 ```bash
-./scripts/verify-step10b-dod.sh
+./scripts/archive/verify-step10b-dod.sh
 ```
 
 Checks:
@@ -164,14 +164,14 @@ Checks:
 Skip runtime RPC only:
 
 ```bash
-VERIFY_LOGOSCORE=0 ./scripts/verify-step10b-dod.sh
+VERIFY_LOGOSCORE=0 ./scripts/archive/verify-step10b-dod.sh
 ```
 
 ## Troubleshooting
 
 | Symptom | Action |
 | --- | --- |
-| `lm` shows `send_public_transaction` only | Reinstall from `./scripts/build-wallet-lgx.sh` output |
+| `lm` shows `send_public_transaction` only | Reinstall from `./scripts/archive/build-wallet-lgx.sh` output |
 | `open` fails / return non-zero | Confirm `storage.json` is 491 encrypted layout; reinit wallet + re-seed 10a |
 | `get_account_public` empty `data` | Re-run Step 10a seed; PDA not initialized on chain |
 | Replica timeout on wallet call | Load `logos_execution_zone` before other modules; restart daemon |

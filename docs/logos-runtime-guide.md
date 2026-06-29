@@ -398,7 +398,7 @@ They do not use this Logos host loop; see [Steps 14–15](#steps-14-15-delivery-
 | Frequency | Work |
 |-----------|------|
 | One-time per machine | Step 10a: from `REPO`, `./scripts/seed-localnet-fixture.sh` ([`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md)) |
-| One-time per machine | Step 7 + 10b: `lgpm` install wallet + PS; `./scripts/verify-step10b-dod.sh` ([Part 1](#part-1--first-time-install-step-7), [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md)) |
+| One-time per machine | Step 7 + 10b: `lgpm` install wallet + PS; `./scripts/archive/verify-step10b-dod.sh` ([Part 1](#part-1--first-time-install-step-7), [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md)) |
 | Each new terminal | `export` paths + `nix shell` (tools) |
 | Each dev iteration | PS `nix build` → `lgpm install` PS → restart logoscore → `load-module` |
 | Each test session | Start LEZ localnet if stopped; point wallet at `http://127.0.0.1:3040` |
@@ -449,7 +449,7 @@ cd "$REPO"
 export LEE_WALLET_HOME_DIR="$REPO/.scaffold/wallet"
 lgs localnet status
 lgs wallet -- check-health
-./scripts/verify-step10a-dod.sh
+./scripts/archive/verify-step10a-dod.sh
 ```
 
 Expected: localnet running when testing Steps 10+ (start via [`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md) if stopped).
@@ -606,12 +606,12 @@ Step 11b — writes and status
 - `lm methods` on the PS plugin lists five read helpers plus `chainAction` (not per-write names)
 - Wallet plugin should expose `send_generic_public_transaction` and, for 11b IPC,
   `send_generic_public_transaction_json`; set `PAYMENT_STREAMS_GUEST_BIN` on the daemon
-- Expected DoD: `./scripts/verify-step11b-dod.sh` — submit lifecycle via `chainAction`;
+- Expected DoD: `./scripts/archive/verify-step11b-dod.sh` — submit lifecycle via `chainAction`;
   status may SKIP if derived vault PDAs are not yet readable after submits
 
 Step 11c — wallet signing
 
-- `sign_public_payload` is implemented; verify with `./scripts/verify-step11c-dod.sh`
+- `sign_public_payload` is implemented; verify with `./scripts/archive/verify-step11c-dod.sh`
 - Required before Step 12
 
 Step 12 — eligibility (user side)
@@ -626,7 +626,7 @@ Step 13 — provider verify
 
 - `verifyEligibilityForStoreQuery` via `logoscore call`
 - Runbook [`step13-provider-eligibility.md`](step13-provider-eligibility.md);
-  DoD: `./scripts/verify-step13-dod.sh` or `make verify-step13`
+  DoD: `./scripts/archive/verify-step13-dod.sh` or `make verify-step13`
 - Structural failure cases should not require chain; happy path needs seeded vault/stream with
   unaccrued balance on stream `0` (fresh fixture — see recovery doc)
 - Cross-test chains Step 12 `prepareEligibilityForStoreQuery` → Step 13 verify on the same hex

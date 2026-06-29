@@ -1,6 +1,6 @@
 # Step 12 — user-side eligibility
 
-Status: complete for integration DoD (feature in tree, `./scripts/verify-step12-dod.sh`,
+Status: complete for integration DoD (feature in tree, `./scripts/archive/verify-step12-dod.sh`,
 strict localnet path with `REQUIRE_STREAM_PROOF=1`). Step 13 provider verify is complete
 separately ([`step13-provider-eligibility.md`](step13-provider-eligibility.md)). Step 16
 `delivery_module` bridge is the next integration step ([N12](reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18));
@@ -12,7 +12,7 @@ Session keys, persisted negotiation state, and Store `EligibilityProof` bytes (L
 
 Runbook for operators and implementors. Behavior matches the plan.
 
-Prerequisites: Step 11c green (`./scripts/verify-step11c-dod.sh`), Step 11a reads, Step 11b
+Prerequisites: Step 11c green (`./scripts/archive/verify-step11c-dod.sh`), Step 11a reads, Step 11b
 `chainAction` for manual `createStream`, Step 10b wallet with `sign_public_payload`.
 
 Related: [N4 persistence](../reference/decisions-and-notes.md#n4-persistence-policy),
@@ -47,7 +47,7 @@ Same as Step 11b where chain I/O is involved:
 | `MODULES` | `lgpm` + `logoscore -m` install dir |
 | `WALLET_CONFIG` / `WALLET_STORAGE` | Required for proposal path: `logos_execution_zone open` before `prepareEligibilityProofWithStreamProposalForStoreQuery` (`sign_public_payload`) |
 | `PAYMENT_STREAMS_GUEST_BIN` | On daemon when exercising `createStream` after a proposal |
-| `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF` | Demo-only escape hatch when stream is depleted; prefer `./scripts/demo-localnet-fresh.sh` instead |
+| `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF` | Demo-only escape hatch when stream is depleted; prefer `./scripts/archive/demo-localnet-fresh.sh` instead |
 
 ## User vault (demo)
 
@@ -65,7 +65,7 @@ config). `vault_id` comes from the manifest (local default `0` after Step 10a se
 
 Local demos: see [`demo-localnet-recovery.md`](demo-localnet-recovery.md). Chain and manifest
 are disposable; wipe `payment_streams_state.json` (fresh `--persistence-path`) each demo unless
-you continue one session. Blank slate: `./scripts/demo-localnet-fresh.sh`.
+you continue one session. Blank slate: `./scripts/archive/demo-localnet-fresh.sh`.
 
 On-chain state (vault holding, existing streams) persists for the life of that network:
 
@@ -335,7 +335,7 @@ session ABI module). Refresh `cbindgen` / module C bridge as needed.
 
 ### Canonical request bytes (N8)
 
-Step 12 demos and `./scripts/verify-step12-dod.sh` use the same field values via Rust.
+Step 12 demos and `./scripts/archive/verify-step12-dod.sh` use the same field values via Rust.
 Nim parity is covered in Step 15 (`test_store_eligibility_canonical.nim` on the delivery fork).
 DoD scripts use a pinned Rust fixture, not a live Store query from `delivery_module`.
 Field values match the integration plan N8 cross-language vector and
@@ -400,11 +400,11 @@ logoscore stop
 ## Definition of done
 
 Recovery policy: [`demo-localnet-recovery.md`](demo-localnet-recovery.md). If logoscore smoke
-skips `stream_proof` due to `STREAM_DEPLETED`, run `./scripts/demo-localnet-fresh.sh` and retry
+skips `stream_proof` due to `STREAM_DEPLETED`, run `./scripts/archive/demo-localnet-fresh.sh` and retry
 with `REQUIRE_STREAM_PROOF=1` (runs top-up then prepare).
 
 ```bash
-./scripts/verify-step12-dod.sh
+./scripts/archive/verify-step12-dod.sh
 ```
 
 Checks (from plan Step 12):
@@ -415,26 +415,26 @@ Checks (from plan Step 12):
 - `listMyStreams` matches folded status when chain state exists.
 - Documented error codes for negative cases.
 - Provider cross-test for the same bytes: [`step13-provider-eligibility.md`](step13-provider-eligibility.md)
-  and `./scripts/verify-step13-dod.sh` (not a hard gate for Step 12-only CI).
+  and `./scripts/archive/verify-step13-dod.sh` (not a hard gate for Step 12-only CI).
 
 Skip live chain:
 
 ```bash
-VERIFY_LOGOSCORE=0 ./scripts/verify-step12-dod.sh
+VERIFY_LOGOSCORE=0 ./scripts/archive/verify-step12-dod.sh
 ```
 
-Strict `stream_proof` on localnet (after `./scripts/demo-localnet-fresh.sh` and wallet `.lgx` reinstall):
+Strict `stream_proof` on localnet (after `./scripts/archive/demo-localnet-fresh.sh` and wallet `.lgx` reinstall):
 
 ```bash
 export PAYMENT_STREAMS_GUEST_BIN="$REPO/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"
-REQUIRE_STREAM_PROOF=1 ./scripts/verify-step12-dod.sh
+REQUIRE_STREAM_PROOF=1 ./scripts/archive/verify-step12-dod.sh
 ```
 
-Uses `./scripts/step12-topup-and-prepare.sh` internally (`topUpStream` then `prepareEligibilityProofWithStreamProofForStoreQuery`).
+Uses `./scripts/archive/step12-topup-and-prepare.sh` internally (`topUpStream` then `prepareEligibilityProofWithStreamProofForStoreQuery`).
 Seeded stream `0` is often fully accrued on LEZ 510 clock units until top-up; that is expected for smoke mode.
 
 If `lgs localnet start` fails with missing `sequencer/service/configs/debug/sequencer_config.json`, run
-`./scripts/ensure-scaffold-lez-layout.sh` after `lgs setup` (LEZ 510 nests `sequencer` under `lez/`).
+`./scripts/archive/ensure-scaffold-lez-layout.sh` after `lgs setup` (LEZ 510 nests `sequencer` under `lez/`).
 
 ## Runbook notes
 
@@ -451,4 +451,4 @@ Left as-is (simplicity / elsewhere):
 - `registerProviderMapping` argument naming (routing vs LIP-155 bytes) is intentional.
 - No `STREAM_ALREADY_EXISTS` code: active stream → proof path; pending → `PROPOSAL_PENDING`.
 - Step 13 provider cross-test: [`step13-provider-eligibility.md`](step13-provider-eligibility.md)
-  (`VERIFY_LOGOSCORE=1 ./scripts/verify-step13-dod.sh`); not required for Step 12 DoD.
+  (`VERIFY_LOGOSCORE=1 ./scripts/archive/verify-step13-dod.sh`); not required for Step 12 DoD.
