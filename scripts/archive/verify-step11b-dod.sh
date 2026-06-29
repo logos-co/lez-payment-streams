@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify Step 11b definition of done (see docs/step11b-chain-writes.md).
+# Verify Step 11b definition of done (see docs/archive/steps/module-chain-writes-runbook.md).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -24,10 +24,10 @@ skip() { echo "SKIP: $*"; }
 
 echo "=== Step 11b DoD verification ==="
 
-if [[ -f docs/step11b-chain-writes.md ]]; then
+if [[ -f docs/archive/steps/module-chain-writes-runbook.md ]]; then
   ok "Step 11b runbook present"
 else
-  bad "missing docs/step11b-chain-writes.md"
+  bad "missing docs/archive/steps/module-chain-writes-runbook.md"
 fi
 
 PLUGIN="$MODULES/payment_streams_module/payment_streams_module_plugin.so"

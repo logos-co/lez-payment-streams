@@ -1,8 +1,8 @@
 # Step 17 — plan excerpt (complete)
 
 Normative packet for agents. Index: [development-map/program-index.md](../../development-map/program-index.md).
-Operator runbook: [store-integration/runbook-localnet.md](../../store-integration/runbook-localnet.md),
-[step17-e2e-local.md](../../step17-e2e-local.md).
+Operator runbook: [store-integration/README.md](../../store-integration/README.md),
+[archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md).
 
 Status: Complete (2026-06-19). The full local dual-host gate is green via `make verify-step17`
 (`scripts/e2e.sh` local run + `scripts/e2e/run_local_e2e.py`) on a clean tree plus a prepared
@@ -20,13 +20,13 @@ the on-chain rate/allocation in `acceptedParams` (fixed 2026-06-19, with `reject
 surfaced in the verdict and an E2E `store_query_eligibility_verdict` diagnostic line).
 Delivery install uses `nix build …#lgx` + `lgpm install` for all three modules; optional
 `liblogosdelivery` overlay from sibling `logos-delivery` when not using hermetic mode
-([N13](../../reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18),
-runbook [Hermetic run](../../step17-e2e-local.md#hermetic-run-hand-off)).
-Module bridge invokes eligibility on the `LogosAPIClient` thread ([N3a](../../reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
+([N13](../../../reference/decisions-historical.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18),
+runbook [Hermetic run](../../archive/steps/local-store-dual-host-runbook.md#hermetic-run-hand-off)).
+Module bridge invokes eligibility on the `LogosAPIClient` thread ([N3a](../../reference/integration-decisions.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
 Seed economics (full rebuild, superseded values in parentheses): deposit `1000` / allocation
 `200` / rate `1` via `prefund-localnet.sh` and env defaults (was `2000` / `1800`). Repeat runs
 restore the funded vault baseline; each E2E run creates at `next_stream_id` and teardown closes
-([Step 24c](step-24c-simplify-demo-flow.md), [N15](../../reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19)).
+([Step 24c](step-24c-simplify-demo-flow.md), [N15](../../../reference/decisions-historical.md#n15-step-17b-localnet-snapshot-restore-2026-06-19)).
 
 Post-Complete hardening (not gating): re-run the hermetic path (`SKIP_LIBLOGOSDELIVERY_OVERLAY=1`)
 after the fix and drop the default overlay once hermetic installs are routine; align delivery
@@ -35,19 +35,19 @@ Back-to-back monotonic stream ids: `make verify-step17-back-to-back` (Step 24c).
 
 ### Step 17, End-to-end demo wiring
 
-Prerequisite: Step 16 bridge complete ([N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18);
-`storeQuery` and eligibility routing on our delivery forks; see [N6](../../reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)).
+Prerequisite: Step 16 bridge complete ([N12](../../../reference/decisions-historical.md#n12-step-16-vs-step-17-verification-scope-2025-06-18);
+`storeQuery` and eligibility routing on our delivery forks; see [N6](../../reference/integration-decisions.md#n6-delivery-module-store-query-exposure)).
 
 Architectural context:
 this step exercises every layer at once (two `logoscore` hosts, three backend modules each,
-local LEZ, cross-host Store). Scope boundary: [N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)
+local LEZ, cross-host Store). Scope boundary: [N12](../../../reference/decisions-historical.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)
 (Step 16 proved the bridge; Step 17 proves full-stack paid Store and eligibility on the wire).
 
 Paid Store demo policy:
 the provider operates in paid mode only (eligibility verifier registered for the whole demo).
 Real users learn the provider libp2p identity from off-band service advertisement; the script
 mimics that with a small advertisement artifact (see runbook). Inbound requests with no
-LIP-155 proof must fail per [N3c](../../reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18).
+LIP-155 proof must fail per [N3c](../../reference/integration-decisions.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18).
 
 The user host must call `registerProviderMapping` on `payment_streams_module` before legitimate
 outbound Store queries (PeerId from the advertisement file → manifest payee base58).
@@ -136,7 +136,7 @@ Definition of done:
 2. Success path: user `delivery_module.storeQuery` against provider multiaddr returns success
    with valid chain state and proofs; provider inbound eligibility OK.
 3. Failure path: with provider verifier enabled, an inbound Store request **without** proof yields
-   `BAD_REQUEST` (400), populated `eligibility_status`, empty messages ([N3c](../../reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)).
+   `BAD_REQUEST` (400), populated `eligibility_status`, empty messages ([N3c](../../reference/integration-decisions.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)).
 4. Claim (phase B): provider `chainAction` `claim` succeeds for manifest vault/stream when
    preconditions are met (document in artifact).
 5. Artifact: script exits 0 on a clean workspace and writes

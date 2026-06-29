@@ -7,8 +7,8 @@ The overarching goal is to run the payment-streams demo stack against wallet API
 that are not yet on upstream default branches.
 
 Store query for the demo ships on our `logos-delivery` / `logos-delivery-module` forks
-(Steps 15–16, [D2](reference/decisions-and-notes.md#d2-delivery-module-hook-design),
-[N6](reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)). Step 15 is
+(Steps 15–16, [D2](reference/integration-decisions.md#d2-delivery-module-hook-design),
+[N6](reference/integration-decisions.md#n6-delivery-module-store-query-exposure)). Step 15 is
 complete on the delivery fork (verify commands in
 [step-15-normative.md](plan/completed/step-15-normative.md)). Step 16 (eligibility bridge,
 async `storeQuery`) is complete on the module fork. The module flake pins `logos-delivery` to
@@ -62,7 +62,7 @@ E2E installs `delivery_module` via `nix build "$DELIVERY_MODULE_ROOT#lgx"` and
 `logos-delivery-module`.
 
 The outbound-proof bug (clearing `eligibilityProof` after JSON parse) is fixed at
-`logos-delivery` rev `39b467ec` and above ([N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
+`logos-delivery` rev `39b467ec` and above ([N13](../reference/decisions-historical.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
 Symptom on an older library: paid `storeQuery` → provider `BAD_REQUEST`, empty inbound proof.
 
 Optional overlay (default when sibling repo exists): unless
@@ -74,12 +74,12 @@ the module flake.
 Hermetic verification (no overlay): `SKIP_LIBLOGOSDELIVERY_OVERLAY=1 make verify-step17` with
 `DELIVERY_MODULE_ROOT` pointing at a module checkout whose `flake.lock` resolves
 `logos-delivery` to `39b467ec` or newer. Full checklist:
-[step17-e2e-local.md](step17-e2e-local.md#hermetic-run-hand-off). Verified 2026-06-18.
+[archive/steps/local-store-dual-host-runbook.md](archive/steps/local-store-dual-host-runbook.md#hermetic-run-hand-off). Verified 2026-06-18.
 
 Remove the overlay step from the script once every operator relies on hermetic installs only.
 
 Pin table dates are when the row was last updated. Decision subsection titles in
-[decisions-and-notes.md](reference/decisions-and-notes.md) use their own `(YYYY-MM-DD)` record dates;
+[integration-decisions.md](reference/integration-decisions.md) use their own `(YYYY-MM-DD)` record dates;
 those need not match the pin table calendar day.
 
 Module repo: same branch name on `logos-delivery-module` (`flake.nix` + `flake.lock` at
@@ -127,7 +127,7 @@ wire it in `postPatch` if the wallet plugin fails to find `wallet_ffi.h`.
 If `nix bundle` fails after a pin bump, adjust
 `logos-execution-zone-module-patched/flake.nix` against current PR 19 packages.
 
-Runbook: [`step11d-wallet-510.md`](step11d-wallet-510.md).
+Runbook: [`archive/steps/wallet-510-runbook.md`](archive/steps/wallet-510-runbook.md).
 
 ### After changing pins
 
@@ -173,7 +173,7 @@ Rebuild the Step 17b funded snapshot after a LEZ pin or guest ImageID change:
 ## Step 18 public testnet (single rc5 pin)
 
 Local E2E, module `.lgx`, and public testnet share LEZ `v0.2.0-rc5` (`27360cb7…`). See
-[step18-public-sequencer-e2e.md](step18-public-sequencer-e2e.md) and
+[archive/steps/public-sequencer-store-runbook.md](archive/steps/public-sequencer-store-runbook.md) and
 [step-18b-rc5-unify-handoff.md](plan/completed/step-18b-rc5-unify-handoff.md).
 
 | Artifact | Pin / ref | Role |
@@ -188,7 +188,7 @@ Guest `program_id_hex` on testnet: org deploy recorded in step packet; example i
 Retirement (Phase 9): when module `chainAction` works on testnet without the helper, delete
 `tools/lez-testnet-submit` and narrow `CHAIN=testnet` dispatch in the module.
 
-Runbook: [step18-public-sequencer-e2e.md](step18-public-sequencer-e2e.md).
+Runbook: [archive/steps/public-sequencer-store-runbook.md](archive/steps/public-sequencer-store-runbook.md).
 
 ## Verification commands
 

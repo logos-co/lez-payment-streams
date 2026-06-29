@@ -7,14 +7,14 @@ Active-work packet for agents. Index: [program-index.md](../../development-map/p
 Public sequencer at `https://testnet.lez.logos.co/` uses lez jsonrpsee RPC. Org guest deploy
 for the current tree is on chain (see Verified org deploy below). Step 18b (rc5 operational pin)
 is merged to `master`. Step 18 Part B DoD: `make verify-step18-testnet-read-smoke`, `make bootstrap-testnet`,
-`make verify-step18` with unified rc5 tooling ([N16](../../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06),
-[`step18-public-sequencer-e2e.md`](../../step18-public-sequencer-e2e.md)). Step 20 testnet journey
+`make verify-step18` with unified rc5 tooling ([N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06),
+[`archive/steps/public-sequencer-store-runbook.md`](../../archive/steps/public-sequencer-store-runbook.md)). Step 20 testnet journey
 rows may cite this step; local Step 17 uses the same operational pin for localnet.
 
 ### Step 18, Public sequencer E2E (local Store and relay)
 
 Prerequisite: Step 17 definition of done satisfied on local LEZ
-([`scripts/e2e.sh`](../../../scripts/e2e.sh) `local run`; archived `scripts/archive/demo-e2e-local.sh`, [N12](../../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+([`scripts/e2e.sh`](../../../scripts/e2e.sh) `local run`; archived `scripts/archive/demo-e2e-local.sh`, [N12](../../../reference/decisions-historical.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
 
 Branch: `feat/step18-public-testnet` from `master`. All changes are additive and gated by a
 `CHAIN` selector (`CHAIN=local` default, `CHAIN=testnet` for this step). The local-LEZ path
@@ -26,7 +26,7 @@ Architectural context:
 Step 17 uses a disposable local LEZ sequencer (`127.0.0.1:3040`) and two `logoscore`
 processes on one machine. Relay, GossipSub, and Store traffic stay on localhost (disjoint
 `portsShift`, user `staticnode` dial to provider multiaddr from
-[`E2E_PROVIDER_AD`](../../step17-e2e-local.md#provider-service-advertisement-off-band-mimic)).
+[`E2E_PROVIDER_AD`](../../archive/steps/local-store-dual-host-runbook.md#provider-service-advertisement-off-band-mimic)).
 
 Step 18 keeps that same dual-host P2P layout. Only LEZ chain access moves to the org
 public testnet sequencer (testnet v0.2 target). The public endpoint is documented in
@@ -35,11 +35,11 @@ public testnet sequencer (testnet v0.2 target). The public endpoint is documente
 asserts the endpoint exists but does not document the `wallet_config.json` schema, the
 `sequencer_addr` field, the testnet LEZ revision, whether `wallet pinata claim` works against
 it, or how to deploy a LEE guest program there. Operator setup is documented in this packet
-and in `docs/step18-public-sequencer-e2e.md` (Phase 4).
+and in `docs/archive/steps/public-sequencer-store-runbook.md` (Phase 4).
 
 Do not apply local reset-first policy from
-[`demo-localnet-recovery.md`](../../demo-localnet-recovery.md). See testnet persistence in
-[`step12-user-eligibility.md`](../../step12-user-eligibility.md) (Persistence across runs).
+[`archive/operator/localnet-recovery.md`](../../archive/operator/localnet-recovery.md). See testnet persistence in
+[`archive/steps/user-eligibility-runbook.md`](../../archive/steps/user-eligibility-runbook.md) (Persistence across runs).
 
 Hosting a Store provider on the public Logos mesh (infra-operated node, dialable from the
 internet) is Step 23 (optional). Step 18 does not require it.
@@ -83,7 +83,7 @@ is shared across operators for a given guest ELF, not per-operator.
   `sendTransaction`, and related methods used by the rc5 `wallet` CLI, module reads, and read smoke.
 - Operational LEZ pin: **`v0.2.0-rc5`** (`27360cb7d6ccb2bfbcca7d171bab8a3938490264`) for local
   E2E, `logos_execution_zone` .lgx, testnet scripts, and `tools/lez-testnet-submit`. See
-  [feature-branch-pins.md](../../feature-branch-pins.md) and [N16](../../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06).
+  [feature-branch-pins.md](../../reference/feature-branch-pins.md) and [N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06).
 - Guest ELF (current tree): **576576** bytes; ImageID / `program_id_hex`
   `79b1dd5c441caede8f9f82c30de637aba465f94cc43817b1105c8c48c77d0fc9` (`make program-id`).
 - Read gate: `make verify-step18-testnet-read-smoke` — rc5 module `open`, `sync_to_block`,
@@ -98,7 +98,7 @@ is shared across operators for a given guest ELF, not per-operator.
   is a legacy key; do not copy from `localnet.json`.
 - Demo claim policy: on testnet the provider `claim` is optional. A run is green through create,
   fundable, paid Store query, and close; claim is not reliably confirming on testnet. See
-  [testnet-claim-known-issue.md](../../testnet-claim-known-issue.md).
+  [archive/operator/testnet-claim-known-issue.md](../../archive/operator/testnet-claim-known-issue.md).
 
 #### Verified org deploy log (2026-06-25)
 
@@ -151,7 +151,7 @@ Implementation note: `make deploy-testnet` invokes rc5 `wallet deploy-program` v
 Step 18 uses the same operational LEZ pin as Step 17 and local E2E: **`v0.2.0-rc5`**
 (`27360cb7d6ccb2bfbcca7d171bab8a3938490264`) in `scaffold.toml`, wallet flakes, module
 `.lgx`, testnet scripts, and `tools/lez-testnet-submit`. Public testnet builtins and LEE v0.3
-public message hashing match that revision ([N16](../../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06)).
+public message hashing match that revision ([N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06)).
 
 Dual-pin (510 module reads + rc3 writes) was Step 18 WIP only; it is not supported. Do not
 document or configure split pins for testnet.
@@ -240,18 +240,18 @@ symptoms.
 | --- | --- | --- |
 | `sequencer_addr` | Each host `wallet_config.json` used at `logos_execution_zone open` | Wallet RPC: reads, sync, `sign_public_payload`; testnet submits via helper or FFI per `CHAIN` |
 | `sequencer_url` | `fixtures/testnet.json` (`FIXTURE_MANIFEST`) | Operator docs, scripts, verify parity with wallet |
-| LEZ revision | [`feature-branch-pins.md`](../../feature-branch-pins.md): operational pin **`v0.2.0-rc5`** (`27360cb7…`) for scaffold, module, scripts, helper | Single pin for local Step 17 and testnet; harness `program_tests` may lag on 510 ([N16](../../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06)) |
-| `program_id_hex` | `fixtures/testnet.json` | Module PDA derivation and `chainAction` program binding ([N10](../../reference/decisions-and-notes.md#n10-step-11b-module-writes-decisions)) |
+| LEZ revision | [`feature-branch-pins.md`](../../reference/feature-branch-pins.md): operational pin **`v0.2.0-rc5`** (`27360cb7…`) for scaffold, module, scripts, helper | Single pin for local Step 17 and testnet; harness `program_tests` may lag on 510 ([N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06)) |
+| `program_id_hex` | `fixtures/testnet.json` | Module PDA derivation and `chainAction` program binding ([N10](../../reference/integration-decisions.md#n10-step-11b-module-writes-decisions)) |
 | Owner / provider account ids, vault/stream ids, derived PDAs | `fixtures/testnet.json` | Prepare/verify and on-chain stream state |
 | `clock_10_account_id` | `fixtures/testnet.json` | Testnet clock account (do not copy local-only id without validation) |
 | Guest program for submits | `PAYMENT_STREAMS_GUEST_BIN` (local FFI path) or helper's `--program-elf` (testnet path) | Writes (`createStream`, `claim`) against testnet deployed ELF |
 | Provider libp2p identity | `E2E_PROVIDER_AD` (written by script) | User `registerProviderMapping` + `storeQuery` target — still local provider peer in Step 18 |
-| Provider LEZ payee | `provider_account_id` in manifest | Must match bytes in proofs and on-chain `StreamConfig.provider` ([N5](../../reference/decisions-and-notes.md#n5-provider-identity-mapping)) |
-| Module install | `MODULES_USER`, `MODULES_PROVIDER` | Same forked `.lgx` set as Step 17 ([feature-branch-pins.md](../../feature-branch-pins.md)) |
-| Off-chain eligibility state | `--persistence-path` per host (`PERSIST_USER`, `PERSIST_PROVIDER`) | Session keys, mappings, provider acceptances ([N4](../../reference/decisions-and-notes.md#n4-persistence-policy)); separate from chain persistence |
+| Provider LEZ payee | `provider_account_id` in manifest | Must match bytes in proofs and on-chain `StreamConfig.provider` ([N5](../../reference/integration-decisions.md#n5-provider-identity-mapping)) |
+| Module install | `MODULES_USER`, `MODULES_PROVIDER` | Same forked `.lgx` set as Step 17 ([feature-branch-pins.md](../../reference/feature-branch-pins.md)) |
+| Off-chain eligibility state | `--persistence-path` per host (`PERSIST_USER`, `PERSIST_PROVIDER`) | Session keys, mappings, provider acceptances ([N4](../../reference/integration-decisions.md#n4-persistence-policy)); separate from chain persistence |
 
-Wallet and manifest: [N10 fixture and config](../../reference/decisions-and-notes.md#n10-step-11b-module-writes-decisions).
-Delivery `createNode` defaults: [step17-e2e-local.md](../../step17-e2e-local.md#delivery-createnode-defaults) (local ports unchanged).
+Wallet and manifest: [N10 fixture and config](../../reference/integration-decisions.md#n10-step-11b-module-writes-decisions).
+Delivery `createNode` defaults: [archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md#delivery-createnode-defaults) (local ports unchanged).
 
 ##### Branch status
 
@@ -323,7 +323,7 @@ not skip) before Part B chain writes.
 
 ##### Phase 4 — Runbook and pins
 
-12. Write `docs/step18-public-sequencer-e2e.md` covering:
+12. Write `docs/archive/steps/public-sequencer-store-runbook.md` covering:
     - Prerequisites (internet egress, testnet wallet, funded account).
     - Part A vs Part B phase order and read smoke before chain bootstrap.
     - One-time bootstrap: `make deploy-testnet`, `make bootstrap-testnet` (Part B).
@@ -332,7 +332,7 @@ not skip) before Part B chain writes.
     - Persistence rules (do not wipe chain state; only reset local `PERSIST_*`).
     - Failure triage for testnet-specific cases (unreachable sequencer, stale program id,
       faucet rate limits, stream depletion, read smoke failing when the sequencer is up).
-13. Update [`feature-branch-pins.md`](../../feature-branch-pins.md) with operational rc5 pin and
+13. Update [`feature-branch-pins.md`](../../reference/feature-branch-pins.md) with operational rc5 pin and
     Phase 9 helper retirement pointer.
 
 ##### Phase 5 — Demo and Makefile wiring (local CI unchanged)
@@ -422,7 +422,7 @@ not skip) before Part B chain writes.
 - Committed `fixtures/testnet.json.example` (no secrets; may include stable `program_id_hex`
   after org-wide deploy). Operators copy to gitignored `fixtures/testnet.json` or set
   `FIXTURE_MANIFEST`.
-- Testnet bootstrap runbook (`docs/step18-public-sequencer-e2e.md`): one-time program deploy
+- Testnet bootstrap runbook (`docs/archive/steps/public-sequencer-store-runbook.md`): one-time program deploy
   (rc5 `wallet deploy-program`), one-time vault/stream bootstrap (via helper), repeatable demo
   run; document one-time vs repeatable steps explicitly; document Phase 9 helper retirement.
 - Testnet wallet template(s): `sequencer_addr` aligned with manifest `sequencer_url` (per-host
@@ -435,7 +435,7 @@ not skip) before Part B chain writes.
 #### Definition of done
 
 - Documented public sequencer URL and single operational LEZ pin rc5
-  ([`feature-branch-pins.md`](../../feature-branch-pins.md), [N16](../../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06)).
+  ([`feature-branch-pins.md`](../../reference/feature-branch-pins.md), [N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06)).
 - `lez_payment_streams` deployed on public testnet via rc5 `wallet deploy-program` (org deploy
   2026-06-25); demo uses committed or operator manifest with matching `program_id_hex` and
   bootstrapped vault/stream state.
@@ -466,7 +466,7 @@ Before merging `feat/step18-public-testnet` to `master`:
 - Confirm `verify-step10a-dod.sh` and `verify-step10b-dod.sh` still assert `127.0.0.1:3040`
   and are not parameterized for testnet (they are the local-LEZ gate).
 - Confirm operational LEZ pin is rc5 everywhere documented in
-  [`feature-branch-pins.md`](../../feature-branch-pins.md) ([N16](../../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06)).
+  [`feature-branch-pins.md`](../../reference/feature-branch-pins.md) ([N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06)).
 - Confirm the helper is not compiled into the default `nix build` (separate `cargo build` under
   `tools/lez-testnet-submit` or flake output). The local path must not require the helper when
   `CHAIN=local`.
@@ -479,7 +479,7 @@ Before merging `feat/step18-public-testnet` to `master`:
 
 Not in scope: public internet Store provider (Step 23); replacing Step 17 local CI gate;
 automatic testnet faucet unless the network ships a supported funding API; Basecamp UI
-(Step 21, parked). Demo orchestration stays external scripts ([N17](../../reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06); Step 25 won't fix).
+(Step 21, parked). Demo orchestration stays external scripts ([N17](../../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06); Step 25 won't fix).
 
 Follow-on: Step 19 (LIP on-chain, done). Step 20 testnet journey rows use this step when
 unblocked; local journey does not require Step 18. Optional Step 23 (hosted provider).

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify Step 11c definition of done (see docs/step11c-sign-public-payload.md).
+# Verify Step 11c definition of done (see docs/archive/steps/sign-public-payload-runbook.md).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -28,10 +28,10 @@ else
   bad "missing wallet .lgx (run ./scripts/archive/build-wallet-lgx.sh --impure)"
 fi
 
-if [[ -f docs/step11c-sign-public-payload.md ]]; then
+if [[ -f docs/archive/steps/sign-public-payload-runbook.md ]]; then
   ok "Step 11c runbook present"
 else
-  bad "missing docs/step11c-sign-public-payload.md"
+  bad "missing docs/archive/steps/sign-public-payload-runbook.md"
 fi
 
 PLUGIN="$MODULES/logos_execution_zone/logos_execution_zone_plugin.so"

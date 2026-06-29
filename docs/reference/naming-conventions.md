@@ -2,45 +2,53 @@
 
 Use this vocabulary consistently in product docs and runbooks.
 
-## Verification flows (matrix)
+## External product names
 
 | Term | Meaning |
 | --- | --- |
-| Flow A | Module-only verification. `MODE=module` on `scripts/e2e.sh`. Single-host happy path through `payment_streams_module` `chainAction`. No Store, no eligibility APIs in the gate. |
-| Flow B | Store integration verification. `MODE=store` (default). Dual-host demo with `delivery_module` and LIP-155 eligibility on Store requests. |
+| Module verification | Single-host `payment_streams_module` happy path (`MODE=module`). |
+| Store integration | Dual-host Store demo with eligibility (`MODE=store`, default). |
 
-Flow A and Flow B are independent of the N18 demo track names below.
-
-## N18 demo tracks (program steps)
+## Verification flows (`MODE`)
 
 | Term | Meaning |
 | --- | --- |
-| N18 Track A | Integrator narrative: payment streams composed with Logos Delivery Store (Steps 17, 20). Same as verification Flow B for local/testnet gates. |
-| N18 Track B | Optional payment-streams-only Basecamp UI (Steps 21–22). Not part of the verification matrix. |
+| Flow A | `MODE=module` on `scripts/e2e.sh`. No Store, no eligibility in the gate. |
+| Flow B | `MODE=store` (default). Dual-host demo with `delivery_module` and LIP-155 on Store. |
 
-Step 20 deliverable is N18 Track A (Store integrator journey), not Flow A module-only docs.
+Flow A/B are independent of N18 demo track names (development-map only).
+
+## N18 demo tracks (development-map)
+
+| Term | Meaning |
+| --- | --- |
+| N18 Track A | Integrator narrative: Store + payment streams (developer journey, Store pillars). |
+| N18 Track B | Optional payment-streams-only Basecamp UI (not in verification matrix). |
 
 ## Logos and protocol names
 
 | Term | Use |
 | --- | --- |
 | payment streams module | Prose description of the Logos plugin. |
-| `payment_streams_module` | Runtime module id (`logoscore load-module`, LogosAPI). |
-| Store | The Waku/Logos Store protocol (capitalize). |
-| `logos-delivery` | Repository implementing Store and liblogosdelivery. |
-| `delivery_module` | Logos plugin exposing Delivery/Store to logoscore. |
+| `payment_streams_module` | Runtime module id. |
+| Store | Waku/Logos Store protocol (capitalize). |
+| `logos-delivery` | Repository for Store and liblogosdelivery. |
+| `delivery_module` | Logos plugin for Delivery/Store. |
 | `logos_execution_zone` | LEZ wallet Logos module id. |
-| LIP-155 | Hyphenated spec name (not "LIP 155"). |
+| LIP-155 | Hyphenated spec name. |
 
-## Makefile targets vs flows
+## Makefile targets
 
-Historical step numbers remain in some Make targets:
+Primary (step-free):
 
 | Make target | Matrix cell |
 | --- | --- |
 | `make verify-module-local` | Flow A × localnet |
-| `make verify-step17` | Flow B × localnet |
-| `make verify-step17-back-to-back` | Flow B × localnet (deterministic lifecycle; see [step-24c](../plan/completed/step-24c-simplify-demo-flow.md)) |
-| `make verify-step18` | Flow B × testnet (advanced) |
+| `make verify-store-local` | Flow B × localnet |
+| `make verify-store-testnet` | Flow B × testnet (advanced) |
+| `make verify-store-local-lifecycle` | Maintainer only (two runs, one ledger) |
 
-See [verification-matrix.md](../verification-matrix.md) and [scripts/README.md](../../scripts/README.md).
+Legacy aliases: `verify-step17`, `verify-step18`, `verify-step17-back-to-back`.
+
+Canonical commands: [verification-matrix.md](verification-matrix.md),
+[scripts/README.md](../../scripts/README.md).

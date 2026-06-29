@@ -1,17 +1,17 @@
 # Logos runtime guide
 
 Historical install spine for Steps 7, 9–13 (development map). Product setup:
-[payment-streams-module/setup.md](payment-streams-module/setup.md). Verification:
+[payment-streams-module/README.md](payment-streams-module/README.md). Verification:
 [verification-matrix.md](verification-matrix.md).
 
 Build, install, and exercise `logos_execution_zone` and `payment_streams_module` in
 `logoscore` (integration plan Steps 7, 9–13; Steps 10–11 for chain fixture and module I/O).
 
 Step 10b operator detail (wallet `open` against Step 10a `.scaffold/wallet`, DoD script):
-[`step10b-wallet-runtime.md`](step10b-wallet-runtime.md).
+[`archive/steps/wallet-runtime-runbook.md`](archive/steps/wallet-runtime-runbook.md).
 
 Related: [`feature-branch-pins.md`](feature-branch-pins.md),
-[`step8-universal-legacy-probe-results.md`](step8-universal-legacy-probe-results.md),
+[`archive/steps/universal-legacy-probe-results.md`](archive/steps/universal-legacy-probe-results.md),
 [`development-map/program-index.md`](development-map/program-index.md).
 
 ## Part 1 — First-time install (Step 7)
@@ -100,7 +100,7 @@ nix build .#payment-streams-ffi
 Wallet module is pinned to upstream
 [PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19)
 on LEZ `main` ([PR 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510) merge;
-see [`step11d-wallet-510.md`](step11d-wallet-510.md));
+see [`archive/steps/wallet-510-runbook.md`](archive/steps/wallet-510-runbook.md));
 bundle via the patched wrapper flake (see [`feature-branch-pins.md`](feature-branch-pins.md)):
 
 ```bash
@@ -268,7 +268,7 @@ lm methods "$MODULES/logos_execution_zone/logos_execution_zone_plugin.so" | rg '
 
 Expected: `list_accounts`, PR 19 `send_generic_public_transaction`, and (patched 11b build)
 `PAYMENT_STREAMS_GUEST_BIN` / JSON submit support on the wallet plugin
-(Step 10b). Full install, `open`, and DoD: [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md).
+(Step 10b). Full install, `open`, and DoD: [`archive/steps/wallet-runtime-runbook.md`](archive/steps/wallet-runtime-runbook.md).
 
 ### Runtime module info
 
@@ -279,7 +279,7 @@ logoscore module-info payment_streams_module
 Expected: `Status: loaded`. No custom RPC methods until Step 11a.
 
 Cross-module Universal to Legacy wallet calls were validated in Step 8
-([`step8-universal-legacy-probe-results.md`](step8-universal-legacy-probe-results.md)).
+([`archive/steps/universal-legacy-probe-results.md`](archive/steps/universal-legacy-probe-results.md)).
 For operator checks, exercise the wallet directly:
 
 ```bash
@@ -381,15 +381,15 @@ New Universal API methods belong on the impl class; wallet stays dynamic.
 ## References
 
 - [`logos-universal-legacy-probe`](../logos-universal-legacy-probe/) — probe template
-- [`step1-findings-scaffold-rpc.md`](step1-findings-scaffold-rpc.md) — LEZ localnet and RPC
+- [`archive/steps/scaffold-rpc-findings.md`](archive/steps/scaffold-rpc-findings.md) — LEZ localnet and RPC
 - [`program-index.md`](development-map/program-index.md) — step map and status
 
 ---
 
 ## Part 3 — Dev test loop (Steps 11a–13)
 
-Step 10a fixture: [`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md).
-Step 10b wallet runtime: [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md).
+Step 10a fixture: [`archive/steps/local-chain-fixture.md`](archive/steps/local-chain-fixture.md).
+Step 10b wallet runtime: [`archive/steps/wallet-runtime-runbook.md`](archive/steps/wallet-runtime-runbook.md).
 This part covers the loop after `payment_streams_module` chain code changes (Step 11+).
 
 Steps 14–15 change `logos-delivery` / `liblogosdelivery` (Nim, C ABI smoke tests).
@@ -401,8 +401,8 @@ They do not use this Logos host loop; see [Steps 14–15](#steps-14-15-delivery-
 
 | Frequency | Work |
 |-----------|------|
-| One-time per machine | Step 10a: from `REPO`, `./scripts/seed-localnet-fixture.sh` ([`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md)) |
-| One-time per machine | Step 7 + 10b: `lgpm` install wallet + PS; `./scripts/archive/verify-step10b-dod.sh` ([Part 1](#part-1--first-time-install-step-7), [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md)) |
+| One-time per machine | Step 10a: from `REPO`, `./scripts/seed-localnet-fixture.sh` ([`archive/steps/local-chain-fixture.md`](archive/steps/local-chain-fixture.md)) |
+| One-time per machine | Step 7 + 10b: `lgpm` install wallet + PS; `./scripts/archive/verify-step10b-dod.sh` ([Part 1](#part-1--first-time-install-step-7), [`archive/steps/wallet-runtime-runbook.md`](archive/steps/wallet-runtime-runbook.md)) |
 | Each new terminal | `export` paths + `nix shell` (tools) |
 | Each dev iteration | PS `nix build` → `lgpm install` PS → restart logoscore → `load-module` |
 | Each test session | Start LEZ localnet if stopped; point wallet at `http://127.0.0.1:3040` |
@@ -420,7 +420,7 @@ export LEE_WALLET_HOME_DIR="$REPO/.scaffold/wallet"
 
 Adjust paths to match your checkout. Step 10a localnet and wallet state live under
 `$REPO/.scaffold/` (`scaffold.toml` in repo root). Older discovery used a separate
-`logos-scaffold-workspace`; see [`step1-findings-scaffold-rpc.md`](step1-findings-scaffold-rpc.md)
+`logos-scaffold-workspace`; see [`archive/steps/scaffold-rpc-findings.md`](archive/steps/scaffold-rpc-findings.md)
 for RPC formats only.
 
 Tooling shell (run in each tab that needs `lgpm`, `logoscore`, or `lm`):
@@ -443,7 +443,7 @@ command -v lgpm logoscore lm
 ## One-time — LEZ scaffold and deploy (Step 7+)
 
 Commands, program deploy, and account formats:
-[`step1-findings-scaffold-rpc.md`](step1-findings-scaffold-rpc.md).
+[`archive/steps/scaffold-rpc-findings.md`](archive/steps/scaffold-rpc-findings.md).
 Record `program_id` and test account ids from that doc before module chain-read tests.
 
 Minimal session check (from `REPO` after Step 10a seed):
@@ -456,7 +456,7 @@ lgs wallet -- check-health
 ./scripts/archive/verify-step10a-dod.sh
 ```
 
-Expected: localnet running when testing Steps 10+ (start via [`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md) if stopped).
+Expected: localnet running when testing Steps 10+ (start via [`archive/steps/local-chain-fixture.md`](archive/steps/local-chain-fixture.md) if stopped).
 
 ---
 
@@ -476,7 +476,7 @@ Expected: localnet running, wallet healthy.
 
 For logoscore, load `logos_execution_zone` then `payment_streams_module`, then
 `open` with `$REPO/.scaffold/wallet/wallet_config.json` and `storage.json`
-(Step 10b — [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md)).
+(Step 10b — [`archive/steps/wallet-runtime-runbook.md`](archive/steps/wallet-runtime-runbook.md)).
 
 ---
 
@@ -594,8 +594,8 @@ defines. Exact calls depend on implemented signatures; patterns:
 
 Step 10a–10b — fixture and wallet `.lgx`
 
-- [`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md) — seed, manifest, verify-step10a-dod
-- [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md) — patched `.lgx`, `open`, verify-step10b-dod
+- [`archive/steps/local-chain-fixture.md`](archive/steps/local-chain-fixture.md) — seed, manifest, verify-step10a-dod
+- [`archive/steps/wallet-runtime-runbook.md`](archive/steps/wallet-runtime-runbook.md) — patched `.lgx`, `open`, verify-step10b-dod
 
 Step 11a — chain reads
 
@@ -606,7 +606,7 @@ Step 11a — chain reads
 
 Step 11b — writes and status
 
-- Same LEZ stack as Step 11a; runbook [`step11b-chain-writes.md`](step11b-chain-writes.md)
+- Same LEZ stack as Step 11a; runbook [`archive/steps/module-chain-writes-runbook.md`](archive/steps/module-chain-writes-runbook.md)
 - `lm methods` on the PS plugin lists five read helpers plus `chainAction` (not per-write names)
 - Wallet plugin should expose `send_generic_public_transaction` and, for 11b IPC,
   `send_generic_public_transaction_json`; set `PAYMENT_STREAMS_GUEST_BIN` on the daemon
@@ -629,7 +629,7 @@ Step 12 — eligibility (user side)
 Step 13 — provider verify
 
 - `verifyEligibilityForStoreQuery` via `logoscore call`
-- Runbook [`step13-provider-eligibility.md`](step13-provider-eligibility.md);
+- Runbook [`archive/steps/provider-eligibility-runbook.md`](archive/steps/provider-eligibility-runbook.md);
   DoD: `./scripts/archive/verify-step13-dod.sh` or `make verify-step13`
 - Structural failure cases should not require chain; happy path needs seeded vault/stream with
   unaccrued balance on stream `0` (fresh fixture — see recovery doc)
@@ -687,7 +687,7 @@ repeat [PS restart loop](#repeat-loop--after-ps-or-rust-ffi-edits-steps-10-13) f
 | 16 prep | `logos-delivery-module/flake.nix` | `logos-delivery` input → `ref=feat/payment-streams-store-eligibility` ([feature-branch-pins.md](feature-branch-pins.md)) |
 
 Step 16+ also loads `delivery_module` beside wallet + PS. Step 17 dual-host detail:
-[step17-e2e-local.md](step17-e2e-local.md).
+[archive/steps/local-store-dual-host-runbook.md](archive/steps/local-store-dual-host-runbook.md).
 
 ### Step 17 — two logoscore hosts on one machine
 

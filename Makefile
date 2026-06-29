@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-module-local verify-step17 verify-step17-back-to-back verify-step18 verify-step18-testnet-read-smoke deploy-testnet bootstrap-testnet prepare-localnet full-reset-localnet debug-sequencer-latency
+.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-module-local verify-store-local verify-store-testnet verify-store-local-lifecycle verify-step17 verify-step17-back-to-back verify-step18 verify-step18-testnet-read-smoke deploy-testnet bootstrap-testnet prepare-localnet full-reset-localnet debug-sequencer-latency
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -41,12 +41,12 @@ help: ## Show this help
 	@echo "  make verify-step12  Run Step 12 DoD script (archived)"
 	@echo "  make verify-step13  Run Step 13 DoD script (archived)"
 	@echo ""
-	@echo "  Verification matrix (mode x chain) — see docs/verification-matrix.md:"
-	@echo "  make verify-module-local  Flow A (module only) local happy path"
-	@echo "  make verify-step17        Flow B (Store) local E2E (restore snapshot + demo)"
-	@echo "  make verify-step17-back-to-back  verify-step17 then SKIP_SEED=1 (monotonic stream ids)"
-	@echo "  make verify-step18        Flow B (Store) testnet E2E (advanced; needs fixtures/testnet.json)"
-	@echo "  # Flow A on testnet is future work (unsupported); see docs/testnet-claim-known-issue.md"
+	@echo "  Verification — see docs/reference/verification-matrix.md (canonical: scripts/e2e.sh):"
+	@echo "  make verify-module-local       Module verification, localnet"
+	@echo "  make verify-store-local        Store integration, localnet"
+	@echo "  make verify-store-testnet      Store integration, testnet (advanced)"
+	@echo "  make verify-store-local-lifecycle  Maintainer: two runs on one ledger"
+	@echo "  (legacy aliases: verify-step17, verify-step18, verify-step17-back-to-back)"
 	@echo ""
 	@echo "  make full-reset-localnet  Rebuild funded snapshot (prefund, no stream)"
 	@echo "  make debug-sequencer-latency  RPC + block-rate probe (local 3040)"
@@ -75,7 +75,7 @@ cli: ## Run the IDL-driven CLI (ARGS="...")
 	cargo run --manifest-path examples/Cargo.toml --bin lez_payment_streams_cli -- -i $(IDL_FILE) $(ARGS)
 
 deploy: ## Deploy program to sequencer (pinned LEZ wallet; set LEE_WALLET_HOME_DIR)
-	@test -n "$$LEE_WALLET_HOME_DIR" || (echo "ERROR: set LEE_WALLET_HOME_DIR (see docs/step10a-local-chain-fixture.md)"; exit 1)
+	@test -n "$$LEE_WALLET_HOME_DIR" || (echo "ERROR: set LEE_WALLET_HOME_DIR (see docs/archive/steps/local-chain-fixture.md)"; exit 1)
 	@test -f "$(PROGRAM_BIN)" || (echo "ERROR: Binary not found. Run 'make build' first."; exit 1)
 	wallet deploy-program $(PROGRAM_BIN)
 	@echo "✅ Program deployed"
@@ -138,17 +138,23 @@ verify-module-local: ## Flow A (module only) local happy path (MODE=module scrip
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e-local.sh
 	MODE=module CHAIN=local ./scripts/e2e.sh local run
 
-verify-step17: ## Flow B (Store) local dual-host E2E (scripts/e2e.sh local run)
+verify-store-local: ## Store integration local dual-host E2E (scripts/e2e.sh local run)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
 	MODE=store CHAIN=local ./scripts/e2e.sh local run
 
-verify-step17-back-to-back: ## Step 17 gate: restore run then continue chain (SKIP_SEED=1)
-	$(MAKE) verify-step17
-	@echo "Waiting for sequencer before second demo leg (no restore)…"
-	sleep 45
-	chmod +x scripts/e2e/continuation-owner-topup.sh
-	./scripts/e2e/continuation-owner-topup.sh
-	SKIP_BUILD=1 SKIP_SEED=1 RESTORE_LOCALNET=0 $(MAKE) verify-step17
+verify-store-testnet: ## Store integration public sequencer E2E (advanced; scripts/e2e.sh testnet run)
+	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
+	MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run
+
+verify-store-local-lifecycle: ## Maintainer: two Store runs on one ledger (scripts/archive/verify-store-local-lifecycle.sh)
+	chmod +x scripts/archive/verify-store-local-lifecycle.sh
+	./scripts/archive/verify-store-local-lifecycle.sh
+
+verify-step17: verify-store-local ## legacy alias
+
+verify-step17-back-to-back: verify-store-local-lifecycle ## legacy alias
+
+verify-step18: verify-store-testnet ## legacy alias
 
 debug-sequencer-latency: ## Probe sequencer RPC latency and block production (scripts/e2e/sequencer_latency_probe.py)
 	chmod +x scripts/e2e/sequencer_latency_probe.py
@@ -173,7 +179,3 @@ deploy-testnet: ## Step 18 one-time program deploy (Part B)
 bootstrap-testnet: ## Step 18 one-time fixture bootstrap (Part B; scripts/archive/bootstrap-testnet.sh)
 	chmod +x scripts/archive/bootstrap-testnet.sh scripts/archive/testnet-common.sh
 	./scripts/archive/bootstrap-testnet.sh
-
-verify-step18: ## Flow B (Store) public sequencer E2E (advanced; scripts/e2e.sh testnet run)
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
-	MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run

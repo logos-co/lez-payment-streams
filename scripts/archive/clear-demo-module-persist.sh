@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Remove Step 12 / demo logoscore instance dirs (see docs/demo-localnet-recovery.md).
+# Remove Step 12 / demo logoscore instance dirs (see docs/archive/operator/localnet-recovery.md).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

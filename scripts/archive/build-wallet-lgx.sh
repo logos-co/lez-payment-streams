@@ -2,7 +2,7 @@
 # Build logos_execution_zone .lgx from the patched PR 19 wrapper flake (Step 10b).
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 FLAKE_DIR="$REPO_ROOT/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched"
 OUT_DIR="$FLAKE_DIR/wallet-lgx-out"
 

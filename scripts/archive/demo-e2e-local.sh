@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Step 17 — local dual-host paid Store E2E (see docs/step17-e2e-local.md).
+# Step 17 — local dual-host paid Store E2E (see docs/archive/steps/local-store-dual-host-runbook.md).
 # Archived wrapper. Prefer: make verify-step17  (./scripts/e2e.sh local run)
 set -euo pipefail
 

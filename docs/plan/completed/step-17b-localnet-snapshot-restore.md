@@ -1,7 +1,7 @@
 # Step 17b — localnet snapshot restore (complete)
 
 Operational addendum to [Step 17](step-17.md). Runnable E2E still gates on
-[step17-e2e-local.md](../../step17-e2e-local.md); this step removes pinata-heavy reuse and
+[archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md); this step removes pinata-heavy reuse and
 stale-stream depletion on back-to-back runs.
 
 ## Goal
@@ -74,4 +74,4 @@ orchestrator (`FULL_RESET` threads through prepare when set).
 Complete (2026-06-19). Step 24c extended restore with clock sync, conservative deposit sizing,
 and verify lifecycle teardown on the same chain ([step-24c-simplify-demo-flow.md](step-24c-simplify-demo-flow.md)).
 
-Decision record: [N15](../../reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19).
+Decision record: [N15](../../../reference/decisions-historical.md#n15-step-17b-localnet-snapshot-restore-2026-06-19).

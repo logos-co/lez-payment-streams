@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify Step 11d definition of done (see docs/step11d-wallet-510.md).
+# Verify Step 11d definition of done (see docs/archive/steps/wallet-510-runbook.md).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -39,10 +39,10 @@ else
   bad "lez-wallet-ffi-patched flake.nix missing rc5 rev"
 fi
 
-if [[ -f docs/step11d-wallet-510.md ]]; then
+if [[ -f docs/archive/steps/wallet-510-runbook.md ]]; then
   ok "Step 11d runbook present"
 else
-  bad "missing docs/step11d-wallet-510.md"
+  bad "missing docs/archive/steps/wallet-510-runbook.md"
 fi
 
 JSON_PATCH=logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-qt-send-generic-public-transaction-json.patch

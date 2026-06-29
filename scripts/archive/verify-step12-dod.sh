@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify Step 12 definition of done (see docs/step12-user-eligibility.md).
+# Verify Step 12 definition of done (see docs/archive/steps/user-eligibility-runbook.md).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,10 +23,10 @@ skip() { echo "SKIP: $*"; }
 
 echo "=== Step 12 DoD verification ==="
 
-if [[ -f docs/step12-user-eligibility.md ]]; then
+if [[ -f docs/archive/steps/user-eligibility-runbook.md ]]; then
   ok "Step 12 runbook present"
 else
-  bad "missing docs/step12-user-eligibility.md"
+  bad "missing docs/archive/steps/user-eligibility-runbook.md"
 fi
 
 echo "--- Rust / FFI (offline) ---"

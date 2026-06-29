@@ -3,7 +3,7 @@
 Active-work packet for agents. Index: [program-index.md](../../development-map/program-index.md).
 
 **Optional stretch** after Step 20 — time-boxed; not required for integration milestone closure.
-Track split: [N18](../../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
+Track split: [N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 
 ### Step 21, Payment streams Basecamp UI
 
@@ -48,14 +48,14 @@ messaging.
 #### Deliver
 
 - `ui_qml` `.lgx` buildable with `nix build`; loads in Basecamp without QML errors.
-- Dependency pins aligned with [feature-branch-pins.md](../../feature-branch-pins.md) for
+- Dependency pins aligned with [feature-branch-pins.md](../../reference/feature-branch-pins.md) for
   `payment_streams_module` and patched wallet `.lgx`.
 
 Definition of done:
 
 - Operator can run payer flows (minimum: create stream, list streams) on local LEZ through the UI.
 - If payee claim is implemented: doc packet / in-app hint states the out-of-band stream-id
-  assumption ([N18](../../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
+  assumption ([N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
 
 Not in scope: Step 17 E2E replay in UI; `delivery_module`; eligibility prepare/verify for Store;
 Step 20 developer journey content (cross-link only).

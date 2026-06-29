@@ -30,16 +30,16 @@ verification script or runbook. It does not change LIP-155, Store tag `30`, or h
 | Component | Source | Notes |
 | --- | --- | --- |
 | `logoscore` daemon | Org standard install | Persistent `--config-dir`, `--persistence-path`, `-m` module dir |
-| `logos_execution_zone` | Patched wrapper pin ([feature-branch-pins.md](../../feature-branch-pins.md)) | Provider wallet keys; `sequencer_addr` = Step 18 testnet |
+| `logos_execution_zone` | Patched wrapper pin ([feature-branch-pins.md](../../reference/feature-branch-pins.md)) | Provider wallet keys; `sequencer_addr` = Step 18 testnet |
 | `payment_streams_module` | `logos-payment-streams-module#lgx` | Inbound verify via wallet reads on testnet |
-| `delivery_module` | Integration branch `#lgx` | Store service + relay; bundled `liblogosdelivery` ≥ pinned rev ([N13](../../reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)) |
+| `delivery_module` | Integration branch `#lgx` | Store service + relay; bundled `liblogosdelivery` ≥ pinned rev ([N13](../../../reference/decisions-historical.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)) |
 
 On startup (or documented ops playbook):
 
 - `load-module` order as Step 17; `open` wallet with provider `wallet_config.json` /
   `storage.json`.
 - `createNode` + `start` with Store enabled, SQLite archive path on durable disk, retention
-  policy (same fields as [step17-e2e-local.md](../../step17-e2e-local.md#delivery-createnode-defaults)).
+  policy (same fields as [archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md#delivery-createnode-defaults)).
 - `setEligibilityVerifier` → `payment_streams_module` (paid mode for every inbound Store).
 - Sync wallet to testnet height before serving.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify Step 10a definition of done (see docs/step10a-local-chain-fixture.md).
+# Verify Step 10a definition of done (see docs/archive/steps/local-chain-fixture.md).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -76,7 +76,7 @@ else
   bad "missing $MANIFEST (run ./scripts/seed-localnet-fixture.sh)"
 fi
 
-if [[ -f docs/step10a-local-chain-fixture.md ]] && grep -q 'Persist vs reset' docs/step10a-local-chain-fixture.md; then
+if [[ -f docs/archive/steps/local-chain-fixture.md ]] && grep -q 'Persist vs reset' docs/archive/steps/local-chain-fixture.md; then
   ok "reset procedure documented"
 else
   bad "reset procedure doc"

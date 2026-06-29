@@ -2,14 +2,14 @@
 
 Status: outdated (2026-06-08). Superseded by Step 9 in
 [`program-index.md`](../development-map/program-index.md) and
-[`docs/logos-runtime-guide.md`](../logos-runtime-guide.md).
+[`docs/archive/steps/logos-runtime-guide.md`](../archive/steps/logos-runtime-guide.md).
 
 This records the original Legacy bootstrap plan (pre–Step 9): a Legacy `PluginInterface` Qt plugin
 (`payment_streams_module_plugin.{h,cpp}`, `i_payment_streams_module.h`) with
 `logos_execution_zone` listed in `metadata.json` dependencies.
 
 We chose the Universal interface instead after
-[`docs/step8-universal-legacy-probe-results.md`](../step8-universal-legacy-probe-results.md)
+[`docs/archive/steps/universal-legacy-probe-results.md`](../archive/steps/universal-legacy-probe-results.md)
 (Step 8).
 
 ## What the Legacy shell contained
@@ -167,4 +167,4 @@ Step 7 repeats the same `getClient` plus `invokeRemoteMethod` pattern inside ded
 - `logos-delivery-module/src/delivery_module_plugin.h` - Dependency module (legacy pattern)
 - `logos-execution-zone-module/src/logos_execution_zone_wallet_module.h` - Dependency module (legacy pattern)
 - GitHub Issue #31 in `logos-delivery-module` - Documents `LogosModules` wrapper crash in core sidecars
-- [logos-architecture-overview.md](../reference/logos-architecture-overview.md) Section "Module Implementation Patterns" - Pattern comparison
+- [logos-architecture-overview.md](../archive/reference/logos-architecture-overview.md) Section "Module Implementation Patterns" - Pattern comparison

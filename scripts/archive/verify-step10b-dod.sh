@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify Step 10b definition of done (see docs/step10b-wallet-runtime.md).
+# Verify Step 10b definition of done (see docs/archive/steps/wallet-runtime-runbook.md).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -27,10 +27,10 @@ else
   bad "missing wallet .lgx (run ./scripts/archive/build-wallet-lgx.sh)"
 fi
 
-if [[ -f docs/step10b-wallet-runtime.md ]]; then
+if [[ -f docs/archive/steps/wallet-runtime-runbook.md ]]; then
   ok "Step 10b runbook present"
 else
-  bad "missing docs/step10b-wallet-runtime.md"
+  bad "missing docs/archive/steps/wallet-runtime-runbook.md"
 fi
 
 if [[ ! -d "$MODULES/logos_execution_zone" ]]; then

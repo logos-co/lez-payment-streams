@@ -2,40 +2,56 @@
 
 Development map: step status, delivery forks, and historical runbook index.
 Agents: repo root [`AGENTS.md`](../../AGENTS.md).
-Product docs: [README.md](../../README.md), [verification-matrix.md](../verification-matrix.md).
+Product docs: [README.md](../../README.md), [verification-matrix.md](../reference/verification-matrix.md).
 Operators: [development-map/README.md](README.md).
 
 Normative APIs: [integration-contracts.md](../reference/integration-contracts.md),
-[decisions-and-notes.md](../reference/decisions-and-notes.md).
+[integration-decisions.md](../reference/integration-decisions.md).
+
+## Archived runbook rename ledger
+
+Historical `docs/step*.md` files live under `docs/archive/steps/` with descriptive names.
+Step numbers appear only in this table and plan packets.
+
+| Former path | Archive path |
+| --- | --- |
+| `step17-e2e-local.md` | [archive/steps/local-store-dual-host-runbook.md](../archive/steps/local-store-dual-host-runbook.md) |
+| `step18-public-sequencer-e2e.md` | [archive/steps/public-sequencer-store-runbook.md](../archive/steps/public-sequencer-store-runbook.md) |
+| `step10a-local-chain-fixture.md` | [archive/steps/local-chain-fixture.md](../archive/steps/local-chain-fixture.md) |
+| `step10b-wallet-runtime.md` | [archive/steps/wallet-runtime-runbook.md](../archive/steps/wallet-runtime-runbook.md) |
+| `step11a`–`step11d` | `module-chain-reads-runbook.md`, `module-chain-writes-runbook.md`, `sign-public-payload-runbook.md`, `wallet-510-runbook.md` |
+| `step12` / `step13` | `user-eligibility-runbook.md`, `provider-eligibility-runbook.md` |
+| `logos-runtime-guide.md` | [archive/steps/logos-runtime-guide.md](../archive/steps/logos-runtime-guide.md) |
+| `demo-localnet-recovery.md` | [archive/operator/localnet-recovery.md](../archive/operator/localnet-recovery.md) |
 
 ## Task summary
 
 Logos Delivery Store requests may carry a payment-stream eligibility proof; the provider verifies
 against LEZ on-chain state before serving. Store tag `30` follows RFC 73 (proof on request,
-status on response) with LIP-155 as the proof bytes ([D1](../reference/decisions-and-notes.md#d1-store-wire-format)).
+status on response) with LIP-155 as the proof bytes ([D1](../reference/integration-decisions.md#d1-store-wire-format)).
 Crypto and policy live in Rust (`lez-payment-streams-core`,
 `lez-payment-streams-ffi`); orchestration in Universal `payment_streams_module`; Store wire and
 `liblogosdelivery` hooks in the delivery repos (Steps 14–16).
 
 MVP scope: LIP-155 transparent vaults, single user and single provider, paid Store mode on the
-provider. Demonstration is split into two tracks ([N18](../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
+provider. Demonstration is split into two tracks ([N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
 **Track A** — integrator integration demo (Step 17 script + Step 20 developer journey): payment
 streams eligibility with Logos Delivery Store. **Track B** — optional payment streams-only UI
 (Steps 21–22): vault/stream/claim flows in Basecamp; service and stream discovery out of band.
 Step 17 is the local LEZ gate (`make verify-step17`). Step 18 uses public testnet for chain I/O while Store and relay stay on two local `logoscore`
 hosts; org guest deploy is on chain. Step 18b (rc5 operational pin) is complete on `master`
-([N16](../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06)). On-chain
+([N16](../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06)). On-chain
 guest: Step 19 (`rfc-index` branch `feat/payment-streams-onchain-part`); see
-[architecture.md](../on-chain/architecture.md).
+[architecture.md](../on-chain/README.md).
 
 ## Program outcomes
 
 | Outcome | Steps |
 | --- | --- |
-| Runnable integration demo (CLI, Store + eligibility) | 17 local LEZ ([N17](../reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06)); 18 public sequencer + local P2P (rc5 tooling) |
+| Runnable integration demo (CLI, Store + eligibility) | 17 local LEZ ([N17](../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06)); 18 public sequencer + local P2P (rc5 tooling) |
 | LIP-155 on-chain spec (branch pin) | 19 (complete) |
 | Developer journey — Track A (integrators, Store integration) | 20 (**next**) |
-| Payment streams UI + user journey — Track B (protocol only, optional) | 21–22 (optional stretch; [N18](../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)) |
+| Payment streams UI + user journey — Track B (protocol only, optional) | 21–22 (optional stretch; [N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)) |
 | Public hosted Store provider (optional) | 23 |
 | LEZ in-process harness (`program_tests`, rc5 `lee`) | 24 + 24b (complete) |
 | Deterministic demo lifecycle (fresh stream, explicit prepare id) | 24c complete — [step-24c-simplify-demo-flow.md](../plan/completed/step-24c-simplify-demo-flow.md) |
@@ -48,17 +64,17 @@ Details in step packets under [`../plan/upcoming/`](../plan/upcoming/),
 
 ### Store query dependency
 
-Steps 16–20 need Store query on our delivery forks, not on upstream `master` ([D2](../reference/decisions-and-notes.md#d2-delivery-module-hook-design), [N6](../reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)):
+Steps 16–20 need Store query on our delivery forks, not on upstream `master` ([D2](../reference/integration-decisions.md#d2-delivery-module-hook-design), [N6](../reference/integration-decisions.md#n6-delivery-module-store-query-exposure)):
 `logosdelivery_store_query` in `logos-delivery` (Step 15) and `storeQuery(...)` on
 `logos-delivery-module` (Step 16). Upstream N6 is no longer a gate for Steps 14–20.
 Step 14 (wire) and Step 15 (C hooks + `logosdelivery_store_query`) are complete on the
 `logos-delivery` fork; Step 16 (bridge on `logos-delivery-module`) is complete on the module
 fork (`9361e49` on `feat/payment-streams-store-eligibility`; eligibility bridge threading for Step 17).
 Step 17 owns full-stack E2E
-([N12](../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+([N12](../../reference/decisions-historical.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
 Dual-host demo coordination stays in host scripts
-([N17](../reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06)).
-Step 18 Part B follows rc5 on `master` ([N16](../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06)).
+([N17](../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06)).
+Step 18 Part B follows rc5 on `master` ([N16](../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06)).
 
 We do not maintain the retired exploratory PR branch
 (`feat/liblogosdelivery-query-store` / old `queryStore` exposure) in payment-streams flakes.
@@ -77,19 +93,19 @@ on a remote:
 2. `feat/lip155-store-eligibility`
 3. `integration/payment-streams-store`
 
-Record the chosen name in [`feature-branch-pins.md`](../feature-branch-pins.md) when creating
+Record the chosen name in [`feature-branch-pins.md`](../reference/feature-branch-pins.md) when creating
 the branch. Both delivery repos must use the same string.
 
 | Repo | Steps | Scope |
 | --- | --- | --- |
 | `logos-delivery` | 14–15 (done) | Store codec (tag `30`), `liblogosdelivery` hooks, `logosdelivery_store_query` |
-| `logos-delivery-module` | 16 (done) | `storeQuery`, eligibility routing; `flake.nix` pins `logos-delivery` to `feat/payment-streams-store-eligibility` ([feature-branch-pins.md](../feature-branch-pins.md)) |
+| `logos-delivery-module` | 16 (done) | `storeQuery`, eligibility routing; `flake.nix` pins `logos-delivery` to `feat/payment-streams-store-eligibility` ([feature-branch-pins.md](../reference/feature-branch-pins.md)) |
 
 Suggested workflow: Steps 14–15 are on `logos-delivery` branch
 `feat/payment-streams-store-eligibility`. Step 16 is on `logos-delivery-module` (same branch
 name). The module repo points its flake `logos-delivery` input at that branch; commit
 `flake.lock` when the delivery branch moves.
-Optional explicit rev rows in [`feature-branch-pins.md`](../feature-branch-pins.md) for Step 17
+Optional explicit rev rows in [`feature-branch-pins.md`](../reference/feature-branch-pins.md) for Step 17
 needs reproducible `lgpm` installs. Wallet pins in that doc are unchanged.
 
 ## Onboarding
@@ -100,12 +116,12 @@ needs reproducible `lgpm` installs. Wallet pins in that doc are unchanged.
 2. [`../reference/integration-contracts.md`](../reference/integration-contracts.md)
 3. Step packet: [`../plan/upcoming/step-N.md`](../plan/upcoming/) or
    [`../plan/completed/step-N.md`](../plan/completed/) (Step 16) or runbook under `../step*.md`
-4. [`logos-architecture-overview.md`](../reference/logos-architecture-overview.md) when boundaries are unclear
+4. [`logos-architecture-overview.md`](../archive/reference/logos-architecture-overview.md) when boundaries are unclear
 
 ### Full (first time in repo)
 
-Add: [`../logos-runtime-guide.md`](../logos-runtime-guide.md), [`../step1-findings-scaffold-rpc.md`](../step1-findings-scaffold-rpc.md),
-[`../feature-branch-pins.md`](../feature-branch-pins.md), LIP-155 (`rfc-index/docs/anoncomms/raw/payment-streams.md`, branch `feat/payment-streams-onchain-part` on `logos-co/logos-lips`).
+Add: [`../archive/steps/logos-runtime-guide.md`](../archive/steps/logos-runtime-guide.md), [`../archive/steps/scaffold-rpc-findings.md`](../archive/steps/scaffold-rpc-findings.md),
+[`../reference/feature-branch-pins.md`](../reference/feature-branch-pins.md), LIP-155 (`rfc-index/docs/anoncomms/raw/payment-streams.md`, branch `feat/payment-streams-onchain-part` on `logos-co/logos-lips`).
 
 ## Components (sketch)
 
@@ -119,19 +135,19 @@ Add: [`../logos-runtime-guide.md`](../logos-runtime-guide.md), [`../step1-findin
 | `payment_streams_ui` (optional) | Track B: Basecamp UI over `payment_streams_module` only (Step 21) |
 | `lgs` / `logoscore` / `lgpm` / `lm` | Localnet, host, install, introspection |
 
-Detail: [`logos-architecture-overview.md`](../reference/logos-architecture-overview.md).
+Detail: [`logos-architecture-overview.md`](../archive/reference/logos-architecture-overview.md).
 
 ## Decisions and notes
 
 | ID | Topic | Section |
 | --- | --- | --- |
-| D1 | Store wire tags | [decisions-and-notes.md](../reference/decisions-and-notes.md#d1-store-wire-format) |
-| D2 | Delivery hooks | [D2](../reference/decisions-and-notes.md#d2-delivery-module-hook-design) |
-| D3 | Wallet write path (491 / PR 19) | [D3](../reference/decisions-and-notes.md#d3-wallet-write-path) |
-| D4 | Wallet module id | [D4](../reference/decisions-and-notes.md#d4-wallet-module-runtime-name) |
-| D5 | PS module naming | [D5](../reference/decisions-and-notes.md#d5-new-module-naming) |
-| D6 | Universal interface | [D6](../reference/decisions-and-notes.md#d6-universal-module-interface) |
-| N1–N18 | Carry-forward notes | [decisions-and-notes.md](../reference/decisions-and-notes.md) (N16 rc5 operational pin; N17 script orchestration; N18 Track A vs B) |
+| D1 | Store wire tags | [integration-decisions.md](../reference/integration-decisions.md#d1-store-wire-format) |
+| D2 | Delivery hooks | [D2](../reference/integration-decisions.md#d2-delivery-module-hook-design) |
+| D3 | Wallet write path (491 / PR 19) | [D3](../reference/integration-decisions.md#d3-wallet-write-path) |
+| D4 | Wallet module id | [D4](../reference/integration-decisions.md#d4-wallet-module-runtime-name) |
+| D5 | PS module naming | [D5](../reference/integration-decisions.md#d5-new-module-naming) |
+| D6 | Universal interface | [D6](../reference/integration-decisions.md#d6-universal-module-interface) |
+| N1–N18 | Carry-forward notes | [integration-decisions.md](../reference/integration-decisions.md) (N16 rc5 operational pin; N17 script orchestration; N18 Track A vs B) |
 
 Cross-step APIs without reading full D/N: [`../reference/integration-contracts.md`](../reference/integration-contracts.md).
 
@@ -140,21 +156,21 @@ Cross-step APIs without reading full D/N: [`../reference/integration-contracts.m
 | Step | Focus | Status |
 | --- | --- | --- |
 | 1–5 | Rust FFI / core | Complete — `cargo test`, workspace crates |
-| 6 | Store query via delivery | Closed — fork API in Steps 15–16 ([N6](../reference/decisions-and-notes.md#n6-delivery-module-store-query-exposure)) |
-| 7 | Operator install | Runbook: [logos-runtime-guide.md](../logos-runtime-guide.md) Part 1 |
-| 8 | Universal → Legacy probe | Complete — [step8](../step8-universal-legacy-probe-results.md) |
+| 6 | Store query via delivery | Closed — fork API in Steps 15–16 ([N6](../reference/integration-decisions.md#n6-delivery-module-store-query-exposure)) |
+| 7 | Operator install | Runbook: [logos-runtime-guide.md](../archive/steps/logos-runtime-guide.md) Part 1 |
+| 8 | Universal → Legacy probe | Complete — [step8](../archive/steps/universal-legacy-probe-results.md) |
 | 9 | Universal module bootstrap | Complete — runtime guide Part 2 |
-| 10 | LEZ fixture + wallet | 10a [fixture](../step10a-local-chain-fixture.md), 10b [wallet](../step10b-wallet-runtime.md) |
-| 11 | Module chain I/O | 11a–d runbooks; [N10](../reference/decisions-and-notes.md#n10-step-11b-module-writes-decisions) |
-| 12 | User eligibility | Complete — [step12](../step12-user-eligibility.md), `verify-step12-dod.sh` |
-| 13 | Provider verify | Complete — [step13](../step13-provider-eligibility.md), `verify-step13-dod.sh` |
+| 10 | LEZ fixture + wallet | 10a [fixture](../archive/steps/local-chain-fixture.md), 10b [wallet](../archive/steps/wallet-runtime-runbook.md) |
+| 11 | Module chain I/O | 11a–d runbooks; [N10](../reference/integration-decisions.md#n10-step-11b-module-writes-decisions) |
+| 12 | User eligibility | Complete — [step12](../archive/steps/user-eligibility-runbook.md), `verify-step12-dod.sh` |
+| 13 | Provider verify | Complete — [step13](../archive/steps/provider-eligibility-runbook.md), `verify-step13-dod.sh` |
 | 14 | Store wire (`logos-delivery`) | Complete — [step-14-normative.md](../plan/completed/step-14-normative.md) |
 | 15 | `liblogosdelivery` hooks | Complete — [step-15-normative.md](../plan/completed/step-15-normative.md) |
 | 16 | `delivery_module` routing | Complete — [step-16.md](../plan/completed/step-16.md) |
-| 17 | E2E demo (local LEZ) | Complete — [step-17.md](../plan/completed/step-17.md), [step17-e2e-local.md](../step17-e2e-local.md) |
-| 17b | Localnet snapshot restore | Complete — [step-17b](../plan/completed/step-17b-localnet-snapshot-restore.md), [N15](../reference/decisions-and-notes.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) |
-| 18b | rc5 LEZ pin unify | Complete — [step-18b-rc5-unify-handoff.md](../plan/completed/step-18b-rc5-unify-handoff.md), [N16](../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06) |
-| 18 | Public sequencer E2E | Complete — [step-18-public-testnet-demo.md](../plan/completed/step-18-public-testnet-demo.md), [step18-public-sequencer-e2e.md](../step18-public-sequencer-e2e.md) |
+| 17 | E2E demo (local LEZ) | Complete — [step-17.md](../plan/completed/step-17.md), [archive/steps/local-store-dual-host-runbook.md](../archive/steps/local-store-dual-host-runbook.md) |
+| 17b | Localnet snapshot restore | Complete — [step-17b](../plan/completed/step-17b-localnet-snapshot-restore.md), [N15](../../reference/decisions-historical.md#n15-step-17b-localnet-snapshot-restore-2026-06-19) |
+| 18b | rc5 LEZ pin unify | Complete — [step-18b-rc5-unify-handoff.md](../plan/completed/step-18b-rc5-unify-handoff.md), [N16](../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06) |
+| 18 | Public sequencer E2E | Complete — [step-18-public-testnet-demo.md](../plan/completed/step-18-public-testnet-demo.md), [archive/steps/public-sequencer-store-runbook.md](../archive/steps/public-sequencer-store-runbook.md) |
 | 19 | LIP-155 on-chain spec | Complete — [step-19](../plan/completed/step-19-lip155-onchain-spec.md) |
 | 20 | Developer journey (Track A — Store integration) | **Active** — [step-20-developer-journey.md](../plan/upcoming/step-20-developer-journey.md) |
 | 21 | Payment streams Basecamp UI (Track B) | Optional stretch — [step-21-basecamp-ui.md](../plan/upcoming/step-21-basecamp-ui.md) |
@@ -162,19 +178,19 @@ Cross-step APIs without reading full D/N: [`../reference/integration-contracts.m
 | 23 | Public Store provider | Optional — [step-23-public-store-provider.md](../plan/upcoming/step-23-public-store-provider.md) |
 | 24 | LEZ `lee` harness @ 510 | Complete — [step-24](../plan/completed/step-24-lee-harness-upgrade.md) |
 | 24b | Rust `lee` / guest unify on rc5 | Complete — [step-24b-rc5-rust-lee-unify.md](../plan/completed/step-24b-rc5-rust-lee-unify.md) |
-| 24c | Simplify demo flow (fresh stream / explicit prepare) | Complete — [step-24c-simplify-demo-flow.md](../plan/completed/step-24c-simplify-demo-flow.md) (testnet claim optional — [testnet-claim-known-issue.md](../testnet-claim-known-issue.md)) |
-| 25 | Demo coordination Logos module | Won't fix — [cancelled/step-25](../plan/cancelled/step-25-demo-coordination-module.md), [N17](../reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06) |
+| 24c | Simplify demo flow (fresh stream / explicit prepare) | Complete — [step-24c-simplify-demo-flow.md](../plan/completed/step-24c-simplify-demo-flow.md) (testnet claim optional — [archive/operator/testnet-claim-known-issue.md](../archive/operator/testnet-claim-known-issue.md)) |
+| 25 | Demo coordination Logos module | Won't fix — [cancelled/step-25](../plan/cancelled/step-25-demo-coordination-module.md), [N17](../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06) |
 
 Execution order: Steps through 18, 18b, 19, 24, 24b, and 24c are complete.
 Active: Step 20 (Track A). Optional 23; optional stretch Steps 21–22 (Track B). Step 25 won't fix.
 Entry: [`AGENTS.md`](../../AGENTS.md). Local demos:
-[`demo-localnet-recovery.md`](../demo-localnet-recovery.md).
+[`archive/operator/localnet-recovery.md`](../archive/operator/localnet-recovery.md).
 
 Doc index: [README.md](README.md). Plan layout: [`../plan/README.md`](../plan/README.md).
 
 ## Completed steps (summary)
 
-Steps 1–11: landed in tree; historical DoD via archived `make verify-step10a` … targets; product gates in [verification-matrix.md](../verification-matrix.md).
+Steps 1–11: landed in tree; historical DoD via archived `make verify-step10a` … targets; product gates in [verification-matrix.md](../reference/verification-matrix.md).
 
 ### Step 12 — User eligibility (complete)
 
@@ -189,7 +205,7 @@ DoD: `verifyEligibilityForStoreQuery`, FFI `parse_eligibility_proof_bytes`, pers
 ### Step 14 — Store wire (complete)
 
 Normative excerpt and DoD: [step-14-normative.md](../plan/completed/step-14-normative.md).
-Branch pin: [feature-branch-pins.md](../feature-branch-pins.md).
+Branch pin: [feature-branch-pins.md](../reference/feature-branch-pins.md).
 
 ### Step 15 — `liblogosdelivery` hooks (complete)
 
@@ -205,7 +221,7 @@ Agent packet: [step-16.md](../plan/completed/step-16.md).
 ### Step 17 — E2E demo local LEZ (complete)
 
 DoD: `make verify-step17-back-to-back` — restore run plus `SKIP_SEED=1` run (monotonic stream ids); paid Store, missing-proof reject, close then claim.
-Runbook: [step17-e2e-local.md](../step17-e2e-local.md). Packet:
+Runbook: [archive/steps/local-store-dual-host-runbook.md](../archive/steps/local-store-dual-host-runbook.md). Packet:
 [step-17.md](../plan/completed/step-17.md).
 
 ### Step 17b — Localnet snapshot restore (complete)
@@ -254,7 +270,7 @@ Completed (pointers): [Step 17](../plan/completed/step-17.md),
 Active verification uses the unified script stack
 (`scripts/e2e.sh`, `scripts/lifecycle.sh`, `scripts/fixture.sh`, `scripts/lib/common.sh`).
 The 2x2 matrix (flow x chain) is documented in
-[`../verification-matrix.md`](../verification-matrix.md).
+[`../reference/verification-matrix.md`](../reference/verification-matrix.md).
 
 | Entry | Cell | Step |
 | --- | --- | --- |
@@ -266,8 +282,8 @@ The 2x2 matrix (flow x chain) is documented in
 
 `make verify-step17` → [scripts/e2e.sh](scripts/e2e.sh) `local run` →
 [scripts/e2e/run_local_e2e.py](scripts/e2e/run_local_e2e.py)
-([N17](../reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06),
-[store-integration/runbook-localnet.md](../store-integration/runbook-localnet.md)).
+([N17](../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06),
+[store-integration/README.md](../store-integration/README.md)).
 `make verify-module-local` → [scripts/e2e.sh](scripts/e2e.sh) `MODE=module local run` →
 [scripts/module-e2e-local.sh](scripts/module-e2e-local.sh).
 `make prepare-localnet` → [scripts/e2e.sh](scripts/e2e.sh) `local prepare`.

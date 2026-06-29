@@ -14,10 +14,10 @@ Prerequisites:
 | Local LEZ (script-orchestrated dual-host demo) | Steps 17 and 19 DoD satisfied; **Step 24c local gate** complete (`make verify-step17-back-to-back`) |
 | Testnet v0.2 (public LEZ, local dual-host Store) | Steps 17, 18 DoD satisfied (Step 18 Part B on rc5 tooling) |
 | Testnet v0.2 + hosted public Store provider | Steps 17, 18, and 23 DoD satisfied |
-| Any | Step 19 on `feat/payment-streams-onchain-part` (`345c8eef`); cite in packet ([feature-branch-pins.md](../../feature-branch-pins.md)) |
+| Any | Step 19 on `feat/payment-streams-onchain-part` (`345c8eef`); cite in packet ([feature-branch-pins.md](../../reference/feature-branch-pins.md)) |
 
-Orchestration policy: [N17](../../reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06).
-Track split: [N18](../../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)
+Orchestration policy: [N17](../../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06).
+Track split: [N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)
 (Step 20 = **Track A** integration demo only; Steps 21–22 = optional **Track B** payment
 streams UI — not part of this step).
 No in-process demo coordinator module (Step 25 won't fix).
@@ -28,7 +28,7 @@ Logos documentation intake uses a doc packet issue in `logos-co/logos-docs` (tem
 label `type:journey`). Docs drafts the public page; R&D SME reviews; Red Team dogfoods the
 published instructions ([`logos-docs/CONTRIBUTING.md`](https://github.com/logos-co/logos-docs/blob/main/CONTRIBUTING.md)).
 
-This step is **Track A** ([N18](../../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
+This step is **Track A** ([N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
 the documentation deliverable for **integrators** showing payment streams **composed with
 Logos Delivery Store** (LIP-155 eligibility on Store requests — one protocol use case). It is not
 the payment-streams-only Basecamp UI journey (Track B, Steps 21–22).
@@ -36,7 +36,7 @@ the payment-streams-only Basecamp UI journey (Track B, Steps 21–22).
 Paid Store + eligibility uses **`payment_streams_module`**, **`delivery_module`**, and
 **`logos_execution_zone`**, not Basecamp clicks. Demo coordination is a **host-side script**
 that drives two local `logoscore` instances — the same model as Step 17
-([step17-e2e-local.md](../../step17-e2e-local.md)). Integrators may later wrap the same module
+([archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md)). Integrators may later wrap the same module
 calls in their own Logos app module; that pattern is mentioned briefly but not implemented here.
 
 #### Journey structure (local LEZ)
@@ -61,10 +61,10 @@ and encodings; do not duplicate full contract tables in the packet.
 Deliver:
 
 - Filled doc packet: outcome, components (three production modules + script orchestrator),
-  pinned repo refs ([feature-branch-pins.md](../../feature-branch-pins.md)), runtime target
+  pinned repo refs ([feature-branch-pins.md](../../reference/feature-branch-pins.md)), runtime target
   (local LEZ first), tier-1 and tier-2 command blocks, expected logs/JSON, configuration
   (`FIXTURE_MANIFEST`, `registerProviderMapping`, eligibility hooks, async `storeQuery`
-  completion), failure modes + [demo-localnet-recovery.md](../../demo-localnet-recovery.md).
+  completion), failure modes + [archive/operator/localnet-recovery.md](../../archive/operator/localnet-recovery.md).
 - SME validation: run tier-1 verbatim; spot-check tier-2 against script behavior before handoff.
 - Link LIP-155 on-chain section (Step 19) and integration contracts.
 

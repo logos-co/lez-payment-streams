@@ -1,6 +1,6 @@
 # Step 12 — normative plan excerpt
 
-Operator commands: [step12-user-eligibility.md](../step12-user-eligibility.md).
+Operator commands: [archive/steps/user-eligibility-runbook.md](../archive/steps/user-eligibility-runbook.md).
 This file keeps closed design choices and DoD detail for audits; agents on Step 14+ should read [integration-contracts.md](../reference/integration-contracts.md) instead.
 
 ### Step 12, Session keys and user-side proof construction
@@ -14,9 +14,9 @@ Requires Step 11c (`sign_public_payload`) and the Step 11a read path;
 user flows that open streams on-chain use Step 11b (`chainAction` / `createStream`).
 
 Runbook (demo vault, API encoding):
-[`docs/step12-user-eligibility.md`](docs/step12-user-eligibility.md).
+[`docs/archive/steps/user-eligibility-runbook.md`](docs/archive/steps/user-eligibility-runbook.md).
 Local fixture age and reset policy:
-[`docs/demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
+[`docs/archive/operator/localnet-recovery.md`](docs/archive/operator/localnet-recovery.md).
 
 #### Status (implementation)
 
@@ -27,8 +27,8 @@ Step 12 is complete for this integration plan:
   `rediscoverStreams`), N4 persistence, N8 tool (`n8_canonical_wire_hex`).
 - Verify: `make verify-step12` (offline + logoscore); strict `stream_proof` via
   `REQUIRE_STREAM_PROOF=1` and `./scripts/step12-topup-and-prepare.sh` after Step 11d wallet stack.
-- Runbooks: [`docs/step12-user-eligibility.md`](docs/step12-user-eligibility.md),
-  [`docs/demo-localnet-recovery.md`](docs/demo-localnet-recovery.md).
+- Runbooks: [`docs/archive/steps/user-eligibility-runbook.md`](docs/archive/steps/user-eligibility-runbook.md),
+  [`docs/archive/operator/localnet-recovery.md`](docs/archive/operator/localnet-recovery.md).
 
 Not in Step 12 scope: Step 16 `delivery_module` auto-invoke; Step 13 provider verifier cross-test
 (lives in `make verify-step13`, not Step 12 DoD); full Step 17 demo without top-up
@@ -203,7 +203,7 @@ a live sequencer is not strictly required for that verification itself,
 but the same Steps 10a–11b stack remains useful for sanity-checking
 that vault data the proof asserts matches chain state.
 After code changes, rebuild and reload via
-[`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 3).
+[`docs/archive/steps/logos-runtime-guide.md`](docs/archive/steps/logos-runtime-guide.md) (Part 3).
 
 #### Definition of done
 
@@ -216,7 +216,7 @@ Landed (current tree):
    `step12-topup-and-prepare.sh` (register, `topUpStream`, `stream_proof` prepare) and
    persistence under `--persistence-path`. Default `REQUIRE_STREAM_PROOF=0` may SKIP prepare when
    stream `0` is depleted on an aged localnet (see recovery doc).
-3. Runbook [`docs/step12-user-eligibility.md`](docs/step12-user-eligibility.md) matches API and
+3. Runbook [`docs/archive/steps/user-eligibility-runbook.md`](docs/archive/steps/user-eligibility-runbook.md) matches API and
    error codes.
 
 Product criteria (unchanged):
@@ -243,5 +243,5 @@ After the Step 11d wallet pin bump:
 3. FFI fold normalizes LEZ 510+ millisecond clock timestamps to seconds for accrual checks.
 
 CI may keep `VERIFY_LOGOSCORE=0`; local strict checks use
-[`docs/demo-localnet-recovery.md`](docs/demo-localnet-recovery.md) and `REQUIRE_STREAM_PROOF=1`.
+[`docs/archive/operator/localnet-recovery.md`](docs/archive/operator/localnet-recovery.md) and `REQUIRE_STREAM_PROOF=1`.
 

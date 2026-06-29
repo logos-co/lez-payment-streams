@@ -3,7 +3,7 @@
 Status: landed in tree (pins, wrapper patches, `./scripts/archive/verify-step11d-dod.sh`).
 Strict 11b E2E on a fresh fixture may still need `REINIT_WALLET=1` and reinstalled `.lgx` after
 `lgs setup`. Step 12 strict verify uses `REQUIRE_STREAM_PROOF=1` (see
-[`step12-user-eligibility.md`](step12-user-eligibility.md)).
+[`archive/steps/user-eligibility-runbook.md`](archive/steps/user-eligibility-runbook.md)).
 
 Upgrade reference: payment-streams moved the wallet stack from the earlier 491-era pin to LEZ `main` at
 [PR 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510) merge
@@ -39,7 +39,7 @@ nix build ./logos-payment-streams-module#lgx
 ```
 
 Install order unchanged (wallet first, then payment_streams_module). Build and install commands
-live in [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md); this doc only lists the
+live in [`archive/steps/wallet-runtime-runbook.md`](archive/steps/wallet-runtime-runbook.md); this doc only lists the
 extra steps after a pin bump (`lgs setup`, FFI rebuild).
 
 ## Patched wrapper (payment-streams only)
@@ -77,7 +77,7 @@ Full program bytes are too large for logoscore CLI arguments; use `make deploy` 
 
 Chain writes: `payment_streams_module` `chainAction` →
 `send_generic_public_transaction_json` on `logos_execution_zone` (Step 11b).
-See [`step11b-chain-writes.md`](step11b-chain-writes.md) for env vars and E2E scripts.
+See [`archive/steps/module-chain-writes-runbook.md`](archive/steps/module-chain-writes-runbook.md) for env vars and E2E scripts.
 
 ## Verification
 
@@ -93,7 +93,7 @@ Fresh blank slate before strict E2E:
 make full-reset-localnet
 ```
 
-Then Step 12 with a new persistence dir (see [`demo-localnet-recovery.md`](demo-localnet-recovery.md)).
+Then Step 12 with a new persistence dir (see [`archive/operator/localnet-recovery.md`](archive/operator/localnet-recovery.md)).
 
 ## Definition of done
 

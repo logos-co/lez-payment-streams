@@ -3,9 +3,9 @@
 Completed packet. Index: [program-index.md](../../development-map/program-index.md).
 Prerequisites: Step 17/17b scripts; Step 24b (rc5 guest + tooling).
 Related: [step-17b-localnet-snapshot-restore.md](step-17b-localnet-snapshot-restore.md),
-[step17-e2e-local.md](../../step17-e2e-local.md),
+[archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md),
 [step-18-public-testnet-demo.md](../completed/step-18-public-testnet-demo.md),
-[testnet-claim-known-issue.md](../../testnet-claim-known-issue.md).
+[archive/operator/testnet-claim-known-issue.md](../../archive/operator/testnet-claim-known-issue.md).
 
 ## Status (2026-06-28)
 
@@ -21,7 +21,7 @@ testnet demo path runs end to end through the paid Store query and close.
 | Testnet-faithful localnet (clock, sizing, honest seed CLI) | Implemented in tree; existing funded snapshots may still hold old deposit totals until `make full-reset-localnet` |
 | Verify lifecycle teardown scripts | In tree (`demo-stream-teardown-localnet.sh`, `sync-seed-wallet-after-logoscore.sh`, `wait-clock-synced.sh`, `wait-chain-settle.sh`) |
 | Testnet demo create to fundable to paid Store query to close | Green via Clock01 (depletion gate cleared; close via seed path) |
-| Testnet claim | Optional in the demo; not reliably confirming on testnet — [testnet-claim-known-issue.md](../../testnet-claim-known-issue.md) |
+| Testnet claim | Optional in the demo; not reliably confirming on testnet — [archive/operator/testnet-claim-known-issue.md](../../archive/operator/testnet-claim-known-issue.md) |
 
 Local 24c orchestration (E2E per-run create, dual prepare methods, provider-signed seed close,
 back-to-back) is done. Verify scripts match the E2E lifecycle on a continuously running localnet:
@@ -88,7 +88,7 @@ Pinata rounds in `prefund-localnet.sh` scale from deposit:
 (`make full-reset-localnet` or `FULL_RESET=1` prepare).
 
 Testnet funding must be sized so a run completes without claim recycling funds; see
-[testnet-claim-known-issue.md](../../testnet-claim-known-issue.md) (Funding must be sufficient
+[archive/operator/testnet-claim-known-issue.md](../../archive/operator/testnet-claim-known-issue.md) (Funding must be sufficient
 without claim).
 
 ### Honest seed CLI (stream vs vault)
@@ -157,11 +157,11 @@ Scripts: `make prepare-localnet` / [`scripts/e2e.sh`](../../../scripts/e2e.sh) `
 Makefile: `full-reset-localnet`, `verify-step17-back-to-back` (leg 2 `SKIP_SEED=1`, continuation
 topup).
 
-Docs touched: [step17-e2e-local.md](../../step17-e2e-local.md),
+Docs touched: [archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md),
 [program-index.md](../../development-map/program-index.md),
 [integration-contracts.md](../../reference/integration-contracts.md),
-[demo-localnet-recovery.md](../../demo-localnet-recovery.md),
-[testnet-claim-known-issue.md](../../testnet-claim-known-issue.md).
+[archive/operator/localnet-recovery.md](../../archive/operator/localnet-recovery.md),
+[archive/operator/testnet-claim-known-issue.md](../../archive/operator/testnet-claim-known-issue.md).
 
 ---
 
@@ -188,7 +188,7 @@ Docs touched: [step17-e2e-local.md](../../step17-e2e-local.md),
 | Clock sync without txs | Idle sequencer does not fold blocks; `wait-clock-synced.sh` uses pinata nudges. Set `SKIP_CLOCK_SYNC=1` only when debugging. |
 | Owner-only close from user wallet | Module default authority = signer breaks close metas; use provider authority until product change. |
 | `chainAction` vs seed on testnet | Testnet `chainAction` is unreliable (`RPC_FAILED`); the demo uses the direct-submit seed path for create/close/claim, with `chainAction` as opt-in fallback. |
-| Testnet claim not confirming | Claim is optional in the demo; tracked in [testnet-claim-known-issue.md](../../testnet-claim-known-issue.md). |
+| Testnet claim not confirming | Claim is optional in the demo; tracked in [archive/operator/testnet-claim-known-issue.md](../../archive/operator/testnet-claim-known-issue.md). |
 | Many closed stream PDAs | Expected on long-lived localnet/testnet; each run uses the next id. |
 
 ---
@@ -283,5 +283,5 @@ forces the old path).
   manifest owner on testnet.
 
 Claim is optional in the demo and is not reliably confirming on testnet; see
-[testnet-claim-known-issue.md](../../testnet-claim-known-issue.md) for the observed behavior,
+[archive/operator/testnet-claim-known-issue.md](../../archive/operator/testnet-claim-known-issue.md) for the observed behavior,
 the next diagnostic step, and the funding-without-claim policy.

@@ -348,10 +348,10 @@ Environment:
   E2E_PHASE          — core, claim, or all (default: all)
 
 Verification matrix (mode x chain):
-  MODE=module CHAIN=local  $0 local run   # Flow A, localnet (make verify-module-local)
-  MODE=store  CHAIN=local  $0 local run   # Flow B, localnet (make verify-step17)
-  MODE=store  CHAIN=testnet $0 testnet run # Flow B, testnet (advanced)
-  MODE=module CHAIN=testnet                # Flow A, testnet — future work (unsupported)
+  MODE=module CHAIN=local  $0 local run   # module verification, localnet
+  MODE=store  CHAIN=local  $0 local run   # Store integration, localnet
+  MODE=store  CHAIN=testnet $0 testnet run # Store integration, testnet (advanced)
+  MODE=module CHAIN=testnet                # unsupported (future work)
 
 Examples:
   $0 local run                    # Full local E2E (Store)

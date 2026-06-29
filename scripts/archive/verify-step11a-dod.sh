@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify Step 11a definition of done (see docs/step11a-chain-reads.md).
+# Verify Step 11a definition of done (see docs/archive/steps/module-chain-reads-runbook.md).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -33,10 +33,10 @@ else
   bad "payment-streams-ffi.nix missing LEZ rc5 rev"
 fi
 
-if [[ -f docs/step11a-chain-reads.md ]]; then
+if [[ -f docs/archive/steps/module-chain-reads-runbook.md ]]; then
   ok "Step 11a runbook present"
 else
-  bad "missing docs/step11a-chain-reads.md"
+  bad "missing docs/archive/steps/module-chain-reads-runbook.md"
 fi
 
 PLUGIN="$MODULES/payment_streams_module/payment_streams_module_plugin.so"

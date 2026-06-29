@@ -1,9 +1,9 @@
 # Integration contracts
 
-Cross-step APIs and wire shapes. Normative detail: [decisions-and-notes.md](decisions-and-notes.md)
+Cross-step APIs and wire shapes. Normative detail: [integration-decisions.md](integration-decisions.md)
 (D1, D2, N3a–N3c, N8, N11, N12). Step 16 bridge summary:
 [step-16.md](../plan/completed/step-16.md#resolved-implementation-decisions-2025-06-18).
-Operator commands: [verification-matrix.md](../verification-matrix.md) and pillar runbooks under [store-integration/](../store-integration/) and [payment-streams-module/](../payment-streams-module/). Historical step runbooks live under [development-map/README.md](../development-map/README.md).
+Operator commands: [verification-matrix.md](../reference/verification-matrix.md) and pillar runbooks under [store-integration/](../store-integration/) and [payment-streams-module/](../payment-streams-module/). Historical step runbooks live under [development-map/README.md](../development-map/README.md).
 
 ## Store wire (Step 14 — D1)
 
@@ -20,16 +20,16 @@ Proof bytes are LIP-155 payment-stream `EligibilityProof` (not the legacy
 
 ## Delivery hooks (Steps 15–16 — D2)
 
-- MVP hooks are synchronous blocking C function pointers at the liblogosdelivery boundary ([N3](decisions-and-notes.md#n3-provider-side-verification-latency-and-blocking-hooks))
+- MVP hooks are synchronous blocking C function pointers at the liblogosdelivery boundary ([N3](integration-decisions.md#n3-provider-side-verification-latency-and-blocking-hooks))
 - Opaque bytes on the hook are the full serialized `EligibilityProof` (not inner arms alone)
 - Outbound (Step 16): provider libp2p `PeerId` to `prepareEligibilityProofWithStreamProposalForStoreQuery`
 - Inbound: requester `PeerId` to `verifyEligibilityForStoreQuery` (logged only in MVP)
 - Inbound `out_desc`: Step 16 copies verify JSON `message` on failure; empty ⇒ default phrase (D2)
 - Registration introspection: exact method names via `getPluginMethods` (D2)
-- Step 16 bridge policy: [N3a](decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18),
-  [N3b](decisions-and-notes.md#n3b-step-16-hook-registration-lifecycle-2025-06-18),
-  [N3c](decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18),
-  [N12](decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)
+- Step 16 bridge policy: [N3a](integration-decisions.md#n3a-step-16-threading--approach-a-experiment-2025-06-18),
+  [N3b](integration-decisions.md#n3b-step-16-hook-registration-lifecycle-2025-06-18),
+  [N3c](integration-decisions.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18),
+  [N12](archive/reference/decisions-historical.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)
 
 ## logosdelivery_store_query JSON (Step 15)
 
@@ -41,7 +41,7 @@ Omit `eligibilityProof`; the registered provider callback attaches proof bytes b
 
 Step 16 `delivery_module.storeQuery(queryJson, providerAddr)` uses this shape.
 Dispatch is asynchronous when a provider is registered; response JSON arrives on a typed
-completion event ([N3a](decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
+completion event ([N3a](integration-decisions.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
 
 ## payment_streams_module — LogosAPI methods (Step 16 must match)
 
@@ -55,7 +55,7 @@ completion event ([N3a](decisions-and-notes.md#n3a-step-16-threading--approach-a
 | `chainAction` | On-chain writes (Step 11b router) |
 
 Codegen: Universal module exports single-line `Q_INVOKABLE` declarations in
-`payment_streams_module_impl.h` or `lm methods` omits them ([N11](decisions-and-notes.md#n11-universal-module-public-api)).
+`payment_streams_module_impl.h` or `lm methods` omits them ([N11](integration-decisions.md#n11-universal-module-public-api)).
 
 ## Argument encoding (Steps 12–13)
 
@@ -137,9 +137,9 @@ Success shapes use `"status":"ok"` inside `result` with `"kind":"stream_proposal
 - Verdict: `{"status":"error","eligibility":"<PARAMS_REJECTED|PROOF_INVALID|STREAM_NOT_ACTIVE>","message":"…"}`
 - Caller fault: `{"status":"error","message":"…"}` without `eligibility`
 - Missing proof on inbound Store: Step 16 passes empty `proofBytes`; paid demo expects a
-  verdict failure, not OK ([N3c](decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18))
+  verdict failure, not OK ([N3c](integration-decisions.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18))
 - Step 17 demo: provider runs paid-only (verifier always on); users learn provider PeerId
-  off-band ([store-integration/runbook-localnet.md](../store-integration/runbook-localnet.md))
+  off-band ([store-integration/README.md](../store-integration/README.md))
 
 ## Fixture and provider payee
 
@@ -157,13 +157,13 @@ File: `payment_streams_state.json` under logoscore `instancePersistencePath`.
 
 ## Wallet module
 
-- Runtime id: `logos_execution_zone` ([D4](decisions-and-notes.md#d4-wallet-module-runtime-name))
+- Runtime id: `logos_execution_zone` ([D4](integration-decisions.md#d4-wallet-module-runtime-name))
 - Chain reads: `get_account_public`; writes: `send_generic_public_transaction_json` (N10)
 - Signing: `sign_public_payload` (N1) for vault owner proofs
 
 ## Canonical payload (N8 summary)
 
-Full specification: [N8](decisions-and-notes.md#n8-canonical-store-request-bytes-format).
+Full specification: [N8](integration-decisions.md#n8-canonical-store-request-bytes-format).
 `canonical_payload = PREFIX || borsh(CanonicalStoreRequest)`; `StreamProof.signature` signs
 `SHA-256(canonical_payload)`. Nim (Step 15) and Rust (Step 4) must byte-match; pinned tests in
 core and the Step 15 Nim parity test on the delivery fork.

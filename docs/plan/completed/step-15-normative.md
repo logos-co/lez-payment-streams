@@ -9,7 +9,7 @@ Status: complete on `logos-delivery` branch `feat/payment-streams-store-eligibil
 - `nimble buildTest tests/waku_store/test_store_eligibility_hooks.nim` (run the test binary)
 
 Index: [program-index.md](../../development-map/program-index.md). Pins:
-[feature-branch-pins.md](../../feature-branch-pins.md).
+[feature-branch-pins.md](../../reference/feature-branch-pins.md).
 
 Agents on Step 16+ should read [integration-contracts.md](../../reference/integration-contracts.md) instead.
 
@@ -40,7 +40,7 @@ Existing behaviour is preserved when no callback is registered.
 Per N3, both callbacks are synchronous blocking C function pointers;
 the Nim async handler awaits their result while the calling thread is held.
 This is the MVP design; see Migration note below before productionising.
-Extend `liblogosdelivery.h` with the new exports on our fork (additive ABI bump per [D2](../../reference/decisions-and-notes.md#d2-delivery-module-hook-design)).
+Extend `liblogosdelivery.h` with the new exports on our fork (additive ABI bump per [D2](../../reference/integration-decisions.md#d2-delivery-module-hook-design)).
 
 ##### C ABI types
 
@@ -250,5 +250,5 @@ A cross-language test vector confirms
 that the Nim canonical-bytes serializer
 produces output identical to the Rust serializer
 for a fixed `StoreQueryRequest` with known field values
-(see [N8](../../reference/decisions-and-notes.md#n8-canonical-store-request-bytes-format)
+(see [N8](../../reference/integration-decisions.md#n8-canonical-store-request-bytes-format)
 for the test vector specification).

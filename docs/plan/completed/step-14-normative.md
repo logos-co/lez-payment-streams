@@ -5,7 +5,7 @@ Status: complete on `logos-delivery` branch `feat/payment-streams-store-eligibil
 the test binary in that repo.
 
 Index: [program-index.md](../../development-map/program-index.md). Pins:
-[feature-branch-pins.md](../../feature-branch-pins.md).
+[feature-branch-pins.md](../../reference/feature-branch-pins.md).
 
 Agents on Step 16+ should read [integration-contracts.md](../reference/integration-contracts.md) instead.
 

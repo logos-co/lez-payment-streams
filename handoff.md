@@ -7,5 +7,5 @@ This file is retired. Start at:
 - [docs/development-map/README.md](docs/development-map/README.md) — program index and historical runbooks
 
 Store eligibility uses delivery forks on branch `feat/payment-streams-store-eligibility`
-(see [docs/reference/feature-branch-pins.md](docs/feature-branch-pins.md) or
-[docs/feature-branch-pins.md](docs/feature-branch-pins.md)).
+(see [docs/reference/feature-branch-pins.md](docs/reference/feature-branch-pins.md) or
+[docs/reference/feature-branch-pins.md](docs/reference/feature-branch-pins.md)).

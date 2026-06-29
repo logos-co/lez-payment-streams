@@ -3,10 +3,10 @@
 Installable `logos_execution_zone` `.lgx` for `logoscore`, aligned with the Step 10a
 local chain fixture (sequencer `http://127.0.0.1:3040`, wallet under `.scaffold/wallet`).
 
-LEZ pin bump (510 merge): [`step11d-wallet-510.md`](step11d-wallet-510.md).
+LEZ pin bump (510 merge): [`archive/steps/wallet-510-runbook.md`](archive/steps/wallet-510-runbook.md).
 Pins and flake layout: [`feature-branch-pins.md`](feature-branch-pins.md).
 Build/install overview: [`logos-runtime-guide.md`](logos-runtime-guide.md) Phase 1b–5.
-Step 10a prerequisite: [`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md).
+Step 10a prerequisite: [`archive/steps/local-chain-fixture.md`](archive/steps/local-chain-fixture.md).
 
 `sign_public_payload` is Step 11c, not 10b.
 
@@ -87,7 +87,7 @@ Patched 11b builds also load guest ELF from `PAYMENT_STREAMS_GUEST_BIN` inside
 `rg -F PAYMENT_STREAMS_GUEST_BIN` on `logos_execution_zone_plugin.so`.
 
 If `nix bundle … .#lib` fails on `wallet-ffi-deps` / `pol` download, see
-[`step11b-chain-writes.md`](step11b-chain-writes.md) for the Qt-aligned manual build fallback.
+[`archive/steps/module-chain-writes-runbook.md`](archive/steps/module-chain-writes-runbook.md) for the Qt-aligned manual build fallback.
 
 ## Wallet `open` for Step 10a
 

@@ -1,6 +1,6 @@
 # Step 13 — normative plan excerpt
 
-Operator commands: [step13-provider-eligibility.md](../step13-provider-eligibility.md).
+Operator commands: [archive/steps/provider-eligibility-runbook.md](../archive/steps/provider-eligibility-runbook.md).
 Agents on Step 14+ should read [integration-contracts.md](../reference/integration-contracts.md) instead.
 
 ### Step 13, Provider-side proof verification
@@ -71,7 +71,7 @@ not on transport peer continuity.
 #### Implementor approach (MVP demo)
 
 Closed choices for Step 13 implementation. Align with Step 12
-([`docs/step12-user-eligibility.md`](docs/step12-user-eligibility.md)) and keep protobuf
+([`docs/archive/steps/user-eligibility-runbook.md`](docs/archive/steps/user-eligibility-runbook.md)) and keep protobuf
 parsing, policy math, and signature checks in Rust FFI; the Qt module orchestrates wallet reads,
 persistence, and JSON only. Store tag `30` / `eligibility_status` protobuf is Step 14; Step 16
 forwards opaque bytes and peer ids without interpreting proofs (D2).
@@ -221,7 +221,7 @@ Verification scripts (mirror Step 12):
   CI-gated): fresh `stream_proposal` OK, expired deadline → `PARAMS_REJECTED`.
 - Cross-test is single-host; two-host remains Step 17.
 
-Runbook [`docs/step13-provider-eligibility.md`](docs/step13-provider-eligibility.md) (create with
+Runbook [`docs/archive/steps/provider-eligibility-runbook.md`](docs/archive/steps/provider-eligibility-runbook.md) (create with
 implementation): API/encoding table (mirror Step 12), env vars for scripts (`FIXTURE_MANIFEST`,
 wallet paths, `PAYMENT_STREAMS_GUEST_BIN`), prepare→verify demo sequence, troubleshooting (wallet
 not open, provider id mismatch vs constants, depleted stream, clock/fold). Normative demo numbers
@@ -234,7 +234,7 @@ The structural-failure portion of the definition of done needs nothing more.
 The happy-path verdict portion needs the Steps 10a–11b stack
 (LEZ sequencer plus deployed program plus seeded vault/stream state).
 Module retest loop:
-[`docs/logos-runtime-guide.md`](docs/logos-runtime-guide.md) (Part 3).
+[`docs/archive/steps/logos-runtime-guide.md`](docs/archive/steps/logos-runtime-guide.md) (Part 3).
 
 #### Definition of done
 
@@ -247,7 +247,7 @@ vault reads after successful crypto are in scope (see [Implementor approach](#im
 `make verify-step13` exits 0 with `VERIFY_LOGOSCORE=0`; with localnet up, logoscore
 prepare → verify cross-test returns `eligibility":"OK"` on the seeded stream proof path.
 
-Status: complete in tree — runbook [`docs/step13-provider-eligibility.md`](docs/step13-provider-eligibility.md),
+Status: complete in tree — runbook [`docs/archive/steps/provider-eligibility-runbook.md`](docs/archive/steps/provider-eligibility-runbook.md),
 `make verify-step13`. Logoscore cross-test may SKIP on depleted stream `0` until
 `make full-reset-localnet` (same recovery as Step 12 strict `stream_proof`).
 

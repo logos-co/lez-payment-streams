@@ -19,7 +19,7 @@ All return compact JSON with `"status":"ok"` or `"status":"error"`.
 | `readStreamConfigDecoded` | Stream config PDA |
 | `readClockDecoded` | Clock account PDA (base58 id) |
 | `readClock10Decoded` | Default `CLOCK_10` (`fixtures/localnet.json.example`) |
-| `chainAction` | Step 11b writes and status (see [`step11b-chain-writes.md`](step11b-chain-writes.md)) |
+| `chainAction` | Step 11b writes and status (see [`archive/steps/module-chain-writes-runbook.md`](archive/steps/module-chain-writes-runbook.md)) |
 
 For base58 → hex conversion, call `logos_execution_zone.account_id_from_base58` directly
 (`accountIdHexFromBase58` is not on the public Universal surface).

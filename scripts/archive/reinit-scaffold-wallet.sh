@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Re-create 491-format wallet storage under .scaffold/wallet (see docs/step10a-local-chain-fixture.md).
+# Re-create 491-format wallet storage under .scaffold/wallet (see docs/archive/steps/local-chain-fixture.md).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

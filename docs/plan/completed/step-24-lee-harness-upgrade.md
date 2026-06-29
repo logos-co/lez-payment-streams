@@ -62,7 +62,7 @@ Scheduling:
 | `vendor/spel-framework-core` | `lee_core` @ 510; update `use nssa_core` → `lee_core`; simplify `pda.rs` if `for_public_pda` matches host |
 | Rust sources | `nssa` → `lee`, `nssa_core` → `lee_core`, `NssaError` → `LeeError` |
 | `program_tests/*` | Remove `#[ignore = …IGNORE_LEZ_GUEST…]` incrementally; fix remaining harness gaps |
-| Docs | Record unified pin in [feature-branch-pins.md](../../feature-branch-pins.md) if Nix moves; cross-link [decisions-and-notes.md](../../reference/decisions-and-notes.md) SPEL-on-LEE |
+| Docs | Record unified pin in [feature-branch-pins.md](../../reference/feature-branch-pins.md) if Nix moves; cross-link [integration-decisions.md](../../reference/integration-decisions.md) SPEL-on-LEE |
 
 Out of scope:
 
@@ -131,10 +131,10 @@ Out of scope:
    - `make verify-step17` (or documented equivalent) on unchanged module/Nix pins
 
 10. **Documentation cleanup**
-    - Update [architecture.md](../../on-chain/architecture.md) or harness comments that say
+    - Update [architecture.md](../../on-chain/README.md) or harness comments that say
       `nssa::V03State` where `lee::V03State` is now accurate.
     - Note completion in [program-index.md](../../development-map/program-index.md) step map.
-    - Optional decision note N16 in [decisions-and-notes.md](../../reference/decisions-and-notes.md)
+    - Optional decision note N16 in [integration-decisions.md](../../reference/integration-decisions.md)
       when the pin lands (not required for DoD).
 
 #### Pitfalls and mitigations
@@ -174,7 +174,7 @@ Out of scope:
 - LEZ repo: `github.com/logos-blockchain/logos-execution-zone` — `lee/state_machine`,
   `lee/state_machine/core`
 - SPEL-on-LEE vendor rationale:
-  [decisions-and-notes.md](../../reference/decisions-and-notes.md) (SPEL-on-LEE cleanup)
+  [integration-decisions.md](../../reference/integration-decisions.md) (SPEL-on-LEE cleanup)
 - Nix / scaffold pin:
-  [feature-branch-pins.md](../../feature-branch-pins.md),
+  [feature-branch-pins.md](../../reference/feature-branch-pins.md),
   [scaffold.toml](../../../scaffold.toml) `[repos.lez].pin`

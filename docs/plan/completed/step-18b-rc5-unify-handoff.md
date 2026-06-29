@@ -2,8 +2,8 @@
 
 Handoff packet for Step 18b. Canonical operator docs:
 [step-18-public-testnet-demo.md](step-18-public-testnet-demo.md),
-[step18-public-sequencer-e2e.md](../../step18-public-sequencer-e2e.md),
-[N16](../../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06).
+[archive/steps/public-sequencer-store-runbook.md](../../archive/steps/public-sequencer-store-runbook.md),
+[N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06).
 
 Status: **complete** on `master`. Operational LEZ pin is **`v0.2.0-rc5`**
 (`27360cb7d6ccb2bfbcca7d171bab8a3938490264`) for local Step 17, module `.lgx`, testnet scripts,
@@ -23,7 +23,7 @@ rc3 writes) is retired from docs and scripts.
 | Deploy block | 3284 |
 
 Read order: [`AGENTS.md`](../../../AGENTS.md) → Step 18 plan →
-[step18-public-sequencer-e2e.md](../../step18-public-sequencer-e2e.md) →
+[archive/steps/public-sequencer-store-runbook.md](../../archive/steps/public-sequencer-store-runbook.md) →
 [program-index.md](../../development-map/program-index.md).
 
 ## Why dual-pin was abandoned (historical)
@@ -52,7 +52,7 @@ harness bump; that is not the operational pin.
 | Deploy | `scripts/deploy-testnet.sh` |
 | Verify | `scripts/verify-step18.sh`, `scripts/verify-step18-testnet-read-smoke.sh` |
 | LEZ pin | `scaffold.toml`, `nix/payment-streams-ffi.nix`, module wallet flake |
-| Pins doc | `docs/feature-branch-pins.md` |
+| Pins doc | `docs/reference/feature-branch-pins.md` |
 
 ## Environment (testnet)
 

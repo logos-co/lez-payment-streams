@@ -4,9 +4,9 @@ Reproducible localnet with deployed `lez_payment_streams`, a funded public owner
 and on-chain demo vault `vault_id = 0` plus stream `stream_id = 0`.
 PDAs in the manifest match `lez-payment-streams-core` / FFI derivation (not SPEL CLI PDA helpers).
 
-Decisions: integration plan [N9](../reference/decisions-and-notes.md#n9-step-10a-local-chain-fixture-decisions).
-Progress and sequencer follow-up: [`step10a-handoff-and-follow-up.md`](step10a-handoff-and-follow-up.md).
-Scaffold RPC detail: [`step1-findings-scaffold-rpc.md`](step1-findings-scaffold-rpc.md).
+Decisions: integration plan [N9](../reference/integration-decisions.md#n9-step-10a-local-chain-fixture-decisions).
+Progress and sequencer follow-up: [`archive/steps/local-chain-fixture-handoff.md`](archive/steps/local-chain-fixture-handoff.md).
+Scaffold RPC detail: [`archive/steps/scaffold-rpc-findings.md`](archive/steps/scaffold-rpc-findings.md).
 
 ## Prerequisites
 
@@ -154,7 +154,7 @@ SPEL-on-LEE cleanup: integration plan N9.
 ### Deposit or seed failures on 491
 
 Troubleshooting (enum encoding, pinata balance vs demo deposit, poller vs execution): see
-[`step10a-handoff-and-follow-up.md`](step10a-handoff-and-follow-up.md) (When verify fails).
+[`archive/steps/local-chain-fixture-handoff.md`](archive/steps/local-chain-fixture-handoff.md) (When verify fails).
 
 ### Stale `fixtures/localnet.json`
 
@@ -195,7 +195,7 @@ Acceptable for Step 10a; optional later improvements (after fixture DoD is green
   (stop the sequencer before copying). Repo-local `.scaffold/state/` tracks scaffold bookkeeping.
 - Step 17b: snapshot/restore the funded baseline (vault without stream) — see
   [step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md)
-  and [demo-localnet-recovery.md](demo-localnet-recovery.md).
+  and [archive/operator/localnet-recovery.md](archive/operator/localnet-recovery.md).
 - Stop localnet without deleting `.scaffold/state/` to keep chain data between ad-hoc sessions.
 - Full reset (pinata + prefund + snapshot): `make full-reset-localnet`. Legacy wipe of `.scaffold/state/` alone does not reset
   the LEZ RocksDB ledger.
@@ -208,4 +208,4 @@ Demo vault `0` is for Step 11a decode tests. Module-driven lifecycle in 11b shou
 ## Step 10b (wallet in logoscore)
 
 After `./scripts/archive/verify-step10a-dod.sh` exits 0, install the patched wallet `.lgx` and run
-[`step10b-wallet-runtime.md`](step10b-wallet-runtime.md) / `./scripts/archive/verify-step10b-dod.sh`.
+[`archive/steps/wallet-runtime-runbook.md`](archive/steps/wallet-runtime-runbook.md) / `./scripts/archive/verify-step10b-dod.sh`.

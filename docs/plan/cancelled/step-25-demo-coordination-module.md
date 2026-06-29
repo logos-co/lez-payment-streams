@@ -2,7 +2,7 @@
 
 Status: **Won't fix** (2026-06). Index: [program-index.md](../../development-map/program-index.md).
 
-Decision: [N17](../../reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06).
+Decision: [N17](../../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06).
 Active demo and developer journey use **external orchestration** (Step 17 scripts), not an
 in-process `payment_streams_demo_coordinator` module.
 

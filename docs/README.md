@@ -1,14 +1,45 @@
-# Docs index (redirect)
+# Documentation
 
-Operator and historical runbooks moved under the development map.
+Entry for integrators and maintainers. Protocol text lives in
+[LIP-155](https://lip.logos.co/anoncomms/raw/payment-streams.html); cite the LIP instead of
+duplicating semantics here.
 
-| Start | Location |
+## Choose a path
+
+| Pillar | When |
 | --- | --- |
-| Repository overview | [README.md](../README.md) |
-| Product pillars | [on-chain/](on-chain/), [payment-streams-module/](payment-streams-module/), [store-integration/](store-integration/) |
-| Verification | [verification-matrix.md](verification-matrix.md) |
-| Program / steps | [development-map/README.md](development-map/README.md) |
-| Agents | [AGENTS.md](../AGENTS.md) |
+| [on-chain](on-chain/) | Guest program, Rust tests, review order |
+| [payment-streams-module](payment-streams-module/) | Logos module, module verification |
+| [store-integration](store-integration/) | Store eligibility, dual-host demo |
+| [development-map](development-map/) | Historical program index, plan packets |
 
-Legacy file listing previously maintained here is superseded by
-[development-map/README.md](development-map/README.md).
+## Verify (canonical)
+
+```bash
+MODE=module CHAIN=local ./scripts/e2e.sh local run   # module — Required
+./scripts/e2e.sh local run                           # Store — Required
+MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run  # Store — Advanced
+```
+
+Details: [reference/verification-matrix.md](reference/verification-matrix.md) (includes
+[cold start](reference/verification-matrix.md#cold-start-first-time-on-a-machine)),
+[scripts/README.md](../scripts/README.md).
+
+## Reference
+
+| Doc | Role |
+| --- | --- |
+| [integration-contracts.md](reference/integration-contracts.md) | Cross-repo APIs, tag 30 |
+| [integration-decisions.md](reference/integration-decisions.md) | Integration decisions (trimmed) |
+| [feature-branch-pins.md](reference/feature-branch-pins.md) | Fork branches and flakes |
+| [naming-conventions.md](reference/naming-conventions.md) | Flow A/B, Makefile names |
+| [verification-matrix.md](reference/verification-matrix.md) | Mode × chain matrix |
+
+## Archive
+
+Historical step runbooks and operator notes: [archive/](archive/).
+
+## Maintainers
+
+[AGENTS.md](../AGENTS.md), [plan/](plan/), lifecycle regression:
+`make verify-store-local-lifecycle`.

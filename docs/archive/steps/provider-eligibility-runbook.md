@@ -10,10 +10,10 @@ Index: [program-index.md](development-map/program-index.md).
 Prerequisites: Step 12 user path green (`./scripts/archive/verify-step12-dod.sh`), Steps 10a–11b chain
 fixture, Step 11c signing, installed `payment_streams_module` `.lgx`, guest ELF
 (`PAYMENT_STREAMS_GUEST_BIN`). Demo policy numbers and N8 wire tooling live in
-[`step12-user-eligibility.md`](step12-user-eligibility.md).
+[`archive/steps/user-eligibility-runbook.md`](archive/steps/user-eligibility-runbook.md).
 
 Runtime loop: [`logos-runtime-guide.md`](logos-runtime-guide.md) Part 3 (Step 13 subsection).
-Recovery: [`demo-localnet-recovery.md`](demo-localnet-recovery.md).
+Recovery: [`archive/operator/localnet-recovery.md`](archive/operator/localnet-recovery.md).
 
 ## Method
 
@@ -114,5 +114,5 @@ requires active folded stream state for `OK` on the `stream_proof` arm.
 Step 14 (Store tag `30`) and Step 15 (`liblogosdelivery` hooks) are complete on
 `logos-delivery` branch `feat/payment-streams-store-eligibility`.
 Step 16 wires `delivery_module` to call this method on inbound Store queries (bridge only;
-[N12](../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+[N12](../../reference/decisions-historical.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
 Step 17 two-host E2E builds on Steps 12–16 plus delivery integration.

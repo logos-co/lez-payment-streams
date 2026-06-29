@@ -7,9 +7,9 @@ Prerequisites: Step 10a fixture, Step 10b wallet plugin, load order wallet then 
 streams, wallet `open` with storage that includes the fixture owner (copy from
 `.scaffold/wallet/storage.json` after seed — see E2E below).
 
-Decisions: integration plan [N10](../reference/decisions-and-notes.md#n10-step-11b-module-writes-decisions).
+Decisions: integration plan [N10](../reference/integration-decisions.md#n10-step-11b-module-writes-decisions).
 
-Related: [Step 11a reads](step11a-chain-reads.md), [Step 10b wallet](step10b-wallet-runtime.md).
+Related: [Step 11a reads](archive/steps/module-chain-reads-runbook.md), [Step 10b wallet](archive/steps/wallet-runtime-runbook.md).
 
 ## Environment
 
@@ -37,14 +37,14 @@ Wallet patches live under
 - `wallet-qt-sign-public-payload.patch` — Step 11c
 - `wallet-qt-send-generic-public-transaction-json.patch` — Step 11b JSON submit
 
-Pin and rebuild details: [`step11d-wallet-510.md`](step11d-wallet-510.md),
+Pin and rebuild details: [`archive/steps/wallet-510-runbook.md`](archive/steps/wallet-510-runbook.md),
 [`feature-branch-pins.md`](feature-branch-pins.md).
 
 Run logoscore from repo root so relative paths resolve.
 
 ## Public LogosAPI surface (Universal)
 
-Exported methods come from `payment_streams_module_impl.h` via codegen ([N11](../reference/decisions-and-notes.md#n11-universal-module-public-api)).
+Exported methods come from `payment_streams_module_impl.h` via codegen ([N11](../reference/integration-decisions.md#n11-universal-module-public-api)).
 Writes and status use one router instead of separate invokables per operation:
 
 | Method | Purpose |

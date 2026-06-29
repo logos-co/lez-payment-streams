@@ -2,10 +2,10 @@
 
 Local LEZ demos use fake funds and a disposable chain. Prefer a known-good fixture over
 debugging stale state. Public testnet operators should not follow this reset-first policy;
-see Step 12 runbook testnet notes in [`step12-user-eligibility.md`](step12-user-eligibility.md).
+see Step 12 runbook testnet notes in [`archive/steps/user-eligibility-runbook.md`](archive/steps/user-eligibility-runbook.md).
 
-Related: [`step10a-handoff-and-follow-up.md`](step10a-handoff-and-follow-up.md),
-[`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md).
+Related: [`archive/steps/local-chain-fixture-handoff.md`](archive/steps/local-chain-fixture-handoff.md),
+[`archive/steps/local-chain-fixture.md`](archive/steps/local-chain-fixture.md).
 
 ## Principle
 
@@ -129,7 +129,7 @@ export PERSIST_DIR="$PWD/.scaffold/step13-persist-$(date +%s)"
 VERIFY_LOGOSCORE=1 ./scripts/archive/verify-step13-dod.sh
 ```
 
-See [`step13-provider-eligibility.md`](step13-provider-eligibility.md).
+See [`archive/steps/provider-eligibility-runbook.md`](archive/steps/provider-eligibility-runbook.md).
 
 ## Scripts
 

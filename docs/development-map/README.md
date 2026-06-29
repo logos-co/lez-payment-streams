@@ -12,7 +12,7 @@ agents who need step status or legacy operator detail.
 | [../plan/README.md](../plan/README.md) | Completed / upcoming / cancelled packets |
 | [../../AGENTS.md](../../AGENTS.md) | Active step and read order |
 
-Product verification gates: [verification-matrix.md](../verification-matrix.md) (not step DoD scripts).
+Product verification gates: [verification-matrix.md](../reference/verification-matrix.md) (not step DoD scripts).
 
 ## Historical runbooks
 
@@ -20,22 +20,22 @@ Step-scoped operator files remain under `docs/` for reference:
 
 | Area | Examples |
 | --- | --- |
-| Fixture and wallet | [step10a-local-chain-fixture.md](../step10a-local-chain-fixture.md), [step10b-wallet-runtime.md](../step10b-wallet-runtime.md) |
-| Module chain I/O | [step11a-chain-reads.md](../step11a-chain-reads.md) through [step11d-wallet-510.md](../step11d-wallet-510.md) |
-| Eligibility (not external product path) | [step12-user-eligibility.md](../step12-user-eligibility.md), [step13-provider-eligibility.md](../step13-provider-eligibility.md) |
-| Store E2E detail | [step17-e2e-local.md](../step17-e2e-local.md), [step18-public-sequencer-e2e.md](../step18-public-sequencer-e2e.md) |
-| Runtime install spine | [logos-runtime-guide.md](../logos-runtime-guide.md) |
-| Discovery / policy | [step1-findings-scaffold-rpc.md](../step1-findings-scaffold-rpc.md), [step3-policy-and-implementor-notes.md](../step3-policy-and-implementor-notes.md), [step8-universal-legacy-probe-results.md](../step8-universal-legacy-probe-results.md) |
+| Fixture and wallet | [archive/steps/local-chain-fixture.md](../archive/steps/local-chain-fixture.md), [archive/steps/wallet-runtime-runbook.md](../archive/steps/wallet-runtime-runbook.md) |
+| Module chain I/O | [archive/steps/module-chain-reads-runbook.md](../archive/steps/module-chain-reads-runbook.md) through [archive/steps/wallet-510-runbook.md](../archive/steps/wallet-510-runbook.md) |
+| Eligibility (not external product path) | [archive/steps/user-eligibility-runbook.md](../archive/steps/user-eligibility-runbook.md), [archive/steps/provider-eligibility-runbook.md](../archive/steps/provider-eligibility-runbook.md) |
+| Store E2E detail | [archive/steps/local-store-dual-host-runbook.md](../archive/steps/local-store-dual-host-runbook.md), [archive/steps/public-sequencer-store-runbook.md](../archive/steps/public-sequencer-store-runbook.md) |
+| Runtime install spine | [logos-runtime-guide.md](../archive/steps/logos-runtime-guide.md) |
+| Discovery / policy | [archive/steps/scaffold-rpc-findings.md](../archive/steps/scaffold-rpc-findings.md), [archive/steps/policy-implementor-notes.md](../archive/steps/policy-implementor-notes.md), [archive/steps/universal-legacy-probe-results.md](../archive/steps/universal-legacy-probe-results.md) |
 
 ## Recovery
 
-[demo-localnet-recovery.md](../demo-localnet-recovery.md)
+[archive/operator/localnet-recovery.md](../archive/operator/localnet-recovery.md)
 
 ## Legacy automation
 
 Historical definition-of-done shell drivers live under `scripts/archive/`. Some `make verify-step10a`
 through `verify-step13` targets still invoke them for maintainer regression. External runbooks do
-not link to archive paths; use [verification-matrix.md](../verification-matrix.md) for supported gates.
+not link to archive paths; use [verification-matrix.md](../reference/verification-matrix.md) for supported gates.
 
 Flow A implementation: [scripts/module-e2e-local.sh](../../scripts/module-e2e-local.sh) (not archive).
 

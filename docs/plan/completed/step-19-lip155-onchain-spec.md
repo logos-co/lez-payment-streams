@@ -44,7 +44,7 @@ Normative boundaries:
     preimages (LEZ demo binding). `### LEZ off-chain integration` keeps identifier
     encodings and points readers to Implementation Considerations for preimage bytes;
     it MUST NOT duplicate full byte layouts. Demo MUST still match
-    [N8](../../reference/decisions-and-notes.md#n8-canonical-store-request-bytes-format)
+    [N8](../../reference/integration-decisions.md#n8-canonical-store-request-bytes-format)
     and Step 15 Nim parity; N8 remains the engineering check against Implementation
     Considerations text.
 - Alternative on-chain layouts: matching Theory prose and operation correspondence
@@ -69,7 +69,7 @@ Editor decisions (Step 19):
   Security carry binding and privacy narrative.
 
 Prerequisite: on-chain guest and `lez-payment-streams-core` accepted as complete
-([`architecture.md`](../../on-chain/architecture.md),
+([`architecture.md`](../../on-chain/README.md),
 [`docs/archive/implementation-plan-on-chain.md](../../archive/implementation-plan-on-chain.md)).
 
 Scheduling: ran in parallel with Steps 17–18. Step 20 may cite the branch pin above;
@@ -84,14 +84,14 @@ an optional merge PR lands.
 
 Reference implementation (informative for PR review, not LIP body):
 guest handlers, `instruction.rs`, `program_tests`, and
-[`architecture.md`](../../on-chain/architecture.md).
+[`architecture.md`](../../on-chain/README.md).
 On-chain MUST/SHALL in the LIP MUST align with this reference LEZ program; where the LIP is
 silent on layout, the demo program is the conformance artifact.
 Document wallet-vs-guest policy explicitly (for example shielded-only
 `PseudonymousFunder` is wallet responsibility, not guest enforcement).
 
 Sources for Implementation Considerations prose (outside the LIP file):
-[N8](../../reference/decisions-and-notes.md#n8-canonical-store-request-bytes-format),
+[N8](../../reference/integration-decisions.md#n8-canonical-store-request-bytes-format),
 `lez-payment-streams-core` canonical types, LEZ clock constants / demo fixtures for account ids.
 
 Depth target (vs other ift-ts specs):

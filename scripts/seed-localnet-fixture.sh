@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Step 10a — idempotent local chain fixture (see docs/step10a-local-chain-fixture.md).
+# Step 10a — idempotent local chain fixture (see docs/archive/steps/local-chain-fixture.md).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

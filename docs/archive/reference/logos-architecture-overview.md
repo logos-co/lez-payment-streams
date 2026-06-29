@@ -234,7 +234,7 @@ LogosAPI::callModule("other_module", "methodName", {arg1, arg2});
 Payment streams integration (Step 8, D6): a Universal `payment_streams_module`
 calling Legacy `logos_execution_zone` uses the same dispatch as Legacy callers on
 the pinned SDK: `modules().api->getClient("logos_execution_zone")->invokeRemoteMethod(...)`.
-See [`docs/step8-universal-legacy-probe-results.md`](docs/step8-universal-legacy-probe-results.md).
+See [`docs/archive/steps/universal-legacy-probe-results.md`](docs/archive/steps/universal-legacy-probe-results.md).
 
 The called module receives the invocation through Qt's meta-object system.
 It does not see which module called it, only that the runtime is invoking a method.
@@ -357,7 +357,7 @@ no indexer,
 no full-stack circuits management.
 `getAccount` against the sequencer at `:3040`
 is the read path used by `logos_execution_zone`,
-matching `docs/step1-findings-scaffold-rpc.md`.
+matching `docs/archive/steps/scaffold-rpc-findings.md`.
 
 The LEZ indexer exists in the broader ecosystem but never runs for this integration.
 
@@ -460,4 +460,4 @@ not merely for `logos-module-builder` usage.
 | Wrapping a Rust crate as a module | `logos-lez-rln/logos-rln-module/` |
 | Wrapping a Nim implementation as a module | `logos-delivery-module/` |
 | `ui_qml` plugin pattern | `logos-delivery-demo/` and the journey doc |
-| Standalone LEZ localnet | `scaffold/README.md` and `docs/step1-findings-scaffold-rpc.md` |
+| Standalone LEZ localnet | `scaffold/README.md` and `docs/archive/steps/scaffold-rpc-findings.md` |

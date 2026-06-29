@@ -1,6 +1,6 @@
-# Decisions and notes
+# Integration decisions
 
-Normative decisions (D1–D6) and carry-forward notes (N1–N12) for payment-streams integration.
+Normative decisions (D1–D6) and carry-forward notes. Postmortems N12–N15: [decisions-historical.md](../archive/reference/decisions-historical.md). for payment-streams integration.
 Index: [program-index.md](../development-map/program-index.md). Cross-step APIs: [integration-contracts.md](integration-contracts.md).
 Plan excerpts: [plan/README.md](../plan/README.md).
 
@@ -92,7 +92,7 @@ We ship this on our branches and do not negotiate spec changes.
 
 Step 16 bridge and verification (normative): threading and async `storeQuery` ([N3a](#n3a-step-16-threading--approach-a-experiment-2025-06-18)),
 hook lifecycle ([N3b](#n3b-step-16-hook-registration-lifecycle-2025-06-18)), NULL inbound proof ([N3c](#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)),
-scope vs Step 17 E2E ([N12](#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+scope vs Step 17 E2E ([N12](../archive/reference/decisions-historical.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
 Agent summary table: [step-16.md](../plan/completed/step-16.md#resolved-implementation-decisions-2025-06-18).
 
 Inbound `eligibility_status.desc` on the Store wire (D1) is filled by `liblogosdelivery`
@@ -114,7 +114,7 @@ consumer (`logos-delivery-module`, C smoke tests). Do not remove or change exist
 ### D3, Wallet write path
 
 Reproducible flake refs and pin maintenance:
-[`docs/feature-branch-pins.md`](docs/feature-branch-pins.md).
+[`docs/reference/feature-branch-pins.md`](docs/reference/feature-branch-pins.md).
 This section records integration intent; pin tables live in that doc only.
 
 `payment_streams_module` chain writes go through `logos_execution_zone`, which delegates
@@ -144,7 +144,7 @@ Upstream exposes 491 to Logos modules via
 Same author and timeline as PR 491.
 
 Primary path: pin and build the patched wallet wrapper against PR 19 head + LEZ `main`
-(510 merge; includes 491 generic public tx — see [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md)).
+(510 merge; includes 491 generic public tx — see [`docs/reference/feature-branch-pins.md`](docs/reference/feature-branch-pins.md)).
 Step 11b submits through PR 19 `send_generic_public_transaction` in the wallet; the Universal
 module uses a repo-specific `send_generic_public_transaction_json` IPC helper (N10). Read PR 19
 for the underlying QList request shape.
@@ -163,7 +163,7 @@ Do not pin [PR 429 / PR 16](docs/archive/superseded-wallet-pr-429-16.md).
 #### Pinning
 
 Pin `logos-execution-zone` to `main` at the current LEZ revision in
-[`docs/feature-branch-pins.md`](docs/feature-branch-pins.md) (510 merge after Step 11d) and the wallet module upstream
+[`docs/reference/feature-branch-pins.md`](docs/reference/feature-branch-pins.md) (510 merge after Step 11d) and the wallet module upstream
 input to `refs/pull/19/head` until PR 19 merges; then pin `main` on the wallet module repo.
 LEZ is no longer pinned to `refs/pull/491/head` in this integration.
 
@@ -386,94 +386,9 @@ Inbound wire semantics and Step 15 wrapper behavior are unchanged: a module OK a
 inner Store handler to run; a module verdict failure yields Store 400 with
 `eligibility_status`.
 
-### N12, Step 16 vs Step 17 verification scope (2025-06-18)
 
-| Step | Repo / focus | Prove |
-| --- | --- | --- |
-| 16 | `logos-delivery-module` | Eligibility bridge, hook lifecycle (N3b), threading (N3a), async `storeQuery`, registration introspection, unit mocks and logoscore registration checks. |
-| 17 | Demo script + two hosts | Full stack: sequencer, wallet, both `logoscore` instances, relay and Store archive, paid outbound query, inbound verify including failed eligibility on the wire, structured log artifact. |
 
-Do not block Step 16 merge on the Step 17 script. Step 17 is the integration gate for
-end-to-end Store and eligibility outcomes described in the former monolithic Step 16 DoD.
 
-### N13, Step 17 `liblogosdelivery` bundle vs local overlay (2026-06-18)
-
-Step 17 installs `delivery_module` via `nix build …#lgx` and `lgpm install` (plugin plus bundled
-`liblogosdelivery.so` and runtime deps from the module flake). Paid Store E2E failed when only
-the plugin was refreshed while an older `liblogosdelivery.so` remained, and also when the locked
-nix library still contained a bug in
-`logosdelivery_store_query` that cleared `eligibilityProof` immediately after JSON parse
-(`storeQueryRequest.eligibilityProof = none(seq[byte])`), so outbound queries never carried
-tag-30 proof and the provider verifier saw empty `proofBytes`.
-
-Symptoms on the provider: inbound eligibility hook with `proof_len=0`, verify JSON
-`proofBytes and canonicalRequestBytes must be non-empty even-length hex`, Store response
-`BAD_REQUEST` (400). Direct `logoscore call payment_streams_module verifyEligibilityForStoreQuery`
-on the same host still passed because proof and N8 were supplied on the CLI path.
-
-Mitigations (`make verify-step17` / [`scripts/e2e.sh`](../scripts/e2e.sh) `local run`; archived
-[`scripts/archive/demo-e2e-local.sh`](../scripts/archive/demo-e2e-local.sh)):
-
-- Default: after `lgpm install` of the delivery `.lgx`, optionally overlay
-  `make liblogosdelivery` from sibling `logos-delivery` (`LOGOS_DELIVERY_ROOT`) unless
-  `SKIP_LIBLOGOSDELIVERY_OVERLAY=1`.
-- Hermetic path: set `SKIP_LIBLOGOSDELIVERY_OVERLAY=1`, use `DELIVERY_MODULE_ROOT` with
-  `flake.lock` at `logos-delivery` ≥ `39b467ec`; see
-  [step17-e2e-local.md](../step17-e2e-local.md#hermetic-run-hand-off).
-
-Clean nix-only path: push the `logos-delivery` fix (retain JSON `eligibilityProofHex` through
-`logosdelivery_store_query`), run `nix flake update logos-delivery` in `logos-delivery-module`,
-commit `flake.lock`, update [feature-branch-pins.md](../feature-branch-pins.md), re-run E2E with
-`SKIP_LIBLOGOSDELIVERY_OVERLAY=1`, then drop the default overlay from the script when stable.
-
-Inbound bridge (`delivery_module` → `payment_streams_module` during Store handling) must invoke
-`LogosAPIClient` on the client object's thread (`runOnOwnerThread`); see [N3a](#n3a-step-16-threading--approach-a-experiment-2025-06-18).
-
-### N14, Step 17 paid-query verify rejects (2026-06-19)
-
-After the N13 wiring was correct (proof carried tag-30, provider verifier reached), the happy-path
-`storeQuery` still returned client-visible `BAD_REQUEST`. The client only ever sees `BAD_REQUEST`
-on a non-OK verdict, so the orchestrator now calls
-`payment_streams_module verifyEligibilityForStoreQuery` directly on the provider and writes the
-real verdict to a `store_query_eligibility_verdict` artifact line (`eligibility` + `message`).
-Policy rejects carry `reject_reason=N` (the FFI `PolicyRejectReason` discriminant) in the message.
-
-Three root causes surfaced through that observability, in order:
-
-- `STREAM_NOT_ACTIVE` / stream depleted. The seed fixture allocated `400` at rate `1`
-  (≈400 s), so the stream depleted before or during a run. Fixed at the time by larger seed
-  sizing (deposit `2400` / allocation `1800`). **Superseded (2026-06-28):** conservative
-  `1000` / `200` defaults plus clock sync after restore ([Step 24c](../plan/completed/step-24c-simplify-demo-flow.md));
-  per-run streams and teardown replace a single long-lived stream `0`.
-- `PROOF_INVALID` / session public key unknown. `scripts/e2e/seed_provider_acceptance.py` picked a
-  stale negotiation row when `PERSIST_USER` was reused. Hardened to match the current manifest
-  provider, newest-first.
-- `PARAMS_REJECTED` / `RateBelowAcceptedParams` (`reject_reason=4`). `fillServiceId` in
-  `payment_streams_module_eligibility.cpp` overwrote the on-chain `rate`/`allocation` with demo
-  defaults while building `acceptedParams`, so verify compared chain rate `1` against accepted
-  rate `10`. `fillServiceId` now only sets `service_id` fields; the proposal arm sets
-  `proposal.params.rate = kDemoRate` explicitly.
-
-### N15, Step 17b localnet snapshot restore (2026-06-19)
-
-Step 17 back-to-back runs reused a live stream whose accrual continued across sessions;
-`verify-step10a-dod.sh` only checks that stream PDAs exist, not eligibility runway ([N14](#n14-step-17-paid-query-verify-rejects-2026-06-19)).
-
-Fix: snapshot a **pre-stream** funded baseline (vault `0` deposited, no stream `0`) while the
-sequencer is stopped, copying `~/.cache/logos-scaffold/repos/lez/<scaffold.toml pin>/rocksdb/`
-plus `.scaffold/wallet`, `.scaffold/state`, and fixture owner/provider state files into
-`.scaffold/snapshots/funded/`. Each run restores that baseline and runs
-`create-stream-onchain` at `next_stream_id` after `wait-clock-synced` (Clock10 ≈ wall time;
-supersedes relying on restore-time accrual anchor alone).
-
-Validity keys in `snapshot.json`: `lez_pin`, `program_id_hex` (same guard as Step 10a),
-owner/provider account ids, deposit and stream params. Mismatch → operator runs
-`make full-reset-localnet` (prefund + snapshot rebuild). Default demo path:
-`make prepare-localnet` (formerly [`scripts/archive/demo-localnet-prepare.sh`](../../scripts/archive/demo-localnet-prepare.sh));
-full rebuild: `make full-reset-localnet` (formerly
-[`scripts/archive/demo-localnet-fresh.sh`](../../scripts/archive/demo-localnet-fresh.sh), which set `FULL_RESET=1`).
-
-Plan packet: [step-17b-localnet-snapshot-restore.md](../plan/completed/step-17b-localnet-snapshot-restore.md).
 
 ### N4, Persistence policy
 
@@ -513,7 +428,7 @@ roadmap item is independent of this integration.
 Active path ([D2](#d2-delivery-module-hook-design)): add `logosdelivery_store_query` on our
 `logos-delivery` fork (Step 15) and `storeQuery(...)` on our `logos-delivery-module` fork
 (Step 16), wired to eligibility hooks and `payment_streams_module`. Steps 14–20 do not wait on
-upstream N6. Step 17 E2E depends on Step 16 bridge landing on those forks ([N12](#n12-step-16-vs-step-17-verification-scope-2025-06-18)), not on upstream
+upstream N6. Step 17 E2E depends on Step 16 bridge landing on those forks ([N12](../archive/reference/decisions-historical.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)), not on upstream
 `master`.
 
 Branch workflow: fork from upstream `master` (not module release tags); default shared
@@ -638,7 +553,7 @@ Scaffold config and runtime layout
 LEZ pin
 
 - `[repos.lez]` in `scaffold.toml` uses the same revision as LEZ PR 491 and
-  [`docs/feature-branch-pins.md`](docs/feature-branch-pins.md) / `nix/payment-streams-ffi.nix`
+  [`docs/reference/feature-branch-pins.md`](docs/reference/feature-branch-pins.md) / `nix/payment-streams-ffi.nix`
   (no separate “old LEZ” localnet for 10a and 491 for 10b). Re-run `lgs setup` after pin bumps.
 
 Deploy (canonical for 10a script and runbook)
@@ -646,7 +561,7 @@ Deploy (canonical for 10a script and runbook)
 - After `lgs init`, `lgs setup`, `lgs localnet start` (from the chosen workspace):
   from repo root, `make build`, `make idl`, `make deploy` (`wallet deploy-program` on the guest
   binary), then `make program-id` into the fixture manifest.
-- Operator detail and RPC formats: [`docs/step1-findings-scaffold-rpc.md`](docs/step1-findings-scaffold-rpc.md)
+- Operator detail and RPC formats: [`docs/archive/steps/scaffold-rpc-findings.md`](docs/archive/steps/scaffold-rpc-findings.md)
   (scaffold discovery doc — not integration plan Step 1, which is Rust FFI only).
 
 Fixture scope
@@ -664,13 +579,13 @@ Artifacts
 - Idempotent seed script, gitignored `fixtures/localnet.json`, committed
   `fixtures/localnet.json.example`, brief runbook under `docs/`.
 - Runbook troubleshooting: owner or `SIGNER_ID` vs wallet home, and foreign localnet on
-  3040 — [`docs/step10a-local-chain-fixture.md`](docs/step10a-local-chain-fixture.md)
+  3040 — [`docs/archive/steps/local-chain-fixture.md`](docs/archive/steps/local-chain-fixture.md)
   (Troubleshooting).
 - Step 10a operator troubleshooting and verify failures —
-  [`docs/step10a-handoff-and-follow-up.md`](docs/step10a-handoff-and-follow-up.md).
+  [`docs/archive/steps/local-chain-fixture-handoff.md`](docs/archive/steps/local-chain-fixture-handoff.md).
 - Why `seed_localnet_fixture` inflates workspace `Cargo.lock` (fat LEZ `wallet`/`lee` deps,
   dual LEZ pins) and optional slimming paths —
-  [`docs/step10a-local-chain-fixture.md`](docs/step10a-local-chain-fixture.md)
+  [`docs/archive/steps/local-chain-fixture.md`](docs/archive/steps/local-chain-fixture.md)
   (Seed binary and workspace Cargo.lock).
 
 SPEL-on-LEE cleanup (public PDA prefix)
@@ -751,7 +666,7 @@ Logos entry point; that is an API ergonomics choice, not a codegen limit. Step 1
 adds named eligibility methods; Step 16 registration must match those names exactly
 (for example `prepareEligibilityForStoreQuery`).
 
-### N16, Step 25 dual demo orchestration paths (2026-06) — superseded
+### N16a, Step 25 dual demo orchestration paths (2026-06) — superseded (see plan/cancelled/step-25)
 
 Superseded by [N17](#n17-demo-orchestration-stays-external-script-2026-06). Step 25 (in-process
 coordinator module) is **won't fix**; do not implement `payment_streams_demo_coordinator` or
@@ -766,7 +681,7 @@ Dual-host paid Store demo coordination stays on the **host**, not in a Logos mod
   [`scripts/e2e/run_local_e2e.py`](../../scripts/e2e/run_local_e2e.py) (archived entry:
   [`scripts/archive/demo-e2e-local.sh`](../../scripts/archive/demo-e2e-local.sh)).
 - **Cross-host sequencing:** the Python orchestrator (or an operator following Step 20 /
-  [step17-e2e-local.md](../../step17-e2e-local.md)) calls `logoscore` with
+  [archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md)) calls `logoscore` with
   `LOGOSCORE_CONFIG_USER` vs `LOGOSCORE_CONFIG_PROVIDER`. Each daemon loads
   `logos_execution_zone`, `payment_streams_module`, and `delivery_module` only.
 - **Product APIs:** eligibility and Store integration are
@@ -820,6 +735,6 @@ builtin program ids aligned with the 510-era lineage, not rc3 dual-pin tooling.
 - **Dual-pin abandoned:** rc3-only submit tooling and split wallet storage were Step 18 WIP only; not used after 18b.
 - **Rust / guest pin (Step 24b):** `lez-payment-streams-core`, guest, FFI, and `examples/` use the same rc5 rev as operational tooling; no intentional 510 vs rc5 split in this repo.
 - **Phase 9:** retire `tools/lez-testnet-submit` when module `chainAction` on testnet needs no helper.
-- **Status (2026-06):** merged to `master`; Step 24b unified Rust/guest on rc5. `make verify-step17` uses `CHAIN=local`; `make verify-step18` exercises public testnet Part B (see [step18-public-sequencer-e2e.md](../step18-public-sequencer-e2e.md)).
+- **Status (2026-06):** merged to `master`; Step 24b unified Rust/guest on rc5. `make verify-step17` uses `CHAIN=local`; `make verify-step18` exercises public testnet Part B (see [archive/steps/public-sequencer-store-runbook.md](../archive/steps/public-sequencer-store-runbook.md)).
 
 Handoff: [step-18b-rc5-unify-handoff.md](../plan/completed/step-18b-rc5-unify-handoff.md).

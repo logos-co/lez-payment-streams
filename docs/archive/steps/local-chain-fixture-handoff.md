@@ -2,7 +2,7 @@
 
 Status: fixture tooling and LEZ guest alignment are in tree. Step 10a DoD is green when
 `./scripts/archive/verify-step10a-dod.sh` exits 0 after a full seed on the pinned LEZ localnet (see
-[`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md)). Current LEZ pin: `scaffold.toml`
+[`archive/steps/local-chain-fixture.md`](archive/steps/local-chain-fixture.md)). Current LEZ pin: `scaffold.toml`
 (matches [PR 510](https://github.com/logos-blockchain/logos-execution-zone/pull/510) merge after Step 11d).
 
 ## What is in tree
@@ -10,7 +10,7 @@ Status: fixture tooling and LEZ guest alignment are in tree. Step 10a DoD is gre
 - Operator path: `scaffold.toml`, `spel.toml`, `scripts/seed-localnet-fixture.sh`,
   `scripts/archive/verify-step10a-dod.sh`, `scripts/archive/reinit-scaffold-wallet.sh`,
   `examples/src/bin/seed_localnet_fixture.rs`, `fixtures/localnet.json.example`.
-- Runbook: [`step10a-local-chain-fixture.md`](step10a-local-chain-fixture.md).
+- Runbook: [`archive/steps/local-chain-fixture.md`](archive/steps/local-chain-fixture.md).
 - Public PDA prefix (LEE vs NSSA): vendored
   [`vendor/spel-framework-core`](../vendor/spel-framework-core) (`lee_core::AccountId::for_public_pda`
   in `compute_pda`); guest `[patch]` in root and `methods/guest/Cargo.toml`.
@@ -20,7 +20,7 @@ Status: fixture tooling and LEZ guest alignment are in tree. Step 10a DoD is gre
   targets the pinned LEZ tree; other `cargo test -p lez-payment-streams-core --lib` tests still run.
 
 Long-term cleanup when SPEL targets LEE: integration plan
-[N9 SPEL-on-LEE cleanup](../reference/decisions-and-notes.md#n9-step-10a-local-chain-fixture-decisions).
+[N9 SPEL-on-LEE cleanup](../reference/integration-decisions.md#n9-step-10a-local-chain-fixture-decisions).
 
 ## When verify fails
 
@@ -79,10 +79,10 @@ make build idl deploy
 ./scripts/archive/verify-step10a-dod.sh
 ```
 
-See also [`demo-localnet-recovery.md`](demo-localnet-recovery.md).
+See also [`archive/operator/localnet-recovery.md`](archive/operator/localnet-recovery.md).
 
 Foreign localnet on `:3040`, wallet home drift, and sequencer config symlink: runbook
-[Troubleshooting](step10a-local-chain-fixture.md#troubleshooting).
+[Troubleshooting](archive/steps/local-chain-fixture.md#troubleshooting).
 
 ## Version bumps do not drop the patches
 
@@ -93,6 +93,6 @@ plan.
 
 ## Next step
 
-After `./scripts/archive/verify-step10a-dod.sh` exits 0, follow [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md)
+After `./scripts/archive/verify-step10a-dod.sh` exits 0, follow [`archive/steps/wallet-runtime-runbook.md`](archive/steps/wallet-runtime-runbook.md)
 and run `./scripts/archive/verify-step10b-dod.sh`. When Step 10b DoD is green, proceed to integration plan
 Step 11a. Do not commit `fixtures/localnet.json` (gitignored).

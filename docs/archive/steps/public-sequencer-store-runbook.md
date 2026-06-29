@@ -1,10 +1,10 @@
 # Step 18 — public sequencer E2E (local Store and relay)
 
-Product runbook: [store-integration/runbook-testnet.md](store-integration/runbook-testnet.md).
+Product runbook: [store-integration/README.md](store-integration/README.md).
 Tier 1: `make verify-step18` via [verification-matrix.md](verification-matrix.md).
 
 Operator runbook for `CHAIN=testnet`. Local dual-host layout matches
-[step17-e2e-local.md](step17-e2e-local.md). CI default for local remains `make verify-step17`.
+[archive/steps/local-store-dual-host-runbook.md](archive/steps/local-store-dual-host-runbook.md). CI default for local remains `make verify-step17`.
 
 ## LEZ pin (single operational)
 
@@ -16,7 +16,7 @@ Operational wallet, module `.lgx`, local E2E, and public testnet use one LEZ rev
 | Git rev | `27360cb7d6ccb2bfbcca7d171bab8a3938490264` |
 | Where | `scaffold.toml`, `nix/payment-streams-ffi.nix`, wallet flakes, `tools/lez-testnet-submit` |
 
-Rust `program_tests` and the guest ELF share the operational rc5 LEZ pin ([N16](reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06), [Step 24b](plan/completed/step-24b-rc5-rust-lee-unify.md)).
+Rust `program_tests` and the guest ELF share the operational rc5 LEZ pin ([N16](reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06), [Step 24b](plan/completed/step-24b-rc5-rust-lee-unify.md)).
 
 Public testnet at `https://testnet.lez.logos.co/` uses lez jsonrpsee RPC (`getLastBlockId`,
 `sendTransaction`, `getAccount`, …). LEE v0.3 public message hashing applies on chain writes.

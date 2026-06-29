@@ -3,8 +3,8 @@
 Normative handoff for agents. Index: [program-index.md](../../development-map/program-index.md).
 Prerequisite: Step 18b complete (operational Nix / scaffold / wallet / testnet scripts on rc5).
 Related: [step-24-lee-harness-upgrade.md](../completed/step-24-lee-harness-upgrade.md),
-[N16](../../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06),
-[feature-branch-pins.md](../../feature-branch-pins.md).
+[N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06),
+[feature-branch-pins.md](../../reference/feature-branch-pins.md).
 
 Status: **complete** (2026-06-26 on `master`).
 
@@ -34,7 +34,7 @@ harness lag). Step 24b closes that gap.
 - **`make verify-step17`** passes (local LEZ dual-host Store E2E).
 - **`make verify-step18-testnet-read-smoke`**, **`make bootstrap-testnet`** (if manifest stale),
   **`make verify-step18`** pass (public testnet chain + local Store).
-- Docs updated: remove “harness lag” / dual-rev narrative; [N16](../../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06) amended on merge to state Rust = operational pin.
+- Docs updated: remove “harness lag” / dual-rev narrative; [N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06) amended on merge to state Rust = operational pin.
 
 Out of scope: `logos-delivery` / `logos-delivery-module` forks; Store wire; Logos module
 LogosAPI surface; Phase 9 retirement of `tools/lez-testnet-submit` (unchanged — separate step).
@@ -188,7 +188,7 @@ everywhere.
 
 ### 10. Documentation renames (optional, non-blocking)
 
-**Default:** Do not rename `docs/step11d-wallet-510.md` in Step 24b; add a one-line note at top
+**Default:** Do not rename `docs/archive/steps/wallet-510-runbook.md` in Step 24b; add a one-line note at top
 “historical title; operational pin rc5”. Optional follow-up: rename file + links.
 
 ## Step-by-step implementation plan
@@ -232,7 +232,7 @@ Compare to pre–24b table. Branch:
 ### Phase 3b — Testnet redeploy (only if ImageID changed)
 
 Prerequisites: testnet wallet under `.scaffold/e2e/testnet-wallet/`, rc5 `wallet` on PATH,
-`LEE_WALLET_HOME_DIR` set per [step18-public-sequencer-e2e.md](../../step18-public-sequencer-e2e.md).
+`LEE_WALLET_HOME_DIR` set per [archive/steps/public-sequencer-store-runbook.md](../../archive/steps/public-sequencer-store-runbook.md).
 
 ```bash
 make deploy-testnet
@@ -280,11 +280,11 @@ make verify-step18
 
 ### Phase 6 — Documentation and index
 
-1. [feature-branch-pins.md](../../feature-branch-pins.md) — one rc5 row for Rust + Nix + scaffold;
+1. [feature-branch-pins.md](../../reference/feature-branch-pins.md) — one rc5 row for Rust + Nix + scaffold;
    delete “harness lag” / separate 510 test pin subsection.
-2. [N16](../../reference/decisions-and-notes.md#n16-step-18b-rc5-operational-pin-2026-06) — state
+2. [N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06) — state
    operational and Rust pins unified; Phase 9 helper retirement unchanged.
-3. [step18-public-sequencer-e2e.md](../../step18-public-sequencer-e2e.md) — remove harness-lag
+3. [archive/steps/public-sequencer-store-runbook.md](../../archive/steps/public-sequencer-store-runbook.md) — remove harness-lag
    paragraph under LEZ pin.
 4. [program-index.md](../../development-map/program-index.md) — Step 24b complete; Step 24 note
    superseded for pin policy by 24b completion record.
@@ -341,7 +341,7 @@ touched.
 | Explorer URL (if redeployed) | `https://explorer.testnet.lez.logos.co/` |
 | `make verify-step10a` | pass (`FIXTURE_MANIFEST=fixtures/localnet.json`) |
 | `make verify-step17` | fail on depleted local stream in this session; use `CHAIN=local E2E_LATE_STREAM_CREATE=0` + fresh `FULL_RESET=1 prepare-localnet` |
-| `make verify-step18` | pass (core, `E2E_PHASE=core`, artifact `e2e-20260626T165856.log`; legacy name `demo-e2e-local-*.log`); default `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF=0` blocked until testnet top-up restores unaccrued (see [step18-public-sequencer-e2e.md](../../step18-public-sequencer-e2e.md)) |
+| `make verify-step18` | pass (core, `E2E_PHASE=core`, artifact `e2e-20260626T165856.log`; legacy name `demo-e2e-local-*.log`); default `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF=0` blocked until testnet top-up restores unaccrued (see [archive/steps/public-sequencer-store-runbook.md](../../archive/steps/public-sequencer-store-runbook.md)) |
 | `tools/lez-testnet-submit` | aligned with `seed_localnet_fixture` (`try_new` + `TxPoller`); vendored SPEL patch in standalone `Cargo.toml` |
 | Date | 2026-06-26 |
 
@@ -352,7 +352,7 @@ rc5 guest rebuild”.
 ## References
 
 - Step 24 methodology: [step-24-lee-harness-upgrade.md](../completed/step-24-lee-harness-upgrade.md)
-- Operational testnet runbook: [step18-public-sequencer-e2e.md](../../step18-public-sequencer-e2e.md)
-- Local E2E: [step17-e2e-local.md](../../step17-e2e-local.md)
+- Operational testnet runbook: [archive/steps/public-sequencer-store-runbook.md](../../archive/steps/public-sequencer-store-runbook.md)
+- Local E2E: [archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md)
 - Localnet snapshot: [step-17b-localnet-snapshot-restore.md](../completed/step-17b-localnet-snapshot-restore.md)
 - LEZ repo: `github.com/logos-blockchain/logos-execution-zone` (`lee`, `lee_core`, `wallet`)

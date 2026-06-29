@@ -1,6 +1,6 @@
 # Step 17 — local E2E demo (operator)
 
-Product runbook: [store-integration/runbook-localnet.md](store-integration/runbook-localnet.md).
+Product runbook: [store-integration/README.md](store-integration/README.md).
 Tier 1: `make verify-step17` / `make verify-step17-back-to-back` via [verification-matrix.md](verification-matrix.md).
 
 Plan excerpt: [plan/completed/step-17.md](plan/completed/step-17.md). Contracts:
@@ -104,14 +104,14 @@ The script (`SKIP_BUILD=1` to reuse installed modules) builds/installs from `REP
    `1` and `LOGOS_DELIVERY_ROOT` contains a Makefile, run `make liblogosdelivery` there and copy
    `build/liblogosdelivery.so` over each `…/delivery_module/` install. Use this while iterating on
    `logos-delivery` without bumping `logos-delivery-module/flake.lock`. For reproducible nix-only
-   libs, set `SKIP_LIBLOGOSDELIVERY_OVERLAY=1` ([N13](reference/decisions-and-notes.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
+   libs, set `SKIP_LIBLOGOSDELIVERY_OVERLAY=1` ([N13](../reference/decisions-historical.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
 
 Orchestration: [`scripts/e2e/run_local_e2e.py`](../scripts/e2e/run_local_e2e.py) via
 [`scripts/e2e.sh`](../scripts/e2e.sh) (JSON-lines artifact under
 `.scaffold/e2e/artifacts/`). This runbook is **Track A** — Store + eligibility integration
-([N18](reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
+([N18](reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
 Payment-streams-only Basecamp UI is **Track B** (Steps 21–22), not described here.
-Policy: [N17](reference/decisions-and-notes.md#n17-demo-orchestration-stays-external-script-2026-06).
+Policy: [N17](reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06).
 Step 20 developer journey adds a step-by-step command path equivalent to the script; see
 [step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md).
 Optional probe: [`scripts/e2e/debug_happy_path.py`](../scripts/e2e/debug_happy_path.py).
@@ -259,7 +259,7 @@ Sync wallet to sequencer height before chain-dependent calls.
 | Provider | `setEligibilityVerifier` → `payment_streams_module` | Paid mode: every inbound Store verified |
 | User (happy path) | `setEligibilityProvider` → `payment_streams_module` | Attach proof on outbound `storeQuery` |
 
-After `createNode` on each host ([N3b](reference/decisions-and-notes.md#n3b-step-16-hook-registration-lifecycle-2025-06-18)).
+After `createNode` on each host ([N3b](reference/integration-decisions.md#n3b-step-16-hook-registration-lifecycle-2025-06-18)).
 
 User before Store:
 
@@ -289,7 +289,7 @@ hook uses N8 bytes inside liblogosdelivery. Ensure stream `0` (or bound stream) 
 
 ## Async `storeQuery` — recommended wait pattern
 
-`storeQuery` dispatches FFI and completes on the `storeQueryCompleted` event ([N3a](reference/decisions-and-notes.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
+`storeQuery` dispatches FFI and completes on the `storeQueryCompleted` event ([N3a](reference/integration-decisions.md#n3a-step-16-threading--approach-a-experiment-2025-06-18)).
 
 Reasonable approach for bash:
 
@@ -313,11 +313,11 @@ keep the same timeout and assertions.
 Provider keeps `setEligibilityVerifier` enabled.
 
 User host: call `setEligibilityProvider` with an **empty** module name to clear outbound
-proof attachment ([N3b](reference/decisions-and-notes.md#n3b-step-16-hook-registration-lifecycle-2025-06-18)),
+proof attachment ([N3b](reference/integration-decisions.md#n3b-step-16-hook-registration-lifecycle-2025-06-18)),
 then `storeQuery` with the same `providerAddr`. liblogosdelivery sends no tag-30 proof.
 
 Assert provider-side outcome: HTTP/wire 400, `eligibility_status` with non-OK verdict, empty
-messages ([N3c](reference/decisions-and-notes.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)).
+messages ([N3c](reference/integration-decisions.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18)).
 
 Re-enable user `setEligibilityProvider` before the happy path if order is reversed in the script.
 
@@ -461,6 +461,6 @@ Requires local LEZ on `127.0.0.1:3040` and a valid funded snapshot (or `make ful
 
 ## Related
 
-- Recovery: [demo-localnet-recovery.md](demo-localnet-recovery.md)
+- Recovery: [archive/operator/localnet-recovery.md](archive/operator/localnet-recovery.md)
 - Runtime install loop: [logos-runtime-guide.md](logos-runtime-guide.md) (Step 17 dual-host section)
-- Step 12 prepare/mapping (single-host): [step12-user-eligibility.md](step12-user-eligibility.md)
+- Step 12 prepare/mapping (single-host): [archive/steps/user-eligibility-runbook.md](archive/steps/user-eligibility-runbook.md)

@@ -2,8 +2,8 @@
 
 Status: complete for integration DoD (feature in tree, `./scripts/archive/verify-step12-dod.sh`,
 strict localnet path with `REQUIRE_STREAM_PROOF=1`). Step 13 provider verify is complete
-separately ([`step13-provider-eligibility.md`](step13-provider-eligibility.md)). Step 16
-`delivery_module` bridge is the next integration step ([N12](reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18));
+separately ([`archive/steps/provider-eligibility-runbook.md`](archive/steps/provider-eligibility-runbook.md)). Step 16
+`delivery_module` bridge is the next integration step ([N12](../reference/decisions-historical.md#n12-step-16-vs-step-17-verification-scope-2025-06-18));
 not a blocker for Step 12 DoD.
 
 Session keys, persisted negotiation state, and Store `EligibilityProof` bytes (LIP-155
@@ -15,10 +15,10 @@ Runbook for operators and implementors. Behavior matches the plan.
 Prerequisites: Step 11c green (`./scripts/archive/verify-step11c-dod.sh`), Step 11a reads, Step 11b
 `chainAction` for manual `createStream`, Step 10b wallet with `sign_public_payload`.
 
-Related: [N4 persistence](../reference/decisions-and-notes.md#n4-persistence-policy),
-[N5 provider mapping](../reference/decisions-and-notes.md#n5-provider-identity-mapping),
-[N8 canonical Store bytes](../reference/decisions-and-notes.md#n8-canonical-store-request-bytes-format),
-[Step 11b writes](step11b-chain-writes.md).
+Related: [N4 persistence](../reference/integration-decisions.md#n4-persistence-policy),
+[N5 provider mapping](../reference/integration-decisions.md#n5-provider-identity-mapping),
+[N8 canonical Store bytes](../reference/integration-decisions.md#n8-canonical-store-request-bytes-format),
+[Step 11b writes](archive/steps/module-chain-writes-runbook.md).
 
 Runtime loop: [`logos-runtime-guide.md`](logos-runtime-guide.md) Part 3.
 
@@ -33,8 +33,8 @@ Show the user path for payment-stream Store eligibility on one local LEZ + two l
 4. Next query → `EligibilityProof` with `stream_proof` over the same canonical Store request bytes.
 
 Step 16 routes prepare output into outbound Store via `delivery_module`; Step 17 exercises
-the full two-host path ([D2](../reference/decisions-and-notes.md#d2-delivery-module-hook-design),
-[N12](../reference/decisions-and-notes.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
+the full two-host path ([D2](../reference/integration-decisions.md#d2-delivery-module-hook-design),
+[N12](../../reference/decisions-historical.md#n12-step-16-vs-step-17-verification-scope-2025-06-18)).
 Step 12 can be tested with logoscore + FFI only.
 
 ## Environment
@@ -63,7 +63,7 @@ config). `vault_id` comes from the manifest (local default `0` after Step 10a se
 
 ### Persistence across runs
 
-Local demos: see [`demo-localnet-recovery.md`](demo-localnet-recovery.md). Chain and manifest
+Local demos: see [`archive/operator/localnet-recovery.md`](archive/operator/localnet-recovery.md). Chain and manifest
 are disposable; wipe `payment_streams_state.json` (fresh `--persistence-path`) each demo unless
 you continue one session. Blank slate: `make full-reset-localnet`.
 
@@ -147,8 +147,8 @@ and allocation as the persisted proposal.
 
 ## Module methods (logoscore)
 
-Same conventions as Step 11a/11b ([`step11a-chain-reads.md`](step11a-chain-reads.md),
-[`step11b-chain-writes.md`](step11b-chain-writes.md)): every method returns one compact JSON
+Same conventions as Step 11a/11b ([`archive/steps/module-chain-reads-runbook.md`](archive/steps/module-chain-reads-runbook.md),
+[`archive/steps/module-chain-writes-runbook.md`](archive/steps/module-chain-writes-runbook.md)): every method returns one compact JSON
 `QString`; successes use `"status":"ok"`, failures `"status":"error"` plus `"message"`. Step 12
 eligibility errors also include `"code"` (machine-readable enum from the plan).
 
@@ -223,7 +223,7 @@ Maps libp2p `provider_peer_id` (Store routing) to the LEZ stream payee. Two argu
 
 The module converts base58 to 32 bytes and uses that everywhere LIP-155 and LEZ need
 `provider_id`: `VaultProof.provider_id`, `createStream` provider binding, persistence and
-pending-proposal keys `(vault_id, provider_id)` ([N5](../reference/decisions-and-notes.md#n5-provider-identity-mapping)).
+pending-proposal keys `(vault_id, provider_id)` ([N5](../reference/integration-decisions.md#n5-provider-identity-mapping)).
 
 | Name | Source |
 | --- | --- |
@@ -240,7 +240,7 @@ Two LogosAPI names (universal module glue does not export same-name overloads):
 - **`prepareEligibilityProofWithStreamProofForStoreQuery`** — proof path only; third arg is explicit `stream_id`.
 
 Builds the incentivization envelope, not bare `StreamProposal` / `StreamProof` messages alone.
-Per [D2](../reference/decisions-and-notes.md#d2-delivery-module-hook-design), Delivery treats
+Per [D2](../reference/integration-decisions.md#d2-delivery-module-hook-design), Delivery treats
 eligibility as opaque bytes on the provider/verifier hooks: copy `bytes_hex` decoded to
 `StoreQueryRequest.eligibility_proof` (tag `30`) without parsing `stream_proposal` or
 `stream_proof`. The streams module owns that protobuf shell and the nested LIP-155 messages
@@ -276,7 +276,7 @@ Errors (machine-readable `code` in JSON): `UNKNOWN_PROVIDER`, `NO_ELIGIBLE_VAULT
 
 ### Persistence (N4)
 
-Demo policy ([N4](../reference/decisions-and-notes.md#n4-persistence-policy)):
+Demo policy ([N4](../reference/integration-decisions.md#n4-persistence-policy)):
 
 | Item | Value |
 | --- | --- |
@@ -328,7 +328,7 @@ Vault owner signing stays on the wallet (`sign_public_payload`); session keys ar
 LEZ account keys.
 
 Step 12 adds keygen in the plan as
-[`payment_streams_ffi_generate_session_keypair`](../reference/decisions-and-notes.md#ffi-session-keypair-step-12-deliverable)
+[`payment_streams_ffi_generate_session_keypair`](../reference/integration-decisions.md#ffi-session-keypair-step-12-deliverable)
 (same `payment_streams_ffi_*` family as `payment_streams_ffi_sign_canonical_payload_digest`).
 Implement generation in `lez-payment-streams-core`; C ABI in `proof_abi.rs` only (no separate
 session ABI module). Refresh `cbindgen` / module C bridge as needed.
@@ -360,7 +360,7 @@ Body-only input (~145 bytes) fails in the module FFI path
 return non-success status such as `Malformed` / status 2).
 
 Cross-check: `cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex` and the Step 15
-Nim test on the delivery fork (see [N8](reference/decisions-and-notes.md#n8-canonical-store-request-bytes-format)).
+Nim test on the delivery fork (see [N8](reference/integration-decisions.md#n8-canonical-store-request-bytes-format)).
 
 ## Intended demo sequence (logoscore)
 
@@ -399,7 +399,7 @@ logoscore stop
 
 ## Definition of done
 
-Recovery policy: [`demo-localnet-recovery.md`](demo-localnet-recovery.md). If logoscore smoke
+Recovery policy: [`archive/operator/localnet-recovery.md`](archive/operator/localnet-recovery.md). If logoscore smoke
 skips `stream_proof` due to `STREAM_DEPLETED`, run `make full-reset-localnet` and retry
 with `REQUIRE_STREAM_PROOF=1` (runs top-up then prepare).
 
@@ -414,7 +414,7 @@ Checks (from plan Step 12):
 - Persistence survives module reload (same `instancePersistencePath`).
 - `listMyStreams` matches folded status when chain state exists.
 - Documented error codes for negative cases.
-- Provider cross-test for the same bytes: [`step13-provider-eligibility.md`](step13-provider-eligibility.md)
+- Provider cross-test for the same bytes: [`archive/steps/provider-eligibility-runbook.md`](archive/steps/provider-eligibility-runbook.md)
   and `./scripts/archive/verify-step13-dod.sh` (not a hard gate for Step 12-only CI).
 
 Skip live chain:
@@ -440,7 +440,7 @@ If `lgs localnet start` fails with missing `sequencer/service/configs/debug/sequ
 
 Addressed in this runbook: wallet env, `PROPOSAL_EXPIRED` + eviction, N8 pin via
 `n8_canonical_wire_hex` (full 138-byte reference wire), LEZ 510 clock ms normalization in FFI fold,
-local recovery [`demo-localnet-recovery.md`](demo-localnet-recovery.md),
+local recovery [`archive/operator/localnet-recovery.md`](archive/operator/localnet-recovery.md),
 `listMyStreams` refresh behavior, stream id allocation, persistence schema v1, keygen in
 `proof_abi.rs`, path selection without `STREAM_ALREADY_EXISTS`, strict verify via
 `REQUIRE_STREAM_PROOF=1` + `step12-topup-and-prepare.sh`.
@@ -450,5 +450,5 @@ Left as-is (simplicity / elsewhere):
 - LogosAPI hex for `canonical_request_hex` is in [LogosAPI encoding](#logosapi-encoding).
 - `registerProviderMapping` argument naming (routing vs LIP-155 bytes) is intentional.
 - No `STREAM_ALREADY_EXISTS` code: active stream → proof path; pending → `PROPOSAL_PENDING`.
-- Step 13 provider cross-test: [`step13-provider-eligibility.md`](step13-provider-eligibility.md)
+- Step 13 provider cross-test: [`archive/steps/provider-eligibility-runbook.md`](archive/steps/provider-eligibility-runbook.md)
   (`VERIFY_LOGOSCORE=1 ./scripts/archive/verify-step13-dod.sh`); not required for Step 12 DoD.

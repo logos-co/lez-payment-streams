@@ -69,7 +69,7 @@ chmod +x scripts/archive/build-wallet-lgx.sh
 ./scripts/archive/build-wallet-lgx.sh
 ```
 
-Install and `MODULES` layout: [`step10b-wallet-runtime.md`](step10b-wallet-runtime.md#install-into-modules).
+Install and `MODULES` layout: [`archive/steps/wallet-runtime-runbook.md`](archive/steps/wallet-runtime-runbook.md#install-into-modules).
 
 ## Verification
 

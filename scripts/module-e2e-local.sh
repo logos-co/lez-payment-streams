@@ -17,7 +17,7 @@ source "$REPO_ROOT/scripts/lib/common.sh"
 
 # Flow A is localnet only for now; A-testnet is future work (the payee claim that
 # ends this happy path is not reliable on public testnet — see
-# docs/testnet-claim-known-issue.md).
+# docs/archive/operator/testnet-claim-known-issue.md).
 if ps_is_testnet; then
   ps_fatal "module-e2e-local.sh is localnet only (A-testnet is future work)"
 fi
@@ -212,7 +212,7 @@ call_ps topup_stream 1 topUpStream     "$(j "{\"signer\":\"$OWNER\",\"vault_id\"
 # Status reads are observability, not part of the happy-path gate. The module
 # does not wait for inclusion, so a derived stream/vault PDA can read back as
 # "account data missing" after a successful submit; treated as SKIP, matching
-# the original step11b verify (docs/step11b-chain-writes.md).
+# the original step11b verify (docs/archive/steps/module-chain-writes-runbook.md).
 call_ps vault_status 0 getVaultStatus  "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID}")" vault_id
 call_ps stream_status 0 getStreamStatus "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" stream_id
 # Let the stream accrue, then the payee claims residual (teardown).

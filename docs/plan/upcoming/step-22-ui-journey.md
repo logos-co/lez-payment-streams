@@ -3,7 +3,7 @@
 Active-work packet for agents. Index: [program-index.md](../../development-map/program-index.md).
 
 **Optional stretch** — execute only after Step 21 ships. Track split:
-[N18](../../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
+[N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 
 ### Step 22, Payment streams UI journey doc packet
 
@@ -24,7 +24,7 @@ Deliver:
   payee account, list vaults/streams), optional payee path (**claim** after accrual).
 - **Out-of-band assumption (required copy):** to demonstrate payee claim, the journey must state
   that the stream creator shares stream identity (vault id, stream id, relevant manifest or
-  account context) with the payee outside the app so the payee knows where to claim ([N18](../../reference/decisions-and-notes.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
+  account context) with the payee outside the app so the payee knows where to claim ([N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
 - Screenshots from Step 21 UI; pins match Step 20 module refs where shared (`payment_streams_module`,
   wallet); runtime target local LEZ first (testnet when Step 18 unblocks, if UI supports it).
 - SME + Red Team per [`logos-docs/CONTRIBUTING.md`](https://github.com/logos-co/logos-docs/blob/main/CONTRIBUTING.md).
