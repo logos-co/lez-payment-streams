@@ -85,18 +85,100 @@ cmd_prefund() {
 # Vault operations
 # ============================================================================
 
-cmd_vault_ensure() {
-  ps_manifest_validate_exists
-  
-  ps_log_info "Ensuring vault exists..."
-  
-  local owner manifest vault_id
+# Resolve the owner account id from the state marker first (survives a manifest
+# reset on restore), then fall back to the fixture manifest.
+resolve_owner() {
+  local owner=""
+  if [[ -f "$REPO_ROOT/.lez_payment_streams-state" ]]; then
+    owner="$(grep '^SIGNER_ID=' "$REPO_ROOT/.lez_payment_streams-state" 2>/dev/null |
+      cut -d= -f2 | tr -d '"'\''')"
+  fi
+  if [[ -z "$owner" ]]; then
+    local manifest="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/localnet.json}"
+    [[ -f "$manifest" ]] && owner="$(ps_json_get "$manifest" owner_account_id)"
+  fi
+  echo "$owner"
+}
+
+# A vault is "funded" when its config account is initialized (next_stream_id is
+# readable) and, when the holding account id is known, it carries at least one
+# stream allocation of unallocated-ish balance.
+vault_is_funded() {
+  local vault_id="${1:-0}"
+  local owner next holding bal min_balance manifest
+  owner="$(resolve_owner)"
+  [[ -z "$owner" ]] && return 1
+
+  next="$(ps_vault_next_stream_id "$owner" "$vault_id")" || return 1
+  [[ -n "$next" ]] || return 1
+
   manifest="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/localnet.json}"
-  owner="$(ps_json_get "$manifest" owner_account_id)"
+  holding=""
+  [[ -f "$manifest" ]] && holding="$(ps_json_get "$manifest" vault_holding_account_id)"
+  # Initialized but no manifest holding id (e.g. fresh restore): trust the
+  # snapshot/seed that funded it.
+  [[ -z "$holding" ]] && return 0
+
+  bal="$(ps_account_balance "$holding")"
+  min_balance="${SEED_STREAM_ALLOCATION:-200}"
+  [[ "${bal:-0}" -ge "$min_balance" ]]
+}
+
+cmd_vault_is_funded() {
+  local vault_id="${1:-0}"
+  if vault_is_funded "$vault_id"; then
+    ps_log_info "Vault $vault_id is funded"
+    return 0
+  fi
+  ps_log_info "Vault $vault_id is not funded"
+  return 1
+}
+
+# Write a vault-baseline fixture manifest (schema v2, no per-run stream fields)
+# from the restored owner/provider markers. The orchestrator reads this for
+# owner/provider/program_id and then creates the per-run stream from chain.
+cmd_manifest_write() {
+  local owner provider manifest guest wallet_home
+  owner="$(resolve_owner)"
+  [[ -z "$owner" ]] && ps_fatal "No owner in state/manifest for manifest write"
+  [[ -f "$REPO_ROOT/.lez_payment_streams-fixture-provider" ]] ||
+    ps_fatal "Missing provider marker (.lez_payment_streams-fixture-provider)"
+  provider="$(cat "$REPO_ROOT/.lez_payment_streams-fixture-provider")"
+  manifest="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/localnet.json}"
+  guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+  wallet_home="${LEE_WALLET_HOME_DIR:-$REPO_ROOT/.scaffold/wallet}"
+
+  ps_log_info "Writing vault baseline manifest: $manifest"
+  LEE_WALLET_HOME_DIR="$wallet_home" cargo run -q \
+    --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
+    --bin seed_localnet_fixture -- write-vault-manifest \
+    --program-bin "$guest" \
+    --owner "$owner" \
+    --provider "$provider" \
+    --deposit-amount "$SEED_DEPOSIT_AMOUNT" \
+    --stream-rate "$SEED_STREAM_RATE" \
+    --allocation "$SEED_STREAM_ALLOCATION" \
+    --sequencer-url "$(ps_seq_url)" \
+    --output "$manifest"
+}
+
+cmd_vault_ensure() {
+  ps_log_info "Ensuring vault exists..."
+
+  local owner vault_id
+  owner="$(resolve_owner)"
   vault_id="${1:-0}"
-  
+  [[ -z "$owner" ]] && ps_fatal "No owner account found in state or manifest"
+
   wait_clock_synced
-  
+
+  # Idempotent: a funded vault needs no re-init/deposit. Re-running deposit on a
+  # live ledger churns the wallet nonce and risks wallet/chain desync.
+  if [[ "${FORCE_DEPOSIT:-0}" != "1" ]] && vault_is_funded "$vault_id"; then
+    ps_log_info "Vault $vault_id already funded (skip initialize/deposit; FORCE_DEPOSIT=1 to override)"
+    return 0
+  fi
+
   # Initialize vault if needed
   cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
     --bin seed_localnet_fixture -- \
@@ -136,15 +218,23 @@ cmd_stream_create() {
   wait_clock_synced
   wait_chain_settle
   
-  # Determine next stream id
-  next_stream_id="${NEXT_STREAM_ID:-$(python3 -c "
+  # Stream id contract: the orchestrator passes the chain-derived id in
+  # STREAM_ID; NEXT_STREAM_ID is the legacy name; otherwise fall back to
+  # manifest stream_id + 1. The manifest baseline has no stream_id, so an
+  # explicit id from the caller is required for correct per-run creation.
+  next_stream_id="${STREAM_ID:-${NEXT_STREAM_ID:-$(python3 -c "
 import json
 with open('$manifest') as f:
     data = json.load(f)
-    existing = data.get('stream_id', -1)
+    existing = int(data.get('stream_id', -1))
     print(existing + 1)
-")}"
-  
+")}}"
+
+  # CREATE_FORCE bypasses skip-if-initialized so a per-run create proceeds even
+  # when a same-id PDA lingers from a prior leg.
+  local force_args=()
+  [[ "${CREATE_FORCE:-0}" == "1" ]] && force_args+=(--force)
+
   ps_log_info "Creating stream $next_stream_id (vault $vault_id, rate=$SEED_STREAM_RATE, allocation=$SEED_STREAM_ALLOCATION)"
   
   cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
@@ -155,13 +245,17 @@ with open('$manifest') as f:
     --provider "$provider" \
     --vault-id "$vault_id" \
     --stream-id "$next_stream_id" \
-    --rate "$SEED_STREAM_RATE" \
-    --allocation "$SEED_STREAM_ALLOCATION"
+    --stream-rate "$SEED_STREAM_RATE" \
+    --allocation "$SEED_STREAM_ALLOCATION" \
+    --sequencer-url "$(ps_seq_url)" \
+    --write-manifest "$manifest" \
+    ${force_args[@]+"${force_args[@]}"}
   
   wait_chain_settle
   ps_log_info "Stream $next_stream_id created"
   
-  # Output for manifest update
+  # Output for callers that parse the chosen id.
+  echo "STREAM_ID=$next_stream_id"
   echo "NEXT_STREAM_ID=$next_stream_id"
 }
 
@@ -235,7 +329,9 @@ Usage: $0 <command> [args]
 
 Commands:
   prefund                      — Fund owner and provider accounts
-  vault ensure [vault-id]      — Initialize vault and deposit (default: 0)
+  vault ensure [vault-id]      — Initialize vault and deposit if under-funded (default: 0)
+  vault is-funded [vault-id]   — Exit 0 if the vault is initialized and funded
+  vault manifest               — Write vault-baseline fixture manifest from markers
   stream create [vault-id]     — Create stream (default vault: 0)
   stream close <vault> <id>    — Close specific stream
   stream claim <vault> <id>    — Claim from specific stream
@@ -262,6 +358,8 @@ main() {
       local subcmd="$1"; shift
       case "$subcmd" in
         ensure)           cmd_vault_ensure "$@" ;;
+        is-funded)        cmd_vault_is_funded "$@" ;;
+        manifest)         cmd_manifest_write "$@" ;;
         *)                usage; exit 1 ;;
       esac
       ;;

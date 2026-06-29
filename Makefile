@@ -129,11 +129,9 @@ verify-step13: ## Step 13 definition of done (scripts/verify-step13-dod.sh)
 	chmod +x scripts/verify-step13-dod.sh scripts/step12-topup-and-prepare.sh
 	./scripts/verify-step13-dod.sh
 
-verify-step17: ## Step 17 local dual-host Store E2E (scripts/demo-e2e-local.sh)
-	chmod +x scripts/demo-e2e-local.sh scripts/e2e/*.py scripts/demo-localnet-prepare.sh \
-		scripts/prefund-localnet.sh scripts/restore-localnet.sh scripts/create-localnet-stream-fixture.sh \
-		scripts/snapshot-localnet.sh scripts/ensure-scaffold-lez-layout.sh
-	CHAIN=local ./scripts/demo-e2e-local.sh
+verify-step17: ## Step 17 local dual-host Store E2E (scripts/e2e.sh local run)
+	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
+	CHAIN=local ./scripts/e2e.sh local run
 
 verify-step17-back-to-back: ## Step 17 gate: restore run then continue chain (SKIP_SEED=1)
 	$(MAKE) verify-step17
@@ -147,14 +145,13 @@ debug-sequencer-latency: ## Probe sequencer RPC latency and block production (sc
 	chmod +x scripts/e2e/sequencer_latency_probe.py
 	REPO="$(CURDIR)" python3 scripts/e2e/sequencer_latency_probe.py
 
-full-reset-localnet: ## Step 17b stage A — wipe ledger, prefund vault-only, snapshot funded
-	chmod +x scripts/demo-localnet-prepare.sh scripts/prefund-localnet.sh scripts/snapshot-localnet.sh \
-		scripts/ensure-scaffold-lez-layout.sh
-	FULL_RESET=1 SKIP_VERIFY=1 SKIP_STREAM_CREATE=1 ./scripts/demo-localnet-prepare.sh
+full-reset-localnet: ## Step 17b stage A — reseed funded baseline + snapshot (scripts/e2e.sh local prepare)
+	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh
+	FULL_RESET=1 SKIP_BUILD=1 CHAIN=local ./scripts/e2e.sh local prepare
 
-prepare-localnet: ## Step 17b restore baseline + vault-only manifest (scripts/demo-localnet-prepare.sh)
-	chmod +x scripts/demo-localnet-prepare.sh scripts/prefund-localnet.sh scripts/restore-localnet.sh scripts/create-localnet-stream-fixture.sh
-	./scripts/demo-localnet-prepare.sh
+prepare-localnet: ## Step 17b restore funded baseline (scripts/e2e.sh local prepare)
+	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh
+	SKIP_BUILD=1 CHAIN=local ./scripts/e2e.sh local prepare
 
 verify-step18-testnet-read-smoke: ## Step 18 dual-pin read smoke (scripts/verify-step18-testnet-read-smoke.sh)
 	chmod +x scripts/verify-step18-testnet-read-smoke.sh

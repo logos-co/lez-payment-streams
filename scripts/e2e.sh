@@ -96,28 +96,59 @@ cmd_prepare() {
 
 cmd_prepare_local() {
   ps_log_info "Preparing localnet..."
-  
-  # Start localnet if needed
+
+  local snapshot_name="${SNAPSHOT_NAME:-funded}"
+
+  # Continuation legs (back-to-back) must NOT reset the ledger: they continue on
+  # the chain left by the previous leg with monotonic stream ids.
+  if [[ "${SKIP_SEED:-0}" == "1" || "${RESTORE_LOCALNET:-1}" == "0" ]]; then
+    ps_log_info "Continuation run — reusing live ledger (no restore/reseed)"
+    if [[ "$($REPO_ROOT/scripts/lifecycle.sh localnet status)" != "running" ]]; then
+      "$REPO_ROOT/scripts/lifecycle.sh" localnet start
+    fi
+    "$REPO_ROOT/scripts/fixture.sh" vault ensure 0
+    "$REPO_ROOT/scripts/fixture.sh" vault manifest
+    ps_log_info "Local prepare complete (continuation)"
+    return 0
+  fi
+
+  # Decide how to reach a consistent funded baseline. Prefer restoring a valid
+  # snapshot (deterministic ledger + matching wallet nonces); otherwise reuse an
+  # already-funded live ledger; only re-seed when nothing usable exists.
+  if [[ "${FULL_RESET:-0}" == "1" ]]; then
+    ps_log_info "FULL_RESET=1 — rebuilding funded baseline from scratch"
+    "$REPO_ROOT/scripts/fixture.sh" prefund
+    "$REPO_ROOT/scripts/lifecycle.sh" snapshot save "$snapshot_name"
+  elif "$REPO_ROOT/scripts/lifecycle.sh" snapshot validate "$snapshot_name" 2>/dev/null; then
+    ps_log_info "Valid snapshot found — restoring: $snapshot_name"
+    "$REPO_ROOT/scripts/lifecycle.sh" snapshot restore "$snapshot_name"
+  else
+    ps_log_info "No valid snapshot for '$snapshot_name'"
+    if [[ "$($REPO_ROOT/scripts/lifecycle.sh localnet status)" != "running" ]]; then
+      "$REPO_ROOT/scripts/lifecycle.sh" localnet start
+    fi
+    if "$REPO_ROOT/scripts/fixture.sh" vault is-funded 0; then
+      ps_log_info "Reusing existing funded vault on live ledger"
+    else
+      ps_log_info "Live ledger not funded — running prefund baseline"
+      "$REPO_ROOT/scripts/fixture.sh" prefund
+      "$REPO_ROOT/scripts/lifecycle.sh" snapshot save "$snapshot_name"
+    fi
+  fi
+
+  # Localnet must be up before vault checks/seeding.
   if [[ "$($REPO_ROOT/scripts/lifecycle.sh localnet status)" != "running" ]]; then
     "$REPO_ROOT/scripts/lifecycle.sh" localnet start
   fi
-  
-  # Use funded snapshot or create it
-  local snapshot_name="${SNAPSHOT_NAME:-funded}"
-  if "$REPO_ROOT/scripts/lifecycle.sh" snapshot validate "$snapshot_name" 2>/dev/null; then
-    ps_log_info "Restoring snapshot: $snapshot_name"
-    "$REPO_ROOT/scripts/lifecycle.sh" snapshot restore "$snapshot_name"
-  else
-    ps_log_info "No valid snapshot, creating..."
-    # Prefund
-    "$REPO_ROOT/scripts/fixture.sh" prefund
-    # Create snapshot
-    "$REPO_ROOT/scripts/lifecycle.sh" snapshot save "$snapshot_name"
-  fi
-  
-  # Ensure vault (creates baseline if needed)
+
+  # Idempotent: only initializes/deposits when the vault is missing or low on
+  # unallocated balance. The per-run stream is created by the orchestrator.
   "$REPO_ROOT/scripts/fixture.sh" vault ensure 0
-  
+
+  # Restore clears the per-run manifest; regenerate the vault baseline so the
+  # orchestrator can read owner/provider/program_id before it creates a stream.
+  "$REPO_ROOT/scripts/fixture.sh" vault manifest
+
   ps_log_info "Local prepare complete"
 }
 

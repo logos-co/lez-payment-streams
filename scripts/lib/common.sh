@@ -112,6 +112,105 @@ ps_check_file() {
   fi
 }
 
+# ============================================================================
+# LEZ ledger / snapshot helpers (localnet)
+# ============================================================================
+
+# Pin of the LEZ checkout from scaffold.toml ([repos.lez] pin = "..."). The
+# RocksDB ledger lives under the per-pin scaffold cache, not anywhere reported
+# by `lgs localnet status`.
+ps_lez_pin() {
+  grep -A2 '\[repos.lez\]' "$REPO_ROOT/scaffold.toml" | grep '^pin' |
+    sed 's/.*"\([^"]*\)".*/\1/'
+}
+
+ps_lez_cache() {
+  echo "${HOME}/.cache/logos-scaffold/repos/lez/$(ps_lez_pin)"
+}
+
+ps_rocksdb_dir() {
+  echo "$(ps_lez_cache)/rocksdb"
+}
+
+# ImageID hex of the currently built guest binary; empty if the build is missing.
+ps_program_id_hex() {
+  make -C "$REPO_ROOT" program-id 2>/dev/null |
+    grep 'ImageID (hex bytes)' | awk '{print $NF}' || true
+}
+
+# LEZ 510+ nests the sequencer under lez/; older lgs builds expect it at the pin
+# root. Link it so `lgs localnet start` finds the config after a restore.
+ps_ensure_lez_layout() {
+  local cache
+  cache="$(ps_lez_cache)"
+  if [[ ! -d "$cache" ]]; then
+    ps_log_info "LEZ cache missing at $cache (run lgs setup)"
+    return 0
+  fi
+  if [[ ! -e "$cache/sequencer" && -d "$cache/lez/sequencer" ]]; then
+    ln -sfn lez/sequencer "$cache/sequencer"
+    ps_log_info "linked $cache/sequencer -> lez/sequencer"
+  fi
+}
+
+ps_seq_url() {
+  echo "${SEQUENCER_URL:-http://127.0.0.1:3040}"
+}
+
+ps_seq_reachable() {
+  curl -sf -X POST "$(ps_seq_url)" -H 'Content-Type: application/json' \
+    -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}' \
+    >/dev/null 2>&1
+}
+
+# Block until the sequencer port stops answering (so RocksDB can be swapped).
+ps_wait_port_free() {
+  local i
+  for i in $(seq 1 10); do
+    ps_seq_reachable || return 0
+    ps_log_info "waiting for sequencer port to free..."
+    sleep 1
+  done
+  ps_log_error "sequencer still reachable; a foreign sequencer may be running"
+  return 1
+}
+
+# Wait for Clock10 to track wall time before submitting transactions.
+ps_wait_clock_synced() {
+  local guest wallet_home
+  guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+  wallet_home="${LEE_WALLET_HOME_DIR:-$REPO_ROOT/.scaffold/wallet}"
+  LEE_WALLET_HOME_DIR="$wallet_home" cargo run -q \
+    --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
+    --bin seed_localnet_fixture -- wait-clock-synced >&2
+}
+
+# Read the on-chain next_stream_id for a vault; non-zero exit if the vault
+# config account has no data (vault not initialized).
+ps_vault_next_stream_id() {
+  local owner="$1" vault_id="${2:-0}"
+  local guest wallet_home
+  guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+  wallet_home="${LEE_WALLET_HOME_DIR:-$REPO_ROOT/.scaffold/wallet}"
+  LEE_WALLET_HOME_DIR="$wallet_home" cargo run -q \
+    --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
+    --bin seed_localnet_fixture -- read-vault-next-stream-id \
+    --program-bin "$guest" --owner "$owner" --vault-id "$vault_id" 2>/dev/null
+}
+
+# Balance of an account via the sequencer JSON-RPC (0 when absent).
+ps_account_balance() {
+  local acct="$1"
+  curl -sf -X POST "$(ps_seq_url)" -H 'Content-Type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$acct\"]}" \
+    2>/dev/null |
+    python3 -c "import json,sys
+try:
+    print(int((json.load(sys.stdin).get('result') or {}).get('balance', 0) or 0))
+except Exception:
+    print(0)"
+}
+
 # Default paths
 ps_default_fixture_manifest() {
   if ps_is_testnet; then
