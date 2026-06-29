@@ -48,11 +48,21 @@ Optional: `make deploy-testnet` (guest ELF change), `make verify-step18-testnet-
 Payee `claim` may be optional on testnet —
 [archive/operator/testnet-claim-known-issue.md](../archive/operator/testnet-claim-known-issue.md).
 
-## Developer journey (future work)
+## Step-by-step path (without orchestrator)
 
-Published integrator journey targets logos-docs. In-repo draft SSOT for Store + payment streams
-content is this README; checklist:
-[plan/upcoming/step-20-developer-journey.md](../plan/upcoming/step-20-developer-journey.md).
+For the same outcome without the Python orchestrator, run explicit commands for both user and provider hosts. This path is documented in [archive/steps/local-store-dual-host-runbook.md](../archive/steps/local-store-dual-host-runbook.md).
+
+Key operations:
+- Provider host: load `payment_streams_module` and `delivery_module`, run `verifyEligibilityForStoreQuery`
+- User host: `chainAction initializeVault`, `deposit`, `createStream`, `registerProviderMapping`, `prepareEligibilityProofWithStreamProofForStoreQuery`
+- User host: `delivery_module.storeQuery` with eligibility proof attached
+- Provider host: `chainAction claim` to withdraw accrued stream value
+
+See integration-contracts for method signatures and JSON shapes.
+
+## Developer journey (published)
+
+Root-level developer journey: [DEVELOPER_JOURNEY.md](../../DEVELOPER_JOURNEY.md).
 
 ## Recovery
 
