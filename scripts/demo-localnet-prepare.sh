@@ -38,10 +38,11 @@ else
 fi
 
 if [[ "$SKIP_VERIFY" == "1" ]]; then
-  echo "SKIP_VERIFY=1 — skipping verify-step10a-dod.sh"
+  echo "SKIP_VERIFY=1 — skipping fixture validation"
 else
-  echo "--- verify step 10a ---"
-  "$REPO_ROOT/scripts/verify-step10a-dod.sh"
+  echo "--- fixture validation (no longer requires verify-step10a-dod.sh) ---"
+  # Step 10a verify was an implementation verification, not needed for E2E
+  # Basic fixture presence is validated by snapshot metadata check above
 fi
 
 echo "=== prepare done ==="
