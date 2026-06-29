@@ -1156,9 +1156,10 @@ def ensure_sequencer_advancing(repo: Path, seq_url: str, artifact: Path) -> None
         window_s=window,
         action="localnet_stop_start",
     )
-    ensure = repo / "scripts" / "ensure-scaffold-lez-layout.sh"
-    if ensure.is_file():
-        run(["bash", str(ensure)], cwd=repo, timeout=120)
+    # Use unified lifecycle.sh for scaffold check
+    lifecycle = repo / "scripts" / "lifecycle.sh"
+    if lifecycle.is_file():
+        run(["bash", str(lifecycle), "scaffold", "check"], cwd=repo, timeout=120)
     run(["lgs", "localnet", "stop"], cwd=repo, timeout=60)
     time.sleep(2)
     run(["lgs", "localnet", "start"], cwd=repo, timeout=120)
@@ -1262,9 +1263,13 @@ def ensure_continuation_vault_funded(
         )
         return
     repo = Path(os.environ.get("REPO", Path.cwd()))
-    topup_script = repo / "scripts" / "e2e" / "continuation-owner-topup.sh"
-    if topup_script.is_file():
-        run(["bash", str(topup_script)], cwd=repo, timeout=600)
+    # Use unified fixture.sh for owner topup (continuation)
+    fixture = repo / "scripts" / "fixture.sh"
+    if fixture.is_file():
+        # Note: fixture.sh topup not yet implemented; fallback to legacy if needed
+        topup_script = repo / "scripts" / "e2e" / "continuation-owner-topup.sh"
+        if topup_script.is_file():
+            run(["bash", str(topup_script)], cwd=repo, timeout=600)
         sync_wallet(cfg, seq_url)
         logoscore_cmd(
             cfg,
@@ -1502,6 +1507,8 @@ def precreate_stream_before_daemons(
     t0_total = time.monotonic()
     wallet_home = Path(os.environ.get("LEE_WALLET_HOME_DIR", repo / ".scaffold" / "wallet"))
     apply_e2e_wallet_poll_overrides(wallet_home)
+    # Use unified fixture.sh for stream creation
+    fixture = repo / "scripts" / "fixture.sh"
     script = repo / "scripts" / "create-localnet-stream-fixture.sh"
     env = os.environ.copy()
     env["FIXTURE_MANIFEST"] = str(manifest_path)
@@ -1514,7 +1521,11 @@ def precreate_stream_before_daemons(
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
     release_logoscore_wallet(cfg_user)
     try:
-        proc = run(["bash", str(script)], cwd=repo, env=env, timeout=e2e_subprocess_timeout_s())
+        if fixture.is_file():
+            proc = run(["bash", str(fixture), "stream", "create", "0"], cwd=repo, env=env, timeout=e2e_subprocess_timeout_s())
+        else:
+            # Fallback to legacy script during transition
+            proc = run(["bash", str(script)], cwd=repo, env=env, timeout=e2e_subprocess_timeout_s())
     finally:
         reopen_logoscore_wallet(cfg_user, seq_url)
         reload_payment_streams_wallet(cfg_user, seq_url)
@@ -1695,6 +1706,7 @@ def create_demo_stream_for_run(
             env["SEED_STREAM_ALLOCATION"] = str(alloc)
             env["CREATE_FORCE"] = "1"
             env["E2E_PER_RUN_STREAM"] = "1"
+            fixture = repo / "scripts" / "fixture.sh"
             script = repo / "scripts" / "create-localnet-stream-fixture.sh"
             proc = None
             for attempt in range(3):
@@ -1726,7 +1738,10 @@ def create_demo_stream_for_run(
                     env["LEE_WALLET_HOME_DIR"] = str(tmp_wallet)
                 if attempt > 0:
                     time.sleep(5 * attempt)
-                proc = run(["bash", str(script)], cwd=repo, env=env, timeout=subproc_timeout)
+                if fixture.is_file():
+                    proc = run(["bash", str(fixture), "stream", "create", "0"], cwd=repo, env=env, timeout=subproc_timeout)
+                else:
+                    proc = run(["bash", str(script)], cwd=repo, env=env, timeout=subproc_timeout)
                 attempt_elapsed = round(time.monotonic() - attempt_t0, 2)
                 if proc.returncode == 0:
                     log_artifact(
@@ -1859,8 +1874,12 @@ def create_demo_stream_for_run(
             env["SEED_STREAM_RATE"] = str(rate)
             env["CREATE_FORCE"] = "1"
             env["E2E_PER_RUN_STREAM"] = "1"
+            fixture = repo / "scripts" / "fixture.sh"
             script = repo / "scripts" / "create-testnet-stream-fixture.sh"
-            proc = run(["bash", str(script)], cwd=repo, env=env, timeout=subproc_timeout)
+            if fixture.is_file():
+                proc = run(["bash", str(fixture), "stream", "create", "0"], cwd=repo, env=env, timeout=subproc_timeout)
+            else:
+                proc = run(["bash", str(script)], cwd=repo, env=env, timeout=subproc_timeout)
             ok_create = proc.returncode == 0
             log_artifact(
                 artifact,
