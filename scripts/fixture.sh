@@ -44,38 +44,38 @@ wait_chain_settle() {
 }
 
 # ============================================================================
-# Prefund — Initial funding of owner and provider accounts
+# Prefund — Initial funding of owner and vault deposit (baseline snapshot)
 # ============================================================================
 
 cmd_prefund() {
-  ps_manifest_validate_exists
+  ps_log_info "Prefunding vault baseline..."
   
-  ps_log_info "Prefunding accounts..."
+  # Load owner from state file or manifest
+  local owner
+  if [[ -f "$REPO_ROOT/.lez_payment_streams-state" ]]; then
+    # shellcheck source=/dev/null
+    source "$REPO_ROOT/.lez_payment_streams-state"
+    owner="${SIGNER_ID:-}"
+  fi
   
-  local owner provider manifest
-  manifest="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/localnet.json}"
-  owner="$(ps_json_get "$manifest" owner_account_id)"
-  provider="$(ps_json_get "$manifest" provider_account_id)"
+  if [[ -z "$owner" ]]; then
+    local manifest
+    manifest="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/localnet.json}"
+    [[ -f "$manifest" ]] && owner="$(ps_json_get "$manifest" owner_account_id)"
+  fi
   
-  [[ -z "$owner" ]] && ps_fatal "No owner_account_id in manifest"
-  [[ -z "$provider" ]] && ps_fatal "No provider_account_id in manifest"
+  [[ -z "$owner" ]] && ps_fatal "No owner account found in state or manifest"
   
-  # Pinata rounds for funding (rough estimate: deposit / 150 + 4)
-  local pinata_rounds
-  pinata_rounds=$(( (SEED_DEPOSIT_AMOUNT + 149) / 150 + 4 ))
+  ps_log_info "Prefunding vault for owner: $owner"
+  ps_log_info "Deposit amount: $SEED_DEPOSIT_AMOUNT"
   
-  ps_log_info "Funding owner ($owner) and provider ($provider) with $SEED_DEPOSIT_AMOUNT each"
-  ps_log_info "Pinata rounds: $pinata_rounds"
-  
-  # Run prefund via seed binary
+  # Run prefund via seed binary (prefund-onchain initializes vault + deposits)
   cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
     --bin seed_localnet_fixture -- \
     prefund-onchain \
     --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
     --owner "$owner" \
-    --provider "$provider" \
-    --deposit-amount "$SEED_DEPOSIT_AMOUNT" \
-    --pinata-rounds "$pinata_rounds"
+    --deposit-amount "$SEED_DEPOSIT_AMOUNT"
   
   wait_chain_settle
   ps_log_info "Prefund complete"
