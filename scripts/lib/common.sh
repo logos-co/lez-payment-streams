@@ -153,8 +153,23 @@ ps_ensure_lez_layout() {
   fi
 }
 
+# Canonical public testnet sequencer endpoint (override with TESTNET_SEQUENCER_URL).
+ps_testnet_seq_url() {
+  echo "${TESTNET_SEQUENCER_URL:-https://testnet.lez.logos.co/}"
+}
+
+# Sequencer URL for the active CHAIN. This feeds the seed binary's
+# --sequencer-url (which it stamps into any written manifest), so it MUST be the
+# testnet endpoint on testnet — otherwise a manifest write clobbers sequencer_url
+# with the localnet default and later reads hit 127.0.0.1.
 ps_seq_url() {
-  echo "${SEQUENCER_URL:-http://127.0.0.1:3040}"
+  if [[ -n "${SEQUENCER_URL:-}" ]]; then
+    echo "$SEQUENCER_URL"
+  elif ps_is_testnet; then
+    ps_testnet_seq_url
+  else
+    echo "http://127.0.0.1:3040"
+  fi
 }
 
 ps_seq_reachable() {
@@ -179,7 +194,7 @@ ps_wait_port_free() {
 ps_wait_clock_synced() {
   local guest wallet_home
   guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
-  wallet_home="${LEE_WALLET_HOME_DIR:-$REPO_ROOT/.scaffold/wallet}"
+  wallet_home="${LEE_WALLET_HOME_DIR:-$(ps_chain_wallet_home)}"
   LEE_WALLET_HOME_DIR="$wallet_home" cargo run -q \
     --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
     --bin seed_localnet_fixture -- wait-clock-synced >&2
@@ -191,7 +206,7 @@ ps_vault_next_stream_id() {
   local owner="$1" vault_id="${2:-0}"
   local guest wallet_home
   guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
-  wallet_home="${LEE_WALLET_HOME_DIR:-$REPO_ROOT/.scaffold/wallet}"
+  wallet_home="${LEE_WALLET_HOME_DIR:-$(ps_chain_wallet_home)}"
   LEE_WALLET_HOME_DIR="$wallet_home" cargo run -q \
     --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
     --bin seed_localnet_fixture -- read-vault-next-stream-id \
@@ -233,6 +248,18 @@ ps_default_wallet_storage() {
     echo "$REPO_ROOT/.scaffold/e2e/testnet-wallet/storage.json"
   else
     echo "$REPO_ROOT/.scaffold/wallet/storage.json"
+  fi
+}
+
+# Wallet home directory (holds storage.json + wallet_config.json) the seed
+# binary opens via LEE_WALLET_HOME_DIR. This selects which sequencer the seed
+# CLI talks to, so it MUST follow CHAIN: testnet writes use the testnet wallet,
+# not the localnet one.
+ps_chain_wallet_home() {
+  if ps_is_testnet; then
+    echo "$REPO_ROOT/.scaffold/e2e/testnet-wallet"
+  else
+    echo "$REPO_ROOT/.scaffold/wallet"
   fi
 }
 

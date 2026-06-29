@@ -20,21 +20,37 @@ export SEED_DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-1000}"
 export SEED_STREAM_ALLOCATION="${SEED_STREAM_ALLOCATION:-200}"
 export SEED_STREAM_RATE="${SEED_STREAM_RATE:-1}"
 
-# Wait for clock sync (blocks advance to near wall time)
+# Seed CLI sequencer follows the wallet home, which MUST match CHAIN. Set it
+# unconditionally: a localnet LEE_WALLET_HOME_DIR inherited from the environment
+# would otherwise silently route testnet chain ops to 127.0.0.1:3040.
+export LEE_WALLET_HOME_DIR="$(ps_chain_wallet_home)"
+
+# Wait for Clock10 to track wall time before submitting transactions.
+#
+# Skew tolerance is chain-dependent. Localnet mints blocks every few seconds so
+# the clock tracks wall time tightly. Public testnet lands a block only ~once
+# per minute, so Clock10 legitimately trails wall time by up to a block
+# interval; a 5s tolerance there is unsatisfiable except in the brief window
+# right after each block. The seed binary already polls internally until its
+# own timeout, so call it once and surface its output instead of wrapping it in
+# a second swallow-stderr loop.
 wait_clock_synced() {
-  ps_log_info "Waiting for clock sync..."
-  local max_wait=60 waited=0
-  while [[ $waited -lt $max_wait ]]; do
-    # Simple check: try a transaction or poll clock
-    if cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
-        --bin seed_localnet_fixture -- wait-clock-synced 2>/dev/null; then
-      ps_log_info "Clock synced after ${waited}s"
-      return 0
-    fi
-    sleep 5
-    ((waited += 5))
-  done
-  ps_fatal "Clock sync timeout after ${max_wait}s"
+  local max_skew timeout_s
+  if ps_is_testnet; then
+    max_skew="${CLOCK_MAX_SKEW_S:-120}"
+    timeout_s="${CLOCK_SYNC_TIMEOUT_S:-300}"
+  else
+    max_skew="${CLOCK_MAX_SKEW_S:-5}"
+    timeout_s="${CLOCK_SYNC_TIMEOUT_S:-120}"
+  fi
+  ps_log_info "Waiting for clock sync (max_skew=${max_skew}s, timeout=${timeout_s}s)..."
+  if cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
+      --bin seed_localnet_fixture -- wait-clock-synced \
+      --max-skew-s "$max_skew" --timeout-s "$timeout_s" >&2; then
+    ps_log_info "Clock synced"
+    return 0
+  fi
+  ps_fatal "Clock sync failed (max_skew=${max_skew}s, timeout=${timeout_s}s)"
 }
 
 # Chain settle (wait for blocks to be committed)
@@ -146,7 +162,7 @@ cmd_manifest_write() {
   provider="$(cat "$REPO_ROOT/.lez_payment_streams-fixture-provider")"
   manifest="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/localnet.json}"
   guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
-  wallet_home="${LEE_WALLET_HOME_DIR:-$REPO_ROOT/.scaffold/wallet}"
+  wallet_home="${LEE_WALLET_HOME_DIR:-$(ps_chain_wallet_home)}"
 
   ps_log_info "Writing vault baseline manifest: $manifest"
   LEE_WALLET_HOME_DIR="$wallet_home" cargo run -q \

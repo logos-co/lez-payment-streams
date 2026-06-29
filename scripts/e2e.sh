@@ -75,7 +75,12 @@ cmd_build() {
 
 cmd_prepare() {
   ps_log_info "Preparing environment..."
-  
+
+  # Route seed-CLI wallet/sequencer to match CHAIN (testnet vs localnet). Set
+  # unconditionally so a stale localnet value in the environment cannot redirect
+  # testnet chain ops to the local sequencer.
+  export LEE_WALLET_HOME_DIR="$(ps_chain_wallet_home)"
+
   # Validate scaffold
   "$REPO_ROOT/scripts/lifecycle.sh" scaffold check
   
@@ -192,6 +197,9 @@ cmd_run() {
   
   # Set up environment for Python
   export CHAIN="${CHAIN:-local}"
+  # Seed CLI + orchestrator wallet home must follow CHAIN; set unconditionally
+  # so an inherited localnet value cannot redirect testnet ops to 127.0.0.1.
+  export LEE_WALLET_HOME_DIR="$(ps_chain_wallet_home)"
   export FIXTURE_MANIFEST
   export WALLET_CONFIG
   export WALLET_STORAGE
