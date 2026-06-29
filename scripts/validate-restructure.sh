@@ -132,10 +132,28 @@ run_level_4() {
   log "=== Level 4: Prepare Phase Validation ==="
   log "Note: This will interact with localnet state"
 
-  if [[ -f "scripts/demo-localnet-prepare.sh" ]]; then
-    log "Checking prepare script exists: OK"
+  if [[ -f "scripts/e2e.sh" ]]; then
+    log "Checking new e2e.sh script exists: OK"
   else
-    error "Missing: scripts/demo-localnet-prepare.sh"
+    error "Missing: scripts/e2e.sh"
+  fi
+
+  if [[ -f "scripts/lifecycle.sh" ]]; then
+    log "Checking lifecycle.sh script exists: OK"
+  else
+    error "Missing: scripts/lifecycle.sh"
+  fi
+
+  if [[ -f "scripts/fixture.sh" ]]; then
+    log "Checking fixture.sh script exists: OK"
+  else
+    error "Missing: scripts/fixture.sh"
+  fi
+
+  if [[ -f "scripts/lib/common.sh" ]]; then
+    log "Checking common library exists: OK"
+  else
+    error "Missing: scripts/lib/common.sh"
   fi
 
   log "Level 4 complete. Errors: $ERRORS"
