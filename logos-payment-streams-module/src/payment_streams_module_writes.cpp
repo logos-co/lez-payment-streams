@@ -446,11 +446,12 @@ bool guestElfLoadedInWalletProcess() {
 }
 
 bool chainUsesTestnetSubmit() {
-    const QByteArray chain = qgetenv("CHAIN").trimmed().toLower();
-    if (chain.isEmpty() || chain == "local") {
-        return false;
-    }
-    return chain == "testnet";
+    // Retirement pending live-testnet verification; dispatched unconditionally to
+    // FFI in Step 26. Remove chainUsesTestnetSubmit,
+    // submitGenericPublicViaTestnetHelper, tools/lez-testnet-submit/, and
+    // LEZ_TESTNET_SUBMIT plumbing once MODE=store CHAIN=testnet passes on the
+    // live testnet.
+    return false;
 }
 
 QString buildGenericPublicPayloadJson(const QStringList& accountHexIds,
