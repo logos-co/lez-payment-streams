@@ -87,7 +87,7 @@ matching the runtime path where `wallet auth-transfer init` sets the
 owner's `program_owner` to the `authenticated_transfer` program. This
 resolved all 52 failures: 138/138 `program_tests` pass.
 
-Symptom C — prior testnet-only claim known issue.
+Symptom C — prior testnet-only claim known issue (rc5 era).
 `docs/archive/operator/testnet-claim-known-issue.md` (status 2026-06-28)
 records that on the public testnet (rc5 era) provider `claim` never
 confirmed while `close` (same signer, same account order) did. Localnet
@@ -96,24 +96,108 @@ and is NOT explained by v0.2.0 `program_owner` enforcement (which did
 not exist in rc5). See Decision log Q1/Q7 for why `close` vs `claim`
 diverge and why retiring the known-issue doc is premature.
 
+Symptom D — Store-mode `claim` false-positive on v0.2.0 (NEW, found by
+the Phase 4 diagnostic). The Store-mode E2E reports `demo_claim
+ok=True` and exits 0, but the claim does NOT move funds. The provider
+on-chain balance stays 0 and `vault_holding` stays unchanged. The
+`demo_claim ok=True` is a false positive from two compounding issues:
+
+- D1 (orchestrator false positive). The orchestrator treats
+  `seed_claim_onchain` as success when the seed binary returns 0, and
+  the seed binary's `TxPoller::poll_tx`
+  (`lez/wallet/src/poller.rs:33`) returns `Ok(tx)` as soon as
+  `get_transaction` finds the tx hash in any block — without checking
+  the tx's execution status. The LEZ sequencer includes rejected
+  transactions in blocks ("Created block with 1 transactions" right
+  after the rejection log line), so `poll_tx` always succeeds. The
+  chainAction fallback path (`run_local_e2e.py` `chain_action_success`)
+  has the same lax check. The Q10 "provider balance increase" criterion
+  is the only reliable success signal; `demo_claim ok=True` alone is
+  insufficient.
+- D2 (root cause — guest `claim` cannot credit a default-owned provider
+  on v0.2.0). The guest `claim` (`methods/guest/src/bin/
+  lez_payment_streams.rs:830`) credits `provider.account.balance`
+  directly and returns the provider via
+  `execute_stream_instruction_with_explicit_owner` (raw `Account`s, no
+  claim). The spel-framework `#[instruction]` macro's auto-claim
+  transformer rewrites `SpelOutput::execute` into
+  `execute_with_claims(&accounts, &__claims_claim(...), calls)`, but
+  for `#[account(mut, signer)]` the generated `__claims_claim` returns
+  `AutoClaim::None` (no claim). On v0.2.0 the provider account on
+  localnet has `program_owner: DEFAULT_PROGRAM_ID` and `nonce: 1`
+  (incremented by prior signer txs like `create_stream`). The
+  macro-generated dispatcher then applies a filter
+  (`vendor/spel-framework-macros/src/lib.rs:303-329`) that DROPS any
+  post-state where `pre.program_owner == DEFAULT_PROGRAM_ID` AND
+  `pre.account != Account::default()` AND `post.required_claim()`
+  is `None`. The provider matches all three, so its post-state is
+  dropped from the program output. The sequencer's balance-conservation
+  invariant (`lee/state_machine/core/src/program.rs:734-752`) then
+  fails with `MismatchedTotalBalance` (pre 1050, post 850): the
+  provider's +200 credit is silently discarded, so the debit from
+  `vault_holding` is unmatched. The guest's `claim` is structurally
+  broken on v0.2.0 for any provider account that has been touched
+  (nonce > 0) but never initialized under a program.
+
+The `withdraw` instruction (`guest:431`) does NOT have this bug because
+it explicitly claims a default-owned recipient via
+`AutoClaim::Claimed(Claim::Authorized)` when `withdraw_to` was
+`Account::default()` (line 488). For non-default recipients, `withdraw`
+assumes the recipient is already program-owned (in the unit tests,
+genesis recipients have `program_owner = authenticated_transfer`). The
+`claim` instruction lacks the equivalent claim logic for the provider.
+
+Fix for Symptom D (the real claim fix, supersedes the earlier
+"prefund-only" framing). The guest `claim` must credit the provider
+through a path that survives v0.2.0's ownership/filter invariants. Two
+viable approaches:
+
+- D-fix-1 (guest-side, mirror `withdraw`): emit a
+  `Claim::Authorized` on the provider's post-state when the provider
+  was default-owned, so the runtime sets `program_owner` to the guest
+  program and the macro filter keeps the post-state. This requires the
+  provider to be a signer (it already is) and means the guest program
+  takes ownership of the provider account. Caveat: this only works if
+  the provider was `Account::default()` in pre-state; a non-default
+  default-owned provider (nonce > 0) cannot be claimed post-hoc (the
+  `initialize_account` in `authenticated_transfer` rejects non-default
+  accounts). So D-fix-1 requires the provider to be initialized under
+  the guest program BEFORE it is used as a signer in any other tx.
+- D-fix-2 (chained call, mirror `deposit`): route the provider credit
+  through a `ChainedCall` to `authenticated_transfer`, debiting
+  `vault_holding` (which the guest owns) and crediting `provider` via
+  the system program. This requires `provider` to be owned by
+  `authenticated_transfer` (set via `wallet auth-transfer init` before
+  the claim), mirroring the owner prefund fix for Symptom A. The guest
+  keeps the direct `vault_holding` debit but replaces the direct
+  `provider` credit with a chained transfer.
+
+D-fix-2 is the safer choice because it matches the proven `deposit`
+pattern and does not require the guest program to take ownership of
+user wallet accounts. It does require the fixture to auth-transfer-init
+the provider (same step already added for the owner in
+`fund_owner_account`).
+
 Fund-flow facts (from the guest source, grounding the analysis).
 - `deposit` (`guest:384`): debits `owner`, credits `vault_holding`, via
   a `ChainedCall` to `authenticated_transfer`. The guest does not touch
   native balance directly.
 - `withdraw` (`guest:431`): debits `vault_holding`, credits
   `withdraw_to`, directly inside the guest (no chained call). Uses
-  `AutoClaim::Claimed` when `withdraw_to` was default-owned.
+  `AutoClaim::Claimed(Claim::Authorized)` when `withdraw_to` was
+  default-owned, which is the claim logic `claim` is missing.
 - `close_stream` (`guest:766`): does NOT move native balance. It only
   updates `vault_config.total_allocated` and `stream_config` state, then
   returns the accounts. This is why `close` confirms where `claim` does
-  not on rc5 testnet: `close` triggers no balance-decrease enforcement
-  at all.
+  not: `close` triggers no balance-decrease enforcement and no
+  default-owned-account credit, so the macro filter never drops a
+  balance-bearing post-state.
 - `claim` (`guest:830`): debits `vault_holding` (a program-owned PDA)
   and credits `provider`, directly inside the guest. No chained call.
-  The provider account is credited, not debited, so `program_owner` on
-  `provider` is not the blocker for `claim` itself; the blocker would be
-  `program_owner` on `vault_holding` (which the guest owns) or, on rc5
-  testnet, something in the message/sequencer path.
+  On v0.2.0 this is broken (Symptom D): the provider post-state is
+  dropped by the macro filter because the provider is default-owned,
+  non-default (nonce > 0), and not claimed, causing
+  `MismatchedTotalBalance`.
 
 Possible fixes (decision deferred — see Decision log Q3).
 
@@ -131,6 +215,10 @@ Possible fixes (decision deferred — see Decision log Q3).
 
 Fix selection is gated on the A1/A2 diagnostic and on whether
 `seed_localnet_fixture` / `wallet` can set `program_owner` (Q3).
+Symptom A is resolved (F1 prefund). Symptom D requires a guest-side
+fix (D-fix-2, chained call for the provider credit) plus a fixture
+extension (auth-transfer-init the provider); see Symptom D above and
+Q11.
 
 Note on `lgs` / `wallet` tooling (prerequisites, not in-scope code).
 Step 26 verification exposed two tooling mismatches that block
@@ -237,13 +325,34 @@ cross-linked to the verification artifact.
 
 Q10. Exact Store-mode claim success artifact. The DoD check "MODE=store
 CHAIN=local E2E shows provider claim success" is made concrete as: the
-orchestrator artifact (`scripts/e2e/run_local_e2e.py`
-`demo_teardown`/`seed_claim_onchain`) logs `demo_claim` with
-`ok=True, via="seed_claim_onchain"` (the direct-submit path) OR
-`ok=True` via `chainAction` with a confirmed `tx_hash`, AND the
-provider's on-chain balance increases by `payout`. Exit code 0 from
-`scripts/e2e.sh local run` is necessary but not sufficient; the
-`demo_claim` artifact field must be `True`.
+orchestrator artifact logs `demo_claim` with `ok=True` AND the
+provider's on-chain balance increases by `payout` AND
+`vault_holding`'s on-chain balance decreases by `payout`. The
+provider-balance check is MANDATORY because the `demo_claim ok=True`
+field is a known false positive (Symptom D1): the seed binary's
+`poll_tx` returns `Ok` for rejected transactions, and the chainAction
+fallback's `chain_action_success` is equally lax. Exit code 0 from
+`scripts/e2e.sh local run` is necessary but not sufficient. The
+diagnostic that exposed this: after a "passing" Store-mode E2E, the
+provider had `balance: 0, nonce: 2` and `vault_holding` was unchanged
+at 1000; the sequencer log showed the claim txs failed with
+`MismatchedTotalBalance`.
+
+Q11. Does Symptom D change the fix scope? Yes. The earlier framing
+("prefund the owner and the 52 unit tests + Store deposit are fixed")
+was incomplete: it resolved Symptom A (deposit) and Symptom B (unit
+tests) but left the Store-mode `claim` itself broken. Symptom D is the
+real claim bug on v0.2.0 and is the primary remaining deliverable for
+Step 27. The fix (D-fix-2, chained call to `authenticated_transfer`
+for the provider credit) requires both a guest change (rewrite
+`claim`'s provider credit as a `ChainedCall`) and a fixture change
+(auth-transfer-init the provider in `fund_owner_account`, same as the
+owner). The unit tests must be re-checked: the current unit tests pass
+because the genesis provider has `program_owner =
+authenticated_transfer().id()`, which hides the D2 filter drop (the
+filter only drops DEFAULT-owned non-default accounts). A new unit test
+with a DEFAULT-owned, nonce-incremented provider should be added to
+guard the D2 path.
 
 #### Investigation scope
 
@@ -278,15 +387,21 @@ is fixed. User Journey testnet is owned by Step 28.
 
 #### Definition of done
 
-- [ ] A1/A2 diagnostic completed and recorded (owner balance +
+- [x] A1/A2 diagnostic completed and recorded (owner balance +
       `program_owner` read)
-- [ ] Store-mode `deposit` fix implemented (F1/F2/F3 per diagnostic)
-- [ ] 52 `lez-payment-streams-core` `program_tests` pass (Symptom B)
-- [ ] Fix tested on localnet (Developer Journey)
-- [ ] `MODE=module CHAIN=local` E2E shows `{"phase":"claim","ok":true}`
+- [x] Store-mode `deposit` fix implemented (F1 prefund-side, Symptom A)
+- [x] 52 `lez-payment-streams-core` `program_tests` pass (Symptom B)
+- [x] Fix tested on localnet (Developer Journey deposit path)
+- [x] `MODE=module CHAIN=local` E2E shows `{"phase":"claim","ok":true}`
       (non-regression — module mode already green)
+- [ ] Symptom D root cause fixed: guest `claim` credits provider via
+      `ChainedCall` to `authenticated_transfer` (D-fix-2), provider
+      auth-transfer-init in fixture
 - [ ] `MODE=store CHAIN=local` E2E shows `demo_claim` `ok=True` with
-      provider balance increase (Q10 concrete criterion)
+      provider balance increase AND `vault_holding` decrease (Q10
+      concrete criterion, false-positive-resistant)
+- [ ] New unit test: DEFAULT-owned, nonce-incremented provider claim
+      path (guards the D2 filter drop)
 - [ ] TestNet v0.2 claim verified for Developer Journey (provider)
 - [ ] `archive/operator/testnet-claim-known-issue.md` updated with
       Symptom C re-test result (not retired)
