@@ -19,11 +19,27 @@ Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conven
 
 ## Active work
 
+### Documentation and integration
+
 Developer Journey — Store integration. Packet:
 [docs/plan/upcoming/step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md).
 In-repo SSOT draft: [docs/store-integration/README.md](docs/store-integration/README.md).
 
-User Journey — UI via Basecamp: Steps 21-22.
+User Journey — CLI doc packet: [Step 22](docs/plan/upcoming/step-22-ui-journey.md) (active, independent of UI).
+User Journey UI (optional) — Basecamp plugin: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md).
+
+### TestNet v0.2 migration (Steps 26-29) and static dependency migration (Step 30)
+
+These steps parallelize and can proceed while documentation matures:
+
+| Step | Focus | Can Start |
+|------|-------|-----------|
+| [26](docs/plan/upcoming/step-26-testnet-v02-migration.md) | TestNet v0.2 migration | **Now** — upstream LEZ `v0.2.0` tagged |
+| [27](docs/plan/upcoming/step-27-claim-fix-verification.md) | Claim fix and verification | After Step 26 for testnet verification |
+| [28](docs/plan/upcoming/step-28-user-journey-testnet.md) | User Journey on TestNet v0.2 | After Step 26 |
+| [29](docs/plan/upcoming/step-29-e2e-script-ux.md) | E2E script UX enhancement | **Now** — use `CHAIN=local` |
+| [30](docs/plan/upcoming/step-30-static-dependency-migration.md) | Static dependency migration | After Step 26 — wallet wrapper on Universal `main`; parallelizes with 27-29 |
+
 Optional: [step-23-public-store-provider.md](docs/plan/upcoming/step-23-public-store-provider.md).
 Cancelled: [step-25-demo-coordination-module.md](docs/plan/cancelled/step-25-demo-coordination-module.md).
 

@@ -13,15 +13,18 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets |
-| [upcoming/](upcoming/) | Step 20; optional 21-22 (User Journey), 23 |
+| [upcoming/](upcoming/) | Steps 20, 22, 26-30 (active); optional 21 (UI), 23 |
 | [cancelled/](cancelled/) | Step 25 won't fix |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |
 
 Developer Journey (Store integration): Step 20 + Step 17 scripts.
-User Journey (payment streams UI, optional): Steps 21–22 —
-see [N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
+User Journey: Step 22 (active, CLI-based doc packet).
+User Journey UI (optional): Step 21 (Basecamp plugin) — if shipped, Step 22 may include UI content.
+TestNet v0.2 migration: Steps 26-29 (active, can parallelize with documentation).
+Static dependency migration: Step 30 (active, gated on Step 26, parallelizes with 27-29).
+See [N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 
 ## Program scope
 
@@ -40,13 +43,19 @@ paid Store mode on the provider.
 
 | Outcome | Steps |
 | --- | --- |
-| Runnable integration demo (CLI, Store + eligibility) | 17 (local LEZ), 18 (testnet) |
+| Runnable integration demo (CLI, Store + eligibility) | 17 (local LEZ), 18 (testnet, historical) |
 | LIP-155 on-chain spec (branch pin) | 19 (complete) |
 | Developer Journey: integrators, Store integration | 20 (**next**) |
-| User Journey: payment streams UI | 21-22 (optional stretch; [N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)) |
+| User Journey: CLI doc packet | 22 (active) |
+| User Journey UI: Basecamp plugin (optional) | 21 (optional) |
 | Public hosted Store provider | 23 (optional) |
 | LEZ in-process harness (`program_tests`, rc5 `lee`) | 24 + 24b (complete) |
 | Deterministic demo lifecycle | 24c (complete) |
+| TestNet v0.2 migration | 26 (active) |
+| Claim fix: both journeys, both chains | 27 (active) |
+| User Journey on TestNet v0.2 | 28 (active) |
+| E2E script UX enhancement | 29 (active, parallel) |
+| Static dependency migration | 30 (active, gated on 26) |
 
 Step 25 (in-process demo coordinator module) is **won't fix**
 ([cancelled packet](cancelled/step-25-demo-coordination-module.md)).
@@ -65,10 +74,15 @@ Dual-host demo coordination stays in host scripts
 | Step | Focus | Status |
 | --- | --- | --- |
 | 20 | Developer Journey: Store integration | Active -- [step-20-developer-journey.md](upcoming/step-20-developer-journey.md) |
-| 21 | User Journey: Basecamp UI plugin | Optional stretch -- [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
-| 22 | User Journey: doc packet | Optional stretch -- [step-22-ui-journey.md](upcoming/step-22-ui-journey.md) |
+| 21 | User Journey: Basecamp UI plugin (optional) | Optional -- [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
+| 22 | User Journey: doc packet (CLI-based, active) | Active -- [step-22-ui-journey.md](upcoming/step-22-ui-journey.md) |
 | 23 | Public Store provider | Optional -- [step-23-public-store-provider.md](upcoming/step-23-public-store-provider.md) |
 | 25 | Demo coordination Logos module | Won't fix -- [cancelled/step-25](cancelled/step-25-demo-coordination-module.md) |
+| 26 | TestNet v0.2 migration | Active -- [step-26-testnet-v02-migration.md](upcoming/step-26-testnet-v02-migration.md) |
+| 27 | Claim fix and verification | Active -- [step-27-claim-fix-verification.md](upcoming/step-27-claim-fix-verification.md) |
+| 28 | User Journey on TestNet v0.2 | Active -- [step-28-user-journey-testnet.md](upcoming/step-28-user-journey-testnet.md) |
+| 29 | E2E script UX enhancement | Active -- [step-29-e2e-script-ux.md](upcoming/step-29-e2e-script-ux.md) |
+| 30 | Static dependency migration | Active (gated on 26) -- [step-30-static-dependency-migration.md](upcoming/step-30-static-dependency-migration.md) |
 
 ## Delivery integration branches
 

@@ -60,4 +60,5 @@ Definition of done:
 Not in scope: Step 17 E2E replay in UI; `delivery_module`; eligibility prepare/verify for Store;
 Step 20 Developer Journey content (cross-link only).
 
-Follow-on: Step 22 (User Journey doc packet).
+Follow-on: Step 22 (User Journey doc packet) — Step 22 is active and CLI-based;
+if Step 21 ships, Step 22 may be updated with UI content.

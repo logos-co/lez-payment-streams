@@ -223,6 +223,14 @@ Dynamic access keeps payment streams on the Universal side (with `delivery_modul
 We rely on explicit load order and runtime errors if the wallet is absent.
 Revisit a static dependency when the wallet module is Universal upstream and codegen supports it.
 
+Resolved by [Step 30](../plan/upcoming/step-30-static-dependency-migration.md):
+the wallet module transitioned to Universal on upstream `main` (landed in
+Step 26's wrapper ref move), closing the revisit condition. Step 30 migrates
+the ~20+ dynamic-dispatch call sites to codegen-emitted typed
+`modules().logos_execution_zone()` wrappers and lists `logos_execution_zone`
+in `metadata.json` `"dependencies"`. The dynamic-dispatch rationale above is
+retained as Legacy-specific history.
+
 ### N1, Off-chain canonical-payload signing
 
 Neither `wallet_ffi` nor `logos_execution_zone` currently exposes
@@ -691,7 +699,7 @@ Dual-host paid Store demo coordination stays on the **host**, not in a Logos mod
 - **Step 20 developer journey:** document (1) one-script E2E, (2) equivalent step-by-step
   `logoscore call` sequences per host for the same scenario. This is the **Delivery + Store
   eligibility integration** track only ([N18](#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
-- **Step 21–22 (optional):** payment streams **protocol** UI + User Journey — not Store
+- **Step 21 (optional UI), Step 22 (active doc):** payment streams protocol — User Journey CLI doc packet, optional Basecamp UI — not Store
   integration; see [N18](#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06). No demo
   coordinator module.
 
@@ -708,23 +716,35 @@ Two documentation/demonstration tracks; do not merge them in copy or scope.
   `logos_execution_zone`.
 - **Audience:** integrators reproducing paid Store via CLI/script.
 
-**User Journey — Steps 21–22 (optional if time)**
+**User Journey — Step 22 (active)**
 
 - **Story:** **Payment streams protocol only** — universal LEZ payment (vaults, streams, accrual,
-  claim). Testing payment streams in isolation, as a pure payment mechanism without any relation
-  to Store or other integration. Not tied to Store, eligibility hooks, or `storeQuery`.
-- **Mechanism:** Basecamp `ui_qml` plugin — thin UI over `payment_streams_module` (+ wallet).
+  claim). Testing payment streams in isolation via command-line, as a pure payment mechanism
+  without any relation to Store or other integration. Not tied to Store, eligibility hooks,
+  or `storeQuery`.
+- **Mechanism:** CLI-based doc packet using `payment_streams_module` + `logos_execution_zone`.
   Single-host; service/counterparty coordination **out of band**.
-- **Payer side:** initialize vault, deposit, create/pause/resume/top-up/close stream, list
-  vaults/streams (`chainAction`, reads, inventory APIs).
-- **Payee side (optional in UI):** `chainAction claim` after funds accrue. The payee must know
+- **Content:** install module, load wallet, payer path (create stream, list vaults/streams),
+  optional payee path (`chainAction claim`). CLI commands only — no UI required.
+- **Payee side (optional):** `chainAction claim` after funds accrue. The payee must know
   the stream exists and must have the **stream identity** (vault id, stream id, and program/
-  account context from the fixture or manifest — whatever the module needs to target claim).
-  **Assumption for the User Journey:** the stream creator notifies the payee **out of band** (e.g.
-  message, email, QR) with the stream address / ids so the payee can claim; the UI does not
-  implement discovery or messaging protocols.
-- **Audience:** end users exploring payment streams in Basecamp; cross-link Step 20 (Developer
+  account context). **Assumption:** the stream creator notifies the payee **out of band** (e.g.
+  message, email, QR) with the stream address / ids so the payee can claim.
+- **Audience:** end users exploring payment streams via CLI; cross-link Step 20 (Developer
   Journey) for Store integration, do not duplicate it.
+- **Future enhancement:** if Step 21 (Basecamp UI) ships, Step 22 doc may be updated with UI
+  screenshots and Basecamp-specific paths. This is additive — the CLI-based journey remains valid.
+
+**User Journey UI — Step 21 (optional if time)**
+
+- **Story:** Same as User Journey (payment streams protocol only), but delivered as a Basecamp
+  `ui_qml` plugin for GUI users.
+- **Mechanism:** Thin UI over `payment_streams_module` (+ wallet). Single-host; out-of-band
+  counterparty coordination.
+- **Payer side:** same flows as User Journey, but via buttons/forms in Basecamp.
+- **Audience:** end users who prefer GUI over CLI.
+- **Relationship to Step 22:** Step 21 is optional and independent. If shipped, Step 22 may be
+  updated to include UI content, but Step 22 does not require Step 21.
 
 ### N16, Step 18b rc5 operational pin (2026-06)
 

@@ -29,13 +29,17 @@ Product gates: [verification-matrix.md](../reference/verification-matrix.md).
 | 18 | Public sequencer E2E | Complete -- [step-18-public-testnet-demo.md](../plan/completed/step-18-public-testnet-demo.md), [steps/public-sequencer-store-runbook.md](steps/public-sequencer-store-runbook.md) |
 | 19 | LIP-155 on-chain spec | Complete -- [step-19](../plan/completed/step-19-lip155-onchain-spec.md) |
 | 20 | Developer Journey | **Active** -- see [plan/index.md](../plan/index.md) |
-| 21 | User Journey: Basecamp UI plugin | Optional stretch -- see [plan/index.md](../plan/index.md) |
-| 22 | User Journey: doc packet | Optional stretch -- see [plan/index.md](../plan/index.md) |
+| 21 | User Journey: Basecamp UI plugin (optional) | Optional -- see [plan/index.md](../plan/index.md) |
+| 22 | User Journey: doc packet (CLI-based) | **Active** -- see [plan/index.md](../plan/index.md) |
 | 23 | Public Store provider | Optional -- see [plan/index.md](../plan/index.md) |
 | 24 | LEZ `lee` harness @ 510 | Complete -- [step-24](../plan/completed/step-24-lee-harness-upgrade.md) |
 | 24b | Rust `lee` / guest unify on rc5 | Complete -- [step-24b-rc5-rust-lee-unify.md](../plan/completed/step-24b-rc5-rust-lee-unify.md) |
 | 24c | Simplify demo flow | Complete -- [step-24c-simplify-demo-flow.md](../plan/completed/step-24c-simplify-demo-flow.md) |
 | 25 | Demo coordination Logos module | Won't fix -- [step-25](../plan/cancelled/step-25-demo-coordination-module.md) |
+| 26 | TestNet v0.2 migration | Active -- see [plan/index.md](../plan/index.md) |
+| 27 | Claim fix and verification | Active -- see [plan/index.md](../plan/index.md) |
+| 28 | User Journey on TestNet v0.2 | Active -- see [plan/index.md](../plan/index.md) |
+| 29 | E2E script UX enhancement | Active -- see [plan/index.md](../plan/index.md) |
 
 ## Completed steps -- summary
 

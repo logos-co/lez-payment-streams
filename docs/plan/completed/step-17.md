@@ -144,5 +144,5 @@ Definition of done:
    `demo-e2e-local-*.log` from archived wrapper).
 
 Follow-on: Step 18 (public sequencer, local P2P), Step 19 (LIP on-chain), Step 20 (developer
-journey); optional Steps 21–22 (UI), Step 23 (hosted Store provider). See
+journey); Step 22 (User Journey doc, active); optional Step 21 (UI), Step 23 (hosted Store provider). See
 [index.md](../index.md#program-outcomes).

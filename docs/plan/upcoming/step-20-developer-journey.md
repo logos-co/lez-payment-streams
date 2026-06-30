@@ -18,8 +18,8 @@ Prerequisites:
 
 Orchestration policy: [N17](../../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06).
 Track split: [N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)
-(Step 20 = **Developer Journey** only; Steps 21–22 = optional **User Journey** UI —
-not part of this step).
+(Step 20 = **Developer Journey** only; Step 22 = **User Journey** doc packet, active and CLI-based —
+not part of this step. Optional Step 21 = User Journey UI).
 No in-process demo coordinator module (Step 25 won't fix).
 
 Architectural context:
@@ -31,7 +31,7 @@ published instructions ([`logos-docs/CONTRIBUTING.md`](https://github.com/logos-
 This step is the **Developer Journey** ([N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
 the documentation deliverable for **integrators** showing payment streams **composed with
 Logos Delivery Store** (LIP-155 eligibility on Store requests — one protocol use case). It is not
-the payment-streams-only Basecamp UI (User Journey, Steps 21–22).
+the payment-streams-only Basecamp UI (optional Step 21).
 
 Paid Store + eligibility uses **`payment_streams_module`**, **`delivery_module`**, and
 **`logos_execution_zone`**, not Basecamp clicks. Demo coordination is a **host-side script**
@@ -74,7 +74,7 @@ Definition of done:
 - Red Team completes when org process requires `quality:verified` on the published doc (tracked on
   logos-docs project board, not via a script in this repo).
 
-Not in scope: Step 25 demo coordinator module; User Journey UI (Steps 21–22);
+Not in scope: Step 25 demo coordinator module; User Journey UI (optional Step 21);
 hosted provider ops (Step 23) unless the Developer Journey targets that deployment model; new backend
 features.
 

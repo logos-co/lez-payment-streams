@@ -22,7 +22,7 @@ Makefile targets use the Journey names directly where applicable.
 
 | Term | Meaning |
 | --- | --- |
-| N18 | Developer Journey vs User Journey: Store integration (Step 20) vs payment-streams-only UI (Steps 21–22). |
+| N18 | Developer Journey (Step 20) vs User Journey (Step 22, active) vs optional User Journey UI (Step 21). |
 
 ## Logos and protocol names
 
