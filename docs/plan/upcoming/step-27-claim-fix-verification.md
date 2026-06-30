@@ -45,40 +45,47 @@ into `authenticated_transfer` to move `amount` from `owner` to
 `vault_holding`. The chained call panics with "Sender has insufficient
 balance".
 
-Two candidate explanations remain open and must be confirmed by the
-first diagnostic action of this step (see Decision log Q3):
+Two candidate explanations were confirmed by the Phase 1 diagnostic
+(reading `owner`'s on-chain `balance` and `program_owner` after
+`initialize_vault` confirms and before `deposit`):
 
-- A1. The `owner` account on chain has zero balance because the
-  Store-mode prefund path never actually credited `owner`. The
+- A1 (CONFIRMED). The `owner` account on chain has zero balance. The
   `seed_localnet_fixture prefund-onchain` subcommand runs
   `initialize_vault` then `deposit`; it does NOT separately mint or
-  airdrop tokens to `owner`. Under rc5 the genesis/airdrop path may
-  have pre-funded `owner`; under v0.2.0 the tighter genesis semantics
-  may leave `owner` at balance 0.
-- A2. The `owner` account has balance but its `program_owner` does not
-  authorize the guest program's chained `authenticated_transfer` debit.
-  v0.2.0 enforces `program_owner` at execution time: a program may only
-  decrease the balance of an account whose `program_owner` equals that
-  program's ID.
+  airdrop tokens to `owner`. The localnet genesis
+  (`lez/sequencer/service/configs/debug/sequencer_config.json`) funds
+  only a fixed set of supply accounts, NOT wallet-derived owner
+  accounts. After `initialize_vault` the owner had `balance: 0`,
+  `program_owner: 11111111…` (DEFAULT_PROGRAM_ID), `nonce: 1`.
+- A2 (also present, secondary). Once the owner is touched by
+  `initialize_vault` (nonce > 0) but still has DEFAULT_PROGRAM_ID,
+  v0.2.0's `NonDefaultAccountWithDefaultOwner` invariant blocks the
+  pinata faucet from claiming/crediting it. The owner must be
+  initialized under `authenticated_transfer` (`wallet auth-transfer
+  init`) BEFORE `initialize_vault` touches it, then funded via pinata
+  claims.
 
-A1 vs A2 is distinguishable by reading `owner`'s on-chain balance and
-`program_owner` after `initialize_vault` confirms and before `deposit`.
-The fix differs sharply between them (prefund/airdrop vs. ownership
-claim), so this read is the gate before any code change.
+Diagnostic result: A1 is the primary cause (zero balance); A2 is the
+sequencing constraint (init under auth-transfer before any other program
+touches the account). The fix is to fund the owner via
+`wallet auth-transfer init` + `wallet pinata claim` (looped to reach the
+deposit amount) BEFORE `prefund-onchain` runs. This matches the
+module-mode path (`lgs wallet topup` wraps the same init+pinata sequence).
 
 Symptom B — `lez-payment-streams-core` unit-test failures (52 tests).
-Separately from the runtime, 52 `program_tests` fail under v0.2.0. The
+Separately from the runtime, 52 `program_tests` failed under v0.2.0. The
 harness `test_helpers.rs::create_state_with_guest_program` was already
 updated to (i) register `authenticated_transfer` and `clock` via
-`.with_programs([...])` and (ii) set `program_owner: program_id` on
-genesis accounts. That resolved the initial "Unknown program" and
-`UnauthorizedBalanceDecrease` on the owner account, but 52 tests still
-fail. The remaining failures are in the account-claim / PDA-ownership
-invariants for vault PDAs created mid-transition (the guest creates
-`vault_config` and `vault_holding` during `initialize_vault`; those PDAs
-must carry the right `program_owner` for subsequent debits). This is the
-unit-test mirror of the runtime ownership question and must be fixed
-in lockstep with whichever runtime fix is chosen.
+`.with_programs([...])` and (ii) set `program_owner` on genesis accounts.
+The previous fix set `program_owner = guest_program.id()`, which caused
+`UnauthorizedBalanceDecrease` because the `deposit` instruction's
+`ChainedCall` to `authenticated_transfer` debits the owner, and v0.2.0
+requires the executing program (`authenticated_transfer`) to own the
+account it debits — not the guest program. The fix: set
+`program_owner = authenticated_transfer().id()` on genesis accounts,
+matching the runtime path where `wallet auth-transfer init` sets the
+owner's `program_owner` to the `authenticated_transfer` program. This
+resolved all 52 failures: 138/138 `program_tests` pass.
 
 Symptom C — prior testnet-only claim known issue.
 `docs/archive/operator/testnet-claim-known-issue.md` (status 2026-06-28)
@@ -162,20 +169,21 @@ Step 28; Step 27 keeps only the Developer Journey testnet line. The
 verification-commands comment "# User Journey — testnet (requires Step
 28 for full support)" is correct and stays.
 
-Q3. Can `seed_localnet_fixture` / `wallet` set `program_owner`? Unknown
-— this is the first diagnostic action. `seed_localnet_fixture.rs` (see
-`examples/src/bin/seed_localnet_fixture.rs`) has no `--program-owner`
-flag and uses `WalletCore` + `PublicTransaction` only; it does not
-construct genesis accounts. Setting `program_owner` on an existing
-on-chain account requires either a guest instruction that claims it or
-a genesis/airdrop path that sets it at creation. The first action of
-this step is to read `owner`'s on-chain `balance` and `program_owner`
-after `initialize_vault` and before `deposit`, to decide between A1
-(no balance) and A2 (wrong owner). Fix selection (F1/F2/F3) follows
-from that read. `examples/src/bin/seed_localnet_fixture.rs` IS in scope
-for modification if F1 requires a new prefund/claim subcommand (the
-Deliver line "Fix implementation in `lez-payment-streams-core`, guest,
-or module" is amended to include `examples/`).
+Q3. Can `seed_localnet_fixture` / `wallet` set `program_owner`? Resolved.
+`seed_localnet_fixture.rs` has no `--program-owner` flag and cannot set
+`program_owner`. The `wallet` CLI's `auth-transfer init` subcommand
+initializes an account under the `authenticated_transfer` program
+(sets `program_owner = authenticated_transfer`), and `wallet pinata
+claim` funds it from the faucet. The Phase 1 diagnostic confirmed A1
+(owner balance is 0) plus the A2 sequencing constraint (the owner must
+be auth-transfer-initialized BEFORE `initialize_vault` touches it, or
+the `NonDefaultAccountWithDefaultOwner` invariant blocks the pinata
+claim). Fix F1 (prefund-side) was implemented: `cmd_prefund` in
+`scripts/fixture.sh` now calls `fund_owner_account` (auth-transfer init
++ pinata claim loop) before `prefund-onchain`, and also deploys the
+guest program idempotently. `examples/src/bin/seed_localnet_fixture.rs`
+was NOT modified; the funding step lives in `fixture.sh` because it is
+a wallet-CLI operation, not a seed-binary operation.
 
 Q4. Does module-mode claim also fail? No. Step 26 verification recorded
 `{"phase":"claim","ok":true}` for `MODE=module CHAIN=local`. Module
@@ -185,18 +193,16 @@ module, which routes prefund through the guest and avoids the Store-mode
 The DoD gate `MODE=module CHAIN=local` E2E shows `{"phase":"claim","ok":true}`
 is a non-regression check, not a fix target.
 
-Q5. Fix 1 vs Fix 2 decision criteria. After the A1/A2 diagnostic:
-- If A1 (owner balance is 0): the fix is a prefund/airdrop change
-  (extend `seed_localnet_fixture` or `fixture.sh` to credit `owner`
-  before `deposit`). Re-run the local Store-mode E2E; if `deposit`
-  confirms and `claim` confirms, done.
-- If A2 (owner balance > 0 but `program_owner` wrong): the fix is an
-  ownership claim. Try F1 (prefund sets `program_owner`); if
-  `seed_localnet_fixture`/`wallet` cannot set it, fall back to F2
-  (guest claim step). Re-run the local Store-mode E2E.
-- Rollback trigger: if after the chosen fix `deposit` still fails with
-  a different error, capture the sequencer reject reason and re-classify
-  before trying the next fix. Do not stack fixes blindly.
+Q5. Fix 1 vs Fix 2 decision criteria. Resolved — Fix 1 (F1, prefund-side)
+was chosen and implemented. The Phase 1 diagnostic confirmed A1 (owner
+balance is 0), so the fix is a prefund/airdrop change: `fund_owner_account`
+in `fixture.sh` runs `wallet auth-transfer init` + `wallet pinata claim`
+(looped) before `prefund-onchain`. F2 (guest-side claim) and F3 (bypass)
+were not needed. The unit-test fix (Symptom B) was the mirror: set
+`program_owner = authenticated_transfer().id()` on genesis accounts in
+`test_helpers.rs`. Both fixes are verified: 138/138 unit tests pass;
+`full-reset-localnet` prepare passes (pinata funds owner to 1050,
+init+deposit confirm, snapshot saved).
 
 Q6/Q9. Tooling prerequisites — environment vs code. The `lgs` symlink
 and LEZ-built `wallet` PATH are per-environment setup, already applied
