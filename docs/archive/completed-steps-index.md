@@ -36,7 +36,7 @@ Product gates: [verification-matrix.md](../reference/verification-matrix.md).
 | 24b | Rust `lee` / guest unify on rc5 | Complete -- [step-24b-rc5-rust-lee-unify.md](../plan/completed/step-24b-rc5-rust-lee-unify.md) |
 | 24c | Simplify demo flow | Complete -- [step-24c-simplify-demo-flow.md](../plan/completed/step-24c-simplify-demo-flow.md) |
 | 25 | Demo coordination Logos module | Won't fix -- [step-25](../plan/cancelled/step-25-demo-coordination-module.md) |
-| 26 | TestNet v0.2 migration | Active -- see [plan/index.md](../plan/index.md) |
+| 26 | TestNet v0.2 migration | Complete -- [step-26-testnet-v02-migration.md](../plan/completed/step-26-testnet-v02-migration.md) |
 | 27 | Claim fix and verification | Active -- see [plan/index.md](../plan/index.md) |
 | 28 | User Journey on TestNet v0.2 | Active -- see [plan/index.md](../plan/index.md) |
 | 29 | E2E script UX enhancement | Active -- see [plan/index.md](../plan/index.md) |

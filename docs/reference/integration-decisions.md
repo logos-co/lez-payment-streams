@@ -756,7 +756,7 @@ builtin program ids aligned with the 510-era lineage, not rc3 dual-pin tooling.
 
 - **Operational pin:** `logos-execution-zone` tag `v0.2.0` (git `a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a`)
   for `scaffold.toml`, payment-streams wallet flakes, module `.lgx`, E2E, and testnet scripts.
-  (Supersedes the rc5 pin `27360cb7…`; see [Step 26](../plan/upcoming/step-26-testnet-v02-migration.md).)
+  (Supersedes the rc5 pin `27360cb7…`; see [Step 26](../plan/completed/step-26-testnet-v02-migration.md).)
 - **Dual-pin abandoned:** rc3-only submit tooling and split wallet storage were Step 18 WIP only; not used after 18b.
 - **Rust / guest pin (Step 24b):** `lez-payment-streams-core`, guest, FFI, and `examples/` use the same rev as operational tooling; no intentional split in this repo.
 - **Phase 9 (reframed by Step 26):** `lez-testnet-submit` is no longer dispatched from the

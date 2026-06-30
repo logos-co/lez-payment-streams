@@ -11,7 +11,7 @@ failing under LEZ v0.2.0 pass. User Journey testnet verification is
 owned by Step 28; Step 27 keeps User Journey localnet as a
 non-regression check only.
 
-Prerequisite: [Step 26 — TestNet v0.2 Migration](step-26-testnet-v02-migration.md)
+Prerequisite: [Step 26 — TestNet v0.2 Migration](../completed/step-26-testnet-v02-migration.md)
 (declared complete for verification purposes).
 
 #### Background
@@ -323,7 +323,7 @@ prepend `~/.cache/logos-scaffold/repos/lez/<rev>/target/release` to
 
 #### Related
 
-- [step-26-testnet-v02-migration.md](step-26-testnet-v02-migration.md) — provides testnet v0.2 target
+- [step-26-testnet-v02-migration.md](../completed/step-26-testnet-v02-migration.md) — provides testnet v0.2 target
 - [step-28-user-journey-testnet.md](step-28-user-journey-testnet.md) — enables full User Journey on testnet
 - [archive/operator/testnet-claim-known-issue.md](../../archive/operator/testnet-claim-known-issue.md) — prior issue documentation
 - [USER_JOURNEY.md](../../../../USER_JOURNEY.md) — to be updated with payee claim
