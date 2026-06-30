@@ -100,7 +100,14 @@ pub(crate) fn create_state_with_guest_program(
 ) -> Option<(V03State, Program)> {
     let guest_bytecode = read_guest_program_bytecode()?;
     let guest_program = Program::new(guest_bytecode.clone().into()).ok()?;
-    let program_id = guest_program.id();
+
+    // Genesis accounts (owner, provider, recipient) are funded and initialized
+    // under the authenticated_transfer program, matching the runtime path where
+    // `wallet auth-transfer init` sets program_owner = authenticated_transfer.
+    // The deposit instruction chains into authenticated_transfer to debit the
+    // owner, so the owner must be owned by authenticated_transfer (not the guest
+    // program) for v0.2.0's balance-decrease enforcement to authorize the debit.
+    let auth_transfer_id = authenticated_transfer().id();
 
     let mut state = V03State::new()
         .with_public_accounts(
@@ -111,7 +118,7 @@ pub(crate) fn create_state_with_guest_program(
                         *id,
                         Account {
                             balance: *bal,
-                            program_owner: program_id,
+                            program_owner: auth_transfer_id,
                             ..Default::default()
                         },
                     )

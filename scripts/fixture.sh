@@ -59,13 +59,59 @@ wait_chain_settle() {
   sleep 3
 }
 
+# Pinata prize per successful claim (matches lez/programs/pinata PRIZE).
+PINATA_PRIZE="${PINATA_PRIZE:-150}"
+
+# Fund an account from the pinata faucet so it has at least `target` balance.
+# Under LEZ v0.2.0 the account must first be initialized under the
+# authenticated_transfer program (auth-transfer init) before the pinata
+# program can credit it; an uninitialized or non-default-but-default-owned
+# account is rejected with NonDefaultAccountWithDefaultOwner.
+#
+# Uses the pinned LEZ wallet on PATH (see make deploy / scripts/lib/common.sh).
+fund_owner_account() {
+  local owner="$1" target="${2:-$SEED_DEPOSIT_AMOUNT}" bal
+  [[ -z "$owner" ]] && ps_fatal "fund_owner_account: owner is empty"
+
+  bal="$(ps_account_balance "$owner" 2>/dev/null || echo 0)"
+  if (( bal >= target )); then
+    ps_log_info "Owner $owner already funded (balance=$bal >= $target); skipping faucet"
+    return 0
+  fi
+
+  ps_log_info "Initializing owner $owner under authenticated_transfer program..."
+  if ! wallet auth-transfer init --account-id "Public/$owner" >/dev/null 2>&1; then
+    ps_log_info "auth-transfer init for $owner returned non-zero (may already be initialized); continuing"
+  fi
+  wait_chain_settle
+
+  ps_log_info "Funding owner $owner via pinata faucet to >= $target (balance now $bal, prize=$PINATA_PRIZE per claim)..."
+  local attempts=0 max_attempts
+  max_attempts=$(( (target / PINATA_PRIZE) + 2 ))
+  while (( bal < target )); do
+    attempts=$((attempts + 1))
+    if (( attempts > max_attempts )); then
+      ps_fatal "Owner $owner not funded after $max_attempts pinata claims (balance=$bal, target=$target)"
+    fi
+    if ! wallet pinata claim --to "Public/$owner" >/dev/null 2>&1; then
+      ps_log_info "pinata claim attempt $attempts returned non-zero; retrying"
+      wait_chain_settle
+      continue
+    fi
+    wait_chain_settle
+    bal="$(ps_account_balance "$owner" 2>/dev/null || echo 0)"
+    ps_log_info "pinata claim $attempts done; owner balance=$bal (target=$target)"
+  done
+  ps_log_info "Owner $owner funded: balance=$bal"
+}
+
 # ============================================================================
 # Prefund — Initial funding of owner and vault deposit (baseline snapshot)
 # ============================================================================
 
 cmd_prefund() {
   ps_log_info "Prefunding vault baseline..."
-  
+
   # Load owner from state file or manifest
   local owner
   if [[ -f "$REPO_ROOT/.lez_payment_streams-state" ]]; then
@@ -73,18 +119,42 @@ cmd_prefund() {
     source "$REPO_ROOT/.lez_payment_streams-state"
     owner="${SIGNER_ID:-}"
   fi
-  
+
   if [[ -z "$owner" ]]; then
     local manifest
     manifest="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/localnet.json}"
     [[ -f "$manifest" ]] && owner="$(ps_json_get "$manifest" owner_account_id)"
   fi
-  
+
   [[ -z "$owner" ]] && ps_fatal "No owner account found in state or manifest"
-  
+
   ps_log_info "Prefunding vault for owner: $owner"
   ps_log_info "Deposit amount: $SEED_DEPOSIT_AMOUNT"
-  
+
+  # The pinned LEZ wallet (v0.2.0 storage format) must be on PATH for the
+  # faucet and deploy steps. The cargo-installed wallet (0.1.0) cannot read
+  # v0.2.0 storage. Prefer the LEZ-built binary from the scaffold cache.
+  local lez_wallet_dir
+  lez_wallet_dir="$(ps_lez_cache)/target/release"
+  if [[ -x "$lez_wallet_dir/wallet" ]]; then
+    export PATH="$lez_wallet_dir:$PATH"
+  fi
+
+  # Deploy the guest program if not already on chain (idempotent).
+  # prefund-onchain submits initialize_vault + deposit, both of which
+  # reference the guest program id, so the program must exist first.
+  if ! wallet deploy-program "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" >/dev/null 2>&1; then
+    ps_log_info "Program deploy returned non-zero (may already be deployed); continuing"
+  fi
+  wait_chain_settle
+
+  # LEZ v0.2.0: the deposit instruction chains into authenticated_transfer
+  # to debit the owner, so the owner must hold at least the deposit amount
+  # before prefund-onchain runs. The localnet genesis does not pre-fund
+  # wallet-derived accounts, so pull funds from the pinata faucet first.
+  # See docs/plan/upcoming/step-27-claim-fix-verification.md (Symptom A).
+  fund_owner_account "$owner" "$SEED_DEPOSIT_AMOUNT"
+
   # Run prefund via seed binary (prefund-onchain initializes vault + deposits)
   cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
     --bin seed_localnet_fixture -- \
@@ -92,7 +162,7 @@ cmd_prefund() {
     --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
     --owner "$owner" \
     --deposit-amount "$SEED_DEPOSIT_AMOUNT"
-  
+
   wait_chain_settle
   ps_log_info "Prefund complete"
 }
