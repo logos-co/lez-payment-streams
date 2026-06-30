@@ -1,98 +1,72 @@
---- a/src/i_logos_execution_zone_wallet_module.h
-+++ b/src/i_logos_execution_zone_wallet_module.h
-@@ -107,6 +107,7 @@
-         const QList<QString>& program_elf,
-         const QList<QString>& program_dependencies
-     ) = 0;
-+    virtual QString send_generic_public_transaction_json(const QString& payload_json) = 0;
-     virtual QString send_program_deployment_transaction(
-         const QList<QString>& program_elf
-     ) = 0;
---- a/src/logos_execution_zone_wallet_module.h
-+++ b/src/logos_execution_zone_wallet_module.h
-@@ -129,6 +129,7 @@
-         const QList<QString>& program_elf,
-         const QList<QString>& program_dependencies
-     ) override;
-+    Q_INVOKABLE QString send_generic_public_transaction_json(const QString& payload_json) override;
-     Q_INVOKABLE QString send_generic_private_transaction(
-         const QList<QString>& account_ids,
-         const QList<QString>& instruction,
+diff --git a/src/logos_execution_zone_wallet_module.cpp b/src/logos_execution_zone_wallet_module.cpp
+index 0eadbc2..5930f57 100644
 --- a/src/logos_execution_zone_wallet_module.cpp
 +++ b/src/logos_execution_zone_wallet_module.cpp
-@@ -1002,6 +1002,75 @@
+@@ -1032,6 +1032,55 @@ std::string LogosExecutionZoneWalletModule::send_generic_public_transaction(
      return resultJson;
  }
  
-+QString LogosExecutionZoneWalletModule::send_generic_public_transaction_json(const QString& payload_json)
-+{
-+    QJsonParseError parseError{};
-+    const QJsonDocument doc = QJsonDocument::fromJson(payload_json.toUtf8(), &parseError);
-+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-+        return transferResultToJson(nullptr, QStringLiteral("send_generic_public_transaction_json: invalid JSON"));
++std::string LogosExecutionZoneWalletModule::send_generic_public_transaction_json(const std::string& payload_json) {
++    nlohmann::json doc;
++    try {
++        doc = nlohmann::json::parse(payload_json);
++    } catch (const nlohmann::json::exception& e) {
++        return transferResultToJson(nullptr, std::string("send_generic_public_transaction_json: invalid JSON: ") + e.what());
 +    }
-+    const QJsonObject obj = doc.object();
-+
-+    QList<QString> account_ids;
-+    for (const QJsonValue value : obj.value(QStringLiteral("account_ids")).toArray()) {
-+        account_ids.append(value.toString());
-+    }
-+    QList<QString> signing_requirements;
-+    for (const QJsonValue value : obj.value(QStringLiteral("signing_requirements")).toArray()) {
-+        signing_requirements.append(value.toBool() ? QStringLiteral("true") : QStringLiteral("false"));
++    if (!doc.is_object()) {
++        return transferResultToJson(nullptr, std::string("send_generic_public_transaction_json: payload is not an object"));
 +    }
 +
-+    const QByteArray instructionBytes =
-+        QByteArray::fromHex(obj.value(QStringLiteral("instruction_hex")).toString().toLatin1());
-+    if (instructionBytes.isEmpty()) {
-+        return transferResultToJson(nullptr, QStringLiteral("send_generic_public_transaction_json: instruction_hex empty"));
++    std::vector<std::string> account_ids;
++    for (const auto& v : doc.value("account_ids", nlohmann::json::array())) {
++        account_ids.push_back(v.get<std::string>());
++    }
++    std::vector<bool> signing_requirements;
++    for (const auto& v : doc.value("signing_requirements", nlohmann::json::array())) {
++        signing_requirements.push_back(v.get<bool>());
++    }
++
++    const std::string instruction_hex = doc.value("instruction_hex", std::string());
++    std::vector<uint8_t> instruction_bytes;
++    if (!hexToBytes(instruction_hex, instruction_bytes)) {
++        return transferResultToJson(nullptr, std::string("send_generic_public_transaction_json: instruction_hex invalid"));
++    }
++    if (instruction_bytes.empty()) {
++        return transferResultToJson(nullptr, std::string("send_generic_public_transaction_json: instruction_hex empty"));
 +    }
 +
 +    FfiInstructionWords words = wallet_ffi_serialization_helper(
-+        reinterpret_cast<const uint8_t*>(instructionBytes.constData()),
-+        static_cast<uintptr_t>(instructionBytes.size()));
++        instruction_bytes.data(),
++        static_cast<uintptr_t>(instruction_bytes.size()));
 +    if (words.error != SUCCESS) {
-+        return transferResultToJson(
-+            nullptr,
-+            QStringLiteral("send_generic_public_transaction_json: serialization_helper error ")
-+                + QString::number(static_cast<int>(words.error)));
++        const std::string msg = std::string("send_generic_public_transaction_json: serialization_helper error ") + std::to_string(static_cast<int>(words.error));
++        wallet_ffi_free_instruction_words(&words);
++        return transferResultToJson(nullptr, msg);
 +    }
-+
-+    QList<QString> instructionWords;
-+    instructionWords.reserve(static_cast<int>(words.instruction_words_size));
++    std::vector<uint32_t> instruction_words;
++    instruction_words.reserve(words.instruction_words_size);
 +    for (uintptr_t i = 0; i < words.instruction_words_size; ++i) {
-+        instructionWords.append(QString::number(words.instruction_words[i]));
++        instruction_words.push_back(words.instruction_words[i]);
 +    }
 +    wallet_ffi_free_instruction_words(&words);
 +
-+    QList<QString> program_elf;
-+    const QByteArray programBytes =
-+        QByteArray::fromHex(obj.value(QStringLiteral("program_elf_hex")).toString().toLatin1());
-+    program_elf.reserve(programBytes.size());
-+    for (unsigned char byte : programBytes) {
-+        program_elf.append(QString::number(static_cast<uint>(byte)));
-+    }
++    const std::string program_id_hex = doc.value("program_id_hex", std::string());
 +
-+    QList<QString> program_dependencies;
-+    for (const QJsonValue depValue : obj.value(QStringLiteral("program_dependencies_hex")).toArray()) {
-+        const QByteArray depBytes = QByteArray::fromHex(depValue.toString().toLatin1());
-+        QStringList parts;
-+        parts.reserve(depBytes.size());
-+        for (unsigned char byte : depBytes) {
-+            parts.append(QString::number(static_cast<uint>(byte)));
-+        }
-+        program_dependencies.append(parts.join(QLatin1Char(' ')));
-+    }
-+
-+    return send_generic_public_transaction(
-+        account_ids,
-+        signing_requirements,
-+        instructionWords,
-+        program_elf,
-+        program_dependencies);
++    return send_generic_public_transaction(account_ids, signing_requirements, instruction_words, program_id_hex);
 +}
 +
-+
- QString LogosExecutionZoneWalletModule::send_generic_private_transaction(
-         const QList<QString>& account_ids,
-         const QList<QString>& instruction,
+ std::string LogosExecutionZoneWalletModule::send_generic_private_transaction(
+         const std::vector<std::string>& account_ids,
+         const std::vector<uint32_t>& instruction,
+diff --git a/src/logos_execution_zone_wallet_module.h b/src/logos_execution_zone_wallet_module.h
+index 0a05bd8..e8df95f 100644
+--- a/src/logos_execution_zone_wallet_module.h
++++ b/src/logos_execution_zone_wallet_module.h
+@@ -78,6 +78,7 @@ public:
+     std::vector<uint8_t> ata_elf();
+ 
+     std::string send_generic_public_transaction(const std::vector<std::string>& account_ids, const std::vector<bool>& signing_requirements, const std::vector<uint32_t>& instruction, const std::string& program_id_hex);
++    std::string send_generic_public_transaction_json(const std::string& payload_json);
+     std::string send_generic_private_transaction(
+         const std::vector<std::string>& account_ids,
+         const std::vector<uint32_t>& instruction,

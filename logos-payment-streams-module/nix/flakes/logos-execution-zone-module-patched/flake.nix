@@ -1,11 +1,11 @@
 {
-  description = "logos-execution-zone-module PR 19 + payment-streams wallet patches (LEZ main / PR 510)";
+  description = "logos-execution-zone-module upstream main (Universal) + payment-streams wallet patches (LEZ v0.2.0)";
 
   inputs = {
     # pyo3-build-config in wallet-ffi-deps needs a Python interpreter in nativeBuildInputs.
     logos-execution-zone.url = "path:./lez-wallet-ffi-patched";
 
-    upstream.url = "github:logos-blockchain/logos-execution-zone-module?ref=refs/pull/19/head";
+    upstream.url = "github:logos-blockchain/logos-execution-zone-module";
     upstream.inputs.logos-execution-zone.follows = "logos-execution-zone";
 
     nixpkgs.follows = "upstream/logos-module-builder/nixpkgs";
@@ -32,30 +32,8 @@
         postPatch =
           (old.postPatch or "")
           + ''
-            patch -p1 --forward < ${./wallet-qt-guest-elf-from-env.patch}
             patch -p1 --forward < ${./wallet-qt-sign-public-payload.patch}
             patch -p1 --forward < ${./wallet-qt-send-generic-public-transaction-json.patch}
-          '';
-        postInstall =
-          (old.postInstall or "")
-          + ''
-            cat > "$out/metadata.json" <<'WALLET_METADATA_EOF'
-${walletMetadataJson}
-WALLET_METADATA_EOF
-
-            _plugin=""
-            for _c in logos_execution_zone_plugin.so liblogos_execution_zone_plugin.so \
-              liblogos_execution_zone_wallet_module.so; do
-              if [ -f "$out/lib/$_c" ]; then _plugin="$_c"; break; fi
-            done
-            if [ -z "$_plugin" ]; then
-              echo "No wallet plugin .so under $out/lib:" >&2
-              ls -la "$out/lib" >&2 || true
-              exit 1
-            fi
-            if [ "$_plugin" != "logos_execution_zone_plugin.so" ]; then
-              ln -sfn "$_plugin" "$out/lib/logos_execution_zone_plugin.so"
-            fi
           '';
       });
 

@@ -456,8 +456,7 @@ bool chainUsesTestnetSubmit() {
 QString buildGenericPublicPayloadJson(const QStringList& accountHexIds,
                                       const QList<bool>& signingFlags,
                                       const QList<uint8_t>& instructionBytes,
-                                      const QList<uint8_t>& programElfBytes,
-                                      const QList<QList<uint8_t>>& programDependencies) {
+                                      const QString& programIdHex) {
     QJsonObject payload;
     QJsonArray accountIdsJson;
     for (const QString& id : accountHexIds) {
@@ -477,23 +476,7 @@ QString buildGenericPublicPayloadJson(const QStringList& accountHexIds,
     }
     payload.insert(QStringLiteral("instruction_hex"), QString::fromLatin1(instructionRaw.toHex()));
 
-    QByteArray programRaw;
-    programRaw.reserve(programElfBytes.size());
-    for (uint8_t byte : programElfBytes) {
-        programRaw.append(static_cast<char>(byte));
-    }
-    payload.insert(QStringLiteral("program_elf_hex"), QString::fromLatin1(programRaw.toHex()));
-
-    QJsonArray depsJson;
-    for (const QList<uint8_t>& depList : programDependencies) {
-        QByteArray depRaw;
-        depRaw.reserve(depList.size());
-        for (uint8_t byte : depList) {
-            depRaw.append(static_cast<char>(byte));
-        }
-        depsJson.append(QString::fromLatin1(depRaw.toHex()));
-    }
-    payload.insert(QStringLiteral("program_dependencies_hex"), depsJson);
+    payload.insert(QStringLiteral("program_id_hex"), programIdHex);
 
     return QJsonDocument(payload).toJson(QJsonDocument::Compact);
 }
@@ -524,20 +507,13 @@ QString submitGenericPublicViaFfi(LogosAPIClient* client,
         const QByteArray instructionBytes =
             QByteArray::fromHex(obj.value(QStringLiteral("instruction_hex")).toString().toLatin1());
         QList<uint8_t> instructionList = bytesToUint8List(instructionBytes);
-        const QByteArray programBytes =
-            QByteArray::fromHex(obj.value(QStringLiteral("program_elf_hex")).toString().toLatin1());
-        QList<uint8_t> programElfList = bytesToUint8List(programBytes);
-        QList<QList<uint8_t>> deps;
-        for (const QJsonValue depValue : obj.value(QStringLiteral("program_dependencies_hex")).toArray()) {
-            deps.append(bytesToUint8List(QByteArray::fromHex(depValue.toString().toLatin1())));
-        }
+        const QString programIdHex = obj.value(QStringLiteral("program_id_hex")).toString();
         walletJson = invokeWalletMulti(client,
                                        "send_generic_public_transaction",
                                        QVariant::fromValue(accountHexIds),
                                        QVariant::fromValue(signingFlags),
                                        QVariant::fromValue(instructionList),
-                                       QVariant::fromValue(programElfList),
-                                       QVariant::fromValue(deps));
+                                       QVariant::fromValue(programIdHex));
     }
     if (walletJson.isEmpty()) {
         if (errorOut != nullptr) {
@@ -690,14 +666,12 @@ QString submitGenericPublic(LogosAPIClient* client,
                             const QStringList& accountHexIds,
                             const QList<bool>& signingFlags,
                             const QList<uint8_t>& instructionBytes,
-                            const QList<uint8_t>& programElfBytes,
-                            const QList<QList<uint8_t>>& programDependencies,
+                            const QString& programIdHex,
                             QString* errorOut) {
     const QString payloadJson = buildGenericPublicPayloadJson(accountHexIds,
                                                               signingFlags,
                                                               instructionBytes,
-                                                              programElfBytes,
-                                                              programDependencies);
+                                                              programIdHex);
     if (chainUsesTestnetSubmit()) {
         return submitGenericPublicViaTestnetHelper(payloadJson, errorOut);
     }
@@ -708,7 +682,6 @@ QString buildAndSubmit(LogosAPIClient* client,
                        const QString& signerBase58,
                        const QByteArray& instructionBytes,
                        const QByteArray& accountsHex,
-                       bool includeTransferDep,
                        QString* errorOut) {
     QString loadErr;
     if (!ensureFixtureLoaded(&loadErr)) {
@@ -732,54 +705,13 @@ QString buildAndSubmit(LogosAPIClient* client,
         return makeErrorJson(loadErr.isEmpty() ? QStringLiteral("instruction encoding failed") : loadErr);
     }
 
-    QList<uint8_t> programElfList;
-    if (guestElfLoadedInWalletProcess()) {
-        programElfList = {};
-    } else {
-        QByteArray guestElf;
-        if (!loadGuestElfBytes(&guestElf, &loadErr)) {
-            return makeErrorJson(loadErr);
-        }
-        programElfList = bytesToUint8List(guestElf);
-    }
-
-    QList<QList<uint8_t>> deps;
-    if (includeTransferDep) {
-        if (chainUsesTestnetSubmit()) {
-            QByteArray authHex = qgetenv("RC3_AUTH_TRANSFER_ELF_HEX").trimmed();
-            if (authHex.isEmpty()) {
-                const QByteArray pathBytes = qgetenv("RC3_AUTH_TRANSFER_ELF_PATH").trimmed();
-                if (!pathBytes.isEmpty()) {
-                    QFile authFile(QString::fromLocal8Bit(pathBytes));
-                    if (authFile.open(QIODevice::ReadOnly)) {
-                        authHex = authFile.readAll().trimmed();
-                    }
-                }
-            }
-            if (!authHex.isEmpty()) {
-                const QByteArray transferElf = QByteArray::fromHex(authHex);
-                if (!transferElf.isEmpty()) {
-                    deps.append(bytesToUint8List(transferElf));
-                }
-            }
-        } else if (guestElfLoadedInWalletProcess()) {
-            deps = {};
-        } else {
-            const QList<uint8_t> transferElf = walletAuthenticatedTransferElfBytes(client, &loadErr);
-            if (transferElf.isEmpty()) {
-                return makeErrorJson(loadErr.isEmpty() ? QStringLiteral("authenticated_transfer_elf failed")
-                                                        : loadErr);
-            }
-            deps.append(transferElf);
-        }
-    }
+    const QString programIdHex = fixtureConfig().programIdHex;
 
     return submitGenericPublic(client,
                                accountIds,
                                signing,
                                instructionList,
-                               programElfList,
-                               deps,
+                               programIdHex,
                                errorOut);
 }
 
@@ -860,7 +792,7 @@ QString PaymentStreamsModuleImpl::initializeVault(const QVariant& signerAccountI
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, false, &err);
+    return buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, &err);
 }
 
 QString PaymentStreamsModuleImpl::deposit(const QVariant& signerAccountIdBase58,
@@ -914,7 +846,7 @@ QString PaymentStreamsModuleImpl::deposit(const QVariant& signerAccountIdBase58,
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, true, &err);
+    return buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, &err);
 }
 
 QString PaymentStreamsModuleImpl::withdraw(const QVariant& signerAccountIdBase58,
@@ -971,7 +903,7 @@ QString PaymentStreamsModuleImpl::withdraw(const QVariant& signerAccountIdBase58
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, false, &err);
+    return buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, &err);
 }
 
 QString PaymentStreamsModuleImpl::createStream(const QVariant& signerAccountIdBase58,
@@ -1034,7 +966,7 @@ QString PaymentStreamsModuleImpl::createStream(const QVariant& signerAccountIdBa
         return makeErrorJson(err);
     }
 
-    const QString submitResult = buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, false, &err);
+    const QString submitResult = buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, &err);
     QJsonParseError submitParse{};
     const QJsonDocument submitDoc = QJsonDocument::fromJson(submitResult.toUtf8(), &submitParse);
     if (submitParse.error == QJsonParseError::NoError && submitDoc.isObject()) {
@@ -1089,7 +1021,7 @@ QString PaymentStreamsModuleImpl::pauseStream(const QVariant& signerAccountIdBas
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, false, &err);
+    return buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, &err);
 }
 
 QString PaymentStreamsModuleImpl::resumeStream(const QVariant& signerAccountIdBase58,
@@ -1134,7 +1066,7 @@ QString PaymentStreamsModuleImpl::resumeStream(const QVariant& signerAccountIdBa
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, false, &err);
+    return buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, &err);
 }
 
 QString PaymentStreamsModuleImpl::topUpStream(const QVariant& signerAccountIdBase58,
@@ -1183,7 +1115,7 @@ QString PaymentStreamsModuleImpl::topUpStream(const QVariant& signerAccountIdBas
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, false, &err);
+    return buildAndSubmit(client, signerAccountIdBase58.toString(), instruction, accountsHex, &err);
 }
 
 QString PaymentStreamsModuleImpl::closeStream(const QVariant& signerAccountIdBase58,
@@ -1234,7 +1166,7 @@ QString PaymentStreamsModuleImpl::closeStream(const QVariant& signerAccountIdBas
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(client, authorityBase58, instruction, accountsHex, false, &err);
+    return buildAndSubmit(client, authorityBase58, instruction, accountsHex, &err);
 }
 
 QString PaymentStreamsModuleImpl::claim(const QVariant& providerAccountIdBase58,
@@ -1294,7 +1226,7 @@ QString PaymentStreamsModuleImpl::claim(const QVariant& providerAccountIdBase58,
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(client, providerAccountIdBase58.toString(), instruction, accountsHex, false, &err);
+    return buildAndSubmit(client, providerAccountIdBase58.toString(), instruction, accountsHex, &err);
 }
 
 QString PaymentStreamsModuleImpl::getVaultStatus(const QVariant& ownerAccountIdBase58,
