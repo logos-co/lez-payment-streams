@@ -454,21 +454,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "bridge_core"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=27360cb7d6ccb2bfbcca7d171bab8a3938490264#27360cb7d6ccb2bfbcca7d171bab8a3938490264"
-dependencies = [
- "lee_core",
- "serde",
-]
-
-[[package]]
 name = "bs58"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf88ba1141d185c399bee5288d850d63b8369520c1eafc32a0430b5b6c287bf4"
 dependencies = [
  "tinyvec",
+]
+
+[[package]]
+name = "build_utils"
+version = "0.1.0"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a#a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a"
+dependencies = [
+ "anyhow",
+ "risc0-binfmt",
 ]
 
 [[package]]
@@ -658,7 +658,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 [[package]]
 name = "clock_core"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=27360cb7d6ccb2bfbcca7d171bab8a3938490264#27360cb7d6ccb2bfbcca7d171bab8a3938490264"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a#a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a"
 dependencies = [
  "borsh",
  "lee_core",
@@ -1152,15 +1152,6 @@ name = "fastrand"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f1f227452a390804cdb637b74a86990f2a7d7ba4b7d5693aac9b4dd6defd8d6"
-
-[[package]]
-name = "faucet_core"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=27360cb7d6ccb2bfbcca7d171bab8a3938490264#27360cb7d6ccb2bfbcca7d171bab8a3938490264"
-dependencies = [
- "lee_core",
- "serde",
-]
 
 [[package]]
 name = "ff"
@@ -1825,20 +1816,17 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 [[package]]
 name = "lee"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=27360cb7d6ccb2bfbcca7d171bab8a3938490264#27360cb7d6ccb2bfbcca7d171bab8a3938490264"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a#a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a"
 dependencies = [
  "anyhow",
  "borsh",
- "bridge_core",
- "clock_core",
- "faucet_core",
+ "build_utils",
  "hex",
  "k256",
  "lee_core",
  "log",
  "rand 0.8.6",
  "risc0-binfmt",
- "risc0-build",
  "risc0-zkvm",
  "serde",
  "serde_with",
@@ -1849,7 +1837,7 @@ dependencies = [
 [[package]]
 name = "lee_core"
 version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=27360cb7d6ccb2bfbcca7d171bab8a3938490264#27360cb7d6ccb2bfbcca7d171bab8a3938490264"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a#a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a"
 dependencies = [
  "base58",
  "borsh",

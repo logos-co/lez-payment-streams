@@ -1,4 +1,4 @@
-# LEZ git pin for host/guest/tests: rev 27360cb7 (v0.2.0-rc5). See docs/plan/completed/step-24b-rc5-rust-lee-unify.md.
+# LEZ git pin for host/guest/tests: rev a58fbce2 (v0.2.0). See docs/plan/upcoming/step-26-testnet-v02-migration.md.
 [workspace]
 members = [
     "lez-payment-streams-core",

@@ -1,9 +1,9 @@
 {
-  description = "Step 18 LEZ submit helper (CHAIN=testnet; same rc5 pin as scaffold)";
+  description = "Step 18 LEZ submit helper (CHAIN=testnet; same v0.2.0 pin as scaffold)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    lez.url = "github:logos-blockchain/logos-execution-zone/27360cb7d6ccb2bfbcca7d171bab8a3938490264";
+    lez.url = "github:logos-blockchain/logos-execution-zone/a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a";
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
