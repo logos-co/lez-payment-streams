@@ -3358,6 +3358,7 @@ dependencies = [
  "hex",
  "lee",
  "lee_core",
+ "programs",
  "risc0-zkvm",
  "serde",
  "sha2",
