@@ -35,7 +35,7 @@ make prepare-localnet
 # Rebuild snapshot from scratch (pinata + prefund)
 make full-reset-localnet
 
-# Full Flow B demo (prepare + dual-host run; see e2e.sh for teardown)
+# Full Developer Journey demo (prepare + dual-host run; see e2e.sh for teardown)
 make verify-step17
 ```
 

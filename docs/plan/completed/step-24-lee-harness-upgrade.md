@@ -1,6 +1,6 @@
 # Step 24 — plan excerpt (complete)
 
-Normative packet for agents. Index: [program-index.md](../../development-map/program-index.md).
+Normative packet for agents. Index: [index.md](../index.md).
 
 Status: complete on `lez-payment-streams` `master` (LEE @ PR 510 pin `62d9ba10…`, transparent
 `program_tests`, vendored SPEL on `lee_core`).
@@ -133,7 +133,7 @@ Out of scope:
 10. **Documentation cleanup**
     - Update [architecture.md](../../on-chain/README.md) or harness comments that say
       `nssa::V03State` where `lee::V03State` is now accurate.
-    - Note completion in [program-index.md](../../development-map/program-index.md) step map.
+    - Note completion in [index.md](../index.md) step map.
     - Optional decision note N16 in [integration-decisions.md](../../reference/integration-decisions.md)
       when the pin lands (not required for DoD).
 

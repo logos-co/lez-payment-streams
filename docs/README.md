@@ -11,7 +11,7 @@ duplicating semantics here.
 | [on-chain](on-chain/) | Guest program, Rust tests, review order |
 | [payment-streams-module](payment-streams-module/) | Logos module, module verification |
 | [store-integration](store-integration/) | Store eligibility, dual-host demo |
-| [development-map](development-map/) | Historical program index, plan packets |
+| [plan](plan/) | Program index, plan packets |
 
 ## Verify (canonical)
 
@@ -32,7 +32,7 @@ Details: [reference/verification-matrix.md](reference/verification-matrix.md) (i
 | [integration-contracts.md](reference/integration-contracts.md) | Cross-repo APIs, tag 30 |
 | [integration-decisions.md](reference/integration-decisions.md) | Integration decisions (trimmed) |
 | [feature-branch-pins.md](reference/feature-branch-pins.md) | Fork branches and flakes |
-| [naming-conventions.md](reference/naming-conventions.md) | Flow A/B, Makefile names |
+| [naming-conventions.md](reference/naming-conventions.md) | `MODE` values, Makefile names |
 | [verification-matrix.md](reference/verification-matrix.md) | Mode × chain matrix |
 
 ## Archive

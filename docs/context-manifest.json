@@ -4,10 +4,10 @@
     "docs/README.md",
     "docs/reference/integration-contracts.md",
     "docs/reference/verification-matrix.md",
-    "docs/development-map/program-index.md"
+    "docs/plan/index.md"
   ],
-  "development_map": "docs/development-map/README.md",
-  "program_index": "docs/development-map/program-index.md",
+  "plan_index": "docs/plan/index.md",
+  "program_index": "docs/plan/index.md",
   "verification_matrix": "docs/reference/verification-matrix.md",
   "active_steps": [20],
   "paused_steps": [],

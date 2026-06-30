@@ -5,7 +5,7 @@ Status: complete for integration DoD (feature in tree, `./scripts/archive/verify
 localnet when stream `0` is not fully accrued (same recovery story as Step 12).
 
 Provider inbound verifier for Store eligibility bytes. Normative design: [plan/completed/step-13-normative.md](plan/completed/step-13-normative.md).
-Index: [program-index.md](development-map/program-index.md).
+Index: [plan/index.md](../plan/index.md).
 
 Prerequisites: Step 12 user path green (`./scripts/archive/verify-step12-dod.sh`), Steps 10a–11b chain
 fixture, Step 11c signing, installed `payment_streams_module` `.lgx`, guest ELF

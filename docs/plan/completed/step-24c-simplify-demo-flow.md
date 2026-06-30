@@ -1,6 +1,6 @@
 # Step 24c — simplify demo flow (fresh stream per run)
 
-Completed packet. Index: [program-index.md](../../development-map/program-index.md).
+Completed packet. Index: [index.md](../index.md).
 Prerequisites: Step 17/17b scripts; Step 24b (rc5 guest + tooling).
 Related: [step-17b-localnet-snapshot-restore.md](step-17b-localnet-snapshot-restore.md),
 [archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md),
@@ -15,7 +15,7 @@ testnet demo path runs end to end through the paid Store query and close.
 
 | Area | State |
 | --- | --- |
-| Local Track A E2E (Step 17) | Green: `SKIP_BUILD=1 make verify-step17`, `make verify-step17-back-to-back` |
+| Local Developer Journey E2E (Step 17) | Green: `SKIP_BUILD=1 make verify-step17`, `make verify-step17-back-to-back` |
 | Step 10a / 12 / 13 DoD on localnet | Green (default and strict Step 12 paths; see verification matrix) |
 | Same-chain Step 13 then `REQUIRE_STREAM_PROOF=1` Step 12 | Green after clock sync + chain settle + lifecycle teardown |
 | Testnet-faithful localnet (clock, sizing, honest seed CLI) | Implemented in tree; existing funded snapshots may still hold old deposit totals until `make full-reset-localnet` |
@@ -158,7 +158,7 @@ Makefile: `full-reset-localnet`, `verify-step17-back-to-back` (leg 2 `SKIP_SEED=
 topup).
 
 Docs touched: [archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md),
-[program-index.md](../../development-map/program-index.md),
+[index.md](../index.md),
 [integration-contracts.md](../../reference/integration-contracts.md),
 [archive/operator/localnet-recovery.md](../../archive/operator/localnet-recovery.md),
 [archive/operator/testnet-claim-known-issue.md](../../archive/operator/testnet-claim-known-issue.md).
@@ -195,7 +195,7 @@ Docs touched: [archive/steps/local-store-dual-host-runbook.md](../../archive/ste
 
 ## Non-goals
 
-Guest accrual math; Track B UI; auto-closing all historical streams; retiring
+Guest accrual math; User Journey UI; auto-closing all historical streams; retiring
 `tools/lez-testnet-submit`; fixing testnet claim confirmation (tracked separately under Step 18).
 
 ---

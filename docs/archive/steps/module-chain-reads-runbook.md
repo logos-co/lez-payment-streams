@@ -1,7 +1,7 @@
 # Step 11a — module chain reads
 
 Wire `payment_streams_module` to `logos_execution_zone` for on-chain account reads (Step 11a
-in [`program-index.md`](development-map/program-index.md)).
+in [`plan/index.md`](../plan/index.md)).
 
 Prerequisites: Step 10a fixture, Step 10b wallet `.lgx`, load order wallet then payment streams,
 wallet `open` with `.scaffold/wallet`.

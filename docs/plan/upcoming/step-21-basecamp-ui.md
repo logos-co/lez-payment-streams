@@ -1,6 +1,6 @@
 # Step 21 — plan excerpt
 
-Active-work packet for agents. Index: [program-index.md](../../development-map/program-index.md).
+Active-work packet for agents. Index: [index.md](../index.md).
 
 **Optional stretch** after Step 20 — time-boxed; not required for integration milestone closure.
 Track split: [N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
@@ -39,7 +39,7 @@ Examples: open wallet, initialize vault, deposit, create stream to a **payee acc
 
 To show the **receiver** side, include **claim** (`chainAction claim`) after accrual.
 
-The payee cannot claim without knowing **which stream** to claim from. **UI journey assumption
+The payee cannot claim without knowing **which stream** to claim from. **User Journey assumption
 (N18):** the stream creator sends the stream identity out of band (vault id, stream id, and any
 manifest fields the payee wallet needs) to notify the payee where accrued funds can be claimed.
 The plugin may offer a form to paste those ids; it does **not** implement discovery, Store, or
@@ -58,6 +58,6 @@ Definition of done:
   assumption ([N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
 
 Not in scope: Step 17 E2E replay in UI; `delivery_module`; eligibility prepare/verify for Store;
-Step 20 developer journey content (cross-link only).
+Step 20 Developer Journey content (cross-link only).
 
-Follow-on: Step 22 (UI journey doc packet).
+Follow-on: Step 22 (User Journey doc packet).

@@ -12,7 +12,7 @@ Step 10b operator detail (wallet `open` against Step 10a `.scaffold/wallet`, DoD
 
 Related: [`feature-branch-pins.md`](feature-branch-pins.md),
 [`archive/steps/universal-legacy-probe-results.md`](archive/steps/universal-legacy-probe-results.md),
-[`development-map/program-index.md`](development-map/program-index.md).
+[`plan/index.md`](plan/index.md).
 
 ## Part 1 — First-time install (Step 7)
 
@@ -382,7 +382,7 @@ New Universal API methods belong on the impl class; wallet stays dynamic.
 
 - [`logos-universal-legacy-probe`](../logos-universal-legacy-probe/) — probe template
 - [`archive/steps/scaffold-rpc-findings.md`](archive/steps/scaffold-rpc-findings.md) — LEZ localnet and RPC
-- [`program-index.md`](development-map/program-index.md) — step map and status
+- [`plan/index.md`](plan/index.md) — step map and status (archived)
 
 ---
 

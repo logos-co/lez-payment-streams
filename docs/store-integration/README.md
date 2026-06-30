@@ -60,9 +60,12 @@ Key operations:
 
 See integration-contracts for method signatures and JSON shapes.
 
-## Developer journey (published)
+## Developer Journey (published)
 
-Root-level developer journey: [DEVELOPER_JOURNEY.md](../../DEVELOPER_JOURNEY.md).
+Root-level Developer Journey: [DEVELOPER_JOURNEY.md](../../DEVELOPER_JOURNEY.md).
+
+For the standalone payment streams journey (no Store integration), see the
+[User Journey](../../USER_JOURNEY.md).
 
 ## Recovery
 
@@ -71,4 +74,4 @@ Root-level developer journey: [DEVELOPER_JOURNEY.md](../../DEVELOPER_JOURNEY.md)
 ## Related
 
 - [reference/verification-matrix.md](../reference/verification-matrix.md)
-- [development-map/program-index.md](../development-map/program-index.md)
+- [plan/index.md](../plan/index.md)

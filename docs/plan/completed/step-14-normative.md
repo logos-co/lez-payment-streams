@@ -4,7 +4,7 @@ Status: complete on `logos-delivery` branch `feat/payment-streams-store-eligibil
 (commit `d033a493`). Verify: `nimble buildTest tests/waku_store/test_rpc_codec.nim` and run
 the test binary in that repo.
 
-Index: [program-index.md](../../development-map/program-index.md). Pins:
+Normative packet for agents. Index: [index.md](../index.md). Pins:
 [feature-branch-pins.md](../../reference/feature-branch-pins.md).
 
 Agents on Step 16+ should read [integration-contracts.md](../reference/integration-contracts.md) instead.
@@ -42,7 +42,7 @@ distinct from Store status codes.
 Update the codec in `logos_delivery/waku/waku_store/rpc_codec.nim` and the typed surfaces in
 `logos_delivery/waku/waku_store/common.nim`.
 Ship on our branch; no protocol-ID version bump.
-Branch from upstream `logos-delivery` `master` ([integration branches](../development-map/program-index.md#delivery-integration-branches)).
+Branch from upstream `logos-delivery` `master` ([integration branches](../index.md#delivery-integration-branches)).
 
 #### Wire types (normative)
 

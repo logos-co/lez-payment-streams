@@ -1,6 +1,6 @@
 # Step 17 — plan excerpt (complete)
 
-Normative packet for agents. Index: [development-map/program-index.md](../../development-map/program-index.md).
+Normative packet for agents. Index: [index.md](../index.md).
 Operator runbook: [store-integration/README.md](../../store-integration/README.md),
 [archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md).
 
@@ -145,4 +145,4 @@ Definition of done:
 
 Follow-on: Step 18 (public sequencer, local P2P), Step 19 (LIP on-chain), Step 20 (developer
 journey); optional Steps 21–22 (UI), Step 23 (hosted Store provider). See
-[program-index.md](../../development-map/program-index.md#program-outcomes).
+[index.md](../index.md#program-outcomes).

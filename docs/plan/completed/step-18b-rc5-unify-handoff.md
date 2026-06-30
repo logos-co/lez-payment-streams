@@ -24,7 +24,7 @@ rc3 writes) is retired from docs and scripts.
 
 Read order: [`AGENTS.md`](../../../AGENTS.md) → Step 18 plan →
 [archive/steps/public-sequencer-store-runbook.md](../../archive/steps/public-sequencer-store-runbook.md) →
-[program-index.md](../../development-map/program-index.md).
+[index.md](../index.md).
 
 ## Why dual-pin was abandoned (historical)
 

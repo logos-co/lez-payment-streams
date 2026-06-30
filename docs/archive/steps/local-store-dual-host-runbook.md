@@ -108,12 +108,12 @@ The script (`SKIP_BUILD=1` to reuse installed modules) builds/installs from `REP
 
 Orchestration: [`scripts/e2e/run_local_e2e.py`](../scripts/e2e/run_local_e2e.py) via
 [`scripts/e2e.sh`](../scripts/e2e.sh) (JSON-lines artifact under
-`.scaffold/e2e/artifacts/`). This runbook is **Track A** — Store + eligibility integration
-([N18](reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
-Payment-streams-only Basecamp UI is **Track B** (Steps 21–22), not described here.
+`.scaffold/e2e/artifacts/`). This runbook is the **Developer Journey** — Store + eligibility
+integration ([N18](reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
+Payment-streams-only Basecamp UI is the **User Journey** (Steps 21–22), not described here.
 Policy: [N17](reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06).
-Step 20 developer journey adds a step-by-step command path equivalent to the script; see
-[step-20-developer-journey.md](plan/upcoming/step-20-developer-journey.md).
+Step 20 Developer Journey adds a step-by-step command path equivalent to the script; see
+[step-20-developer-journey.md](../plan/upcoming/step-20-developer-journey.md).
 Optional probe: [`scripts/e2e/debug_happy_path.py`](../scripts/e2e/debug_happy_path.py).
 
 ## Hermetic run (hand-off)

@@ -13,17 +13,16 @@ Use this vocabulary consistently in product docs and runbooks.
 
 | Term | Meaning |
 | --- | --- |
-| Flow A | `MODE=module` on `scripts/e2e.sh`. No Store, no eligibility in the gate. |
-| Flow B | `MODE=store` (default). Dual-host demo with `delivery_module` and LIP-155 on Store. |
+| User Journey | `MODE=module` on `scripts/e2e.sh`. Payment streams in isolation (no Store, no eligibility gate). |
+| Developer Journey | `MODE=store` (default). Dual-host demo with `delivery_module` and LIP-155 eligibility on Store. |
 
-Flow A/B are independent of N18 demo track names (development-map only).
+Makefile targets use the Journey names directly where applicable.
 
-## N18 demo tracks (development-map)
+## N18 demo tracks (plan index)
 
 | Term | Meaning |
 | --- | --- |
-| N18 Track A | Integrator narrative: Store + payment streams (developer journey, Store pillars). |
-| N18 Track B | Optional payment-streams-only Basecamp UI (not in verification matrix). |
+| N18 | Developer Journey vs User Journey: Store integration (Step 20) vs payment-streams-only UI (Steps 21–22). |
 
 ## Logos and protocol names
 
@@ -43,9 +42,9 @@ Primary (step-free):
 
 | Make target | Matrix cell |
 | --- | --- |
-| `make verify-module-local` | Flow A × localnet |
-| `make verify-store-local` | Flow B × localnet |
-| `make verify-store-testnet` | Flow B × testnet (advanced) |
+| `make verify-module-local` | User Journey × localnet |
+| `make verify-store-local` | Developer Journey × localnet |
+| `make verify-store-testnet` | Developer Journey × testnet (advanced) |
 | `make verify-store-local-lifecycle` | Maintainer only (two runs, one ledger) |
 
 Legacy aliases: `verify-step17`, `verify-step18`, `verify-step17-back-to-back`.

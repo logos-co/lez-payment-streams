@@ -137,7 +137,7 @@ See [`archive/steps/provider-eligibility-runbook.md`](archive/steps/provider-eli
 | --- | --- |
 | [`scripts/e2e.sh`](../scripts/e2e.sh) | Prepare / run / teardown (`make prepare-localnet`, `make verify-step17`) |
 | [`scripts/lifecycle.sh`](../scripts/lifecycle.sh) | Localnet, snapshot save/restore/validate |
-| [`scripts/fixture.sh`](../scripts/fixture.sh) | Prefund, vault ensure, manifest (Flow B prepare) |
+| [`scripts/fixture.sh`](../scripts/fixture.sh) | Prefund, vault ensure, manifest (Developer Journey prepare) |
 | `scripts/archive/demo-localnet-fresh.sh` | Legacy wrapper → `make full-reset-localnet` |
 | `scripts/archive/demo-localnet-prepare.sh` | Legacy wrapper → `make prepare-localnet` |
 | `scripts/archive/clear-demo-module-persist.sh` | Remove known Step 12 logoscore persist dirs under `.scaffold/` |

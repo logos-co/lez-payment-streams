@@ -1,6 +1,6 @@
 # Step 24b — unify Rust `lee` / LEZ deps on rc5
 
-Normative handoff for agents. Index: [program-index.md](../../development-map/program-index.md).
+Normative handoff for agents. Index: [index.md](../index.md).
 Prerequisite: Step 18b complete (operational Nix / scaffold / wallet / testnet scripts on rc5).
 Related: [step-24-lee-harness-upgrade.md](../completed/step-24-lee-harness-upgrade.md),
 [N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06),
@@ -286,7 +286,7 @@ make verify-step18
    operational and Rust pins unified; Phase 9 helper retirement unchanged.
 3. [archive/steps/public-sequencer-store-runbook.md](../../archive/steps/public-sequencer-store-runbook.md) — remove harness-lag
    paragraph under LEZ pin.
-4. [program-index.md](../../development-map/program-index.md) — Step 24b complete; Step 24 note
+4. [index.md](../index.md) — Step 24b complete; Step 24 note
    superseded for pin policy by 24b completion record.
 5. [AGENTS.md](../../../AGENTS.md) — remove 510/Rust lag from active work if present.
 6. Move this packet to `docs/plan/completed/` when DoD met (team convention).

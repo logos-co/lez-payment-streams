@@ -3,7 +3,7 @@
 Canonical entry point: [`scripts/e2e.sh`](../../scripts/e2e.sh) with `MODE` and `CHAIN`.
 Each `local run` / `testnet run` performs prepare, run, and teardown unless `SKIP_TEARDOWN=1`.
 
-See [naming-conventions.md](naming-conventions.md) for Flow A/B (`MODE`) vs external product names.
+See [naming-conventions.md](naming-conventions.md) for `MODE` values vs Journey names.
 
 ## Cold start (first time on a machine)
 
@@ -45,10 +45,10 @@ Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-r
 
 ## Terminology
 
-- Flow A (`MODE=module`) — module verification.
+- `MODE=module` — User Journey (module verification).
   Single-host path through `payment_streams_module` `chainAction` (vault, stream, claim).
   No Store or eligibility.
-- Flow B (`MODE=store`, default) — Store integration verification.
+- `MODE=store` (default) — Developer Journey (Store integration verification).
   Dual-host paid Store query with LIP-155 eligibility proof;
   orchestrator [`scripts/e2e/run_local_e2e.py`](../../scripts/e2e/run_local_e2e.py).
 
@@ -56,8 +56,8 @@ Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-r
 
 |  | Localnet (`CHAIN=local`) | Testnet (`CHAIN=testnet`) |
 | --- | --- | --- |
-| Flow A — module | Required | Future work (unsupported) |
-| Flow B — Store | Required | Advanced |
+| User Journey — module | Required | Future work (unsupported) |
+| Developer Journey — Store | Required | Advanced |
 
 ## Support tiers
 

@@ -1,7 +1,7 @@
 # Step 16 — plan excerpt
 
 Status: complete on `logos-delivery-module` (`bf104a6bfde35ce4fcae5081278d1996ebf5e3c1`).
-Completed agent packet. Index: [program-index.md](../../development-map/program-index.md).
+Completed agent packet. Index: [index.md](../index.md).
 Normative bridge policy: [Resolved implementation decisions](#resolved-implementation-decisions-2025-06-18)
 and [integration-contracts.md](../../reference/integration-contracts.md).
 
@@ -22,7 +22,7 @@ and add `storeQuery(queryJson, providerAddr)` backed by `logosdelivery_store_que
 Do not wait on upstream N6; the API is added on our forks only.
 Pin the `logos-delivery` flake input to
 `feat/payment-streams-store-eligibility`
-([delivery integration branches](../../development-map/program-index.md#delivery-integration-branches),
+([delivery integration branches](../index.md#delivery-integration-branches),
 [feature-branch-pins.md](../../reference/feature-branch-pins.md)).
 
 Implement trampolines that call

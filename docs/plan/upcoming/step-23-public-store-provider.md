@@ -1,6 +1,6 @@
 # Step 23 — plan excerpt
 
-Active-work packet for agents. Index: [program-index.md](../../development-map/program-index.md).
+Active-work packet for agents. Index: [index.md](../index.md).
 
 Optional track. Execute only if the program ships a **hosted** paid-Store provider on the public
 Logos network (infra-operated node). Step 18 already proves eligibility against **public LEZ**

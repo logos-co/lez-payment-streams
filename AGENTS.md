@@ -11,18 +11,19 @@ Paid Store queries carry LIP-155 `EligibilityProof` (RFC 73 on Store tag `30`); 
 LEZ state before serving. Rust/FFI holds policy; `payment_streams_module` orchestrates wallet I/O;
 delivery forks add wire fields and hooks.
 
-Universal payment protocol vs Store integration use case (N18 Track A). Optional Basecamp UI
-(N18 Track B) is protocol-only, not Store.
+Universal payment protocol vs Store integration use case. Developer Journey (Store integration);
+optional User Journey (payment streams UI) is protocol-only, not Store.
 
-Program index: [docs/development-map/program-index.md](docs/development-map/program-index.md).
+Program index: [docs/plan/index.md](docs/plan/index.md).
 Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conventions.md).
 
 ## Active work
 
-Developer journey — Store integration (N18 Track A). Packet:
+Developer Journey — Store integration. Packet:
 [docs/plan/upcoming/step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md).
 In-repo SSOT draft: [docs/store-integration/README.md](docs/store-integration/README.md).
 
+User Journey — UI via Basecamp: Steps 21-22.
 Optional: [step-23-public-store-provider.md](docs/plan/upcoming/step-23-public-store-provider.md).
 Cancelled: [step-25-demo-coordination-module.md](docs/plan/cancelled/step-25-demo-coordination-module.md).
 
@@ -51,7 +52,7 @@ Maintainer lifecycle regression: `make verify-store-local-lifecycle` /
 | --- | --- |
 | Verification | docs/reference/verification-matrix.md, scripts/README.md |
 | APIs | docs/reference/integration-contracts.md |
-| Program | docs/development-map/program-index.md |
+| Program | docs/plan/index.md |
 | Decisions | docs/reference/integration-decisions.md |
 
 Historical runbooks: [docs/archive/](docs/archive/).

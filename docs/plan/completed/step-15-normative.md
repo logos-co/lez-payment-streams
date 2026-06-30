@@ -8,7 +8,7 @@ Status: complete on `logos-delivery` branch `feat/payment-streams-store-eligibil
 - `nimble buildTest tests/waku_store/test_store_eligibility_canonical.nim` (run the test binary)
 - `nimble buildTest tests/waku_store/test_store_eligibility_hooks.nim` (run the test binary)
 
-Index: [program-index.md](../../development-map/program-index.md). Pins:
+Index: [index.md](../index.md). Pins:
 [feature-branch-pins.md](../../reference/feature-branch-pins.md).
 
 Agents on Step 16+ should read [integration-contracts.md](../../reference/integration-contracts.md) instead.

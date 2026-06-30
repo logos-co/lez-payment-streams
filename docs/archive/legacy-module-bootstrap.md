@@ -1,7 +1,7 @@
 # Legacy payment streams plugin bootstrap (archived)
 
 Status: outdated (2026-06-08). Superseded by Step 9 in
-[`program-index.md`](../development-map/program-index.md) and
+[`plan/index.md`](../plan/index.md) and
 [`docs/archive/steps/logos-runtime-guide.md`](../archive/steps/logos-runtime-guide.md).
 
 This records the original Legacy bootstrap plan (pre–Step 9): a Legacy `PluginInterface` Qt plugin

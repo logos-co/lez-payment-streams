@@ -1,6 +1,6 @@
 # Step 19 — plan excerpt (complete)
 
-Normative packet for agents. Index: [program-index.md](../../development-map/program-index.md).
+Normative packet for agents. Index: [index.md](../index.md).
 
 Status: complete. Canonical LIP-155 text lives on `logos-lips` / `rfc-index` branch
 `feat/payment-streams-onchain-part` at rev `345c8eef` (local clone `lez-related/rfc-index`).

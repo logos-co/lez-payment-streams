@@ -29,7 +29,7 @@ Local clone: `lez-related/rfc-index`. Step 20 doc packets should link this branc
 
 Branch from upstream `master` in each delivery repo; avoid release-tag baselines and the
 retired `feat/liblogosdelivery-query-store` branch. Branch name priority:
-[program-index.md](development-map/program-index.md#delivery-integration-branches).
+[index.md](plan/index.md#delivery-integration-branches).
 Point the module flake's `logos-delivery` input at the integration branch (same name on
 `logos-messaging/logos-delivery`). Configured in `logos-delivery-module/flake.nix`:
 
@@ -41,7 +41,7 @@ logos-delivery.url =
 Commit `flake.lock` after changing the input; the lock file records the resolved `rev` at update
 time (branch tip moves until you re-lock). Steps 17–18 E2E cite locked revs where needed; optional
 Step 23 hosted provider uses the same delivery pins. Wallet pins follow the table in the next section.
-Workflow detail: [program-index.md](development-map/program-index.md#delivery-integration-branches).
+Workflow detail: [index.md](plan/index.md#delivery-integration-branches).
 
 ### Delivery flake lock (logos-delivery-module)
 

@@ -1,6 +1,6 @@
 # Step 18 — plan excerpt
 
-Active-work packet for agents. Index: [program-index.md](../../development-map/program-index.md).
+Active-work packet for agents. Index: [index.md](../index.md).
 
 #### Integration status
 

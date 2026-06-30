@@ -85,7 +85,7 @@ Legacy: `verify-step17`, `verify-step18`.
 two Store runs on one local ledger (not an external integrator gate).
 
 Historical DoD scripts under `archive/`; see
-[docs/development-map/README.md](../docs/development-map/README.md).
+[docs/plan/index.md](../docs/plan/index.md).
 
 ## Artifacts
 

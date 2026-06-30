@@ -3,7 +3,7 @@
 Cross-step APIs and wire shapes. Normative detail: [integration-decisions.md](integration-decisions.md)
 (D1, D2, N3a–N3c, N8, N11, N12). Step 16 bridge summary:
 [step-16.md](../plan/completed/step-16.md#resolved-implementation-decisions-2025-06-18).
-Operator commands: [verification-matrix.md](../reference/verification-matrix.md) and pillar runbooks under [store-integration/](../store-integration/) and [payment-streams-module/](../payment-streams-module/). Historical step runbooks live under [development-map/README.md](../development-map/README.md).
+Operator commands: [verification-matrix.md](../reference/verification-matrix.md) and pillar runbooks under [store-integration/](../store-integration/) and [payment-streams-module/](../payment-streams-module/). Historical step runbooks live under [archive/completed-steps-index.md](../archive/completed-steps-index.md).
 
 ## Store wire (Step 14 — D1)
 
@@ -48,7 +48,7 @@ completion event ([N3a](integration-decisions.md#n3a-step-16-threading--approach
 | Method | Role |
 | --- | --- |
 | `prepareEligibilityProofWithStreamProposalForStoreQuery` | User / outbound (Step 16 delivery): vault proposal → `"kind":"stream_proposal"`. Two args: `canonical_request_hex`, `provider_peer_id`. |
-| `prepareEligibilityProofWithStreamProofForStoreQuery` | User / Track A E2E: stream proof → `"kind":"stream_proof"`. Three args; third = `stream_id`. See [Prepare methods](#prepare-methods--step-24c). |
+| `prepareEligibilityProofWithStreamProofForStoreQuery` | Developer Journey E2E: stream proof → `"kind":"stream_proof"`. Three args; third = `stream_id`. See [Prepare methods](#prepare-methods--step-24c). |
 | `verifyEligibilityForStoreQuery` | Provider / inbound: returns `eligibility` verdict |
 | `registerProviderMapping` | User routing: `PeerId` → payee base58 (host before outbound queries; Step 17 demo) |
 | `listMyStreams`, `rediscoverStreams` | Inventory / refresh |
@@ -87,7 +87,7 @@ are separate methods:
 
 - `logoscore call` forwards every token after `<module> <method>` as a JSON argument array.
 - Step 16 / delivery outbound prepare calls **`prepareEligibilityProofWithStreamProposalForStoreQuery`** (two args).
-- Track A E2E orchestrator calls **`prepareEligibilityProofWithStreamProofForStoreQuery`** after per-run `create_stream`.
+- Developer Journey E2E orchestrator calls **`prepareEligibilityProofWithStreamProofForStoreQuery`** after per-run `create_stream`.
 - Smoke: `lm methods` on the plugin must list **both** method names with distinct signatures.
 
 Examples:
@@ -123,7 +123,7 @@ logoscore call payment_streams_module chainAction claim \
 ```
 
 Owner-as-both-signer-and-authority close is invalid for the six-account layout unless the product
-adds a distinct authority slot; Track A E2E uses the stream provider key from prefund.
+adds a distinct authority slot; Developer Journey E2E uses the stream provider key from prefund.
 
 ## JSON — user prepare (Step 12)
 

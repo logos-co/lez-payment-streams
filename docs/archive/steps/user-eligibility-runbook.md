@@ -8,7 +8,7 @@ not a blocker for Step 12 DoD.
 
 Session keys, persisted negotiation state, and Store `EligibilityProof` bytes (LIP-155
 `stream_proposal` / `stream_proof` arms) for the paid Store demo. Step 12 in
-[`program-index.md`](development-map/program-index.md).
+[`plan/index.md`](plan/index.md).
 
 Runbook for operators and implementors. Behavior matches the plan.
 
@@ -203,7 +203,7 @@ Eligibility error:
 | --- | --- |
 | `registerProviderMapping` | `PeerId` → LEZ provider account (N5) |
 | `prepareEligibilityProofWithStreamProposalForStoreQuery` | N8 canonical + `providerPeerId` → proposal `EligibilityProof` (Step 16 delivery) |
-| `prepareEligibilityProofWithStreamProofForStoreQuery` | Same + explicit `stream_id` → proof `EligibilityProof` (Track A E2E) |
+| `prepareEligibilityProofWithStreamProofForStoreQuery` | Same + explicit `stream_id` → proof `EligibilityProof` (Developer Journey E2E) |
 | `listMyStreams` | Local inventory + folded chain status for `vaultId` |
 | `rediscoverStreams` | Recovery scan `stream_id` 0, 1, … on chain |
 

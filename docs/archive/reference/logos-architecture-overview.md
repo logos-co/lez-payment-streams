@@ -2,7 +2,7 @@
 
 This document records the architectural facts about the Logos ecosystem
 that are prerequisites for understanding the payment-streams program
-([program-index.md](../development-map/program-index.md)).
+([index.md](../plan/index.md)).
 It is not a substitute for the official references,
 in particular `logos-tutorial/logos-developer-guide.md`,
 `logos-liblogos/README.md`,

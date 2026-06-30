@@ -1,8 +1,8 @@
 # Step 20 — plan excerpt
 
-Active-work packet for agents. Index: [development-map/program-index.md](../development-map/program-index.md).
+Active-work packet for agents. Index: [index.md](../index.md).
 
-### Step 20, Developer journey doc packet
+### Step 20, Developer Journey doc packet
 
 **Next active integration deliverable** (local LEZ). Step 18 testnet remains paused; defer
 testnet and hosted-provider journey rows until Step 18 (and Step 23 where applicable) unblock.
@@ -18,8 +18,8 @@ Prerequisites:
 
 Orchestration policy: [N17](../../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06).
 Track split: [N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)
-(Step 20 = **Track A** integration demo only; Steps 21–22 = optional **Track B** payment
-streams UI — not part of this step).
+(Step 20 = **Developer Journey** only; Steps 21–22 = optional **User Journey** UI —
+not part of this step).
 No in-process demo coordinator module (Step 25 won't fix).
 
 Architectural context:
@@ -28,10 +28,10 @@ Logos documentation intake uses a doc packet issue in `logos-co/logos-docs` (tem
 label `type:journey`). Docs drafts the public page; R&D SME reviews; Red Team dogfoods the
 published instructions ([`logos-docs/CONTRIBUTING.md`](https://github.com/logos-co/logos-docs/blob/main/CONTRIBUTING.md)).
 
-This step is **Track A** ([N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
+This step is the **Developer Journey** ([N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
 the documentation deliverable for **integrators** showing payment streams **composed with
 Logos Delivery Store** (LIP-155 eligibility on Store requests — one protocol use case). It is not
-the payment-streams-only Basecamp UI journey (Track B, Steps 21–22).
+the payment-streams-only Basecamp UI (User Journey, Steps 21–22).
 
 Paid Store + eligibility uses **`payment_streams_module`**, **`delivery_module`**, and
 **`logos_execution_zone`**, not Basecamp clicks. Demo coordination is a **host-side script**
@@ -39,7 +39,7 @@ that drives two local `logoscore` instances — the same model as Step 17
 ([archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md)). Integrators may later wrap the same module
 calls in their own Logos app module; that pattern is mentioned briefly but not implemented here.
 
-#### Journey structure (local LEZ)
+#### Developer Journey structure (local LEZ)
 
 Publish two tiers in one doc packet (or two linked sections):
 
@@ -74,8 +74,8 @@ Definition of done:
 - Red Team completes when org process requires `quality:verified` on the published doc (tracked on
   logos-docs project board, not via a script in this repo).
 
-Not in scope: Step 25 demo coordinator module; Track B payment streams UI (Steps 21–22);
-hosted provider ops (Step 23) unless the journey targets that deployment model; new backend
+Not in scope: Step 25 demo coordinator module; User Journey UI (Steps 21–22);
+hosted provider ops (Step 23) unless the Developer Journey targets that deployment model; new backend
 features.
 
 Pattern references:
