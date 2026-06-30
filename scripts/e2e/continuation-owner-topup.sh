@@ -5,8 +5,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
-# shellcheck source=scripts/localnet-snapshot-common.sh
-source "$REPO_ROOT/scripts/localnet-snapshot-common.sh"
+# shellcheck source=scripts/lib/common.sh
+source "$REPO_ROOT/scripts/lib/common.sh"
 
 export LEE_WALLET_HOME_DIR="${LEE_WALLET_HOME_DIR:-$REPO_ROOT/.scaffold/wallet}"
 ROUNDS="${E2E_CONTINUATION_PINATA_ROUNDS:-12}"
@@ -23,7 +23,7 @@ if [[ -z "$OWNER" ]]; then
   exit 1
 fi
 
-"$REPO_ROOT/scripts/ensure-scaffold-lez-layout.sh"
+ps_ensure_lez_layout
 echo "Continuation owner pinata (${ROUNDS} rounds) for Public/${OWNER}…"
 for round in $(seq 1 "$ROUNDS"); do
   echo "  topup round ${round}/${ROUNDS}…"
