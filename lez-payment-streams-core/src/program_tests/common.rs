@@ -7,12 +7,13 @@
 //! so higher-level fixtures embed lower-level ones rather than rebuilding from scratch.
 
 use lee::{
-    error::LeeError, program::Program, PrivateKey, ProgramId, PublicTransaction, V03State,
+    error::LeeError, PrivateKey, ProgramId, PublicTransaction, V03State,
 };
 use lee_core::{
     account::{AccountId, Balance, Data, Nonce},
     BlockId,
 };
+use programs::authenticated_transfer;
 
 use crate::{error_codes::ErrorCode, Instruction};
 use crate::{
@@ -241,7 +242,7 @@ pub(crate) fn signed_deposit(
         Instruction::Deposit {
             vault_id,
             amount,
-            authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+            authenticated_transfer_program_id: authenticated_transfer().id(),
         },
         &accounts,
         &[nonce],

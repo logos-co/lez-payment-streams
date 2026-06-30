@@ -30,6 +30,7 @@ use lee_core::{
     account::{Account, AccountId, Balance, Data, Nonce},
     BlockId,
 };
+use programs::{authenticated_transfer, clock};
 use serde::Serialize;
 
 use crate::{derive_stream_config_account_id, derive_vault_account_ids};
@@ -67,7 +68,7 @@ fn expect_guest_program_bytecode() -> Vec<u8> {
 /// Load the payment-streams guest [`Program`] for PP `execute_and_prove` (same blob as deployment).
 #[cfg(feature = "pp-program-tests")]
 pub(crate) fn load_guest_program() -> Program {
-    Program::new(expect_guest_program_bytecode()).expect("guest bytecode should be a valid Program")
+    Program::new(expect_guest_program_bytecode().into()).expect("guest bytecode should be a valid Program")
 }
 
 pub(crate) fn create_keypair(seed: u8) -> (PrivateKey, AccountId) {
@@ -98,8 +99,25 @@ pub(crate) fn create_state_with_guest_program(
     initial_accounts_data: &[(AccountId, Balance)],
 ) -> Option<(V03State, Program)> {
     let guest_bytecode = read_guest_program_bytecode()?;
-    let guest_program = Program::new(guest_bytecode.clone()).ok()?;
-    let mut state = V03State::new_with_genesis_accounts(initial_accounts_data, vec![], 0u64);
+    let guest_program = Program::new(guest_bytecode.clone().into()).ok()?;
+    let program_id = guest_program.id();
+
+    let mut state = V03State::new()
+        .with_public_accounts(
+            initial_accounts_data
+                .iter()
+                .map(|(id, bal)| {
+                    (
+                        *id,
+                        Account {
+                            balance: *bal,
+                            program_owner: program_id,
+                            ..Default::default()
+                        },
+                    )
+                }),
+        )
+        .with_programs([authenticated_transfer(), clock()]);
 
     let deploy_message = DeployMessage::new(guest_bytecode);
     let deploy_tx = ProgramDeploymentTransaction::new(deploy_message);
@@ -178,7 +196,7 @@ pub(crate) fn force_clock_account_unchecked(
     block_id: u64,
     timestamp: lee_core::Timestamp,
 ) {
-    let clock_program_id = Program::clock().id();
+    let clock_program_id = clock().id();
     let data = ClockAccountData {
         block_id,
         timestamp,

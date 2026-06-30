@@ -12,6 +12,7 @@ use lee::{
     program::Program,
     V03State,
 };
+use programs::authenticated_transfer;
 use lee_core::{
     account::{Account, AccountId, AccountWithMetadata, Balance, Data, Nonce},
     encryption::{EphemeralPublicKey, Scalar, ViewingPublicKey},
@@ -97,7 +98,7 @@ pub(crate) fn vault_fixture_public_tier_funded_via_deposit() -> VaultFixture {
         Instruction::Deposit {
             vault_id: fx.vault_id,
             amount: 400 as Balance,
-            authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+            authenticated_transfer_program_id: authenticated_transfer().id(),
         },
         &account_ids_deposit,
         &[Nonce(1)],
@@ -303,7 +304,7 @@ pub(crate) fn owner_vpk() -> ViewingPublicKey {
 
 pub(crate) fn load_payment_streams_with_auth_transfer() -> ProgramWithDependencies {
     let payment_streams = load_guest_program();
-    let auth_transfer = Program::authenticated_transfer_program();
+    let auth_transfer = authenticated_transfer();
     ProgramWithDependencies::new(
         payment_streams,
         [(auth_transfer.id(), auth_transfer)].into(),

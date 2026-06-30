@@ -8,6 +8,7 @@
 use lee::error::LeeError;
 use lee_core::account::Nonce;
 use lee_core::BlockId;
+use programs::authenticated_transfer;
 
 use crate::harness_seeds::SEED_PROVIDER;
 use crate::Instruction;
@@ -50,8 +51,6 @@ fn harness_public_touch_public_tier_vault_succeeds() {
 
 #[test]
 fn wrapped_public_deposit_before_transition_pseudonymous_funder_fails() {
-    use lee::program::Program;
-
     use crate::test_helpers::{
         build_signed_public_tx, transition_public_payment_streams_tx_respecting_privacy_tier,
     };
@@ -67,7 +66,7 @@ fn wrapped_public_deposit_before_transition_pseudonymous_funder_fails() {
         Instruction::Deposit {
             vault_id: fx.vault_id,
             amount: 50,
-            authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+            authenticated_transfer_program_id: authenticated_transfer().id(),
         },
         &[
             fx.vault_config_account_id,

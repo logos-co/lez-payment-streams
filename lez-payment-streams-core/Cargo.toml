@@ -6,7 +6,7 @@ edition = "2021"
 [features]
 default = ["host"]
 # Host-side LEE (`lee` crate): instruction wire + off-chain proofs. Disabled for RISC0 guest builds.
-host = ["dep:lee", "lee_core/host", "dep:sha2"]
+host = ["dep:lee", "lee_core/host", "dep:sha2", "dep:programs"]
 # Privacy-preserving LEE proving tests in `program_tests` (slow). Enable with `--features pp-program-tests`.
 pp-program-tests = []
 
@@ -20,6 +20,7 @@ risc0-zkvm = { version = "=3.0.5", features = ["std"] }
 lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", features = ["test-utils"], optional = true }
 lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", default-features = false }
 clock_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a" }
+programs = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", default-features = false, features = ["artifacts"], optional = true }
 sha2 = { version = "0.10", optional = true }
 spel-framework-macros = { git = "https://github.com/logos-co/spel.git", tag = "v0.5.0" }
 spel-framework-core = { git = "https://github.com/logos-co/spel.git", tag = "v0.5.0" }

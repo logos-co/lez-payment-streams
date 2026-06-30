@@ -1860,6 +1860,7 @@ dependencies = [
  "hex",
  "lee",
  "lee_core",
+ "programs",
  "risc0-zkvm",
  "serde",
  "sha2",
@@ -1877,6 +1878,7 @@ dependencies = [
  "lee",
  "lee_core",
  "lez-payment-streams-core",
+ "programs",
 ]
 
 [[package]]
@@ -2270,6 +2272,15 @@ dependencies = [
  "quote",
  "syn 2.0.117",
  "version_check",
+]
+
+[[package]]
+name = "programs"
+version = "0.1.0"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a#a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a"
+dependencies = [
+ "build_utils",
+ "lee",
 ]
 
 [[package]]

@@ -66,9 +66,9 @@ use lez_payment_streams_core::{
     top_up_stream_instruction_accounts, withdraw_instruction_accounts, Instruction,
     VaultPrivacyTier,
 };
-use lee::program::Program;
 use lee_core::account::{AccountId, Balance};
 use lee_core::program::ProgramId;
+use programs::authenticated_transfer;
 
 use crate::policy_abi::balance_from_lo_hi;
 use crate::{
@@ -253,7 +253,7 @@ unsafe fn plan_stream_authority_instruction_accounts(
 /// layout: eight `u32` words), suitable for [`payment_streams_ffi_serialize_deposit_instruction`]'s
 /// `authenticated_transfer_program_id_bytes` argument.
 ///
-/// Equivalent to reading `lee::program::Program::authenticated_transfer_program().id()` on the Rust
+/// Equivalent to reading `programs::authenticated_transfer().id()` on the Rust
 /// side and flattening with `u32::to_le_bytes` in program-id order.
 ///
 /// # Safety
@@ -266,7 +266,7 @@ pub unsafe extern "C" fn payment_streams_ffi_authenticated_transfer_program_id_b
     if out_bytes.is_null() {
         return PaymentStreamsFfiStatus::NullPointer;
     }
-    let pid = Program::authenticated_transfer_program().id();
+    let pid = authenticated_transfer().id();
     let out = slice::from_raw_parts_mut(out_bytes, 32);
     for (idx, word) in pid.iter().enumerate() {
         out[idx * 4..idx * 4 + 4].copy_from_slice(&word.to_le_bytes());
@@ -783,8 +783,8 @@ mod tests {
         initialize_vault_instruction_accounts, instruction_try_from_instruction_words,
         instruction_words_from_bytes_le, Instruction, VaultPrivacyTier,
     };
-    use lee::program::Program;
     use lee_core::account::AccountId;
+    use programs::authenticated_transfer;
 
     #[test]
     fn authenticated_transfer_program_id_bytes_helper_matches_host_id() {
@@ -793,7 +793,7 @@ mod tests {
             super::payment_streams_ffi_authenticated_transfer_program_id_bytes(buf.as_mut_ptr())
         };
         assert_eq!(status, super::PaymentStreamsFfiStatus::Success);
-        let expected_pid = Program::authenticated_transfer_program().id();
+        let expected_pid = authenticated_transfer().id();
         let mut expected = [0_u8; 32];
         for (idx, word) in expected_pid.iter().enumerate() {
             expected[idx * 4..idx * 4 + 4].copy_from_slice(&word.to_le_bytes());
@@ -987,7 +987,7 @@ mod tests {
 
     #[test]
     fn deposit_serialize_round_trip_includes_authenticated_transfer_program_id() {
-        let transfer_pid = Program::authenticated_transfer_program().id();
+        let transfer_pid = authenticated_transfer().id();
         let mut pid_bytes = [0_u8; 32];
         for (idx, word) in transfer_pid.iter().enumerate() {
             pid_bytes[idx * 4..idx * 4 + 4].copy_from_slice(&word.to_le_bytes());
