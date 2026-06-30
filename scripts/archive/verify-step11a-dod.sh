@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # Verify Step 11a definition of done (see docs/archive/steps/module-chain-reads-runbook.md).
+#
+# Historical Step 11 DoD check pinned to LEZ rc5 (27360cb7…). Retained as a
+# historical check; expected to fail on newer LEZ pins (v0.2.0+, a58fbce…)
+# and not run as a gate. See docs/plan/upcoming/step-26-testnet-v02-migration.md.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
