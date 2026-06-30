@@ -149,7 +149,9 @@ else
     OPEN_LINE="$(logoscore call logos_execution_zone create_new "$WALLET_CONFIG" "$WALLET_STORAGE" "$WALLET_E2E_PASSWORD" 2>/dev/null | tail -1)"
   fi
 fi
-if python3 -c 'import json,sys; d=json.loads(sys.argv[1]); sys.exit(0 if d.get("result")==0 else 1)' "$OPEN_LINE" 2>/dev/null; then
+# create_new returns status="ok" with result=<mnemonic string>; open returns
+# result=0. Accept either as a successful wallet open.
+if python3 -c 'import json,sys; d=json.loads(sys.argv[1]); sys.exit(0 if d.get("status")=="ok" or d.get("result")==0 else 1)' "$OPEN_LINE" 2>/dev/null; then
   emit_phase wallet_open true
 else
   emit_phase wallet_open false
