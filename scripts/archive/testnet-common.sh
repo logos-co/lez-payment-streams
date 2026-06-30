@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Shared Step 18 testnet operator helpers (operational LEZ pin v0.2.0-rc5).
+# Shared Step 18 testnet operator helpers (operational LEZ pin v0.2.0).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-export LEZ_OP_REV="${LEZ_OP_REV:-27360cb7d6ccb2bfbcca7d171bab8a3938490264}"
+export LEZ_OP_REV="${LEZ_OP_REV:-a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a}"
 export TESTNET_SEQUENCER="${TESTNET_SEQUENCER:-https://testnet.lez.logos.co/}"
 export TESTNET_WALLET_DIR="${TESTNET_WALLET_DIR:-$REPO_ROOT/.scaffold/e2e/testnet-wallet}"
 export TESTNET_WALLET_PASSWORD="${TESTNET_WALLET_PASSWORD:-testnet-dev}"
@@ -37,7 +37,7 @@ lez_wallet_bin() {
     echo "$(readlink -f $checkout | head -1)"
     return 0
   fi
-  echo "ERROR: rc5 wallet not found. Run lgs setup from repo root or:" >&2
+  echo "ERROR: v0.2.0 wallet not found. Run lgs setup from repo root or:" >&2
   echo "  cd \"\$(ls -d \$HOME/.cargo/git/checkouts/logos-execution-zone-*/${LEZ_OP_REV:0:7} | head -1)\"" >&2
   echo "  cargo build --release -p wallet" >&2
   return 1

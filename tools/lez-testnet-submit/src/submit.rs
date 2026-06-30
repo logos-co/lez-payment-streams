@@ -95,7 +95,7 @@ pub async fn submit_public_tx(
     }
 
     let elf = load_program_elf(payload, program_elf_path)?;
-    let program = Program::new(elf).context("invalid guest program ELF")?;
+    let program = Program::new(elf.into()).context("invalid guest program ELF")?;
     let program_id = program.id();
 
     let account_ids: Vec<AccountId> = payload

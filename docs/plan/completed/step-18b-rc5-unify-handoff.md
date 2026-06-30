@@ -1,5 +1,10 @@
 # Step 18b — rc5 tooling unification (complete)
 
+> Superseded by Step 26 (TestNet v0.2.0 migration). The rc5 operational pin
+> recorded here was replaced by the v0.2.0 pin (`a58fbce…`); the wallet module
+> wrapper upstream moved from PR 19 to `main` (Universal). Retained in
+> `completed/` for step-map history.
+
 Handoff packet for Step 18b. Canonical operator docs:
 [step-18-public-testnet-demo.md](step-18-public-testnet-demo.md),
 [archive/steps/public-sequencer-store-runbook.md](../../archive/steps/public-sequencer-store-runbook.md),

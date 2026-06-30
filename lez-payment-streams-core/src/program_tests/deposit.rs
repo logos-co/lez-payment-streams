@@ -1,10 +1,12 @@
 //! `deposit` and `authenticated_transfer` wiring, including transparent/PP funding paths.
 
+#[cfg(feature = "pp-program-tests")]
 use lee::program::Program;
 use lee_core::{
     account::{Balance, Data, Nonce},
     BlockId,
 };
+use programs::authenticated_transfer;
 
 use crate::Instruction;
 use crate::{
@@ -43,7 +45,7 @@ fn test_deposit_succeeds() {
     let instruction_deposit = Instruction::Deposit {
         vault_id: fx.vault_id,
         amount: deposit_amount,
-        authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+        authenticated_transfer_program_id: authenticated_transfer().id(),
     };
     let tx_deposit = build_signed_public_tx(
         fx.program_id,
@@ -185,7 +187,7 @@ fn test_deposit_after_create_stream_succeeds() {
             Instruction::Deposit {
                 vault_id: dep.vault.vault_id,
                 amount: second_deposit,
-                authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+                authenticated_transfer_program_id: authenticated_transfer().id(),
             },
             &account_ids_deposit,
             &[Nonce(3)],
@@ -255,7 +257,7 @@ fn test_deposit_zero_amount_fails() {
         Instruction::Deposit {
             vault_id: fx.vault_id,
             amount: deposit_amount,
-            authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+            authenticated_transfer_program_id: authenticated_transfer().id(),
         },
         &account_ids,
         &[nonce_deposit],
@@ -313,7 +315,7 @@ fn test_deposit_wrong_vault_id_fails() {
         Instruction::Deposit {
             vault_id: fx.vault_id,
             amount: deposit_amount,
-            authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+            authenticated_transfer_program_id: authenticated_transfer().id(),
         },
         &account_ids,
         &[nonce_deposit],
@@ -425,7 +427,7 @@ fn test_deposit_insufficient_funds_fails() {
         Instruction::Deposit {
             vault_id: fx.vault_id,
             amount: deposit_amount,
-            authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+            authenticated_transfer_program_id: authenticated_transfer().id(),
         },
         &account_ids,
         &[nonce_deposit],
@@ -520,7 +522,7 @@ fn test_deposit_owner_mismatch_fails() {
         Instruction::Deposit {
             vault_id,
             amount: deposit_amount,
-            authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+            authenticated_transfer_program_id: authenticated_transfer().id(),
         },
         &account_ids_deposit,
         &[nonce_deposit],
@@ -570,7 +572,7 @@ fn test_deposit_vault_holding_version_mismatch_fails() {
             Instruction::Deposit {
                 vault_id: fx.vault_id,
                 amount: deposit_amount,
-                authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+                authenticated_transfer_program_id: authenticated_transfer().id(),
             },
             &[
                 fx.vault_config_account_id,
@@ -624,7 +626,7 @@ mod pp_program_tests {
 
         let fx_a_sender_before = fx_a.state.get_account_by_id(fx_a.owner_account_id);
 
-        let auth_transfer_program = Program::authenticated_transfer_program();
+        let auth_transfer_program = authenticated_transfer();
         let pre_states_fund = vec![
             account_meta(&fx_a.state, fx_a.owner_account_id, true),
             AccountWithMetadata {
@@ -732,7 +734,7 @@ mod pp_program_tests {
             Program::serialize_instruction(Instruction::Deposit {
                 vault_id: vault_b_id,
                 amount: PP_DEPOSIT_AMOUNT,
-                authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+                authenticated_transfer_program_id: authenticated_transfer().id(),
             })
             .expect("deposit instruction serializes"),
             vec![0u8, 0, 1],

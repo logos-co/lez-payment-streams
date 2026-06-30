@@ -91,41 +91,47 @@ Re-run `nix flake update logos-delivery` in `logos-delivery-module` after pushin
 that branch, then commit the updated `flake.lock`. Steps 17–18 E2E may pin this rev explicitly in
 scripts; until then the branch ref in `flake.nix` plus a committed lock is the source of truth.
 
-## Wallet — primary path (rc5 operational + PR 19 module)
+## Wallet — primary path (v0.2.0 operational + `main` module)
 
-Chain writes use generic public transactions and program deploy FFI from LEZ `v0.2.0-rc5`
+Chain writes use generic public transactions and program deploy FFI from LEZ `v0.2.0`
 (operational pin; public testnet compatible):
 
 | Layer | Upstream | Role |
 | --- | --- | --- |
-| LEZ `wallet_ffi` | [`logos-execution-zone`](https://github.com/logos-blockchain/logos-execution-zone) @ `27360cb7…` (`v0.2.0-rc5`) | Deploy, program ELF helpers, LEE v0.3 public tx signing |
-| Wallet Qt module | [`logos-execution-zone-module` PR 19](https://github.com/logos-blockchain/logos-execution-zone-module/pull/19) | Expose FFI to Logos modules (`Q_INVOKABLE` / LogosAPI) |
+| LEZ `wallet_ffi` | [`logos-execution-zone`](https://github.com/logos-blockchain/logos-execution-zone) @ `a58fbce…` (`v0.2.0`) | Deploy, program ELF helpers, LEE v0.3 public tx signing |
+| Wallet module | [`logos-execution-zone-module`](https://github.com/logos-blockchain/logos-execution-zone-module) @ `main` (Universal) | Expose FFI to Logos modules (std::string / LogosAPI) |
 
 Do not pin [PR 429 / PR 16](archive/superseded-wallet-pr-429-16.md) in this integration.
 
-### Flake refs (Step 11d / Step 18b)
+### Flake refs (Step 26)
 
-- LEZ rev `27360cb7d6ccb2bfbcca7d171bab8a3938490264` (`v0.2.0-rc5`) in:
+- LEZ rev `a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a` (`v0.2.0`) in:
   - `scaffold.toml` `[repos.lez].pin`
   - `nix/payment-streams-ffi.nix` (`fetchFromGitHub`)
   - `lez-wallet-ffi-patched/flake.nix` (wallet wrapper input)
   - `tools/lez-testnet-submit` (testnet submit helper; same pin)
-- `lez-payment-streams-core`, guest, FFI, and `examples/` use LEZ rc5 (`27360cb7…`) — same rev as operational pin ([Step 24b](plan/completed/step-24b-rc5-rust-lee-unify.md)).
+- `lez-payment-streams-core`, guest, FFI, and `examples/` use LEZ `v0.2.0` (`a58fbce…`) — same rev as operational pin.
 - Patched wallet wrapper `upstream` =
-  `github:logos-blockchain/logos-execution-zone-module?ref=refs/pull/19/head`
-  with `upstream.inputs.logos-execution-zone.follows` the same LEZ input as payment streams.
-
-After PR 19 merges, pin `main` on the wallet module repo and drop pull-request refs.
+  `github:logos-blockchain/logos-execution-zone-module` (plain `main`,
+  post-PR 19 merge). `upstream.inputs.logos-execution-zone.follows` the
+  same LEZ input as payment streams.
 
 ### Our patch (wrapper flake)
 
-We use the local wrapper flake for payment-streams wallet behavior (guest ELF from env,
-`send_generic_public_transaction_json`, `sign_public_payload`) and build fixes (codegen API headers,
-`.lgx` metadata for bundler). Logos module id matches upstream PR 19: `logos_execution_zone`.
-`wallet-qt-cmake-ffi-include.patch` in the same directory is optional (Qt include propagation);
-wire it in `postPatch` if the wallet plugin fails to find `wallet_ffi.h`.
+We use the local wrapper flake for payment-streams wallet behavior
+(`send_generic_public_transaction_json`, `sign_public_payload`) and build
+fixes (codegen API headers, `.lgx` metadata for bundler). Logos module id
+matches upstream: `logos_execution_zone`. The wallet module on `main` is
+Universal (std::string/std::vector); the Qt patches were rewritten in
+Step 26 against that surface and the 4-argument
+`send_generic_public_transaction(account_ids, signing_requirements,
+instruction, program_id_hex)` signature. The payload now carries
+`program_id_hex` (not `program_elf_hex` / `program_dependencies_hex`).
+`wallet-qt-cmake-ffi-include.patch` in the same directory is optional
+(Qt include propagation); wire it in `postPatch` if the wallet plugin
+fails to find `wallet_ffi.h`.
 If `nix bundle` fails after a pin bump, adjust
-`logos-execution-zone-module-patched/flake.nix` against current PR 19 packages.
+`logos-execution-zone-module-patched/flake.nix` against current `main` packages.
 
 Runbook: [`archive/steps/wallet-510-runbook.md`](archive/steps/wallet-510-runbook.md).
 
@@ -156,7 +162,7 @@ nix build ./logos-payment-streams-module#lgx
 ### Rust FFI (`nix/payment-streams-ffi.nix`)
 
 `lez-payment-streams-ffi` symlinks LEZ `artifacts/` from the same `logos-execution-zone` revision
-as the wallet stack (operational pin `v0.2.0-rc5`).
+as the wallet stack (operational pin `v0.2.0`).
 
 ### Scaffold localnet (`scaffold.toml`)
 
@@ -167,26 +173,31 @@ Rebuild the Step 17b funded snapshot after a LEZ pin or guest ImageID change:
 
 ### Payment-streams Logos module (`logos-payment-streams-module/flake.nix`)
 
-- `logos_execution_zone` flake input → patched wrapper (PR 19 upstream inside).
-- `logos-execution-zone` follows the operational LEZ pin (rc5) for `wallet_ffi`.
+- `logos_execution_zone` flake input → patched wrapper (`main` upstream inside).
+- `logos-execution-zone` follows the operational LEZ pin (`v0.2.0`) for `wallet_ffi`.
 
-## Step 18 public testnet (single rc5 pin)
+## Step 18 public testnet (single v0.2.0 pin)
 
-Local E2E, module `.lgx`, and public testnet share LEZ `v0.2.0-rc5` (`27360cb7…`). See
+Local E2E, module `.lgx`, and public testnet share LEZ `v0.2.0` (`a58fbce…`). See
 [archive/steps/public-sequencer-store-runbook.md](archive/steps/public-sequencer-store-runbook.md) and
 [step-18b-rc5-unify-handoff.md](plan/completed/step-18b-rc5-unify-handoff.md).
 
 | Artifact | Pin / ref | Role |
 | --- | --- | --- |
-| `logos_execution_zone` .lgx | `27360cb7` (rc5) | Local E2E + testnet reads/writes |
-| `lez-testnet-submit` | `27360cb7` (rc5) | Optional `CHAIN=testnet` chainAction submits until Phase 9 |
-| rc5 `wallet` CLI | `27360cb7` (rc5) | `make deploy-testnet`, bootstrap, Piñata |
+| `logos_execution_zone` .lgx | `a58fbce` (v0.2.0) | Local E2E + testnet reads/writes |
+| `lez-testnet-submit` | `a58fbce` (v0.2.0) | Retained as fallback; not dispatched from module as of Step 26 |
+| `wallet` CLI | `a58fbce` (v0.2.0) | `make deploy-testnet`, bootstrap, Piñata |
 
 Guest `program_id_hex` on testnet: org deploy recorded in step packet; example in
 `fixtures/testnet.json.example`.
 
-Retirement (Phase 9): when module `chainAction` works on testnet without the helper, delete
-`tools/lez-testnet-submit` and narrow `CHAIN=testnet` dispatch in the module.
+Retirement (Phase 9): when module `chainAction` works on testnet without
+the helper on the FFI path, delete `tools/lez-testnet-submit`,
+`chainUsesTestnetSubmit`, `submitGenericPublicViaTestnetHelper`, and the
+`LEZ_TESTNET_SUBMIT` plumbing. As of Step 26, `chainUsesTestnetSubmit()`
+always returns `false` and all writes route through
+`submitGenericPublicViaFfi`; the helper is retained in-tree as a manual
+operator fallback and is no longer invoked from the module.
 
 Runbook: [archive/steps/public-sequencer-store-runbook.md](archive/steps/public-sequencer-store-runbook.md).
 
@@ -201,8 +212,10 @@ nix build ./logos-payment-streams-module/nix/flakes/logos-execution-zone-module-
 
 # Payment-streams Logos module bundle
 nix build ./logos-payment-streams-module#lgx
-
-./scripts/archive/verify-step11d-dod.sh
 ```
+
+Step 11 DoD scripts under `scripts/archive/verify-step11*-dod.sh` are pinned
+to rc5 and retained as historical checks; they fail on v0.2.0 and are not
+run as gates.
 
 For `lgpm`, `logoscore`, and the Step 7+ loop see [`logos-runtime-guide.md`](logos-runtime-guide.md).

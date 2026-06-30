@@ -13,8 +13,9 @@ path = "src/bin/smoke_verify.rs"
 [dependencies]
 lez-payment-streams-core = { path = "../lez-payment-streams-core" }
 borsh = "1.5"
-lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "27360cb7d6ccb2bfbcca7d171bab8a3938490264" }
-lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "27360cb7d6ccb2bfbcca7d171bab8a3938490264", features = ["host"] }
+lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a" }
+lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", features = ["host"] }
+programs = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", default-features = false, features = ["artifacts"] }
 hex = "0.4"
 
 [build-dependencies]

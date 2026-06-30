@@ -1,71 +1,55 @@
---- a/src/i_logos_execution_zone_wallet_module.h
-+++ b/src/i_logos_execution_zone_wallet_module.h
-@@ -24,6 +24,7 @@
-     virtual QString get_account_private(const QString& account_id_hex) = 0;
-     virtual QString get_public_account_key(const QString& account_id_hex) = 0;
-     virtual QString get_private_account_keys(const QString& account_id_hex) = 0;
-+    virtual QString sign_public_payload(const QString& account_id_hex, const QString& digest_hex) = 0;
- 
-     // Account Encoding
-     virtual QString account_id_to_base58(const QString& account_id_hex) = 0;
---- a/src/logos_execution_zone_wallet_module.h
-+++ b/src/logos_execution_zone_wallet_module.h
-@@ -71,6 +71,7 @@
-     Q_INVOKABLE QString get_account_private(const QString& account_id_hex) override;
-     Q_INVOKABLE QString get_public_account_key(const QString& account_id_hex) override;
-     Q_INVOKABLE QString get_private_account_keys(const QString& account_id_hex) override;
-+    Q_INVOKABLE QString sign_public_payload(const QString& account_id_hex, const QString& digest_hex) override;
- 
-     // Account Encoding
-     Q_INVOKABLE QString account_id_to_base58(const QString& account_id_hex) override;
+diff --git a/src/logos_execution_zone_wallet_module.cpp b/src/logos_execution_zone_wallet_module.cpp
+index 0eadbc2..e201d04 100644
 --- a/src/logos_execution_zone_wallet_module.cpp
 +++ b/src/logos_execution_zone_wallet_module.cpp
-@@ -49,6 +49,8 @@
- static constexpr auto AccountId = "account_id";
- static constexpr auto IsPublic = "is_public";
- static constexpr auto Secrets = "secrets";
-+static constexpr auto Status = "status";
-+static constexpr auto Result = "result";
- } // namespace JsonKeys
+@@ -407,6 +407,38 @@ std::string LogosExecutionZoneWalletModule::get_private_account_keys(const std::
+     return result;
+ }
  
- static bool hexToBytes(const QString& hex, QByteArray& output_bytes, int expectedLength = -1) {
-@@ -356,6 +358,39 @@
- 
- // === Account Encoding ===
- 
-+QString LogosExecutionZoneWalletModule::sign_public_payload(
-+    const QString& account_id_hex, const QString& digest_hex)
-+{
-+    auto errorJson = [](const QString& msg) {
-+        QVariantMap m;
-+        m[JsonKeys::Status] = QStringLiteral("error");
-+        m[JsonKeys::Error] = msg;
-+        return QJsonDocument(QJsonObject::fromVariantMap(m)).toJson(QJsonDocument::Compact);
-+    };
-+
++std::string LogosExecutionZoneWalletModule::sign_public_payload(const std::string& account_id_hex, const std::string& digest_hex) {
 +    FfiBytes32 id{};
 +    if (!hexToBytes32(account_id_hex, &id)) {
-+        qWarning() << "sign_public_payload: invalid account_id_hex";
-+        return errorJson(QStringLiteral("invalid account_id_hex"));
++        fprintf(stderr, "sign_public_payload: invalid account_id_hex\n");
++        nlohmann::json err = nlohmann::json::object();
++        err["status"] = "error";
++        err["error"] = "invalid account_id_hex";
++        return err.dump();
 +    }
 +    FfiBytes32 digest{};
 +    if (!hexToBytes32(digest_hex, &digest)) {
-+        qWarning() << "sign_public_payload: invalid digest_hex";
-+        return errorJson(QStringLiteral("invalid digest_hex"));
++        fprintf(stderr, "sign_public_payload: invalid digest_hex\n");
++        nlohmann::json err = nlohmann::json::object();
++        err["status"] = "error";
++        err["error"] = "invalid digest_hex";
++        return err.dump();
 +    }
 +    FfiSignature64 sig{};
 +    const WalletFfiError error = wallet_ffi_sign_public_payload(walletHandle, &id, &digest, &sig);
 +    if (error != SUCCESS) {
-+        qWarning() << "sign_public_payload: wallet FFI error" << error;
-+        return errorJson(
-+            QStringLiteral("wallet FFI error ") + QString::number(static_cast<int>(error)));
++        fprintf(stderr, "sign_public_payload: wallet FFI error %d\n", error);
++        nlohmann::json err = nlohmann::json::object();
++        err["status"] = "error";
++        err["error"] = std::string("wallet FFI error ") + std::to_string(static_cast<int>(error));
++        return err.dump();
 +    }
-+    QVariantMap map;
-+    map[JsonKeys::Status] = QStringLiteral("ok");
-+    map[JsonKeys::Result] = bytesToHex(sig.data, 64);
-+    return QJsonDocument(QJsonObject::fromVariantMap(map)).toJson(QJsonDocument::Compact);
++    nlohmann::json obj = nlohmann::json::object();
++    obj["status"] = "ok";
++    obj["result"] = bytesToHex(sig.data, 64);
++    return obj.dump();
 +}
 +
- QString LogosExecutionZoneWalletModule::account_id_to_base58(const QString& account_id_hex) {
-     FfiBytes32 id{};
-     if (!hexToBytes32(account_id_hex, &id)) {
+ // === Account Encoding ===
+ 
+ std::string LogosExecutionZoneWalletModule::account_id_to_base58(const std::string& account_id_hex) {
+diff --git a/src/logos_execution_zone_wallet_module.h b/src/logos_execution_zone_wallet_module.h
+index 0a05bd8..221af1b 100644
+--- a/src/logos_execution_zone_wallet_module.h
++++ b/src/logos_execution_zone_wallet_module.h
+@@ -47,6 +47,7 @@ public:
+     std::string get_account_private(const std::string& account_id_hex);
+     std::string get_public_account_key(const std::string& account_id_hex);
+     std::string get_private_account_keys(const std::string& account_id_hex);
++    std::string sign_public_payload(const std::string& account_id_hex, const std::string& digest_hex);
+ 
+     // === Account Encoding ===
+     std::string account_id_to_base58(const std::string& account_id_hex);

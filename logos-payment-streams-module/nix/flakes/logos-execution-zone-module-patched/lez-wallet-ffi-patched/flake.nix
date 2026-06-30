@@ -1,8 +1,8 @@
 {
   description = "logos-execution-zone wallet-ffi patched: python3 for pyo3 + wallet_ffi.h install path + payment-streams Rust patches";
 
-  # LEZ v0.2.0-rc5 — operational pin (local E2E + public testnet wallet).
-  inputs.lez.url = "github:logos-blockchain/logos-execution-zone?rev=27360cb7d6ccb2bfbcca7d171bab8a3938490264";
+  # LEZ v0.2.0 — operational pin (local E2E + public testnet wallet).
+  inputs.lez.url = "github:logos-blockchain/logos-execution-zone?rev=a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a";
   inputs.nixpkgs.follows = "lez/nixpkgs";
 
   outputs =

@@ -8,7 +8,7 @@ use std::{
 
 use anyhow::{Context as _, Result};
 use clap::{Parser, Subcommand};
-use lee::program::Program as LeeProgram;
+use programs::authenticated_transfer;
 use submit::{
     account_id_hex_from_base58, parse_account_id_hex, parse_payload_json, resolve_program_elf_path,
     submit_public_tx, SubmitResult,
@@ -122,7 +122,7 @@ async fn run() -> Result<()> {
             println!("{}", serde_json::to_string(&out)?);
         }
         Commands::AuthTransferProgramIdHex => {
-            let id = LeeProgram::authenticated_transfer_program().id();
+            let id = authenticated_transfer().id();
             let hex: String = id
                 .as_ref()
                 .iter()
@@ -140,7 +140,7 @@ async fn run() -> Result<()> {
                     return Ok(());
                 }
             }
-            let elf = LeeProgram::authenticated_transfer_program();
+            let elf = authenticated_transfer();
             println!("{}", hex::encode(elf.elf()));
         }
         Commands::AccountIdFromBase58 { account_base58 } => {
@@ -148,7 +148,7 @@ async fn run() -> Result<()> {
             println!("{hex}");
         }
         Commands::Clock10AccountBase58 => {
-            use lee::CLOCK_10_PROGRAM_ACCOUNT_ID;
+            use clock_core::CLOCK_10_PROGRAM_ACCOUNT_ID;
             println!("{CLOCK_10_PROGRAM_ACCOUNT_ID}");
         }
     }

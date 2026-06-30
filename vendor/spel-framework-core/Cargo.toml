@@ -14,7 +14,7 @@ idl-gen = ["dep:syn", "dep:proc-macro2", "dep:toml"]
 host = ["dep:lee", "lee_core/host"]
 
 [dependencies]
-lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "27360cb7d6ccb2bfbcca7d171bab8a3938490264", default-features = false }
+lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", default-features = false }
 borsh = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -24,7 +24,7 @@ bytemuck = "1.16"
 risc0-zkvm = { version = "=3.0.5", default-features = false, features = ["std"] }
 base58 = { version = "0.2", optional = true }
 
-lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "27360cb7d6ccb2bfbcca7d171bab8a3938490264", optional = true }
+lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", optional = true }
 
 syn = { version = "2.0", features = ["full", "extra-traits"], optional = true }
 proc-macro2 = { version = "1.0", optional = true }

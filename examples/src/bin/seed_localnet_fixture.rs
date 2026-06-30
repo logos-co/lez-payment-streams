@@ -13,11 +13,11 @@ use base58::FromBase58;
 use borsh::BorshDeserialize;
 use clap::{Parser, Subcommand};
 use common::transaction::LeeTransaction;
-use lee::program::Program as LeeProgram;
 use lee::public_transaction::{Message, WitnessSet};
 use lee::{AccountId as LeeAccountId, PublicTransaction};
 use lee_core::account::Balance;
 use lee_core::program::ProgramId as LeeProgramId;
+use programs::authenticated_transfer;
 use lez_payment_streams_core::{
     claim_instruction_accounts, close_stream_instruction_accounts, create_stream_instruction_accounts,
     deposit_instruction_accounts, derive_stream_config_account_id, derive_vault_account_ids,
@@ -315,7 +315,7 @@ fn to_lee_program_id(id: CoreProgramId) -> LeeProgramId {
 fn program_id_from_bin(path: &PathBuf) -> Result<(CoreProgramId, String)> {
     let bytecode = std::fs::read(path)
         .with_context(|| format!("read program binary {}", path.display()))?;
-    let program = Program::new(bytecode).context("parse guest Program")?;
+    let program = Program::new(bytecode.into()).context("parse guest Program")?;
     let pid = program.id();
     let hex: String = pid
         .iter()
@@ -638,7 +638,7 @@ async fn prefund_vault(
         return Ok(());
     }
 
-    let auth_transfer = LeeProgram::authenticated_transfer_program().id();
+    let auth_transfer = authenticated_transfer().id();
 
     if !vault_ready {
         submit_instruction(
@@ -825,7 +825,7 @@ async fn deposit_vault(ctx: &OnchainContext, deposit_amount: Balance) -> Result<
     if !vault_ready {
         return Err(anyhow!("vault must be initialized before deposit"));
     }
-    let auth_transfer = LeeProgram::authenticated_transfer_program().id();
+    let auth_transfer = authenticated_transfer().id();
     let deposit_accounts =
         deposit_instruction_accounts(&ctx.program_id, ctx.owner_id, ctx.vault_id);
     submit_instruction(

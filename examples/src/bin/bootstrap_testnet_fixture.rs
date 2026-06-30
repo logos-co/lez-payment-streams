@@ -111,7 +111,7 @@ fn account_id_to_base58(id: lee_core::account::AccountId) -> String {
 fn program_id_from_bin(path: &PathBuf) -> Result<(CoreProgramId, String)> {
     let bytecode = std::fs::read(path)
         .with_context(|| format!("read program binary {}", path.display()))?;
-    let program = LeeProgram::new(bytecode).context("parse guest Program")?;
+    let program = LeeProgram::new(bytecode.into()).context("parse guest Program")?;
     let pid = program.id();
     let hex: String = pid
         .iter()

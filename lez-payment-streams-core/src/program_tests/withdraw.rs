@@ -1,10 +1,12 @@
 //! `withdraw` to third-party recipients, including public and privacy-preserving recipient flows.
 
+#[cfg(feature = "pp-program-tests")]
 use lee::program::Program;
 use lee_core::{
     account::{Balance, Nonce},
     BlockId,
 };
+use programs::authenticated_transfer;
 
 use crate::Instruction;
 use crate::{
@@ -45,7 +47,7 @@ fn test_withdraw_succeeds() {
         Instruction::Deposit {
             vault_id: wr.vault.vault_id,
             amount: deposit_amount,
-            authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+            authenticated_transfer_program_id: authenticated_transfer().id(),
         },
         &account_ids_deposit,
         &[nonce_deposit],
@@ -326,7 +328,7 @@ fn test_withdraw_exceeds_unallocated_fails() {
         Instruction::Deposit {
             vault_id: wr.vault.vault_id,
             amount: deposit_amount,
-            authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+            authenticated_transfer_program_id: authenticated_transfer().id(),
         },
         &account_ids_deposit,
         &[nonce_deposit],
@@ -439,9 +441,7 @@ fn test_withdraw_full_unallocated_with_stream_succeeds() {
                     Instruction::Deposit {
                         vault_id: wr.vault.vault_id,
                         amount: deposit_amount,
-                        authenticated_transfer_program_id: Program::authenticated_transfer_program(
-                        )
-                        .id(),
+                        authenticated_transfer_program_id: authenticated_transfer().id(),
                     },
                     &account_ids_deposit,
                     &[nonce_deposit],
@@ -706,9 +706,7 @@ fn test_withdraw_recipient_balance_overflow_fails() {
                     Instruction::Deposit {
                         vault_id: wr.vault.vault_id,
                         amount: deposit_amount,
-                        authenticated_transfer_program_id: Program::authenticated_transfer_program(
-                        )
-                        .id(),
+                        authenticated_transfer_program_id: authenticated_transfer().id(),
                     },
                     &[
                         wr.vault.vault_config_account_id,
@@ -774,9 +772,7 @@ fn test_withdraw_recipient_not_present_in_state_fails() {
                     Instruction::Deposit {
                         vault_id: wr.vault.vault_id,
                         amount: deposit_amount,
-                        authenticated_transfer_program_id: Program::authenticated_transfer_program(
-                        )
-                        .id(),
+                        authenticated_transfer_program_id: authenticated_transfer().id(),
                     },
                     &[
                         wr.vault.vault_config_account_id,

@@ -1,10 +1,12 @@
 //! `pause_stream` success and failure cases, especially fold-before-pause behavior and PP parity.
 
+#[cfg(feature = "pp-program-tests")]
 use lee::program::Program;
 use lee_core::{
     account::{Balance, Nonce},
     BlockId,
 };
+use programs::authenticated_transfer;
 
 use crate::Instruction;
 use crate::{
@@ -343,7 +345,7 @@ fn test_pause_stream_owner_mismatch_fails() {
             Instruction::Deposit {
                 vault_id,
                 amount: deposit_amount,
-                authenticated_transfer_program_id: Program::authenticated_transfer_program().id(),
+                authenticated_transfer_program_id: authenticated_transfer().id(),
             },
             &[
                 vault_config_account_id,

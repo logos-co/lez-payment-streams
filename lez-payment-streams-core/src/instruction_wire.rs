@@ -62,12 +62,12 @@ pub fn instruction_words_from_bytes_le(bytes: &[u8]) -> Option<Vec<u32>> {
 mod tests {
     use super::*;
     use crate::VaultPrivacyTier;
-    use lee::program::Program;
     use lee_core::account::AccountId;
+    use programs::authenticated_transfer;
 
     #[test]
     fn all_variants_round_trip_via_instruction_words() {
-        let transfer_pid = Program::authenticated_transfer_program().id();
+        let transfer_pid = authenticated_transfer().id();
         let provider = AccountId::new([11_u8; 32]);
 
         let samples = vec![

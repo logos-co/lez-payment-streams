@@ -1,5 +1,10 @@
 # Step 18 — plan excerpt
 
+> Superseded by Step 26 (TestNet v0.2.0 migration). The rc5 operational pin and
+> PR 19 wallet-module ref recorded here were replaced by the v0.2.0 pin
+> (`a58fbce…`) and the `main` (Universal) wallet module. Retained in
+> `completed/` for step-map history.
+
 Active-work packet for agents. Index: [index.md](../index.md).
 
 #### Integration status

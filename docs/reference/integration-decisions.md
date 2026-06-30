@@ -622,9 +622,12 @@ allow removing that shim later — verify deposit on 491 before deleting it.
 
 Wallet submit and module shape
 
-- Submit via PR 19 `send_generic_public_transaction` inside the wallet. The Universal module
-  calls `send_generic_public_transaction_json` (one JSON string) over LogosAPI because
-  QList-shaped cross-module IPC to the Legacy wallet is unreliable.
+- Submit via `send_generic_public_transaction` inside the wallet. The Universal module
+  calls `send_generic_public_transaction_json` (one JSON string) over LogosAPI. The
+  original "QList-shaped cross-module IPC to the Legacy wallet is unreliable"
+  rationale was Legacy-specific and no longer applies now that the wallet module on
+  `main` is Universal (std::string/std::vector); the JSON wrapper now persists purely
+  to keep RISC0 serde inside the wallet (no caller-side Borsh dependency).
 - Instruction bytes passed to the wallet are Borsh-serialized guest instruction bytes as
   `QList<uint8_t>`; the wallet runs `wallet_ffi_serialization_helper` to LE u32 words (not
   caller-supplied decimal string lists).
@@ -746,16 +749,23 @@ Two documentation/demonstration tracks; do not merge them in copy or scope.
 - **Relationship to Step 22:** Step 21 is optional and independent. If shipped, Step 22 may be
   updated to include UI content, but Step 22 does not require Step 21.
 
-### N16, Step 18b rc5 operational pin (2026-06)
+### N16, Step 18b rc5 operational pin (2026-06) — superseded by Step 26 v0.2.0 pin
 
 Public testnet at `https://testnet.lez.logos.co/` expects LEE v0.3 public message hashing and
 builtin program ids aligned with the 510-era lineage, not rc3 dual-pin tooling.
 
-- **Operational pin:** `logos-execution-zone` tag `v0.2.0-rc5` (git `27360cb7d6ccb2bfbcca7d171bab8a3938490264`)
+- **Operational pin:** `logos-execution-zone` tag `v0.2.0` (git `a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a`)
   for `scaffold.toml`, payment-streams wallet flakes, module `.lgx`, E2E, and testnet scripts.
+  (Supersedes the rc5 pin `27360cb7…`; see [Step 26](../plan/upcoming/step-26-testnet-v02-migration.md).)
 - **Dual-pin abandoned:** rc3-only submit tooling and split wallet storage were Step 18 WIP only; not used after 18b.
-- **Rust / guest pin (Step 24b):** `lez-payment-streams-core`, guest, FFI, and `examples/` use the same rc5 rev as operational tooling; no intentional 510 vs rc5 split in this repo.
-- **Phase 9:** retire `tools/lez-testnet-submit` when module `chainAction` on testnet needs no helper.
-- **Status (2026-06):** merged to `master`; Step 24b unified Rust/guest on rc5. `make verify-step17` uses `CHAIN=local`; `make verify-step18` exercises public testnet Part B (see [archive/steps/public-sequencer-store-runbook.md](../archive/steps/public-sequencer-store-runbook.md)).
+- **Rust / guest pin (Step 24b):** `lez-payment-streams-core`, guest, FFI, and `examples/` use the same rev as operational tooling; no intentional split in this repo.
+- **Phase 9 (reframed by Step 26):** `lez-testnet-submit` is no longer dispatched from the
+  module as of Step 26 — `chainUsesTestnetSubmit()` always returns `false` and all writes
+  route through `submitGenericPublicViaFfi`. Retirement of `tools/lez-testnet-submit`,
+  `chainUsesTestnetSubmit`, `submitGenericPublicViaTestnetHelper`, and `LEZ_TESTNET_SUBMIT`
+  plumbing is pending live-testnet verification on the FFI path
+  (`MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run`).
+- **Status (2026-06):** Step 26 bumped the operational pin from rc5 to v0.2.0 and moved the
+  wallet module wrapper upstream from PR 19 to `main` (Universal).
 
 Handoff: [step-18b-rc5-unify-handoff.md](../plan/completed/step-18b-rc5-unify-handoff.md).
