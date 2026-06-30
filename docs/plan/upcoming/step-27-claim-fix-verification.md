@@ -148,35 +148,37 @@ genesis recipients have `program_owner = authenticated_transfer`). The
 `claim` instruction lacks the equivalent claim logic for the provider.
 
 Fix for Symptom D (the real claim fix, supersedes the earlier
-"prefund-only" framing). The guest `claim` must credit the provider
-through a path that survives v0.2.0's ownership/filter invariants. Two
-viable approaches:
+"prefund-only" framing). The guest `claim` credits the provider directly
+(no chained call needed) — the fix is preventive, not curative. v0.2.0
+rejects modifying any non-default account that still has
+`program_owner: DEFAULT_PROGRAM_ID` (check 7,
+`NonDefaultAccountWithDefaultOwner`), and the spel macro's post-state
+filter (D2) drops DEFAULT-owned, nonce-incremented accounts from the
+program output to avoid that error — but this breaks balance
+conservation when the dropped account carries a credit. The claim chain
+(`authenticated_transfer`) cannot recover a non-default DEFAULT-owned
+provider either: the chained `transfer` claims the recipient, but
+`validate_execution` check 7 runs before claims are applied and rejects
+the non-default DEFAULT-owned post-state.
 
-- D-fix-1 (guest-side, mirror `withdraw`): emit a
-  `Claim::Authorized` on the provider's post-state when the provider
-  was default-owned, so the runtime sets `program_owner` to the guest
-  program and the macro filter keeps the post-state. This requires the
-  provider to be a signer (it already is) and means the guest program
-  takes ownership of the provider account. Caveat: this only works if
-  the provider was `Account::default()` in pre-state; a non-default
-  default-owned provider (nonce > 0) cannot be claimed post-hoc (the
-  `initialize_account` in `authenticated_transfer` rejects non-default
-  accounts). So D-fix-1 requires the provider to be initialized under
-  the guest program BEFORE it is used as a signer in any other tx.
-- D-fix-2 (chained call, mirror `deposit`): route the provider credit
-  through a `ChainedCall` to `authenticated_transfer`, debiting
-  `vault_holding` (which the guest owns) and crediting `provider` via
-  the system program. This requires `provider` to be owned by
-  `authenticated_transfer` (set via `wallet auth-transfer init` before
-  the claim), mirroring the owner prefund fix for Symptom A. The guest
-  keeps the direct `vault_holding` debit but replaces the direct
-  `provider` credit with a chained transfer.
+The only viable fix is to ensure the provider is initialized under a
+program (so `program_owner != DEFAULT`) BEFORE any signer transaction
+touches it (incrementing its nonce). The fixture does this via
+`wallet auth-transfer init` on the provider (mirroring the owner prefund
+for Symptom A), which sets `program_owner = authenticated_transfer`
+while the account is still default. After that, `create_stream` may
+safely use the provider as a signer (nonce increments to 1), and the
+guest `claim`'s direct credit survives (the filter keeps the pair
+because `pre.program_owner != DEFAULT`).
 
-D-fix-2 is the safer choice because it matches the proven `deposit`
-pattern and does not require the guest program to take ownership of
-user wallet accounts. It does require the fixture to auth-transfer-init
-the provider (same step already added for the owner in
-`fund_owner_account`).
+This is D-fix-fixture (preventive init), chosen over D-fix-2 (chained
+call) after empirical testing showed the chained call path also fails
+check 7 on the `authenticated_transfer` side for non-default
+DEFAULT-owned recipients. The guest `claim` source is unchanged; the
+fix lives entirely in `scripts/fixture.sh::init_provider_account`. A
+new unit test (`test_claim_succeeds_with_auth_transfer_owned_nonce_
+incremented_provider`) guards the fixture-shaped provider (auth-transfer
+-owned, nonce > 0) claim path.
 
 Fund-flow facts (from the guest source, grounding the analysis).
 - `deposit` (`guest:384`): debits `owner`, credits `vault_holding`, via
@@ -394,14 +396,16 @@ is fixed. User Journey testnet is owned by Step 28.
 - [x] Fix tested on localnet (Developer Journey deposit path)
 - [x] `MODE=module CHAIN=local` E2E shows `{"phase":"claim","ok":true}`
       (non-regression — module mode already green)
-- [ ] Symptom D root cause fixed: guest `claim` credits provider via
-      `ChainedCall` to `authenticated_transfer` (D-fix-2), provider
-      auth-transfer-init in fixture
-- [ ] `MODE=store CHAIN=local` E2E shows `demo_claim` `ok=True` with
+- [x] Symptom D root cause fixed: provider auth-transfer-init in fixture
+      (`scripts/fixture.sh::init_provider_account`) before any signer tx
+      touches the provider; guest `claim` source unchanged (preventive
+      fix, not curative)
+- [x] `MODE=store CHAIN=local` E2E shows `demo_claim` `ok=True` with
       provider balance increase AND `vault_holding` decrease (Q10
-      concrete criterion, false-positive-resistant)
-- [ ] New unit test: DEFAULT-owned, nonce-incremented provider claim
-      path (guards the D2 filter drop)
+      concrete criterion, false-positive-resistant) — verified: provider
+      0→200, vault_holding 1000→800, no sequencer rejections
+- [x] New unit test: auth-transfer-owned nonce-incremented provider
+      claim path (guards the fixture-shaped provider)
 - [ ] TestNet v0.2 claim verified for Developer Journey (provider)
 - [ ] `archive/operator/testnet-claim-known-issue.md` updated with
       Symptom C re-test result (not retired)

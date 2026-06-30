@@ -112,6 +112,114 @@ fn test_claim_balance_succeeds() {
     );
 }
 
+// Regression guard for step-27 Symptom D: the guest `claim` directly credits
+// the provider. On v0.2.0 this credit is only preserved when the provider
+// account is owned by a program (not DEFAULT_PROGRAM_ID), because the spel
+// macro's post-state filter drops DEFAULT-owned, nonce-incremented accounts
+// from the program output. The fixture fixes this by initializing the
+// provider under `authenticated_transfer` (via `wallet auth-transfer init`)
+// before any signer transaction touches it, so `program_owner` is set while
+// the account is still default. This test confirms the claim succeeds and
+// conserves balance when the provider is `authenticated_transfer`-owned
+// with a non-zero nonce (the real runtime shape after the fixture fix).
+// A DEFAULT-owned, nonce-incremented provider is unrecoverable by design
+// (v0.2.0 rejects modifying non-default DEFAULT-owned accounts); the fix is
+// preventive (init before touch), not curative.
+#[test]
+fn test_claim_succeeds_with_auth_transfer_owned_nonce_incremented_provider() {
+    let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
+    let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
+    let (provider_private_key, provider_account_id) = create_keypair(SEED_PROVIDER);
+
+    let mut scenario = claim_stream_prelude_at_t1(
+        DEFAULT_OWNER_GENESIS_BALANCE,
+        deposit_amount,
+        clock_id,
+        CLAIM_T0,
+        CLAIM_T1,
+        provider_private_key,
+        provider_account_id,
+        CLAIM_RATE,
+        CLAIM_ALLOCATION,
+    );
+    let wp = &mut scenario.with_provider;
+    let stream_id = scenario.stream_id;
+    let stream_pda = scenario.stream_pda;
+
+    // Mirror the fixture shape: provider owned by `authenticated_transfer`
+    // (set via `wallet auth-transfer init` before touch) with a non-zero
+    // nonce (incremented by `create_stream` signer tx). The genesis helper
+    // already sets program_owner = authenticated_transfer; bump the nonce to
+    // simulate the post-create_stream runtime shape.
+    use lee_core::account::Account;
+    use programs::authenticated_transfer;
+    let auth_owner = authenticated_transfer().id();
+    let provider_pre = wp
+        .deposited
+        .vault
+        .state
+        .get_account_by_id(provider_account_id);
+    wp.deposited.vault.state.force_insert_account(
+        provider_account_id,
+        Account {
+            program_owner: auth_owner,
+            nonce: Nonce(1),
+            ..provider_pre
+        },
+    );
+
+    let provider_balance_before = wp
+        .deposited
+        .vault
+        .state
+        .get_account_by_id(provider_account_id)
+        .balance;
+
+    let claim_accounts: ClaimStreamIxAccounts = [
+        wp.deposited.vault.vault_config_account_id,
+        wp.deposited.vault.vault_holding_account_id,
+        stream_pda,
+        wp.deposited.vault.owner_account_id,
+        provider_account_id,
+        wp.deposited.clock_id,
+    ];
+
+    transition_ok(
+        &mut wp.deposited.vault.state,
+        &signed_claim_stream(
+            wp.deposited.vault.program_id,
+            wp.deposited.vault.vault_id,
+            stream_id,
+            &claim_accounts,
+            Nonce(1),
+            &wp.provider_private_key,
+        ),
+        4 as BlockId,
+        "claim with auth-transfer-owned provider failed",
+    );
+
+    let payout = 50 as Balance;
+
+    let holding_after = wp
+        .deposited
+        .vault
+        .state
+        .get_account_by_id(wp.deposited.vault.vault_holding_account_id)
+        .balance;
+    assert_eq!(holding_after, deposit_amount - payout);
+
+    let provider_balance_after = wp
+        .deposited
+        .vault
+        .state
+        .get_account_by_id(provider_account_id)
+        .balance;
+    assert_eq!(
+        provider_balance_after,
+        provider_balance_before.saturating_add(payout)
+    );
+}
+
 #[test]
 fn test_claim_unauthorized_fails() {
     let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
