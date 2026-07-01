@@ -306,53 +306,44 @@ void seedInventoryFromFixtureIfEmpty() {
     persistIfDirty();
 }
 
-LogosAPIClient* walletClientOrNull(LogosAPI* api) {
+QString walletAccountIdHexFromBase58(LogosExecutionZone& wallet, const QString& accountIdBase58) {
+    const QString trimmed = accountIdBase58.trimmed();
+    if (trimmed.isEmpty()) {
+        return {};
+    }
+    return QString::fromStdString(wallet.account_id_from_base58(trimmed.toStdString()));
+}
+
+// Dynamic-dispatch fallback for wallet methods added by repo-local Qt
+// patches (sign_public_payload, send_generic_public_transaction_json).
+// These are Qt-only on the wallet side and are NOT in the codegen-emitted
+// lp typed API (logos_execution_zone_api.h), so they cannot go through the
+// LogosExecutionZone lp wrapper. Routed through the Qt LogosAPIClient
+// (modules().api) instead. See Step 30 patched-method handling.
+LogosAPIClient* walletQtClientOrNull(LogosAPI* api) {
     if (api == nullptr) {
         return nullptr;
     }
     return api->getClient(QStringLiteral("logos_execution_zone"));
 }
 
-QString invokeWalletString(LogosAPIClient* client, const char* method, const QVariant& arg = {}) {
+QString invokeWalletQtString(LogosAPIClient* client, const char* method, const QVariant& a1, const QVariant& a2 = {}) {
     if (client == nullptr) {
         return {};
     }
-    const QString moduleName = QStringLiteral("logos_execution_zone");
     const QString methodName = QString::fromUtf8(method);
     QVariant result;
-    if (arg.isValid() && !arg.isNull()) {
-        result = client->invokeRemoteMethod(moduleName, methodName, arg);
+    if (a2.isValid() && !a2.isNull()) {
+        result = client->invokeRemoteMethod(QStringLiteral("logos_execution_zone"), methodName, a1, a2);
+    } else if (a1.isValid() && !a1.isNull()) {
+        result = client->invokeRemoteMethod(QStringLiteral("logos_execution_zone"), methodName, a1);
     } else {
-        result = client->invokeRemoteMethod(moduleName, methodName);
+        result = client->invokeRemoteMethod(QStringLiteral("logos_execution_zone"), methodName);
     }
     if (!result.isValid()) {
         return {};
     }
     return result.toString();
-}
-
-QString invokeWalletTwo(LogosAPIClient* client,
-                        const char* method,
-                        const QVariant& a1,
-                        const QVariant& a2) {
-    if (client == nullptr) {
-        return {};
-    }
-    const QString moduleName = QStringLiteral("logos_execution_zone");
-    const QString methodName = QString::fromUtf8(method);
-    const QVariant result = client->invokeRemoteMethod(moduleName, methodName, a1, a2);
-    if (!result.isValid()) {
-        return {};
-    }
-    return result.toString();
-}
-
-QString walletAccountIdHexFromBase58(LogosAPIClient* client, const QString& accountIdBase58) {
-    const QString trimmed = accountIdBase58.trimmed();
-    if (trimmed.isEmpty()) {
-        return {};
-    }
-    return invokeWalletString(client, "account_id_from_base58", trimmed);
 }
 
 bool hex32FromQString(const QString& hexIn, uint8_t out[32]) {
@@ -389,8 +380,8 @@ bool parseWalletAccountJson(const QString& accountJson, QByteArray* dataOut, QSt
     return true;
 }
 
-QByteArray accountDataBytesFromHex(LogosAPIClient* client, const QString& accountHex, QString* errorOut) {
-    const QString accountJson = invokeWalletString(client, "get_account_public", accountHex);
+QByteArray accountDataBytesFromHex(LogosExecutionZone& wallet, const QString& accountHex, QString* errorOut) {
+    const QString accountJson = QString::fromStdString(wallet.get_account_public(accountHex.toStdString()));
     if (accountJson.isEmpty()) {
         if (errorOut != nullptr) {
             *errorOut = QStringLiteral("get_account_public failed");
@@ -422,8 +413,8 @@ bool programIdBytes(uint8_t out[32], QString* errorOut) {
     return hex32FromQString(hex, out);
 }
 
-bool ownerBytesFromBase58(LogosAPIClient* client, const QString& base58, uint8_t out[32], QString* errorOut) {
-    const QString hex = walletAccountIdHexFromBase58(client, base58);
+bool ownerBytesFromBase58(LogosExecutionZone& wallet, const QString& base58, uint8_t out[32], QString* errorOut) {
+    const QString hex = walletAccountIdHexFromBase58(wallet, base58);
     if (hex.size() != 64) {
         if (errorOut != nullptr) {
             *errorOut = QStringLiteral("account_id_from_base58 failed");
@@ -479,7 +470,7 @@ QString providerBase58ForPeer(const QString& peerId) {
     return mappings.value(peerId.trimmed()).toString().trimmed();
 }
 
-QString providerIdHexForPeer(LogosAPIClient* client, const QString& peerId, QString* errorOut) {
+QString providerIdHexForPeer(LogosExecutionZone& wallet, const QString& peerId, QString* errorOut) {
     const QString base58 = providerBase58ForPeer(peerId);
     if (base58.isEmpty()) {
         if (errorOut != nullptr) {
@@ -487,7 +478,7 @@ QString providerIdHexForPeer(LogosAPIClient* client, const QString& peerId, QStr
         }
         return {};
     }
-    const QString hex = walletAccountIdHexFromBase58(client, base58);
+    const QString hex = walletAccountIdHexFromBase58(wallet, base58);
     if (hex.size() != 64) {
         if (errorOut != nullptr) {
             *errorOut = QStringLiteral("provider account_id_from_base58 failed");
@@ -616,13 +607,13 @@ QList<quint64> inventoryStreamIdsForVault(quint64 vaultId) {
     return ids;
 }
 
-bool readClock10Timestamp(LogosAPIClient* client, quint64* outTs, QString* errorOut) {
+bool readClock10Timestamp(LogosExecutionZone& wallet, quint64* outTs, QString* errorOut) {
     uint8_t clock[32]{};
     if (!clockBytes(clock, errorOut)) {
         return false;
     }
     const QString clockHex = bytes32ToHexLower(clock);
-    const QByteArray data = accountDataBytesFromHex(client, clockHex, errorOut);
+    const QByteArray data = accountDataBytesFromHex(wallet, clockHex, errorOut);
     if (data.isEmpty()) {
         return false;
     }
@@ -639,13 +630,13 @@ bool readClock10Timestamp(LogosAPIClient* client, quint64* outTs, QString* error
     return true;
 }
 
-void evictExpiredNegotiations(LogosAPIClient* client, bool* evictedOut = nullptr) {
+void evictExpiredNegotiations(LogosExecutionZone& wallet, bool* evictedOut = nullptr) {
     if (evictedOut != nullptr) {
         *evictedOut = false;
     }
     quint64 now = 0;
     QString err;
-    if (!readClock10Timestamp(client, &now, &err)) {
+    if (!readClock10Timestamp(wallet, &now, &err)) {
         return;
     }
     QJsonArray arr = negotiations();
@@ -676,7 +667,7 @@ struct ChainStreamView {
     quint64 asOf = 0;
 };
 
-bool readStreamAtId(LogosAPIClient* client,
+bool readStreamAtId(LogosExecutionZone& wallet,
                     const uint8_t programId[32],
                     const uint8_t owner[32],
                     quint64 vaultId,
@@ -694,7 +685,7 @@ bool readStreamAtId(LogosAPIClient* client,
         return false;
     }
     const QString streamHex = bytes32ToHexLower(streamCfg);
-    const QByteArray streamData = accountDataBytesFromHex(client, streamHex, errorOut);
+    const QByteArray streamData = accountDataBytesFromHex(wallet, streamHex, errorOut);
     if (streamData.isEmpty()) {
         return true;
     }
@@ -708,7 +699,7 @@ bool readStreamAtId(LogosAPIClient* client,
         return false;
     }
     quint64 asOf = 0;
-    if (!readClock10Timestamp(client, &asOf, errorOut)) {
+    if (!readClock10Timestamp(wallet, &asOf, errorOut)) {
         return false;
     }
     PsFfiStreamFoldAtTime fold{};
@@ -756,8 +747,8 @@ QString eligibilityErrorForStreamState(const ChainStreamView& view) {
     return {};
 }
 
-bool ownerPublicKeyHex(LogosAPIClient* client, const QString& ownerHex, QString* outHex, QString* errorOut) {
-    const QString json = invokeWalletString(client, "get_public_account_key", ownerHex);
+bool ownerPublicKeyHex(LogosExecutionZone& wallet, const QString& ownerHex, QString* outHex, QString* errorOut) {
+    const QString json = QString::fromStdString(wallet.get_public_account_key(ownerHex.toStdString()));
     if (json.isEmpty()) {
         if (errorOut != nullptr) {
             *errorOut = QStringLiteral("get_public_account_key failed");
@@ -793,14 +784,17 @@ bool ownerPublicKeyHex(LogosAPIClient* client, const QString& ownerHex, QString*
     return true;
 }
 
-bool signVaultOwnerDigest(LogosAPIClient* client,
+bool signVaultOwnerDigest(LogosAPI* api,
                           const QString& ownerAccountHex,
                           const uint8_t digest[32],
                           uint8_t outSig[64],
                           QString* errorOut) {
     const QString digestHex =
         QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(digest), 32).toHex());
-    const QString response = invokeWalletTwo(client, "sign_public_payload", ownerAccountHex, digestHex);
+    // sign_public_payload is a repo-local Qt-only patch (N1); not in the lp
+    // typed API, so dispatch dynamically through the Qt LogosAPIClient.
+    LogosAPIClient* qtClient = walletQtClientOrNull(api);
+    const QString response = invokeWalletQtString(qtClient, "sign_public_payload", ownerAccountHex, digestHex);
     if (response.isEmpty()) {
         if (errorOut != nullptr) {
             *errorOut = QStringLiteral("sign_public_payload IPC failed");
@@ -896,9 +890,9 @@ bool sessionPublicKeyFromNegotiations(quint64 vaultId,
     return false;
 }
 
-bool demoProviderIdBytes(LogosAPIClient* client, const QJsonObject& manifest, uint8_t out[32], QString* errorOut) {
+bool demoProviderIdBytes(LogosExecutionZone& wallet, const QJsonObject& manifest, uint8_t out[32], QString* errorOut) {
     const QString base58 = manifest.value(QStringLiteral("provider_account_id")).toString().trimmed();
-    return ownerBytesFromBase58(client, base58, out, errorOut);
+    return ownerBytesFromBase58(wallet, base58, out, errorOut);
 }
 
 void paramsFromStreamConfig(const PsFfiDecodedStreamConfig& decoded, PsFfiStreamParams* params) {
@@ -960,15 +954,11 @@ QString PaymentStreamsModuleImpl::registerProviderMapping(const QVariant& provid
 
 QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForStoreQuery(const QVariant& canonicalRequestHex,
                                                                           const QVariant& providerPeerId) {
-    LogosAPIClient* client = walletClientOrNull(modules().api);
-    if (client == nullptr) {
-        return makeEligibilityError(QStringLiteral("WALLET_SIGNING_FAILED"),
-                                    QStringLiteral("logos_execution_zone client unavailable (open wallet first)"));
-    }
+    LogosExecutionZone& wallet = modules().logos_execution_zone;
 
     const QString peer = providerPeerId.toString().trimmed();
     QString mapErr;
-    const QString providerIdHex = providerIdHexForPeer(client, peer, &mapErr);
+    const QString providerIdHex = providerIdHexForPeer(wallet, peer, &mapErr);
     if (providerIdHex.isEmpty()) {
         return makeEligibilityError(QStringLiteral("UNKNOWN_PROVIDER"), mapErr);
     }
@@ -988,7 +978,7 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForSt
 
     quint64 now = 0;
     QString clockErr;
-    if (!readClock10Timestamp(client, &now, &clockErr)) {
+    if (!readClock10Timestamp(wallet, &now, &clockErr)) {
         return makeEligibilityError(QStringLiteral("CHAIN_READ_FAILED"), clockErr);
     }
 
@@ -1010,7 +1000,7 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForSt
     }
 
     bool evicted = false;
-    evictExpiredNegotiations(client, &evicted);
+    evictExpiredNegotiations(wallet, &evicted);
     if (evicted) {
         return makeEligibilityError(QStringLiteral("PROPOSAL_EXPIRED"),
                                     QStringLiteral("stale pending proposal evicted"));
@@ -1019,12 +1009,12 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForSt
     uint8_t programId[32]{};
     uint8_t owner[32]{};
     uint8_t provider[32]{};
-    if (!programIdBytes(programId, &fixtureErr) || !ownerBytesFromBase58(client, ownerBase58, owner, &fixtureErr) ||
+    if (!programIdBytes(programId, &fixtureErr) || !ownerBytesFromBase58(wallet, ownerBase58, owner, &fixtureErr) ||
         !hex32FromQString(providerIdHex, provider)) {
         return makePlainError(fixtureErr);
     }
 
-    const QString ownerHex = walletAccountIdHexFromBase58(client, ownerBase58).toLower();
+    const QString ownerHex = walletAccountIdHexFromBase58(wallet, ownerBase58).toLower();
     uint8_t vaultCfgAccount[32]{};
     uint8_t vaultHoldingAccount[32]{};
     if (ps_ffi_derive_vault_account_ids(programId, owner, vaultId, vaultCfgAccount, vaultHoldingAccount) !=
@@ -1033,7 +1023,7 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForSt
     }
 
     const QByteArray vaultCfgData =
-        accountDataBytesFromHex(client, bytes32ToHexLower(vaultCfgAccount), &fixtureErr);
+        accountDataBytesFromHex(wallet, bytes32ToHexLower(vaultCfgAccount), &fixtureErr);
     if (vaultCfgData.isEmpty()) {
         return makeEligibilityError(QStringLiteral("CHAIN_READ_FAILED"), fixtureErr);
     }
@@ -1044,7 +1034,7 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForSt
         return makeEligibilityError(QStringLiteral("CHAIN_READ_FAILED"), QStringLiteral("vault config decode failed"));
     }
 
-    const QString holdingJson = invokeWalletString(client, "get_account_public", bytes32ToHexLower(vaultHoldingAccount));
+    const QString holdingJson = QString::fromStdString(wallet.get_account_public(bytes32ToHexLower(vaultHoldingAccount).toStdString()));
     QString balanceHex;
     if (!parseWalletAccountJson(holdingJson, nullptr, &balanceHex)) {
         return makeEligibilityError(QStringLiteral("CHAIN_READ_FAILED"), QStringLiteral("vault holding read failed"));
@@ -1060,7 +1050,7 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForSt
                                     QStringLiteral("insufficient unallocated vault balance for proposal"));
     }
 
-    if (!readClock10Timestamp(client, &now, &fixtureErr)) {
+    if (!readClock10Timestamp(wallet, &now, &fixtureErr)) {
         return makeEligibilityError(QStringLiteral("CHAIN_READ_FAILED"), fixtureErr);
     }
 
@@ -1071,7 +1061,7 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForSt
     }
 
     QString ownerPubHex;
-    if (!ownerPublicKeyHex(client, ownerHex, &ownerPubHex, &fixtureErr)) {
+    if (!ownerPublicKeyHex(wallet, ownerHex, &ownerPubHex, &fixtureErr)) {
         return makeEligibilityError(QStringLiteral("WALLET_SIGNING_FAILED"), fixtureErr);
     }
 
@@ -1091,7 +1081,7 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForSt
     if (ps_ffi_vault_owner_auth_digest_from_decoded_proposal(&proposal, ownerDigest) != kFfiSuccess) {
         return makePlainError(QStringLiteral("vault owner digest FFI failed"));
     }
-    if (!signVaultOwnerDigest(client, ownerHex, ownerDigest, proposal.vault_proof.owner_signature, &fixtureErr)) {
+    if (!signVaultOwnerDigest(modules().api, ownerHex, ownerDigest, proposal.vault_proof.owner_signature, &fixtureErr)) {
         return makeEligibilityError(QStringLiteral("WALLET_SIGNING_FAILED"), fixtureErr);
     }
 
@@ -1154,15 +1144,11 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForSt
 QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProofForStoreQuery(const QVariant& canonicalRequestHex,
                                                                        const QVariant& providerPeerId,
                                                                        const QVariant& streamIdVariant) {
-    LogosAPIClient* client = walletClientOrNull(modules().api);
-    if (client == nullptr) {
-        return makeEligibilityError(QStringLiteral("WALLET_SIGNING_FAILED"),
-                                    QStringLiteral("logos_execution_zone client unavailable (open wallet first)"));
-    }
+    LogosExecutionZone& wallet = modules().logos_execution_zone;
 
     const QString peer = providerPeerId.toString().trimmed();
     QString mapErr;
-    const QString providerIdHex = providerIdHexForPeer(client, peer, &mapErr);
+    const QString providerIdHex = providerIdHexForPeer(wallet, peer, &mapErr);
     if (providerIdHex.isEmpty()) {
         return makeEligibilityError(QStringLiteral("UNKNOWN_PROVIDER"), mapErr);
     }
@@ -1189,13 +1175,13 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProofForStore
     uint8_t programId[32]{};
     uint8_t owner[32]{};
     uint8_t provider[32]{};
-    if (!programIdBytes(programId, &fixtureErr) || !ownerBytesFromBase58(client, ownerBase58, owner, &fixtureErr) ||
+    if (!programIdBytes(programId, &fixtureErr) || !ownerBytesFromBase58(wallet, ownerBase58, owner, &fixtureErr) ||
         !hex32FromQString(providerIdHex, provider)) {
         return makePlainError(fixtureErr);
     }
 
     ChainStreamView view;
-    if (!readStreamAtId(client, programId, owner, vaultId, streamId, &view, &fixtureErr)) {
+    if (!readStreamAtId(wallet, programId, owner, vaultId, streamId, &view, &fixtureErr)) {
         return makeEligibilityError(QStringLiteral("CHAIN_READ_FAILED"), fixtureErr);
     }
     if (!view.found) {
@@ -1266,17 +1252,14 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProofForStore
 }
 
 QString PaymentStreamsModuleImpl::listMyStreams(const QVariant& vaultId) {
-    LogosAPIClient* client = walletClientOrNull(modules().api);
-    if (client == nullptr) {
-        return makePlainError(QStringLiteral("logos_execution_zone client unavailable (load wallet first)"));
-    }
+    LogosExecutionZone& wallet = modules().logos_execution_zone;
     bool ok = false;
     const quint64 vid = variantToU64(vaultId, &ok);
     if (!ok) {
         return makePlainError(QStringLiteral("vaultId must be unsigned integer"));
     }
 
-    evictExpiredNegotiations(client);
+    evictExpiredNegotiations(wallet);
 
     QJsonObject manifest;
     QString err;
@@ -1286,14 +1269,14 @@ QString PaymentStreamsModuleImpl::listMyStreams(const QVariant& vaultId) {
     const QString ownerBase58 = manifest.value(QStringLiteral("owner_account_id")).toString().trimmed();
     uint8_t programId[32]{};
     uint8_t owner[32]{};
-    if (!programIdBytes(programId, &err) || !ownerBytesFromBase58(client, ownerBase58, owner, &err)) {
+    if (!programIdBytes(programId, &err) || !ownerBytesFromBase58(wallet, ownerBase58, owner, &err)) {
         return makePlainError(err);
     }
 
     QJsonArray streams;
     for (quint64 sid : inventoryStreamIdsForVault(vid)) {
         ChainStreamView view;
-        if (!readStreamAtId(client, programId, owner, vid, sid, &view, &err)) {
+        if (!readStreamAtId(wallet, programId, owner, vid, sid, &view, &err)) {
             return makeEligibilityError(QStringLiteral("CHAIN_READ_FAILED"), err);
         }
         QJsonObject row;
@@ -1318,10 +1301,7 @@ QString PaymentStreamsModuleImpl::listMyStreams(const QVariant& vaultId) {
 }
 
 QString PaymentStreamsModuleImpl::rediscoverStreams(const QVariant& vaultId) {
-    LogosAPIClient* client = walletClientOrNull(modules().api);
-    if (client == nullptr) {
-        return makePlainError(QStringLiteral("logos_execution_zone client unavailable (load wallet first)"));
-    }
+    LogosExecutionZone& wallet = modules().logos_execution_zone;
     bool ok = false;
     const quint64 vid = variantToU64(vaultId, &ok);
     if (!ok) {
@@ -1338,13 +1318,13 @@ QString PaymentStreamsModuleImpl::rediscoverStreams(const QVariant& vaultId) {
     uint8_t owner[32]{};
     uint8_t vaultCfg[32]{};
     uint8_t vaultHolding[32]{};
-    if (!programIdBytes(programId, &err) || !ownerBytesFromBase58(client, ownerBase58, owner, &err)) {
+    if (!programIdBytes(programId, &err) || !ownerBytesFromBase58(wallet, ownerBase58, owner, &err)) {
         return makePlainError(err);
     }
     if (ps_ffi_derive_vault_account_ids(programId, owner, vid, vaultCfg, vaultHolding) != kFfiSuccess) {
         return makePlainError(QStringLiteral("derive vault config failed"));
     }
-    const QByteArray cfgData = accountDataBytesFromHex(client, bytes32ToHexLower(vaultCfg), &err);
+    const QByteArray cfgData = accountDataBytesFromHex(wallet, bytes32ToHexLower(vaultCfg), &err);
     if (cfgData.isEmpty()) {
         return makeEligibilityError(QStringLiteral("CHAIN_READ_FAILED"), err);
     }
@@ -1359,7 +1339,7 @@ QString PaymentStreamsModuleImpl::rediscoverStreams(const QVariant& vaultId) {
     QJsonArray streams;
     for (quint64 sid = 0; sid < decodedCfg.next_stream_id; ++sid) {
         ChainStreamView view;
-        if (!readStreamAtId(client, programId, owner, vid, sid, &view, &err)) {
+        if (!readStreamAtId(wallet, programId, owner, vid, sid, &view, &err)) {
             return makeEligibilityError(QStringLiteral("CHAIN_READ_FAILED"), err);
         }
         if (!view.found) {
@@ -1394,10 +1374,7 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
         return makePlainError(QStringLiteral("proofBytes and canonicalRequestBytes must be non-empty even-length hex"));
     }
 
-    LogosAPIClient* client = walletClientOrNull(modules().api);
-    if (client == nullptr) {
-        return makePlainError(QStringLiteral("logos_execution_zone client unavailable (open wallet first)"));
-    }
+    LogosExecutionZone& wallet = modules().logos_execution_zone;
 
     QJsonObject manifest;
     QString fixtureErr;
@@ -1406,13 +1383,13 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
     }
 
     uint8_t demoProvider[32]{};
-    if (!demoProviderIdBytes(client, manifest, demoProvider, &fixtureErr)) {
+    if (!demoProviderIdBytes(wallet, manifest, demoProvider, &fixtureErr)) {
         return makePlainError(fixtureErr);
     }
     const QString providerIdHex = bytes32ToHexLower(demoProvider);
 
     quint64 clockRaw = 0;
-    if (!readClock10Timestamp(client, &clockRaw, &fixtureErr)) {
+    if (!readClock10Timestamp(wallet, &clockRaw, &fixtureErr)) {
         return makePlainError(fixtureErr);
     }
     const quint64 policyNow = foldClockForPolicy(clockRaw);
@@ -1439,7 +1416,7 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
     const QString ownerBase58 = manifest.value(QStringLiteral("owner_account_id")).toString().trimmed();
     uint8_t programId[32]{};
     uint8_t owner[32]{};
-    if (!programIdBytes(programId, &fixtureErr) || !ownerBytesFromBase58(client, ownerBase58, owner, &fixtureErr)) {
+    if (!programIdBytes(programId, &fixtureErr) || !ownerBytesFromBase58(wallet, ownerBase58, owner, &fixtureErr)) {
         return makePlainError(fixtureErr);
     }
 
@@ -1471,7 +1448,7 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
             return makePlainError(QStringLiteral("derive vault accounts failed"));
         }
         const QByteArray vaultCfgData =
-            accountDataBytesFromHex(client, bytes32ToHexLower(vaultCfgAccount), &fixtureErr);
+            accountDataBytesFromHex(wallet, bytes32ToHexLower(vaultCfgAccount), &fixtureErr);
         if (vaultCfgData.isEmpty()) {
             return makePlainError(fixtureErr);
         }
@@ -1491,7 +1468,7 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
         }
 
         const QString holdingJson =
-            invokeWalletString(client, "get_account_public", bytes32ToHexLower(vaultHoldingAccount));
+            QString::fromStdString(wallet.get_account_public(bytes32ToHexLower(vaultHoldingAccount).toStdString()));
         QString balanceHex;
         if (!parseWalletAccountJson(holdingJson, nullptr, &balanceHex)) {
             return makePlainError(QStringLiteral("vault holding read failed"));
@@ -1580,7 +1557,7 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
     }
 
     ChainStreamView view;
-    if (!readStreamAtId(client, programId, owner, vaultId, proof.stream_id, &view, &fixtureErr)) {
+    if (!readStreamAtId(wallet, programId, owner, vaultId, proof.stream_id, &view, &fixtureErr)) {
         return makePlainError(fixtureErr);
     }
     if (!view.found || !providerMatchesStream(view.decoded, demoProvider)) {

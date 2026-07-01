@@ -32,37 +32,12 @@ QString makeOkJson(const QJsonObject& payload) {
     return QJsonDocument(obj).toJson(QJsonDocument::Compact);
 }
 
-LogosAPIClient* walletClientOrNull(LogosAPI* api) {
-    if (api == nullptr) {
-        return nullptr;
-    }
-    return api->getClient(QStringLiteral("logos_execution_zone"));
-}
-
-QString invokeWalletString(LogosAPIClient* client, const char* method, const QVariant& arg = {}) {
-    if (client == nullptr) {
-        return {};
-    }
-    const QString moduleName = QStringLiteral("logos_execution_zone");
-    const QString methodName = QString::fromUtf8(method);
-    QVariant result;
-    if (arg.isValid() && !arg.isNull()) {
-        result = client->invokeRemoteMethod(moduleName, methodName, arg);
-    } else {
-        result = client->invokeRemoteMethod(moduleName, methodName);
-    }
-    if (!result.isValid()) {
-        return {};
-    }
-    return result.toString();
-}
-
-QString walletAccountIdHexFromBase58(LogosAPIClient* client, const QString& accountIdBase58) {
+QString walletAccountIdHexFromBase58(LogosExecutionZone& wallet, const QString& accountIdBase58) {
     const QString trimmed = accountIdBase58.trimmed();
     if (trimmed.isEmpty()) {
         return {};
     }
-    return invokeWalletString(client, "account_id_from_base58", trimmed);
+    return QString::fromStdString(wallet.account_id_from_base58(trimmed.toStdString()));
 }
 
 bool parseWalletAccountJson(const QString& accountJson, QByteArray* dataOut, QString* errorOut) {
@@ -95,15 +70,15 @@ bool parseWalletAccountJson(const QString& accountJson, QByteArray* dataOut, QSt
     return true;
 }
 
-QByteArray accountDataBytesFromBase58(LogosAPIClient* client, const QString& accountIdBase58, QString* errorOut) {
-    const QString accountIdHex = walletAccountIdHexFromBase58(client, accountIdBase58);
+QByteArray accountDataBytesFromBase58(LogosExecutionZone& wallet, const QString& accountIdBase58, QString* errorOut) {
+    const QString accountIdHex = walletAccountIdHexFromBase58(wallet, accountIdBase58);
     if (accountIdHex.isEmpty()) {
         if (errorOut != nullptr) {
             *errorOut = QStringLiteral("account_id_from_base58 failed or returned empty");
         }
         return {};
     }
-    const QString accountJson = invokeWalletString(client, "get_account_public", accountIdHex);
+    const QString accountJson = QString::fromStdString(wallet.get_account_public(accountIdHex.toStdString()));
     if (accountJson.isEmpty()) {
         if (errorOut != nullptr) {
             *errorOut = QStringLiteral("get_account_public failed or returned empty");
@@ -186,9 +161,9 @@ QJsonObject clockToJson(const PsFfiDecodedClock& decoded) {
     return obj;
 }
 
-QString decodeVaultConfigPayload(LogosAPIClient* client, const QString& accountIdBase58) {
+QString decodeVaultConfigPayload(LogosExecutionZone& wallet, const QString& accountIdBase58) {
     QString readError;
-    const QByteArray data = accountDataBytesFromBase58(client, accountIdBase58, &readError);
+    const QByteArray data = accountDataBytesFromBase58(wallet, accountIdBase58, &readError);
     if (data.isEmpty()) {
         return makeErrorJson(readError.isEmpty() ? QStringLiteral("empty account data") : readError);
     }
@@ -204,9 +179,9 @@ QString decodeVaultConfigPayload(LogosAPIClient* client, const QString& accountI
     return makeOkJson(payload);
 }
 
-QString decodeVaultHoldingPayload(LogosAPIClient* client, const QString& accountIdBase58) {
+QString decodeVaultHoldingPayload(LogosExecutionZone& wallet, const QString& accountIdBase58) {
     QString readError;
-    const QByteArray data = accountDataBytesFromBase58(client, accountIdBase58, &readError);
+    const QByteArray data = accountDataBytesFromBase58(wallet, accountIdBase58, &readError);
     if (data.isEmpty()) {
         return makeErrorJson(readError.isEmpty() ? QStringLiteral("empty account data") : readError);
     }
@@ -222,9 +197,9 @@ QString decodeVaultHoldingPayload(LogosAPIClient* client, const QString& account
     return makeOkJson(payload);
 }
 
-QString decodeStreamConfigPayload(LogosAPIClient* client, const QString& accountIdBase58) {
+QString decodeStreamConfigPayload(LogosExecutionZone& wallet, const QString& accountIdBase58) {
     QString readError;
-    const QByteArray data = accountDataBytesFromBase58(client, accountIdBase58, &readError);
+    const QByteArray data = accountDataBytesFromBase58(wallet, accountIdBase58, &readError);
     if (data.isEmpty()) {
         return makeErrorJson(readError.isEmpty() ? QStringLiteral("empty account data") : readError);
     }
@@ -240,9 +215,9 @@ QString decodeStreamConfigPayload(LogosAPIClient* client, const QString& account
     return makeOkJson(payload);
 }
 
-QString decodeClockPayload(LogosAPIClient* client, const QString& accountIdBase58) {
+QString decodeClockPayload(LogosExecutionZone& wallet, const QString& accountIdBase58) {
     QString readError;
-    const QByteArray data = accountDataBytesFromBase58(client, accountIdBase58, &readError);
+    const QByteArray data = accountDataBytesFromBase58(wallet, accountIdBase58, &readError);
     if (data.isEmpty()) {
         return makeErrorJson(readError.isEmpty() ? QStringLiteral("empty account data") : readError);
     }
@@ -261,12 +236,9 @@ QString decodeClockPayload(LogosAPIClient* client, const QString& accountIdBase5
 }  // namespace
 
 QString PaymentStreamsModuleImpl::accountIdHexFromBase58(const QVariant& accountIdBase58) {
-    LogosAPIClient* client = walletClientOrNull(modules().api);
-    if (client == nullptr) {
-        return makeErrorJson(QStringLiteral("logos_execution_zone client unavailable (load wallet first)"));
-    }
+    LogosExecutionZone& wallet = modules().logos_execution_zone;
     const QString base58 = accountIdBase58.toString();
-    const QString hex = walletAccountIdHexFromBase58(client, base58);
+    const QString hex = walletAccountIdHexFromBase58(wallet, base58);
     if (hex.isEmpty()) {
         return makeErrorJson(QStringLiteral("account_id_from_base58 returned empty"));
     }
@@ -276,35 +248,23 @@ QString PaymentStreamsModuleImpl::accountIdHexFromBase58(const QVariant& account
 }
 
 QString PaymentStreamsModuleImpl::readVaultConfigDecoded(const QVariant& vaultConfigAccountIdBase58) {
-    LogosAPIClient* client = walletClientOrNull(modules().api);
-    if (client == nullptr) {
-        return makeErrorJson(QStringLiteral("logos_execution_zone client unavailable (load wallet first)"));
-    }
-    return decodeVaultConfigPayload(client, vaultConfigAccountIdBase58.toString());
+    LogosExecutionZone& wallet = modules().logos_execution_zone;
+    return decodeVaultConfigPayload(wallet, vaultConfigAccountIdBase58.toString());
 }
 
 QString PaymentStreamsModuleImpl::readVaultHoldingDecoded(const QVariant& vaultHoldingAccountIdBase58) {
-    LogosAPIClient* client = walletClientOrNull(modules().api);
-    if (client == nullptr) {
-        return makeErrorJson(QStringLiteral("logos_execution_zone client unavailable (load wallet first)"));
-    }
-    return decodeVaultHoldingPayload(client, vaultHoldingAccountIdBase58.toString());
+    LogosExecutionZone& wallet = modules().logos_execution_zone;
+    return decodeVaultHoldingPayload(wallet, vaultHoldingAccountIdBase58.toString());
 }
 
 QString PaymentStreamsModuleImpl::readStreamConfigDecoded(const QVariant& streamConfigAccountIdBase58) {
-    LogosAPIClient* client = walletClientOrNull(modules().api);
-    if (client == nullptr) {
-        return makeErrorJson(QStringLiteral("logos_execution_zone client unavailable (load wallet first)"));
-    }
-    return decodeStreamConfigPayload(client, streamConfigAccountIdBase58.toString());
+    LogosExecutionZone& wallet = modules().logos_execution_zone;
+    return decodeStreamConfigPayload(wallet, streamConfigAccountIdBase58.toString());
 }
 
 QString PaymentStreamsModuleImpl::readClockDecoded(const QVariant& clockAccountIdBase58) {
-    LogosAPIClient* client = walletClientOrNull(modules().api);
-    if (client == nullptr) {
-        return makeErrorJson(QStringLiteral("logos_execution_zone client unavailable (load wallet first)"));
-    }
-    return decodeClockPayload(client, clockAccountIdBase58.toString());
+    LogosExecutionZone& wallet = modules().logos_execution_zone;
+    return decodeClockPayload(wallet, clockAccountIdBase58.toString());
 }
 
 QString PaymentStreamsModuleImpl::readClock10Decoded() {
