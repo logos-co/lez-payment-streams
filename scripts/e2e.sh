@@ -231,7 +231,7 @@ cmd_run() {
     mkdir -p "$(dirname "$ARTIFACT")"
     ps_log_info "Launching module happy path (Flow A)..."
     MODULES="$MODULES_USER" ARTIFACT="$ARTIFACT" \
-      "$REPO_ROOT/scripts/module-e2e.sh" || {
+      "$REPO_ROOT/scripts/module-e2e.sh" ${E2E_VERBOSITY:+--verbosity "$E2E_VERBOSITY"} || {
         ps_log_error "Module E2E run failed"
         return 1
       }
@@ -275,7 +275,8 @@ cmd_run() {
   python3 "$REPO_ROOT/scripts/e2e/run_local_e2e.py" \
     --repo "$REPO_ROOT" \
     --phase "$E2E_PHASE" \
-    --artifact "$ARTIFACT" || {
+    --artifact "$ARTIFACT" \
+    ${E2E_VERBOSITY:+--verbosity "$E2E_VERBOSITY"} || {
       ps_log_error "E2E run failed"
       return 1
     }
@@ -354,6 +355,13 @@ Environment:
   SKIP_TEARDOWN      — Skip cleanup (default: 0)
   E2E_PHASE          — core, claim, or all (default: all)
 
+Flags:
+  --verbosity quiet|normal|verbose
+                     — Console output level (default: verbose on TTY,
+                       quiet when piped). quiet: JSON-lines only;
+                       normal: phase headers + values; verbose: full
+                       narrative with concept explanations.
+
 Verification matrix (mode x chain):
   MODE=module CHAIN=local  $0 local run   # module verification, localnet
   MODE=store  CHAIN=local  $0 local run   # Store integration, localnet
@@ -371,7 +379,26 @@ EOF
 
 main() {
   [[ $# -lt 1 ]] && { usage; exit 1; }
-  
+
+  # Parse --verbosity flag anywhere in args
+  local verbosity=""
+  local filtered_args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --verbosity) verbosity="$2"; shift 2 ;;
+      --verbosity=*) verbosity="${1#*=}"; shift ;;
+      *) filtered_args+=("$1"); shift ;;
+    esac
+  done
+  set -- "${filtered_args[@]}"
+
+  if [[ -n "$verbosity" ]]; then
+    case "$verbosity" in
+      quiet|normal|verbose) export E2E_VERBOSITY="$verbosity" ;;
+      *) ps_fatal "invalid --verbosity: $verbosity (use quiet|normal|verbose)" ;;
+    esac
+  fi
+
   local category="$1"
   shift
   

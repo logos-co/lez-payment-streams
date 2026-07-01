@@ -132,6 +132,81 @@ class RunTimer:
         )
 
 
+class Narrator:
+    """Console narrative printer with three verbosity levels.
+
+    quiet:   JSON-lines to artifact file only, no console output.
+    normal:  Phase headers, status markers, on-chain values.
+    verbose: Full narrative with inline concept explanations.
+    """
+
+    def __init__(self, verbosity: str = "verbose") -> None:
+        self.verbosity = verbosity
+        self._chain_label = "LocalNet" if os.environ.get("CHAIN", "local").strip().lower() == "local" else "TestNet"
+
+    def _ts(self) -> str:
+        return time.strftime("%H:%M:%S")
+
+    def _emit(self, level: str, text: str) -> None:
+        if self.verbosity == "quiet":
+            return
+        if level == "verbose" and self.verbosity != "verbose":
+            return
+        print(f"[{self._ts()}] {text}", file=sys.stderr)
+
+    def header(self, scenario: str) -> None:
+        if self.verbosity == "quiet":
+            return
+        line = "=" * 44
+        print(f"\n[{self._ts()}] {line}", file=sys.stderr)
+        print(f"[{self._ts()}] Payment Streams E2E: Developer Journey ({self._chain_label})", file=sys.stderr)
+        print(f"[{self._ts()}] {scenario}", file=sys.stderr)
+        print(f"[{self._ts()}] {line}", file=sys.stderr)
+
+    def phase(self, name: str) -> None:
+        self._emit("always", "")
+        self._emit("always", f"PHASE: {name}")
+
+    def step(self, text: str) -> None:
+        self._emit("always", f"  → {text}")
+
+    def ok(self, text: str) -> None:
+        self._emit("always", f"  ✓ {text}")
+
+    def fail(self, text: str) -> None:
+        self._emit("always", f"  ✗ {text}")
+
+    def value(self, text: str) -> None:
+        self._emit("always", f"    {text}")
+
+    def concept(self, text: str) -> None:
+        self._emit("verbose", f"    {text}")
+
+    def hint(self, text: str) -> None:
+        self._emit("always", f"  ! Hint: {text}")
+
+    def complete(self, artifact: Path) -> None:
+        if self.verbosity == "quiet":
+            return
+        line = "=" * 44
+        print(f"\n[{self._ts()}] {line}", file=sys.stderr)
+        print(f"[{self._ts()}] E2E COMPLETE: All phases succeeded", file=sys.stderr)
+        print(f"[{self._ts()}] Artifact: {artifact}", file=sys.stderr)
+        print(f"[{self._ts()}] {line}", file=sys.stderr)
+
+    def complete_fail(self, artifact: Path, failures: int) -> None:
+        if self.verbosity == "quiet":
+            return
+        line = "=" * 44
+        print(f"\n[{self._ts()}] {line}", file=sys.stderr)
+        print(f"[{self._ts()}] E2E FAILED: {failures} phase(s) failed", file=sys.stderr)
+        print(f"[{self._ts()}] Artifact: {artifact}", file=sys.stderr)
+        print(f"[{self._ts()}] {line}", file=sys.stderr)
+
+
+narrator = Narrator(os.environ.get("E2E_VERBOSITY", "verbose"))
+
+
 _PER_RUN_STREAM_MANIFEST_KEYS = ("stream_id", "stream_config_account_id")
 
 
@@ -2517,7 +2592,20 @@ def main() -> int:
     ap.add_argument("--repo", type=Path, default=Path.cwd())
     ap.add_argument("--phase", choices=("core", "claim", "all"), default="all")
     ap.add_argument("--artifact", type=Path, required=True)
+    ap.add_argument(
+        "--verbosity",
+        choices=("quiet", "normal", "verbose"),
+        default=os.environ.get("E2E_VERBOSITY", "verbose"),
+    )
     args = ap.parse_args()
+
+    global narrator
+    narrator = Narrator(args.verbosity)
+
+    narrator.header(
+        "Scenario: User proves stream eligibility to Provider\n"
+        f"[{time.strftime('%H:%M:%S')}]          for paid Store query (LIP-155, RFC 73 tag 30)"
+    )
 
     repo = args.repo.resolve()
     artifact = args.artifact
@@ -2564,6 +2652,8 @@ def main() -> int:
         strip_snapshot_stream_fields(manifest, manifest_path)
     n8_wire = os.environ.get("N8_WIRE_HEX", "").strip()
     if not n8_wire:
+        narrator.phase("Environment Setup")
+        narrator.step("Computing N8 canonical wire format")
         n8_proc = run(
             ["cargo", "run", "-q", "--release", "-p", "lez-payment-streams-core", "--bin", "n8_canonical_wire_hex"],
             cwd=repo,
@@ -2571,8 +2661,11 @@ def main() -> int:
         )
         if n8_proc.returncode != 0:
             log_artifact(artifact, "n8_wire", False, error=n8_proc.stderr)
+            narrator.fail("N8 wire computation failed")
+            narrator.hint("Check lez-payment-streams-core builds successfully")
             return 1
         n8_wire = n8_proc.stdout.strip()
+        narrator.ok("N8 wire computed")
     timer.mark("n8_wire_ready")
 
     user_ports_shift = 0
@@ -2588,6 +2681,8 @@ def main() -> int:
 
         if args.phase in ("core", "all"):
             # --- Provider daemon ---
+            narrator.phase("Environment Setup")
+            narrator.step("Starting provider logoscore, loading modules")
             start_daemon(cfg_provider, modules_provider, persist_provider)
             load_modules(cfg_provider)
             open_wallet(cfg_provider, wallet_config, wallet_storage)
@@ -2619,8 +2714,11 @@ def main() -> int:
             provider_ad.write_text(json.dumps(ad, indent=2) + "\n")
             log_artifact(artifact, "provider_ad", True, **ad)
             timer.mark("provider_delivery_up")
+            narrator.ok("Provider ready: delivery_module (Store enabled), payment_streams_module")
+            narrator.value(f"provider peer_id={peer_id}, store multiaddr={provider_addr}")
 
             # --- User daemon ---
+            narrator.step("Starting user logoscore, loading modules")
             start_daemon(cfg_user, modules_user, persist_user)
             load_modules(cfg_user)
             open_wallet(cfg_user, wallet_config, wallet_storage)
@@ -2637,6 +2735,7 @@ def main() -> int:
             }
             delivery_create_start(cfg_user, user_create, persist=persist_user, label="user")
             # Outbound proof via eligibilityProofHex in query JSON (hook deadlocks Approach A).
+            narrator.ok("User ready: delivery_module (Store client), payment_streams_module")
 
             seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
             sync_wallet(cfg_user, seq_url)
@@ -2666,6 +2765,7 @@ def main() -> int:
                 )
                 timer.mark("create_demo_stream_done")
 
+            narrator.step("Publishing test messages to Store...")
             logoscore_cmd(cfg_user, "call", "delivery_module", "subscribe", CONTENT_TOPIC)
             logoscore_cmd(cfg_provider, "call", "delivery_module", "subscribe", CONTENT_TOPIC)
             payload = f"e2e-{uuid.uuid4().hex[:8]}"
@@ -2674,12 +2774,19 @@ def main() -> int:
             if continuation_e2e_run():
                 publish_wait = int(os.environ.get("E2E_CONTINUATION_PUBLISH_WAIT_S", "5"))
             time.sleep(publish_wait)
+            narrator.ok("Messages published and propagated")
 
             sync_wallet(cfg_user, seq_url)
             sync_wallet(cfg_provider, seq_url)
             timer.mark("messaging_publish_wait")
 
             if not os.environ.get("E2E_PRECREATED_STREAM_ID", "").strip():
+                narrator.phase("Stream Creation")
+                vault_id = int(manifest.get("vault_id", 0))
+                rate = int(manifest.get("stream_rate", 1))
+                alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 200)))
+                narrator.step(f"User creates payment stream to provider")
+                narrator.value(f"rate={rate} token/sec, allocation={alloc} tokens, vault={vault_id}")
                 create_demo_stream_for_run(
                     cfg_user,
                     cfg_provider,
@@ -2691,13 +2798,28 @@ def main() -> int:
                     wallet_config=wallet_config,
                 )
                 timer.mark("create_demo_stream_done")
+                stream_id = manifest_stream_id(manifest)
+                narrator.ok(f"Stream created: stream_id={stream_id}, status=ACTIVE")
+                min_unaccrued = min_unaccrued_lo_for_proof(manifest)
+                narrator.step(f"Waiting for stream to become fundable (need ≥{min_unaccrued} unaccrued tokens)")
+                narrator.concept("Accrual is timestamp-based: derived from on-chain")
+                narrator.concept("accrued_as_of field. On testnet, granularity is limited")
+                narrator.concept("by block time.")
+            else:
+                stream_id = manifest_stream_id(manifest)
 
             # Mint proof immediately before storeQuery so provider verify still sees unaccrued balance.
+            narrator.phase("Eligibility Proof Generation")
+            narrator.step("User generates LIP-155 eligibility proof from active stream")
+            narrator.concept("Proof derives from on-chain stream state, valid for current block")
             proof_hex = user_prepare_proof(cfg_user, manifest, n8_wire, peer_id)
+            narrator.ok(f"Proof generated: {len(proof_hex) // 2} bytes, stream_id={stream_id}")
             seed_provider_session_from_user(persist_user, persist_provider, manifest_path, repo)
             reload_provider_payment_streams_module(cfg_provider)
             sync_wallet(cfg_provider, seq_url)
 
+            narrator.phase("Paid Store Query")
+            narrator.step("User sends Store query with eligibility proof attached")
             query = dict(N8_REFERENCE_QUERY)
             query["eligibilityProofHex"] = proof_hex
             query_json = json.dumps(query, separators=(",", ":"))
@@ -2731,7 +2853,13 @@ def main() -> int:
                 status=sc,
                 response_preview=str(response)[:500],
             )
-            if not store_ok:
+            if store_ok:
+                narrator.step("Provider verifies proof against LEZ on-chain state")
+                narrator.ok(f"Proof valid: stream active, serving historical messages")
+                narrator.ok(f"Store query returned {mc} messages, status {sc}")
+            else:
+                narrator.fail(f"Store query failed: {mc} messages, status {sc}")
+                narrator.hint("Check provider verifier, stream state, and proof freshness")
                 verdict = provider_verify_verdict(cfg_provider, proof_hex, n8_wire)
                 log_artifact(
                     artifact,
@@ -2746,6 +2874,8 @@ def main() -> int:
                 )
 
             # Missing proof (no eligibilityProofHex; provider verifier enabled)
+            narrator.phase("Rejection Path")
+            narrator.step("User sends Store query without eligibility proof")
             fail_query = dict(N8_REFERENCE_QUERY)
             fail_query["requestId"] = uuid.uuid4().hex[:16]
             fail_json = json.dumps(fail_query, separators=(",", ":"))
@@ -2761,11 +2891,18 @@ def main() -> int:
                 status=status,
                 message_count=mc_fail,
             )
-            if not ok_fail:
+            if ok_fail:
+                narrator.ok(f"Query rejected (no eligibility proof), {mc_fail} messages returned")
+            else:
+                narrator.fail(f"Missing-proof path unexpected: {mc_fail} messages, status {status}")
+                narrator.hint("Provider verifier may not be enabled or configured correctly")
                 raise E2EError(f"missing-proof path unexpected: {fail_resp!r}")
 
+            narrator.phase("Teardown")
+            narrator.step(f"Closing stream {stream_id}")
             demo_teardown(cfg_user, cfg_provider, manifest, artifact, repo)
             timer.mark("core_teardown_done")
+            narrator.ok("Stream closed, accrued funds claimed, vault liquidity verified")
 
         if args.phase == "claim":
             log_artifact(
@@ -2779,7 +2916,9 @@ def main() -> int:
     except E2EError as e:
         timer.mark("fatal")
         log_artifact(artifact, "fatal", False, error=str(e))
-        print(f"E2E failed: {e}", file=sys.stderr)
+        narrator.fail(str(e))
+        narrator.hint("Check artifact log for full phase details")
+        narrator.complete_fail(artifact, 1)
         return 1
     finally:
         log_artifact(
@@ -2791,7 +2930,7 @@ def main() -> int:
         stop_daemon(cfg_user)
         stop_daemon(cfg_provider)
 
-    print(f"E2E OK — artifact {artifact}")
+    narrator.complete(artifact)
     return 0
 
 
