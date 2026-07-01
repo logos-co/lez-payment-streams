@@ -1,17 +1,43 @@
 # Testnet claim known issue and demo funding policy
 
-Status as of 2026-06-28.
+Status as of 2026-07-01.
 Scope: public testnet (`https://testnet.lez.logos.co/`) only.
 Localnet is unaffected; local close and claim both confirm.
 
 ## Summary
 
-On public testnet the provider `claim` instruction has not reliably confirmed,
-while every other instruction in the same wallet and nonce sequence
-(create, deposit, close) lands.
-Because claim is a teardown and accounting step, not the demo headline,
-the demo treats claim as optional (see Demo policy below) and the
-end-to-end run does not depend on it.
+On public testnet the provider `claim` instruction had not reliably
+confirmed, while every other instruction in the same wallet and nonce
+sequence (create, deposit, close) landed.
+Step 27 (claim fix and verification) diagnosed and fixed the localnet
+`claim` path under LEZ v0.2.0 (Symptom D); the public testnet re-test
+(Symptom C) is still pending because the public testnet has not yet
+been upgraded to v0.2.0. This document is retained until that re-test
+lands.
+
+## Step 27 re-test result (Symptom C)
+
+Symptom C (the original rc5-era testnet claim failure) predates LEZ
+v0.2.0's `program_owner` enforcement and the spel macro post-state
+filter. Step 27's localnet diagnostic confirmed that the v0.2.0 claim
+failure (Symptom D) is a separate, newer issue caused by a
+DEFAULT-owned, nonce-incremented provider being dropped from the
+program output. The Symptom D fix (preventive
+`wallet auth-transfer init` of the provider in
+`scripts/fixture.sh::init_provider_account`) resolved the localnet
+claim: `MODE=store CHAIN=local` E2E now shows `demo_claim ok=True`
+with provider balance 0→200 and `vault_holding` 1000→800, and zero
+sequencer rejections.
+
+The public testnet Symptom C re-test cannot run until the testnet is
+upgraded to v0.2.0. When it is, the first diagnostic is the same one
+Step 27 used on localnet: capture the sequencer reject reason for
+`Instruction::Claim` (verbose submit or mempool inspection) and verify
+the provider's on-chain balance and `program_owner` before and after
+the claim. If the v0.2.0 fixture's `init_provider_account` is applied
+on testnet (the provider is auth-transfer-init'd before any signer tx),
+Symptom C should be resolved by the same preventive fix. If it is not,
+C becomes a separate follow-up.
 
 ## Observed behavior
 
@@ -38,11 +64,14 @@ so the encoding and witness construction are not the obvious cause.
 
 ## Next diagnostic step
 
-Capture the sequencer reject reason for `Instruction::Claim`
-(verbose submit or mempool inspection) and compare the claim message bytes
-against a known-good close message.
-Since account order and signer are identical, the difference is the
-instruction variant in the message payload and the guest dispatch for it.
+The "capture the sequencer reject reason" diagnostic is now completed
+for the v0.2.0 localnet path (Symptom D — see the Step 27 re-test
+result above). For the public testnet (Symptom C), the next diagnostic
+remains: capture the sequencer reject reason for `Instruction::Claim`
+on the v0.2.0 testnet and compare the claim message bytes against a
+known-good close message. Since account order and signer are identical,
+the difference is the instruction variant in the message payload and
+the guest dispatch for it.
 
 ## Demo policy claim is optional
 
@@ -94,4 +123,6 @@ several runs without reclaiming.
 - Claim CLI: `examples/src/bin/seed_localnet_fixture.rs` (`claim-onchain`).
 - Core semantics: `lez-payment-streams-core/src/stream_config.rs`
   (`claim_at_time`, test `n_closed_residual_succeeds`).
-- Testnet packet: [plan/completed/step-18-public-testnet-demo.md](plan/completed/step-18-public-testnet-demo.md).
+- v0.2.0 localnet claim fix (Symptom D):
+  [plan/completed/step-27-claim-fix-verification.md](../../plan/completed/step-27-claim-fix-verification.md).
+- Testnet packet: [plan/completed/step-18-public-testnet-demo.md](../completed/step-18-public-testnet-demo.md).

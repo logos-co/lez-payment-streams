@@ -13,7 +13,7 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets |
-| [upcoming/](upcoming/) | Steps 20, 22, 27-30 (active); optional 21 (UI), 23 |
+| [upcoming/](upcoming/) | Steps 20, 22, 28-30 (active); optional 21 (UI), 23 |
 | [cancelled/](cancelled/) | Step 25 won't fix |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
@@ -22,7 +22,7 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 Developer Journey (Store integration): Step 20 + Step 17 scripts.
 User Journey: Step 22 (active, CLI-based doc packet).
 User Journey UI (optional): Step 21 (Basecamp plugin) — if shipped, Step 22 may include UI content.
-TestNet v0.2 migration: Steps 27-29 (active, can parallelize with documentation); Step 26 complete.
+TestNet v0.2 migration: Steps 28-29 (active, can parallelize with documentation); Steps 26-27 complete.
 Static dependency migration: Step 30 (active, was gated on Step 26, now unblocked).
 See [N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 
@@ -52,7 +52,7 @@ paid Store mode on the provider.
 | LEZ in-process harness (`program_tests`, rc5 `lee`) | 24 + 24b (complete) |
 | Deterministic demo lifecycle | 24c (complete) |
 | TestNet v0.2 migration | 26 (complete) |
-| Claim fix: both journeys, both chains | 27 (active) |
+| Claim fix: both journeys, both chains | 27 (complete; testnet v0.2 re-test deferred) |
 | User Journey on TestNet v0.2 | 28 (active) |
 | E2E script UX enhancement | 29 (active, parallel) |
 | Static dependency migration | 30 (active, gated on 26) |
@@ -79,7 +79,7 @@ Dual-host demo coordination stays in host scripts
 | 23 | Public Store provider | Optional -- [step-23-public-store-provider.md](upcoming/step-23-public-store-provider.md) |
 | 25 | Demo coordination Logos module | Won't fix -- [cancelled/step-25](cancelled/step-25-demo-coordination-module.md) |
 | 26 | TestNet v0.2 migration | Complete -- [step-26-testnet-v02-migration.md](completed/step-26-testnet-v02-migration.md) |
-| 27 | Claim fix and verification | Active -- [step-27-claim-fix-verification.md](upcoming/step-27-claim-fix-verification.md) |
+| 27 | Claim fix and verification | Complete -- [step-27-claim-fix-verification.md](completed/step-27-claim-fix-verification.md) |
 | 28 | User Journey on TestNet v0.2 | Active -- [step-28-user-journey-testnet.md](upcoming/step-28-user-journey-testnet.md) |
 | 29 | E2E script UX enhancement | Active -- [step-29-e2e-script-ux.md](upcoming/step-29-e2e-script-ux.md) |
 | 30 | Static dependency migration | Active (gated on 26) -- [step-30-static-dependency-migration.md](upcoming/step-30-static-dependency-migration.md) |

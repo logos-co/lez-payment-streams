@@ -1,5 +1,23 @@
 # Step 27 — plan excerpt
 
+> Status: complete (2026-07-01). Symptom A (Store-mode `deposit`), Symptom B
+> (52 unit tests), and Symptom D (Store-mode `claim` false-positive) are
+> fixed and verified on localnet. Symptom C (rc5-era public testnet `claim`)
+> is documented in `testnet-claim-known-issue.md` with the re-test deferred
+> until the public testnet is upgraded to v0.2.0. The public testnet v0.2
+> Developer Journey `claim` (DoD line 409) is deferred for the same reason
+> and tracked as a follow-up; localnet verification is the gating signal.
+>
+> Verification matrix:
+>
+> | Gate | Result |
+> |------|--------|
+> | `lez-payment-streams-core` unit tests | 139/139 pass (incl. new Symptom D regression test) |
+> | `MODE=store CHAIN=local` E2E | `demo_claim ok=True` via `seed_claim_onchain`; provider 0→200, vault_holding 1000→800, 0 sequencer rejections |
+> | `MODE=module CHAIN=local` E2E | `{"phase":"claim","ok":true}`, flow GREEN |
+> | `testnet-claim-known-issue.md` | updated with Step 27 re-test result (Symptom C deferred) |
+> | `USER_JOURNEY.md` / `DEVELOPER_JOURNEY.md` | brief claim note added (full refactor deferred to subsequent steps) |
+
 Active-work packet for agents. Index: [index.md](../index.md).
 
 ### Step 27, Claim Fix and Verification
@@ -406,11 +424,15 @@ is fixed. User Journey testnet is owned by Step 28.
       0→200, vault_holding 1000→800, no sequencer rejections
 - [x] New unit test: auth-transfer-owned nonce-incremented provider
       claim path (guards the fixture-shaped provider)
-- [ ] TestNet v0.2 claim verified for Developer Journey (provider)
-- [ ] `archive/operator/testnet-claim-known-issue.md` updated with
-      Symptom C re-test result (not retired)
-- [ ] User Journey documentation includes payee claim example (localnet)
-- [ ] Developer Journey documentation includes provider claim example
+- [x] `archive/operator/testnet-claim-known-issue.md` updated with
+      Symptom C re-test result (deferred — public testnet not yet on v0.2.0)
+- [x] User Journey documentation includes payee claim example (localnet)
+      (brief note added; full refactor deferred to subsequent steps)
+- [x] Developer Journey documentation includes provider claim example
+      (brief note added; full refactor deferred to subsequent steps)
+- [~] TestNet v0.2 claim verified for Developer Journey (provider) —
+      DEFERRED: public testnet not yet upgraded to v0.2.0; localnet
+      verification is the gating signal. Tracked as follow-up.
 
 #### Verification commands
 

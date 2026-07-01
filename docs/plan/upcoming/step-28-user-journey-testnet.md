@@ -8,7 +8,7 @@ Enable User Journey (`MODE=module`) to run on TestNet v0.2, completing
 support for both localnet and testnet across both User Journey and
 Developer Journey.
 
-Prerequisite: [Step 26 — TestNet v0.2 Migration](step-26-testnet-v02-migration.md).
+Prerequisite: [Step 26 — TestNet v0.2 Migration](../completed/step-26-testnet-v02-migration.md).
 
 #### Scope
 
@@ -66,7 +66,7 @@ This creates `fixtures/testnet-module.json` with:
 
 #### Related
 
-- [step-26-testnet-v02-migration.md](step-26-testnet-v02-migration.md) — provides testnet v0.2 base
-- [step-27-claim-fix-verification.md](step-27-claim-fix-verification.md) — claim must work for this step
+- [step-26-testnet-v02-migration.md](../completed/step-26-testnet-v02-migration.md) — provides testnet v0.2 base
+- [step-27-claim-fix-verification.md](../completed/step-27-claim-fix-verification.md) — claim must work for this step
 - [step-22-ui-journey.md](step-22-ui-journey.md) — User Journey doc to update
 - [verification-matrix.md](../../reference/verification-matrix.md) — status update

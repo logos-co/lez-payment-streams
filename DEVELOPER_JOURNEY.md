@@ -67,6 +67,10 @@ MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run
 ```
 
 Note: Payee `claim` may be optional on testnet. See [docs/archive/operator/testnet-claim-known-issue.md](docs/archive/operator/testnet-claim-known-issue.md).
+On LEZ v0.2.0 localnet, `claim` is fixed and required: the provider
+account is auth-transfer-initialized before the first signer tx
+([step-27](docs/plan/completed/step-27-claim-fix-verification.md)).
+Public testnet `claim` is pending the testnet v0.2.0 upgrade.
 
 ### Step-by-step path (manual)
 

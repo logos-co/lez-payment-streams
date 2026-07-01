@@ -3,7 +3,7 @@
 Completed packet. Index: [index.md](../index.md).
 Prerequisites: Step 18 (rc5 testnet integration, superseded); Step 24b/24c
 (rc5 guest + tooling, demo flow).
-Related: [step-27-claim-fix-verification.md](../upcoming/step-27-claim-fix-verification.md),
+Related: [step-27-claim-fix-verification.md](../completed/step-27-claim-fix-verification.md),
 [step-30-static-dependency-migration.md](../upcoming/step-30-static-dependency-migration.md),
 [feature-branch-pins.md](../../reference/feature-branch-pins.md),
 [integration-decisions.md](../../reference/integration-decisions.md) (N10, N16).
@@ -14,7 +14,7 @@ Step 26 is complete. Payment streams integration runs on LEZ `v0.2.0`
 (git rev `a58fbce2…`). The operational pin, wallet wrapper ref, Qt patch
 rewrite, testnet-submit dispatch removal, and localnet baseline rebuild
 are all landed on `master`. The Store-mode E2E blocker (owner prefund)
-was resolved by [Step 27](../upcoming/step-27-claim-fix-verification.md);
+was resolved by [Step 27](../completed/step-27-claim-fix-verification.md);
 all three localnet verification gates are green.
 
 | Area | State |
@@ -34,7 +34,7 @@ all three localnet verification gates are green.
 
 Live testnet deployment (guest deploy, `program_id_hex` recording, read
 smoke) remains deferred as noted in the step scope; the Developer Journey
-testnet claim is owned by [Step 27](../upcoming/step-27-claim-fix-verification.md).
+testnet claim is owned by [Step 27](../completed/step-27-claim-fix-verification.md).
 
 ---
 
@@ -432,7 +432,7 @@ chains (deployed separately), but client code must remain compatible.
 
 - [step-18-public-testnet-demo.md](../completed/step-18-public-testnet-demo.md) — prior testnet integration (historical; superseded banner added this step)
 - [step-18b-rc5-unify-handoff.md](../completed/step-18b-rc5-unify-handoff.md) — rc5 unification handoff (historical; superseded banner added this step)
-- [step-27-claim-fix-verification.md](../upcoming/step-27-claim-fix-verification.md) — depends on this step for claim verification
+- [step-27-claim-fix-verification.md](../completed/step-27-claim-fix-verification.md) — depends on this step for claim verification
 - [step-28-user-journey-testnet.md](../upcoming/step-28-user-journey-testnet.md) — enables module mode on testnet
 - [N10](../../reference/integration-decisions.md#n10-step-11b-module-writes-decisions) — JSON-over-LogosAPI rationale for the wallet Qt patch (Path 1 justification)
 - [N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06) — operational pin policy (amended this step)

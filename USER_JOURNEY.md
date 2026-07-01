@@ -219,6 +219,10 @@ No `delivery_module` needed (this is the module-only flow).
 ### Limits
 
 * Testnet claim is not reliable (future work) — localnet only for this flow
+  (LEZ v0.2.0 localnet claim is fixed: the provider must be
+  auth-transfer-initialized before the first signer tx; see
+  [step-27](docs/plan/completed/step-27-claim-fix-verification.md).
+  Public testnet re-test is pending the testnet v0.2.0 upgrade.)
 * Stream IDs are per-vault sequential integers
 * Paused streams do not accrue; resumed streams continue from pause point
 
