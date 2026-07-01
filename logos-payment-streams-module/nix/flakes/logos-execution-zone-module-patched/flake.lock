@@ -18871,11 +18871,11 @@
         "nix-bundle-lgx": "nix-bundle-lgx_19"
       },
       "locked": {
-        "lastModified": 1782741385,
-        "narHash": "sha256-kN6xb1b/Jvu9Ninaqtmi/C4fx8poisGYbThIBIXwvHw=",
+        "lastModified": 1782857925,
+        "narHash": "sha256-0+zPkMT/aisrheM8Rf9OGlNNSaQbf0ZJDB+RDIA39MA=",
         "owner": "logos-blockchain",
         "repo": "logos-execution-zone-module",
-        "rev": "d70225ced646934d2294fd9e8f8b03615c104b80",
+        "rev": "b555cd5e81e192989311848150e2d0d7ec3f4eee",
         "type": "github"
       },
       "original": {
