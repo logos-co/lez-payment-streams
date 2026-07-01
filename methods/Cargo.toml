@@ -3,6 +3,9 @@ name = "lez_payment_streams-methods"
 version = "0.1.0"
 edition = "2021"
 
+[lints]
+workspace = true
+
 [package.metadata.risc0]
 methods = ["guest"]
 

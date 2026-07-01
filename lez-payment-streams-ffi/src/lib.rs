@@ -1,5 +1,24 @@
 //! C ABI for LEZ payment streams (LIP-155).
 
+// This crate is a C-ABI surface: every exported function is `unsafe extern "C"`
+// with `#[no_mangle]` and operates on raw pointers. That is an irreducible
+// `unsafe` surface by design, so the workspace `unsafe_code = "deny"` policy
+// is relaxed here. The non-FFI logic lives in `lez-payment-streams-core`.
+//
+// `arithmetic_side_effects` and `indexing_slicing` are also relaxed crate-wide
+// here: the FFI plumbing does provably-bounded index math (e.g. `idx * 2` over
+// a fixed-size hex buffer) inside `unsafe` blocks whose bounds are established
+// by the caller-supplied length, and converting every site to checked/saturating
+// forms would obscure the pointer-arithmetic intent without adding safety.
+// `unwrap_used` is kept enforced: a panic across the FFI boundary is a real
+// defect worth blocking.
+#![allow(
+    unsafe_code,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "C ABI surface: unsafe extern \"C\" over raw pointers with provably-bounded index math"
+)]
+
 mod decode;
 mod instruction_abi;
 mod policy_abi;
@@ -613,6 +632,12 @@ pub unsafe extern "C" fn payment_streams_ffi_derive_stream_config_account_id(
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "FFI lib tests use known-good inputs"
+)]
 mod tests {
     use super::*;
     use lez_payment_streams_core::VaultPrivacyTier;

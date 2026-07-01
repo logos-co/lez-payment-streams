@@ -142,6 +142,11 @@ impl VaultHolding {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    reason = "checked-total-allocated unit tests use fixed balances"
+)]
 mod checked_total_allocated_after_add_tests {
     use lee_core::account::Balance;
 
@@ -164,6 +169,11 @@ mod checked_total_allocated_after_add_tests {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    reason = "checked-total-allocated unit tests use fixed balances"
+)]
 mod checked_total_allocated_after_release_tests {
     use lee_core::account::Balance;
 

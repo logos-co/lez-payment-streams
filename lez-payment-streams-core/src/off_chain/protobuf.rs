@@ -77,7 +77,7 @@ fn read_byte(cursor: &mut usize, bytes: &[u8]) -> Result<u8, WireError> {
     if next > bytes.len() {
         return Err(WireError::UnexpectedEof);
     }
-    let out = bytes[idx];
+    let out = bytes.get(idx).copied().ok_or(WireError::UnexpectedEof)?;
     *cursor = next;
     Ok(out)
 }
@@ -89,7 +89,7 @@ fn read_exact<'a>(cursor: &mut usize, bytes: &'a [u8], len: usize) -> Result<&'a
         return Err(WireError::UnexpectedEof);
     }
     *cursor = end;
-    Ok(&bytes[start..end])
+    bytes.get(start..end).ok_or(WireError::UnexpectedEof)
 }
 
 fn read_varint(cursor: &mut usize, bytes: &[u8]) -> Result<u64, WireError> {
@@ -106,7 +106,7 @@ fn read_varint(cursor: &mut usize, bytes: &[u8]) -> Result<u64, WireError> {
         if byte & PROTOBUF_VARINT_CONTINUATION == 0 {
             return Ok(out);
         }
-        shift += PROTOBUF_VARINT_PAYLOAD_BITS;
+        shift = shift.saturating_add(PROTOBUF_VARINT_PAYLOAD_BITS);
         if shift > last_u64_bit {
             return Err(WireError::InvalidWireFrame);
         }
@@ -149,7 +149,7 @@ fn read_len_delim<'a>(cursor: &mut usize, bytes: &'a [u8]) -> Result<&'a [u8], W
 }
 
 fn write_varint(out: &mut Vec<u8>, mut value: u64) {
-    let terminal_max = u64::from(PROTOBUF_VARINT_CONTINUATION) - 1;
+    let terminal_max = u64::from(PROTOBUF_VARINT_CONTINUATION).saturating_sub(1);
     loop {
         if value <= terminal_max {
             out.push(value as u8);

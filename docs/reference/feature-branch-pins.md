@@ -204,6 +204,13 @@ Local E2E, module `.lgx`, and public testnet share LEZ `v0.2.0` (`a58fbce…`). 
 Guest `program_id_hex` on testnet: org deploy recorded in step packet; example in
 `fixtures/testnet.json.example`.
 
+Guest release profile: `methods/guest/Cargo.toml` ships `[profile.release]` with
+`debug = 0; strip = "symbols"` (matches the `lez-programs` convention). The
+ImageID is computed over the release-stripped binary, so this profile is part of
+program identity. A rebuild with a different profile produces a different
+`program_id_hex` and invalidates every PDA derived from it; after a guest
+rebuild, re-derive `program_id_hex` and the vault/stream-config/clock PDAs.
+
 Retirement (Phase 9): when module `chainAction` works on testnet without
 the helper on the FFI path, delete `tools/lez-testnet-submit`,
 `chainUsesTestnetSubmit`, `submitGenericPublicViaTestnetHelper`, and the

@@ -105,7 +105,10 @@ impl StreamConfig {
         // `rate * elapsed` is computed as u128 because for high rates and long intervals
         // the product can exceed u64::MAX even though neither operand does.
         // Widening stays local here; stored fields remain u64/u128 as defined.
-        let elapsed_seconds = t - base_as_of;
+        // `t >= base_as_of` is guaranteed by the `TimeRegression` check above;
+        // `saturating_sub` keeps the subtraction lint-clean without changing
+        // behavior on the guaranteed-non-underflowing path.
+        let elapsed_seconds = t.saturating_sub(base_as_of);
         let accrued_over_elapsed_seconds =
             u128::from(rate).saturating_mul(u128::from(elapsed_seconds));
         let new_accrued = base_accrued
@@ -282,6 +285,11 @@ mod validate_invariants_tests {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    reason = "at_time unit tests use fixed timestamps and known-good inputs"
+)]
 mod at_time_tests {
     use super::stream_test_fixtures::stream_active;
     use super::StreamState;
@@ -377,6 +385,11 @@ mod at_time_tests {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    reason = "resume_from_paused_at_time unit tests use fixed timestamps and known-good inputs"
+)]
 mod resume_from_paused_at_time_tests {
     use super::stream_test_fixtures::stream_active;
     use super::StreamState;
@@ -427,6 +440,11 @@ mod resume_from_paused_at_time_tests {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    reason = "close_at_time unit tests use fixed timestamps and known-good inputs"
+)]
 mod close_at_time_tests {
     use super::stream_test_fixtures::stream_active;
     use super::StreamState;
@@ -476,6 +494,11 @@ mod close_at_time_tests {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    reason = "claim_at_time unit tests use fixed timestamps and known-good inputs"
+)]
 mod claim_at_time_tests {
     use super::stream_test_fixtures::stream_active;
     use super::StreamState;

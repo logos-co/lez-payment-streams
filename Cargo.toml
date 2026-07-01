@@ -15,3 +15,37 @@ resolver = "2"
 spel-framework-core = { path = "vendor/spel-framework-core" }
 spel-framework-macros = { path = "vendor/spel-framework-macros" }
 spel-framework = { path = "vendor/spel-framework" }
+
+# Workspace lint policy. Matches the lez-programs convention: deny the groups
+# where a new lint should always be a hard error (correctness/suspicious/perf),
+# keep style/pedantic at warn so toolchain upgrades don't break the build, and
+# deny the determinism/panic-safety lints that matter inside the zkVM guest and
+# the FFI surface. Each crate opts in via `[lints] workspace = true`.
+[workspace.lints.rust]
+rust_2018_idioms = { level = "deny", priority = -1 }
+# deny (not forbid) so a targeted per-item #[allow] remains possible if ever needed
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+correctness = { level = "deny", priority = -1 }
+suspicious  = { level = "deny", priority = -1 }
+perf        = { level = "deny", priority = -1 }
+style       = { level = "warn", priority = -1 }
+
+# Generated-code / placeholder blockers.
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+unwrap_used = "deny"
+
+# Lint suppression hygiene.
+allow_attributes = "warn"
+allow_attributes_without_reason = "deny"
+
+# Determinism, panic-safety, and arithmetic correctness.
+arithmetic_side_effects = "deny"
+indexing_slicing = "deny"
+
+# Too noisy for this codebase unless enforced selectively.
+module_name_repetitions = "allow"
+similar_names = "allow"

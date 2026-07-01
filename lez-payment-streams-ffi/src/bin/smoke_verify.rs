@@ -12,16 +12,14 @@ use lez_payment_streams_core::verify_canonical_payload_digest;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 4 {
-        eprintln!(
-            "usage: {} <pubkey_hex_32> <digest_hex_32> <sig_hex_64>",
-            args[0]
-        );
+        let prog = args.get(0).map(String::as_str).unwrap_or("smoke_verify");
+        eprintln!("usage: {prog} <pubkey_hex_32> <digest_hex_32> <sig_hex_64>");
         std::process::exit(2);
     }
 
-    let pubkey = decode_fixed::<32>(&args[1], "pubkey");
-    let digest = decode_fixed::<32>(&args[2], "digest");
-    let sig = decode_fixed::<64>(&args[3], "signature");
+    let pubkey = decode_fixed::<32>(args.get(1).expect("checked len == 4"), "pubkey");
+    let digest = decode_fixed::<32>(args.get(2).expect("checked len == 4"), "digest");
+    let sig = decode_fixed::<64>(args.get(3).expect("checked len == 4"), "signature");
 
     match verify_canonical_payload_digest(&digest, &sig, &pubkey) {
         Ok(()) => {

@@ -4,6 +4,13 @@
 //! After you have a [`lee::V03State`] and program id,
 //! see [`crate::program_tests::common`] for deposit fixtures,
 //! [`Instruction`] builders, and helpers like `transition_ok`.
+
+// Test-only module: allow `.unwrap()` / indexing on known-good harness inputs.
+#![allow(
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    reason = "test harness operates on known-good inputs"
+)]
 //!
 //! Clock and provider identities: [`harness_clock_provider`] groups `CLOCK_01` plus the seeded
 //! stream provider [`AccountId`]; [`HarnessClockProvider::touch_monotonic`] is the usual prelude

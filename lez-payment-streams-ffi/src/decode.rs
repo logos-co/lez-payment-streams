@@ -70,6 +70,12 @@ pub(crate) fn decode_clock_account_data(data: &[u8]) -> Result<ClockAccountData,
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "FFI decode roundtrip tests use known-good inputs"
+)]
 mod tests {
     use super::*;
     use lee_core::account::{AccountId, Balance};

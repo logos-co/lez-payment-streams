@@ -1,5 +1,6 @@
 fn main() {
-    let crate_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let crate_dir = std::env::var("CARGO_MANIFEST_DIR")
+        .expect("CARGO_MANIFEST_DIR is always set by Cargo for build scripts");
 
     let config =
         cbindgen::Config::from_file("cbindgen.toml").expect("Unable to read cbindgen.toml");

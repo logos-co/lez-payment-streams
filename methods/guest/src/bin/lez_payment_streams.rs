@@ -30,7 +30,7 @@ risc0_zkvm::guest::entry!(main);
 mod lez_payment_streams {
     #![cfg_attr(not(target_arch = "riscv32"), allow(dead_code))]
 
-    #[allow(unused_imports)]
+    #[allow(unused_imports, reason = "imports used by guest-only code paths under cfg")]
     use super::*;
 
     // Helpers are grouped in the same order they are typically used by an instruction handler:
@@ -109,10 +109,7 @@ mod lez_payment_streams {
     fn parse_clock_timestamp(meta: &AccountWithMetadata) -> Result<Timestamp, SpelError> {
         // Allowlist check against the three system clock account ids.
         // Any other account id (including a caller-supplied fake) is rejected.
-        if !CLOCK_PROGRAM_ACCOUNT_IDS
-            .iter()
-            .any(|id| *id == meta.account_id)
-        {
+        if !CLOCK_PROGRAM_ACCOUNT_IDS.contains(&meta.account_id) {
             return Err(spel_err(
                 ErrorCode::InvalidClockAccount,
                 "not a system clock account",
@@ -343,7 +340,10 @@ mod lez_payment_streams {
     }
 
     fn write_account_data(account: &mut Account, state: &impl borsh::BorshSerialize) {
-        account.data = borsh::to_vec(state).unwrap().try_into().unwrap();
+        let data = borsh::to_vec(state).expect("borsh serialization of a known account state cannot fail");
+        account.data = data
+            .try_into()
+            .expect("serialized account state fits in the account data buffer");
     }
 
     // ---- Vault instructions ---- //

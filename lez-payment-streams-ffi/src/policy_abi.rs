@@ -419,6 +419,11 @@ pub unsafe extern "C" fn payment_streams_ffi_response_within_policy(
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    reason = "timestamp fold tests use fixed inputs"
+)]
 mod timestamp_tests {
     use super::chain_timestamp_to_fold_seconds;
 

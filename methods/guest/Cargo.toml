@@ -5,6 +5,37 @@ edition = "2021"
 
 [workspace]
 
+[workspace.lints.rust]
+rust_2018_idioms = { level = "deny", priority = -1 }
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+correctness = { level = "deny", priority = -1 }
+suspicious  = { level = "deny", priority = -1 }
+perf        = { level = "deny", priority = -1 }
+style       = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+unwrap_used = "deny"
+allow_attributes = "warn"
+allow_attributes_without_reason = "deny"
+arithmetic_side_effects = "deny"
+indexing_slicing = "deny"
+module_name_repetitions = "allow"
+similar_names = "allow"
+
+[lints]
+workspace = true
+
+[profile.release]
+# Part of program identity: the ImageID is computed over the release-stripped
+# binary, so every deploy/testnet must use this exact profile. A rebuild with a
+# different profile produces a different ImageID and invalidates every PDA
+# derived from it. Matches the lez-programs convention.
+debug = 0
+strip = "symbols"
+
 [[bin]]
 name = "lez_payment_streams"
 path = "src/bin/lez_payment_streams.rs"

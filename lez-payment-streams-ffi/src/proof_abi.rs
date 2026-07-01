@@ -849,6 +849,12 @@ pub unsafe extern "C" fn payment_streams_ffi_serialize_eligibility_proof_stream_
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "FFI proof_abi tests use known-good inputs"
+)]
 mod tests {
     use super::*;
     use lez_payment_streams_core::{

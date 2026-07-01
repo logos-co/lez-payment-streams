@@ -4,6 +4,17 @@
 //! Privacy-preserving (PP) tests live behind the `pp-program-tests` Cargo feature and must be run with
 //! `RISC0_DEV_MODE=1` (see README); the harness refuses other `RISC0_DEV_MODE` values.
 
+// Test fixtures deliberately use `.unwrap()` on known-good inputs and fixed
+// arithmetic to assert state transitions; the workspace `deny` policy for
+// `unwrap_used` / `arithmetic_side_effects` / `indexing_slicing` is relaxed
+// here, matching how `lez-programs` allows these in its integration_tests crate.
+#![allow(
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    reason = "test fixtures use known-good inputs and fixed arithmetic to assert state transitions"
+)]
+
 mod claim;
 mod close_stream;
 pub(crate) mod common;

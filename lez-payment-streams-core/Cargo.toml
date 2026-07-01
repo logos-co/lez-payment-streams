@@ -3,6 +3,9 @@ name = "lez-payment-streams-core"
 version = "0.1.0"
 edition = "2021"
 
+[lints]
+workspace = true
+
 [features]
 default = ["host"]
 # Host-side LEE (`lee` crate): instruction wire + off-chain proofs. Disabled for RISC0 guest builds.

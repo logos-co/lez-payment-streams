@@ -162,16 +162,19 @@ pub fn store_eligibility_canonical_payload_digest(
 pub fn store_eligibility_canonical_payload_digest_from_n8_wire(
     wire: &[u8],
 ) -> Result<[u8; 32], super::wire_error::WireError> {
-    if wire.len() < STORE_ELIGIBILITY_DOMAIN_PREFIX.len()
-        || wire[..STORE_ELIGIBILITY_DOMAIN_PREFIX.len()] != STORE_ELIGIBILITY_DOMAIN_PREFIX
-    {
-        return Err(super::wire_error::WireError::InvalidWireFrame);
+    let prefix_len = STORE_ELIGIBILITY_DOMAIN_PREFIX.len();
+    // Reject wires shorter than the prefix or with a mismatched prefix. The
+    // `get(..prefix_len)` / `get(prefix_len..)` calls below are infallible
+    // after this length check, but use the checked form to keep the slicing
+    // lint satisfied.
+    let head = wire.get(..prefix_len);
+    let body = wire.get(prefix_len..);
+    match (head, body) {
+        (Some(h), Some(b)) if h == STORE_ELIGIBILITY_DOMAIN_PREFIX.as_slice() => {
+            Ok(lez_canonical_payload_digest(&STORE_ELIGIBILITY_DOMAIN_PREFIX, b))
+        }
+        _ => Err(super::wire_error::WireError::InvalidWireFrame),
     }
-    let body = &wire[STORE_ELIGIBILITY_DOMAIN_PREFIX.len()..];
-    Ok(lez_canonical_payload_digest(
-        &STORE_ELIGIBILITY_DOMAIN_PREFIX,
-        body,
-    ))
 }
 
 /// Build the vault-owner canonical payload bytes covered by `VaultProof.owner_signature`.
