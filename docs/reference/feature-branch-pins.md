@@ -45,10 +45,10 @@ Workflow detail: [index.md](plan/index.md#delivery-integration-branches).
 
 ### Delivery flake lock (logos-delivery-module)
 
-| Artifact | Branch ref | Locked rev (2026-06-18) |
+| Artifact | Branch ref | Locked rev (2026-07-01) |
 | --- | --- | --- |
-| `logos-delivery` flake input | `feat/payment-streams-store-eligibility` | `39b467ecf44344728cb5101e18c836089746c57d` (retain outbound `eligibilityProof`; after `ed41c826` JSON parse fix) |
-| `logos-delivery-module` integration branch | `feat/payment-streams-store-eligibility` | `9361e49` on fork `s-tikhomirov/logos-delivery-module` (verifier threading + lock above) |
+| `logos-delivery` flake input | `feat/payment-streams-store-eligibility` | `64593368` (rebased onto upstream `master` post api-shape phase2; `eligibility_api.nim` adapted to `FFIContext[LogosDelivery]`) |
+| `logos-delivery-module` integration branch | `feat/payment-streams-store-eligibility` | `f8a76ba` on fork `s-tikhomirov/logos-delivery-module` (rebased onto upstream `master`; preserves eligibility bridge alongside `collectOpenMetricsText()`) |
 
 After each push to `logos-delivery`, run `nix flake update logos-delivery` in
 `logos-delivery-module` and commit the lock. Record the resolved `rev` in this table when
@@ -73,8 +73,8 @@ the module flake.
 
 Hermetic verification (no overlay): `SKIP_LIBLOGOSDELIVERY_OVERLAY=1 make verify-step17` with
 `DELIVERY_MODULE_ROOT` pointing at a module checkout whose `flake.lock` resolves
-`logos-delivery` to `39b467ec` or newer. Full checklist:
-[archive/steps/local-store-dual-host-runbook.md](archive/steps/local-store-dual-host-runbook.md#hermetic-run-hand-off). Verified 2026-06-18.
+`logos-delivery` to `64593368` or newer. Full checklist:
+[archive/steps/local-store-dual-host-runbook.md](archive/steps/local-store-dual-host-runbook.md#hermetic-run-hand-off). Verified 2026-07-01.
 
 Remove the overlay step from the script once every operator relies on hermetic installs only.
 
@@ -83,7 +83,7 @@ Pin table dates are when the row was last updated. Decision subsection titles in
 those need not match the pin table calendar day.
 
 Module repo: same branch name on `logos-delivery-module` (`flake.nix` + `flake.lock` at
-`e59319d…` for the `logos-delivery` input). Push target may be org fork or personal fork
+`f8a76ba…` for the `logos-delivery` input). Push target may be org fork or personal fork
 (`s-tikhomirov/logos-delivery-module`) until the integration branch lands on
 `logos-co/logos-delivery-module`.
 
@@ -99,7 +99,7 @@ Chain writes use generic public transactions and program deploy FFI from LEZ `v0
 | Layer | Upstream | Role |
 | --- | --- | --- |
 | LEZ `wallet_ffi` | [`logos-execution-zone`](https://github.com/logos-blockchain/logos-execution-zone) @ `a58fbce…` (`v0.2.0`) | Deploy, program ELF helpers, LEE v0.3 public tx signing |
-| Wallet module | [`logos-execution-zone-module`](https://github.com/logos-blockchain/logos-execution-zone-module) @ `main` (Universal) | Expose FFI to Logos modules (std::string / LogosAPI) |
+| Wallet module | [`logos-execution-zone-module`](https://github.com/logos-blockchain/logos-execution-zone-module) @ `main` (Universal, `b555cd5…`) | Expose FFI to Logos modules (std::string / LogosAPI) |
 
 Do not pin [PR 429 / PR 16](archive/superseded-wallet-pr-429-16.md) in this integration.
 
@@ -164,7 +164,7 @@ From repo root after LEZ bump:
 lgs setup
 nix build .#payment-streams-ffi
 ./scripts/archive/build-wallet-lgx.sh
-nix build ./logos-payment-streams-module#lgx
+nix build ./logos-payment-streams-module#lgx-portable
 ```
 
 ## Payment streams workspace (`lez-payment-streams`)
@@ -231,11 +231,16 @@ nix build .#payment-streams-ffi
 nix build ./logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched#lib
 
 # Payment-streams Logos module bundle
-nix build ./logos-payment-streams-module#lgx
+nix build ./logos-payment-streams-module#lgx-portable
 ```
 
 Step 11 DoD scripts under `scripts/archive/verify-step11*-dod.sh` are pinned
 to rc5 and retained as historical checks; they fail on v0.2.0 and are not
 run as gates.
+
+`#lgx-portable` (not `#lgx`) is required for `lgpm` 0.2.0 / `logoscore`,
+which reject `linux-amd64-dev` variants. The wallet bundle uses
+`nix-bundle-lgx#portable` for the same reason
+([Step 31](plan/upcoming/step-31-dependencies-upgrade.md)).
 
 For `lgpm`, `logoscore`, and the Step 7+ loop see [`logos-runtime-guide.md`](logos-runtime-guide.md).
