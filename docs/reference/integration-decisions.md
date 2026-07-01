@@ -223,7 +223,7 @@ Dynamic access keeps payment streams on the Universal side (with `delivery_modul
 We rely on explicit load order and runtime errors if the wallet is absent.
 Revisit a static dependency when the wallet module is Universal upstream and codegen supports it.
 
-Resolved by [Step 30](../plan/upcoming/step-30-static-dependency-migration.md):
+Resolved by [Step 30](../plan/completed/step-30-static-dependency-migration.md):
 the wallet module transitioned to Universal on upstream `main` (landed in
 Step 26's wrapper ref move), closing the revisit condition. Step 30 migrates
 the ~20+ dynamic-dispatch call sites to codegen-emitted typed

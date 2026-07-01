@@ -12,8 +12,8 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | Path | Contents |
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
-| [completed/](completed/) | Normative excerpts (12-16), completed step packets |
-| [upcoming/](upcoming/) | Steps 20, 22, 28-30 (active); optional 21 (UI), 23 |
+| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 24, 26-27, 30) |
+| [upcoming/](upcoming/) | Steps 20, 22, 28-29 (active); optional 21 (UI), 23 |
 | [cancelled/](cancelled/) | Step 25 won't fix |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
@@ -23,7 +23,7 @@ Developer Journey (Store integration): Step 20 + Step 17 scripts.
 User Journey: Step 22 (active, CLI-based doc packet).
 User Journey UI (optional): Step 21 (Basecamp plugin) — if shipped, Step 22 may include UI content.
 TestNet v0.2 migration: Steps 28-29 (active, can parallelize with documentation); Steps 26-27 complete.
-Static dependency migration: Step 30 (active, was gated on Step 26, now unblocked).
+Static dependency migration: Step 30 (complete; D6 revisit condition closed).
 See [N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 
 ## Program scope
@@ -55,7 +55,7 @@ paid Store mode on the provider.
 | Claim fix: both journeys, both chains | 27 (complete; testnet v0.2 re-test deferred) |
 | User Journey on TestNet v0.2 | 28 (active) |
 | E2E script UX enhancement | 29 (active, parallel) |
-| Static dependency migration | 30 (active, gated on 26) |
+| Static dependency migration | 30 (complete) |
 
 Step 25 (in-process demo coordinator module) is **won't fix**
 ([cancelled packet](cancelled/step-25-demo-coordination-module.md)).
@@ -82,7 +82,7 @@ Dual-host demo coordination stays in host scripts
 | 27 | Claim fix and verification | Complete -- [step-27-claim-fix-verification.md](completed/step-27-claim-fix-verification.md) |
 | 28 | User Journey on TestNet v0.2 | Active -- [step-28-user-journey-testnet.md](upcoming/step-28-user-journey-testnet.md) |
 | 29 | E2E script UX enhancement | Active -- [step-29-e2e-script-ux.md](upcoming/step-29-e2e-script-ux.md) |
-| 30 | Static dependency migration | Active (gated on 26) -- [step-30-static-dependency-migration.md](upcoming/step-30-static-dependency-migration.md) |
+| 30 | Static dependency migration | Complete -- [step-30-static-dependency-migration.md](completed/step-30-static-dependency-migration.md) |
 
 ## Delivery integration branches
 

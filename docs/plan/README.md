@@ -11,8 +11,8 @@ This file is retained as a short redirect.
 | --- | --- |
 | [index.md](index.md) | Program scope, upcoming steps, delivery forks, components, onboarding |
 | [../../AGENTS.md](../../AGENTS.md) | Agent read order |
-| [completed/](completed/) | Normative excerpts (12-16), completed Step 17-17b, 18b, 19, 24, 24b, 24c |
-| [upcoming/](upcoming/) | Steps 20, 22, 26-29 (active); optional 21 (UI), 23 |
+| [completed/](completed/) | Normative excerpts (12-16), completed Steps 17-17b, 18b, 19, 24, 24b, 24c, 26-27, 30 |
+| [upcoming/](upcoming/) | Steps 20, 22, 28-29 (active); optional 21 (UI), 23 |
 | [cancelled/](cancelled/) | Step 25 won't fix |
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |

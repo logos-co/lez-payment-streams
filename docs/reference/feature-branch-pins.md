@@ -140,7 +140,7 @@ wrappers (Qt-free `lp` API style; `QString` ↔ `std::string` at the boundary).
 Three repo-local / complex-type methods (`sign_public_payload`,
 `send_generic_public_transaction_json`, `authenticated_transfer_elf`) stay on
 a minimal dynamic-dispatch fallback through `modules().api`; see
-[step-30-static-dependency-migration.md](../plan/upcoming/step-30-static-dependency-migration.md#findings).
+[step-30-static-dependency-migration.md](../plan/completed/step-30-static-dependency-migration.md#findings).
 D6's revisit condition is closed.
 
 Runbook: [`archive/steps/wallet-510-runbook.md`](archive/steps/wallet-510-runbook.md).

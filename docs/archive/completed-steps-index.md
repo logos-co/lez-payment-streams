@@ -40,6 +40,7 @@ Product gates: [verification-matrix.md](../reference/verification-matrix.md).
 | 27 | Claim fix and verification | Complete -- [step-27-claim-fix-verification.md](../plan/completed/step-27-claim-fix-verification.md) |
 | 28 | User Journey on TestNet v0.2 | Active -- see [plan/index.md](../plan/index.md) |
 | 29 | E2E script UX enhancement | Active -- see [plan/index.md](../plan/index.md) |
+| 30 | Static dependency migration | Complete -- [step-30-static-dependency-migration.md](../plan/completed/step-30-static-dependency-migration.md) |
 
 ## Completed steps -- summary
 

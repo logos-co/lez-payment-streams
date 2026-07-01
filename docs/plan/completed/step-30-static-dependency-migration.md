@@ -1,6 +1,23 @@
 # Step 30 — static dependency migration
 
-Active-work packet for agents. Index: [index.md](../index.md).
+> Status: complete (2026-07-01). `payment_streams_module` lists
+> `logos_execution_zone` in `metadata.json` `"dependencies"` and the ~20+
+> wallet call sites use codegen-emitted typed
+> `modules().logos_execution_zone` wrappers (Qt-free `lp` API style). Three
+> repo-local / complex-type methods stay on a minimal dynamic-dispatch
+> fallback through `modules().api` — see Findings. D6's revisit condition is
+> closed.
+>
+> Verification matrix:
+>
+> | Gate | Result |
+> |------|--------|
+> | `nix build ./logos-payment-streams-module#lgx` | succeeds |
+> | `MODE=module CHAIN=local ./scripts/e2e.sh local run` | all phases pass, incl. `claim` |
+> | `MODE=store CHAIN=local ./scripts/e2e.sh local run` | `store_query_success ok=True`, `demo_close_stream ok=True`, `demo_claim ok=True` |
+> | `make verify-step17-back-to-back` | two Store runs on one ledger (stream 0 accrued 200, stream 1 accrued 750), exit 0 |
+
+Completed packet. Index: [index.md](../index.md).
 
 ### Step 30, static dependency migration
 

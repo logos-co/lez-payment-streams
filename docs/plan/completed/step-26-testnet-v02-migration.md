@@ -4,7 +4,7 @@ Completed packet. Index: [index.md](../index.md).
 Prerequisites: Step 18 (rc5 testnet integration, superseded); Step 24b/24c
 (rc5 guest + tooling, demo flow).
 Related: [step-27-claim-fix-verification.md](../completed/step-27-claim-fix-verification.md),
-[step-30-static-dependency-migration.md](../upcoming/step-30-static-dependency-migration.md),
+[step-30-static-dependency-migration.md](../completed/step-30-static-dependency-migration.md),
 [feature-branch-pins.md](../../reference/feature-branch-pins.md),
 [integration-decisions.md](../../reference/integration-decisions.md) (N10, N16).
 
@@ -348,9 +348,9 @@ replacing the current dynamic
 This is a separable code-quality refactor, not gated on v0.2.0 or testnet,
 and is intentionally excluded from Step 26 to avoid coupling two independent
 risks (v0.2.0 pin compatibility + codegen-typed-wrapper migration) in one
-step. Tracked as [Step 30](../upcoming/step-30-static-dependency-migration.md); can start
+step. Tracked as [Step 30](../completed/step-30-static-dependency-migration.md); can start
 once Step 26's wrapper builds against Universal `main` and parallelizes with
-Steps 27-29.
+Steps 27-29. Step 30 is now complete.
 
 #### Verification gates (this step)
 
@@ -409,7 +409,8 @@ live-testnet follow-up phase once `MODE=store CHAIN=testnet` is exercisable.
 - [x] N10 amended (QList-unreliability rationale marked Legacy-specific;
   JSON wrapper now persists for RISC0-serde reason)
 - [x] D6 revisit condition noted as met; static-dependency migration
-  deferred to [Step 30](../upcoming/step-30-static-dependency-migration.md)
+  deferred to [Step 30](../completed/step-30-static-dependency-migration.md)
+  (now complete)
 - [x] Step 18 completed packets get "Superseded by Step 26" banner
 - [x] Archived rc5-asserting DoD scripts (`verify-step11a-dod.sh`,
   `verify-step11d-dod.sh`) carry a comment noting they are expected to fail
