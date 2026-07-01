@@ -7,7 +7,7 @@
   "category": "blockchain",
   "main": "payment_streams_module_plugin",
   "interface": "universal",
-  "dependencies": [],
+  "dependencies": ["logos_execution_zone"],
   "capabilities": [],
   "include": [
     "liblez_payment_streams_ffi.so",

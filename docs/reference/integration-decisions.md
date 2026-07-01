@@ -228,8 +228,14 @@ the wallet module transitioned to Universal on upstream `main` (landed in
 Step 26's wrapper ref move), closing the revisit condition. Step 30 migrates
 the ~20+ dynamic-dispatch call sites to codegen-emitted typed
 `modules().logos_execution_zone()` wrappers and lists `logos_execution_zone`
-in `metadata.json` `"dependencies"`. The dynamic-dispatch rationale above is
-retained as Legacy-specific history.
+in `metadata.json` `"dependencies"`. The codegen uses the Qt-free `lp` API
+style (`std::string`), so call sites convert `QString` ↔ `std::string` at the
+boundary and preserve the legacy empty-string-as-error contract. Three
+repo-local / complex-type methods (`sign_public_payload`,
+`send_generic_public_transaction_json`, `authenticated_transfer_elf`) stay on a
+minimal dynamic-dispatch fallback through `modules().api` (Qt
+`LogosAPIClient`); see the Step 30 findings for the per-method rationale. The
+dynamic-dispatch rationale above is retained as Legacy-specific history.
 
 ### N1, Off-chain canonical-payload signing
 

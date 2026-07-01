@@ -104,24 +104,78 @@ Commit split (2 commits, by concern):
 
 #### Definition of done
 
-- [ ] `"logos_execution_zone"` listed in `metadata.json` `"dependencies"`
-- [ ] Codegen regenerated; `modules().logos_execution_zone()` wrappers
+- [x] `"logos_execution_zone"` listed in `metadata.json` `"dependencies"`
+- [x] Codegen regenerated; `modules().logos_execution_zone()` wrappers
   compile and link
-- [ ] All `invokeWalletString` / `invokeWalletMulti` call sites converted to
+- [x] All `invokeWalletString` / `invokeWalletMulti` call sites converted to
   typed wrappers (~20+ sites across three `.cpp` files)
-- [ ] `walletClientOrNull`, `invokeWalletString`, `invokeWalletMulti`
-  helpers removed (or reduced to patched-method fallback if needed)
-- [ ] Patched-method handling (`send_generic_public_transaction_json`,
-  `sign_public_payload`) documented — dynamic fallback or codegen extension
-- [ ] `nix build ./logos-payment-streams-module#lgx` succeeds
-- [ ] `MODE=module CHAIN=local ./scripts/e2e.sh local run` passes
-- [ ] `MODE=store CHAIN=local ./scripts/e2e.sh local run` passes
-- [ ] `make verify-step17-back-to-back` passes
-- [ ] [D6](../../reference/integration-decisions.md#d6-universal-module-interface)
+- [x] `walletClientOrNull`, `invokeWalletString`, `invokeWalletMulti`
+  helpers removed (reduced to a minimal patched-method fallback — see Findings)
+- [x] Patched-method handling (`send_generic_public_transaction_json`,
+  `sign_public_payload`) documented — dynamic fallback (see Findings)
+- [x] `nix build ./logos-payment-streams-module#lgx` succeeds
+- [x] `MODE=module CHAIN=local ./scripts/e2e.sh local run` passes
+- [x] `MODE=store CHAIN=local ./scripts/e2e.sh local run` passes
+- [x] `make verify-step17-back-to-back` passes
+- [x] [D6](../../reference/integration-decisions.md#d6-universal-module-interface)
   amended: revisit condition marked resolved, dynamic-dispatch rationale
   archived as Legacy-specific
-- [ ] [feature-branch-pins.md](../../reference/feature-branch-pins.md)
+- [x] [feature-branch-pins.md](../../reference/feature-branch-pins.md)
   updated: note the static dependency migration is complete
+
+#### Findings
+
+Static dependency migration landed on the `lp` (Qt-free, `std::string`-based)
+codegen API style. The module's `logos-cpp-generator` invocation emits
+`LogosExecutionZone` with `std::string` parameters and returns; the generated
+`logos_sdk.h` holds a `LogosExecutionZone logos_execution_zone` member (direct
+reference, not an accessor call: `modules().logos_execution_zone`). Call sites
+therefore convert `QString` → `std::string` (`.toStdString()`) on the way in
+and `std::string` → `QString` (`QString::fromStdString(...)`) on the way out.
+The empty-string-as-error contract from `invokeWalletString` is preserved: a
+typed wrapper returning an empty `std::string` is treated as failure, matching
+the legacy helper's `{}` return on null client or invalid result. None of the
+typed wrappers used here surface `logos::CallError*` out-parameters to callers;
+the empty-string check is sufficient for the existing call shapes.
+
+Three wallet methods could not move to the typed wrapper and stay on a
+minimal dynamic-dispatch fallback routed through `modules().api` (the Qt
+`LogosAPI*` / `LogosAPIClient*` path). Each file keeps a file-local
+`walletQtClientOrNull(LogosAPI*)` + `invokeWalletQtString(...)` pair in its
+anonymous namespace for these calls only:
+
+- `sign_public_payload` (N1) — repo-local Qt-only patch; not in the codegen
+  input header, so no typed wrapper exists. Used by `signVaultOwnerDigest`
+  in `payment_streams_module_eligibility.cpp`.
+- `send_generic_public_transaction_json` (N10) — repo-local Qt-only patch.
+  Used by `submitGenericPublicViaFfi` in `payment_streams_module_writes.cpp`.
+  The multi-arg `send_generic_public_transaction` fallback in the same
+  function also dispatches dynamically: the `lp` typed wrapper would require
+  marshaling `LogosList` / `LogosMap` (`nlohmann::json`) for the
+  `account_ids` / `signing_requirements` / `instruction` / `program_id_hex`
+  arguments, and the existing caller already shapes these as `QVariant`
+  lists for the Qt path. Keeping both submits on dynamic dispatch avoids a
+  `QList<uint8_t>` ↔ `LogosList` marshaling layer for this MVP write path
+  without changing the wire payload.
+- `authenticated_transfer_elf` — present in the `lp` typed API, but returns
+  `LogosMap` (`nlohmann::json`). The existing caller
+  (`walletAuthenticatedTransferElfBytes`) does `QVariant`-shaped byte
+  extraction (`QList<uint8_t>` / `QByteArray` / `QStringList`) from the
+  response to assemble the deposit dependency ELF. Routing this through the
+  `lp` wrapper would require a `LogosMap` → `QList<uint8_t>` decode that
+  duplicates the Qt path's parsing. Dynamic dispatch preserves the existing
+  byte-extraction shape unchanged.
+
+All remaining wallet calls (`account_id_from_base58`, `get_account_public`,
+`get_public_account_key`, `sync_to_block`, etc.) use the typed
+`modules().logos_execution_zone` wrapper with `QString` ↔ `std::string`
+conversions at the boundary. The `walletClientOrNull` / `invokeWalletString` /
+`invokeWalletMulti` / `invokeWalletTwo` helpers are removed; the file-local
+Qt fallback helpers are the only dynamic-dispatch surface left, scoped to the
+three methods above. The JSON wrapper patch
+(`wallet-qt-send-generic-public-transaction-json.patch`) is unchanged, in line
+with the Out-of-scope note: the blocker for dropping it is RISC0 serde, not IPC
+shape.
 
 #### Non-regression guard
 

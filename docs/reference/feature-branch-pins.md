@@ -133,6 +133,16 @@ fails to find `wallet_ffi.h`.
 If `nix bundle` fails after a pin bump, adjust
 `logos-execution-zone-module-patched/flake.nix` against current `main` packages.
 
+Step 30 (static dependency migration) lists `logos_execution_zone` in
+`payment_streams_module`'s `metadata.json` `"dependencies"` and migrates the
+wallet-call surface to codegen-emitted typed `modules().logos_execution_zone`
+wrappers (Qt-free `lp` API style; `QString` ↔ `std::string` at the boundary).
+Three repo-local / complex-type methods (`sign_public_payload`,
+`send_generic_public_transaction_json`, `authenticated_transfer_elf`) stay on
+a minimal dynamic-dispatch fallback through `modules().api`; see
+[step-30-static-dependency-migration.md](../plan/upcoming/step-30-static-dependency-migration.md#findings).
+D6's revisit condition is closed.
+
 Runbook: [`archive/steps/wallet-510-runbook.md`](archive/steps/wallet-510-runbook.md).
 
 ### After changing pins
@@ -174,6 +184,9 @@ Rebuild the Step 17b funded snapshot after a LEZ pin or guest ImageID change:
 ### Payment-streams Logos module (`logos-payment-streams-module/flake.nix`)
 
 - `logos_execution_zone` flake input → patched wrapper (`main` upstream inside).
+  Listed in `metadata.json` `"dependencies"` since Step 30 (static dependency
+  migration); wallet calls use codegen-emitted typed wrappers with a
+  minimal dynamic-dispatch fallback for patched methods.
 - `logos-execution-zone` follows the operational LEZ pin (`v0.2.0`) for `wallet_ffi`.
 
 ## Step 18 public testnet (single v0.2.0 pin)

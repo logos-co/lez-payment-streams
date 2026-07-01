@@ -4,6 +4,7 @@
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder";
     lez-payment-streams.url = "path:..";
+    logos_execution_zone.url = "path:./nix/flakes/logos-execution-zone-module-patched";
   };
 
   outputs =
