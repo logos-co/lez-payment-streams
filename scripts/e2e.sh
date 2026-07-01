@@ -37,7 +37,7 @@ cmd_build() {
   # Build payment_streams_module
   ps_log_info "Building payment_streams_module..."
   local ps_out
-  ps_out="$(ps_nix_build "$REPO_ROOT/logos-payment-streams-module#lgx")"
+  ps_out="$(ps_nix_build "$REPO_ROOT/logos-payment-streams-module#lgx-portable")"
   ps_install_lgx "$ps_out"/*.lgx "$modules_user"
   ps_install_lgx "$ps_out"/*.lgx "$modules_provider"
   
@@ -66,7 +66,7 @@ cmd_build() {
     ps_fatal "DELIVERY_MODULE_ROOT not found: $dm_root"
   fi
   local dm_out
-  dm_out="$(ps_nix_build "$dm_root#lgx")"
+  dm_out="$(ps_nix_build "$dm_root#lgx-portable")"
   ps_install_lgx "$dm_out"/*.lgx "$modules_user"
   ps_install_lgx "$dm_out"/*.lgx "$modules_provider"
   
