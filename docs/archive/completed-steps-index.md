@@ -38,7 +38,7 @@ Product gates: [verification-matrix.md](../reference/verification-matrix.md).
 | 25 | Demo coordination Logos module | Won't fix -- [step-25](../plan/cancelled/step-25-demo-coordination-module.md) |
 | 26 | TestNet v0.2 migration | Complete -- [step-26-testnet-v02-migration.md](../plan/completed/step-26-testnet-v02-migration.md) |
 | 27 | Claim fix and verification | Complete -- [step-27-claim-fix-verification.md](../plan/completed/step-27-claim-fix-verification.md) |
-| 28 | User Journey on TestNet v0.2 | Active -- see [plan/index.md](../plan/index.md) |
+| 28 | User Journey on TestNet v0.2 | Complete -- [step-28-user-journey-testnet.md](../plan/completed/step-28-user-journey-testnet.md) |
 | 29 | E2E script UX enhancement | Active -- see [plan/index.md](../plan/index.md) |
 | 30 | Static dependency migration | Complete -- [step-30-static-dependency-migration.md](../plan/completed/step-30-static-dependency-migration.md) |
 
@@ -128,7 +128,7 @@ The 2x2 matrix (flow x chain) is documented in
 ([N17](../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06),
 [store-integration/README.md](../store-integration/README.md)).
 `make verify-module-local` to [scripts/e2e.sh](../../scripts/e2e.sh)
-`MODE=module local run` to [scripts/module-e2e-local.sh](../../scripts/module-e2e-local.sh).
+`MODE=module local run` to [scripts/module-e2e.sh](../../scripts/module-e2e.sh).
 `make prepare-localnet` to [scripts/e2e.sh](../../scripts/e2e.sh) `local prepare`.
 
 Completed-step DoD scripts (10a-13) are archived under

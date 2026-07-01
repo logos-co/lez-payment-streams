@@ -434,7 +434,7 @@ chains (deployed separately), but client code must remain compatible.
 - [step-18-public-testnet-demo.md](../completed/step-18-public-testnet-demo.md) — prior testnet integration (historical; superseded banner added this step)
 - [step-18b-rc5-unify-handoff.md](../completed/step-18b-rc5-unify-handoff.md) — rc5 unification handoff (historical; superseded banner added this step)
 - [step-27-claim-fix-verification.md](../completed/step-27-claim-fix-verification.md) — depends on this step for claim verification
-- [step-28-user-journey-testnet.md](../upcoming/step-28-user-journey-testnet.md) — enables module mode on testnet
+- [step-28-user-journey-testnet.md](../completed/step-28-user-journey-testnet.md) — enables module mode on testnet
 - [N10](../../reference/integration-decisions.md#n10-step-11b-module-writes-decisions) — JSON-over-LogosAPI rationale for the wallet Qt patch (Path 1 justification)
 - [N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06) — operational pin policy (amended this step)
 - [feature-branch-pins.md](../../reference/feature-branch-pins.md) — dependency versions

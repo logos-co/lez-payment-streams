@@ -43,8 +43,9 @@ help: ## Show this help
 	@echo ""
 	@echo "  Verification — see docs/reference/verification-matrix.md (canonical: scripts/e2e.sh):"
 	@echo "  make verify-module-local       Module verification, localnet"
+	@echo "  make verify-module-testnet     Module verification, testnet"
 	@echo "  make verify-store-local        Store integration, localnet"
-	@echo "  make verify-store-testnet      Store integration, testnet (advanced)"
+	@echo "  make verify-store-testnet      Store integration, testnet"
 	@echo "  make verify-store-local-lifecycle  Maintainer: two runs on one ledger"
 	@echo "  (legacy aliases: verify-step17, verify-step18, verify-step17-back-to-back)"
 	@echo ""
@@ -53,6 +54,7 @@ help: ## Show this help
 	@echo "  make verify-step18-testnet-read-smoke  Testnet read smoke (rc5; skips if RPC down)"
 	@echo "  make deploy-testnet One-time guest deploy on public testnet (Part B)"
 	@echo "  make bootstrap-testnet One-time vault/stream bootstrap (Part B)"
+	@echo "  make bootstrap-testnet-module One-time fixture for module-only testnet"
 	@echo "  make prepare-localnet  Step 17b restore + create stream (scripts/e2e.sh local prepare)"
 	@echo "  make clean       Remove saved state"
 	@echo ""
@@ -135,14 +137,18 @@ verify-step13: ## Step 13 definition of done (archived; scripts/archive/verify-s
 	./scripts/archive/verify-step13-dod.sh
 
 verify-module-local: ## Flow A (module only) local happy path (MODE=module scripts/e2e.sh local run)
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e-local.sh
+	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh
 	MODE=module CHAIN=local ./scripts/e2e.sh local run
+
+verify-module-testnet: ## Flow A (module only) testnet happy path
+	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh
+	MODE=module CHAIN=testnet ./scripts/e2e.sh testnet run
 
 verify-store-local: ## Store integration local dual-host E2E (scripts/e2e.sh local run)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
 	MODE=store CHAIN=local ./scripts/e2e.sh local run
 
-verify-store-testnet: ## Store integration public sequencer E2E (advanced; scripts/e2e.sh testnet run)
+verify-store-testnet: ## Store integration public sequencer E2E (scripts/e2e.sh testnet run)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
 	MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run
 
@@ -155,6 +161,9 @@ verify-step17: verify-store-local ## legacy alias
 verify-step17-back-to-back: verify-store-local-lifecycle ## legacy alias
 
 verify-step18: verify-store-testnet ## legacy alias
+
+verify-step28-module-smoke: ## Step 28 module testnet read smoke
+	MODE=module CHAIN=testnet ./scripts/e2e.sh testnet prepare
 
 debug-sequencer-latency: ## Probe sequencer RPC latency and block production (scripts/e2e/sequencer_latency_probe.py)
 	chmod +x scripts/e2e/sequencer_latency_probe.py
@@ -179,3 +188,7 @@ deploy-testnet: ## Step 18 one-time program deploy (Part B)
 bootstrap-testnet: ## Step 18 one-time fixture bootstrap (Part B; scripts/archive/bootstrap-testnet.sh)
 	chmod +x scripts/archive/bootstrap-testnet.sh scripts/archive/testnet-common.sh
 	./scripts/archive/bootstrap-testnet.sh
+
+bootstrap-testnet-module: ## One-time fixture for module-only testnet (reuses testnet owner)
+	chmod +x scripts/bootstrap-testnet-module.sh scripts/archive/testnet-common.sh
+	./scripts/bootstrap-testnet-module.sh

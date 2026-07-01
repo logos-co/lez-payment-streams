@@ -20,7 +20,7 @@ Prepare only:
 MODE=module CHAIN=local ./scripts/e2e.sh local prepare
 ```
 
-Orchestrator: [scripts/module-e2e-local.sh](../../scripts/module-e2e-local.sh).
+Orchestrator: [scripts/module-e2e.sh](../../scripts/module-e2e.sh).
 Matrix: [reference/verification-matrix.md](../reference/verification-matrix.md).
 First machine: [cold start](../reference/verification-matrix.md#cold-start-first-time-on-a-machine)
 in the verification matrix.
@@ -64,7 +64,7 @@ adds `delivery_module` on provider/user hosts — see [store-integration](../sto
 
 After prepare, run `logoscore` with wallet + module, `sync_to_block`, then `chainAction`:
 `initializeVault`, `deposit`, `createStream`, `pauseStream`, `resumeStream`, `topUpStream`, `claim`.
-Shapes mirror [module-e2e-local.sh](../../scripts/module-e2e-local.sh).
+Shapes mirror [module-e2e.sh](../../scripts/module-e2e.sh).
 
 ## Recovery
 

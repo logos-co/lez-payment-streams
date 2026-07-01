@@ -56,17 +56,18 @@ Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-r
 
 |  | Localnet (`CHAIN=local`) | Testnet (`CHAIN=testnet`) |
 | --- | --- | --- |
-| User Journey — module | Required | Future work (unsupported) |
-| Developer Journey — Store | Required | Advanced |
+| User Journey — module | Required | Required |
+| Developer Journey — Store | Required | Required |
 
 ## Support tiers
 
-- Required — localnet for both flows (clone and verify on your machine).
-- Advanced — Store integration on public testnet.
-  Needs `fixtures/testnet.json` (one-time `make bootstrap-testnet`).
-  Payee `claim` may be optional on testnet
-  ([archive/operator/testnet-claim-known-issue.md](../archive/operator/testnet-claim-known-issue.md)).
-- Future work — `MODE=module` with `CHAIN=testnet` is rejected by `e2e.sh`.
+- Required — both journeys on both chains.
+  Localnet needs no fixture; clone and verify on your machine.
+  Testnet needs `fixtures/testnet.json` (one-time `make bootstrap-testnet`); module-only
+  users can use `fixtures/testnet-module.json` (one-time `make bootstrap-testnet-module`).
+- Claim is required on both chains. The v0.2.0 testnet upgrade resolved the
+  previous claim reliability issue; see
+  [archive/operator/testnet-claim-known-issue.md](../archive/operator/testnet-claim-known-issue.md).
 
 ## Commands (canonical)
 
@@ -74,16 +75,21 @@ Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-r
 # Module verification — Required, localnet
 MODE=module CHAIN=local ./scripts/e2e.sh local run
 
+# Module verification — Required, testnet
+make bootstrap-testnet-module   # one-time
+MODE=module CHAIN=testnet ./scripts/e2e.sh testnet run
+
 # Store integration — Required, localnet
 ./scripts/e2e.sh local run
 
-# Store integration — Advanced, testnet
+# Store integration — Required, testnet
 make bootstrap-testnet   # one-time
 MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run
 ```
 
-Make convenience aliases (same commands): `verify-module-local`, `verify-store-local`,
-`verify-store-testnet`. Legacy names `verify-step17` / `verify-step18` still work.
+Make convenience aliases (same commands): `verify-module-local`, `verify-module-testnet`,
+`verify-store-local`, `verify-store-testnet`. Legacy names `verify-step17` / `verify-step18`
+still work.
 
 Maintainer-only (not integrator gates): `make verify-store-local-lifecycle` or
 [`scripts/archive/verify-store-local-lifecycle.sh`](../../scripts/archive/verify-store-local-lifecycle.sh).

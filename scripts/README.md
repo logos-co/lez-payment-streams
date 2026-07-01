@@ -39,8 +39,11 @@ MODE=module CHAIN=local ./scripts/e2e.sh local run
 # Store integration — Required, localnet (MODE=store is default)
 ./scripts/e2e.sh local run
 
-# Store integration — Advanced, testnet (after bootstrap)
+# Store integration — Required, testnet (after bootstrap)
 MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run
+
+# Module verification — Required, testnet (after bootstrap)
+MODE=module CHAIN=testnet ./scripts/e2e.sh testnet run
 ```
 
 Each `run` performs prepare, orchestration, and teardown unless `SKIP_TEARDOWN=1`.
@@ -62,7 +65,7 @@ Each `run` performs prepare, orchestration, and teardown unless `SKIP_TEARDOWN=1
 | `FULL_RESET` | `0` | Rebuild funded snapshot when `1` |
 | `E2E_PHASE` | `all` | Store Python: `core`, `claim`, or `all` |
 
-`MODE=module` with `CHAIN=testnet` is rejected.
+`MODE=module` with `CHAIN=testnet` is fully supported.
 
 ## Components
 
@@ -71,12 +74,12 @@ Each `run` performs prepare, orchestration, and teardown unless `SKIP_TEARDOWN=1
 | [e2e.sh](e2e.sh) | Prepare / run / teardown |
 | [lifecycle.sh](lifecycle.sh) | Localnet, snapshots, testnet wallet |
 | [fixture.sh](fixture.sh) | Prefund, vault, stream CLI (Store prepare) |
-| [module-e2e-local.sh](module-e2e-local.sh) | Module verification orchestrator |
+| [module-e2e.sh](module-e2e.sh) | Module verification orchestrator (local or testnet) |
 | [e2e/run_local_e2e.py](e2e/run_local_e2e.py) | Store integration dual-host orchestrator |
 
 ## Make aliases (optional)
 
-Same as `e2e.sh`: `verify-module-local`, `verify-store-local`, `verify-store-testnet`.
+Same as `e2e.sh`: `verify-module-local`, `verify-module-testnet`, `verify-store-local`, `verify-store-testnet`.
 Legacy: `verify-step17`, `verify-step18`.
 
 ## Maintainer only

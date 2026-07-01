@@ -185,25 +185,35 @@ cmd_prepare_local() {
 
 cmd_prepare_testnet() {
   ps_log_info "Preparing testnet..."
-  
+
   # Ensure testnet wallet
   "$REPO_ROOT/scripts/lifecycle.sh" testnet wallet-ensure
-  
+
   # Read smoke check
   "$REPO_ROOT/scripts/lifecycle.sh" testnet read-smoke
-  
+
   # Program deploy (one-time, usually done)
   if [[ "${TESTNET_DEPLOY:-0}" == "1" ]]; then
     ps_log_info "Deploying program to testnet..."
     # Would call deploy script here
   fi
-  
-  # Bootstrap fixture if needed
-  if [[ ! -f "$REPO_ROOT/fixtures/testnet.json" ]]; then
-    ps_log_info "Testnet fixture not found. Run bootstrap first:"
-    ps_log_info "  make bootstrap-testnet"
+
+  # Bootstrap fixture if needed (module vs store paths)
+  local fixture expected_bootstrap
+  if ps_is_module_mode; then
+    fixture="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/testnet-module.json}"
+    expected_bootstrap="make bootstrap-testnet-module"
+  else
+    fixture="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/testnet.json}"
+    expected_bootstrap="make bootstrap-testnet"
   fi
-  
+
+  if [[ ! -f "$fixture" ]]; then
+    ps_log_info "Testnet fixture not found: $fixture"
+    ps_log_info "Run bootstrap first: $expected_bootstrap"
+    ps_fatal "Missing fixture: $fixture"
+  fi
+
   ps_log_info "Testnet prepare complete"
 }
 
@@ -216,15 +226,12 @@ cmd_run() {
 
   # Flow A (module only): single-host happy path, no Store / dual-host / N8.
   if ps_is_module_mode; then
-    if ps_is_testnet; then
-      ps_fatal "MODE=module is localnet only (A-testnet is future work)"
-    fi
     export MODULES_USER="${MODULES_USER:-$REPO_ROOT/.scaffold/e2e/user/modules}"
     export ARTIFACT="${ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
     mkdir -p "$(dirname "$ARTIFACT")"
     ps_log_info "Launching module happy path (Flow A)..."
     MODULES="$MODULES_USER" ARTIFACT="$ARTIFACT" \
-      "$REPO_ROOT/scripts/module-e2e-local.sh" || {
+      "$REPO_ROOT/scripts/module-e2e.sh" || {
         ps_log_error "Module E2E run failed"
         return 1
       }
@@ -342,7 +349,7 @@ Environment:
   CHAIN              — local or testnet (default: local)
   MODE               — store (dual-host Store, Flow B) or module
                        (single-host payment-streams happy path, Flow A);
-                       default: store. MODE=module is localnet only.
+                       default: store.
   SKIP_BUILD         — Skip module build (default: 0)
   SKIP_TEARDOWN      — Skip cleanup (default: 0)
   E2E_PHASE          — core, claim, or all (default: all)
@@ -350,8 +357,8 @@ Environment:
 Verification matrix (mode x chain):
   MODE=module CHAIN=local  $0 local run   # module verification, localnet
   MODE=store  CHAIN=local  $0 local run   # Store integration, localnet
-  MODE=store  CHAIN=testnet $0 testnet run # Store integration, testnet (advanced)
-  MODE=module CHAIN=testnet                # unsupported (future work)
+  MODE=store  CHAIN=testnet $0 testnet run # Store integration, testnet
+  MODE=module CHAIN=testnet                # module verification, testnet
 
 Examples:
   $0 local run                    # Full local E2E (Store)

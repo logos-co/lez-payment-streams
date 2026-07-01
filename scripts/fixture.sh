@@ -435,7 +435,6 @@ cmd_stream_claim() {
     --stream-id "$stream_id"
   
   ps_log_info "Claim submitted for stream $stream_id"
-  # Note: May not confirm on testnet, that's a known issue
 }
 
 # ============================================================================
