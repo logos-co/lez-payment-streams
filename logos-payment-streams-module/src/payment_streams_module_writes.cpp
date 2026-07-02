@@ -1146,7 +1146,8 @@ QString PaymentStreamsModuleImpl::closeStream(const QVariant& signerAccountIdBas
     return buildAndSubmit(wallet, modules().api, authorityBase58, instruction, accountsHex, &err);
 }
 
-QString PaymentStreamsModuleImpl::claim(const QVariant& providerAccountIdBase58,
+QString PaymentStreamsModuleImpl::claim(const QVariant& ownerAccountIdBase58,
+                                        const QVariant& providerAccountIdBase58,
                                         const QVariant& vaultId,
                                         const QVariant& streamId) {
     LogosExecutionZone& wallet = modules().logos_execution_zone;
@@ -1157,20 +1158,18 @@ QString PaymentStreamsModuleImpl::claim(const QVariant& providerAccountIdBase58,
         return makeErrorJson(QStringLiteral("invalid numeric argument"));
     }
 
-    QString err;
-    if (!ensureFixtureLoaded(&err)) {
-        return makeErrorJson(err);
-    }
-    QFile manifestFile(fixtureManifestPath());
-    if (!manifestFile.open(QIODevice::ReadOnly)) {
-        return makeErrorJson(QStringLiteral("fixture manifest required for claim owner"));
-    }
-    const QJsonObject manifest = QJsonDocument::fromJson(manifestFile.readAll()).object();
-    const QString ownerBase58 = manifest.value(QStringLiteral("owner_account_id")).toString().trimmed();
+    // The stream coordinate (owner, vault_id, stream_id) is delivered to the
+    // provider out-of-band (the stream-creation advertisement); the owner here
+    // is the stream creator whose account id drives vault_config / stream_config
+    // PDA derivation. It must NOT be read from the fixture manifest, which holds
+    // the seeder baseline owner and diverges from the actual vault creator in the
+    // fresh-owner localnet flow.
+    const QString ownerBase58 = ownerAccountIdBase58.toString().trimmed();
     if (ownerBase58.isEmpty()) {
-        return makeErrorJson(QStringLiteral("fixture owner_account_id missing"));
+        return makeErrorJson(QStringLiteral("claim requires owner (stream creator) account id"));
     }
 
+    QString err;
     uint8_t programId[32]{};
     uint8_t owner[32]{};
     uint8_t provider[32]{};
@@ -1381,7 +1380,7 @@ QString PaymentStreamsModuleImpl::chainAction(const QVariant& operation, const Q
         return closeStream(qv("signer"), qv("vault_id"), qv("stream_id"), qv("authority"));
     }
     if (op == QLatin1String("claim")) {
-        return claim(qv("provider"), qv("vault_id"), qv("stream_id"));
+        return claim(qv("owner"), qv("provider"), qv("vault_id"), qv("stream_id"));
     }
     if (op == QLatin1String("getVaultStatus")) {
         return getVaultStatus(qv("owner"), qv("vault_id"), {});

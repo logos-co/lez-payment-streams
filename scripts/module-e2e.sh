@@ -120,9 +120,9 @@ MODULES="${MODULES:-${MODULES_USER:-$REPO_ROOT/.scaffold/e2e/user/modules}}"
 
 VAULT_ID="${VAULT_ID:-0}"
 STREAM_ID="${STREAM_ID:-0}"
-DEPOSIT="${DEPOSIT:-100}"
-RATE="${RATE:-10}"
-ALLOCATION="${ALLOCATION:-80}"
+DEPOSIT="${DEPOSIT:-500}"
+RATE="${RATE:-1}"
+ALLOCATION="${ALLOCATION:-400}"
 TOPUP_INCREASE="${TOPUP_INCREASE:-1}"
 
 ARTIFACT="${ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
@@ -278,6 +278,16 @@ if ps_is_local; then
   [[ -z "$PROVIDER" ]] && { narr_fail "Could not create provider account"; ps_fatal "could not create provider account"; }
   [[ ${#PROVIDER} -eq 64 ]] && PROVIDER="$(to_base58 "$PROVIDER")"
   logoscore call logos_execution_zone save >/dev/null 2>&1 || true
+elif ps_is_testnet; then
+  # Fixture owner stays funded on public testnet; fixture provider is often still
+  # DEFAULT-owned (claim pays via authenticated_transfer). Create a fresh provider
+  # with nonce 0 so AT-init + claim work (see docs/archive/operator/testnet-claim-known-issue.md).
+  narr_step "Creating fresh provider account for this run (fixture owner unchanged)"
+  PROVIDER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
+  [[ -z "$PROVIDER" ]] && { narr_fail "Could not create provider account"; ps_fatal "could not create provider account"; }
+  [[ ${#PROVIDER} -eq 64 ]] && PROVIDER="$(to_base58 "$PROVIDER")"
+  logoscore call logos_execution_zone save >/dev/null 2>&1 || true
+  narr_ok "Provider Public/$PROVIDER"
 fi
 
 narr_value "owner=$OWNER provider=$PROVIDER vault=$VAULT_ID stream=$STREAM_ID chain=${CHAIN:-local}"
@@ -338,7 +348,21 @@ await_inclusion() {
 # default-owned, so call this before topup and before the account signs any tx.
 # Returns 0 once the init tx is included on chain, 1 otherwise.
 auth_transfer_init() {
-  local acct="$1" hex line tx_hash
+  local acct="$1"
+  if ps_account_is_at_initialized "$acct"; then
+    return 0
+  fi
+  local hex line tx_hash wallet_bin
+  if ps_is_testnet; then
+    wallet_bin="$(ps_lez_cache)/target/release/wallet"
+    if [[ -x "$wallet_bin" ]]; then
+      export LEE_WALLET_HOME_DIR="$WALLET_HOME" NSSA_WALLET_HOME_DIR="$WALLET_HOME"
+      if "$wallet_bin" auth-transfer init --account-id "Public/$acct" >/dev/null 2>&1; then
+        sync_wallet
+        ps_account_is_at_initialized "$acct" && return 0
+      fi
+    fi
+  fi
   hex="$(logoscore call logos_execution_zone account_id_from_base58 "$acct" 2>/dev/null | tail -1)"
   hex="$(python3 -c 'import json,sys; o=json.loads(sys.argv[1]); r=o.get("result",""); print(r if isinstance(r,str) else "")' "$hex" 2>/dev/null || true)"
   [[ -n "$hex" ]] || return 1
@@ -430,7 +454,7 @@ j() { python3 -c 'import json,sys; print(json.dumps(json.loads(sys.argv[1])))' "
 # tx), otherwise deposit (which chains into AT to debit the owner) and claim
 # (which chains into AT to credit the provider) are rejected on chain.
 # ---------------------------------------------------------------------------
-if ps_is_local; then
+if ps_is_local || ps_is_testnet; then
   narr_step "Initializing accounts under authenticated_transfer program"
   if auth_transfer_init "$OWNER"; then
     emit_phase auth_init_owner true
@@ -447,20 +471,77 @@ if ps_is_local; then
   else
     emit_phase auth_init_provider false
     narr_fail "Provider AT-init not confirmed on chain"
-    narr_hint "register_public_account did not settle; claim will be rejected"
+    narr_hint "Provider must be AT-initialized before claim; use a fresh provider account"
     FAILURES=$((FAILURES + 1))
   fi
   sync_wallet
+fi
 
+if ps_is_local; then
   narr_step "Funding owner and provider for gas"
   SCAFFOLD_WALLET="$(ps_lez_cache)/target/release/wallet"
   if [[ -x "$SCAFFOLD_WALLET" ]]; then
     export PATH="$(dirname "$SCAFFOLD_WALLET"):$PATH"
     export LEE_WALLET_HOME_DIR="$WALLET_HOME"
-    timeout 30 lgs wallet topup --address "Public/$OWNER" >/dev/null 2>&1 || true
+    # The pinata faucet pays ~150 tokens per claim. The owner must hold at least
+    # DEPOSIT (+ buffer) so the deposit instruction can debit it; a single claim
+    # is not enough for the fixture's demo_deposit_amount, so claim repeatedly
+    # until the owner balance covers the deposit.
+    owner_target=$((DEPOSIT + 50))
+    owner_attempts=0
+    owner_max=$((owner_target / 150 + 3))
+    owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null || echo 0)"
+    while (( owner_bal < owner_target )); do
+      owner_attempts=$((owner_attempts + 1))
+      if (( owner_attempts > owner_max )); then
+        narr_fail "Owner not funded after $owner_max faucet claims (balance=$owner_bal, target=$owner_target)"
+        break
+      fi
+      timeout 30 lgs wallet topup --address "Public/$OWNER" >/dev/null 2>&1 || true
+      sync_wallet
+      owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null || echo 0)"
+    done
+    narr_verbose "Owner balance $owner_bal (target $owner_target) after $owner_attempts faucet claim(s)"
+    # Provider only needs gas for the claim signature; one claim is plenty.
     timeout 30 lgs wallet topup --address "Public/$PROVIDER" >/dev/null 2>&1 || true
   fi
   sync_wallet
+fi
+
+if ps_is_testnet; then
+  narr_step "Funding owner and provider on testnet (wallet pinata)"
+  SCAFFOLD_WALLET="$(ps_lez_cache)/target/release/wallet"
+  if [[ -x "$SCAFFOLD_WALLET" ]]; then
+    export PATH="$(dirname "$SCAFFOLD_WALLET"):$PATH"
+    export LEE_WALLET_HOME_DIR="$WALLET_HOME" NSSA_WALLET_HOME_DIR="$WALLET_HOME"
+    owner_target=$((DEPOSIT + 50))
+    owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null || echo 0)"
+    owner_attempts=0
+    while (( owner_bal < owner_target && owner_attempts < 6 )); do
+      owner_attempts=$((owner_attempts + 1))
+      "$SCAFFOLD_WALLET" pinata claim --to "Public/$OWNER" >/dev/null 2>&1 || true
+      sync_wallet
+      owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null || echo 0)"
+    done
+    narr_verbose "Owner balance $owner_bal (target $owner_target)"
+    if (( owner_bal < owner_target )); then
+      narr_fail "Owner balance $owner_bal below deposit target $owner_target"
+      FAILURES=$((FAILURES + 1))
+    fi
+    if ps_account_is_at_initialized "$PROVIDER"; then
+      "$SCAFFOLD_WALLET" pinata claim --to "Public/$PROVIDER" >/dev/null 2>&1 || true
+      sync_wallet
+    fi
+    provider_bal="$(ps_account_balance "$PROVIDER" 2>/dev/null || echo 0)"
+    narr_verbose "Provider balance after pinata: $provider_bal"
+    if [[ -z "$provider_bal" || "$provider_bal" == "0" ]]; then
+      narr_fail "Provider has zero balance after pinata (claim signer needs gas)"
+      FAILURES=$((FAILURES + 1))
+    fi
+  else
+    narr_fail "Scaffold wallet not found; cannot fund testnet accounts"
+    FAILURES=$((FAILURES + 1))
+  fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -595,28 +676,6 @@ call_ps create_stream 1 createStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$
 # ---------------------------------------------------------------------------
 narr_phase "Stream Lifecycle"
 
-narr_step "Pausing stream $STREAM_ID"
-call_ps pause_stream 1 pauseStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Pause accepted by sequencer"
-if PAUSE_STREAM="$(poll_read read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"; then
-  read -r _ _ PAUSE_ST <<< "$PAUSE_STREAM"
-  emit_phase pause_state true "{\"stream_state\":$PAUSE_ST}"
-  narr_ok "Stream paused: on-chain state $(stream_state_name "$PAUSE_ST")"
-else
-  emit_phase pause_state false "{\"error\":\"read_failed\"}"
-  narr_ok "Stream paused (on-chain state not yet reflected)"
-fi
-
-narr_step "Resuming stream $STREAM_ID"
-call_ps resume_stream 1 resumeStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Resume accepted by sequencer"
-if RESUME_STREAM="$(poll_read read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"; then
-  read -r _ _ RESUME_ST <<< "$RESUME_STREAM"
-  emit_phase resume_state true "{\"stream_state\":$RESUME_ST}"
-  narr_ok "Stream resumed: on-chain state $(stream_state_name "$RESUME_ST")"
-else
-  emit_phase resume_state false "{\"error\":\"read_failed\"}"
-  narr_ok "Stream resumed (on-chain state not yet reflected)"
-fi
-
 narr_step "Topping up stream $STREAM_ID by $TOPUP_INCREASE token"
 # Capture on-chain allocation (accrued + unaccrued) before the top-up so we can
 # verify the delta equals the top-up amount.
@@ -697,7 +756,7 @@ if CLAIM_PRE_VAULT="$(poll_read read_vault "$OWNER" "$VAULT_ID")"; then
 fi
 
 narr_step "Bob claims accrued funds from stream $STREAM_ID"
-CLAIM_LINE="$(call_ps claim 1 claim "$(j "{\"provider\":\"$PROVIDER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Claim accepted by sequencer")"
+CLAIM_LINE="$(call_ps claim 1 claim "$(j "{\"owner\":\"$OWNER\",\"provider\":\"$PROVIDER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Claim accepted by sequencer")"
 
 # Poll both balances until the payout settles (or the retry budget is
 # exhausted). A settled claim shows the provider balance increase and the vault

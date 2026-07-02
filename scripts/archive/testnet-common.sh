@@ -2,7 +2,9 @@
 # Shared Step 18 testnet operator helpers (operational LEZ pin v0.2.0).
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -z "${REPO_ROOT:-}" ]]; then
+  REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+fi
 
 export LEZ_OP_REV="${LEZ_OP_REV:-a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a}"
 export TESTNET_SEQUENCER="${TESTNET_SEQUENCER:-https://testnet.lez.logos.co/}"

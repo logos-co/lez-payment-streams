@@ -16,13 +16,14 @@ if [[ ! -f "$PROGRAM_BIN" ]]; then
   make build
 fi
 
-EXPECTED_ID="${TESTNET_PROGRAM_ID_HEX:-$(make -s program-id)}"
+EXPECTED_ID="${TESTNET_PROGRAM_ID_HEX:-$(make -s program-id | sed -n 's/.*ImageID (hex bytes): //p' | tr -d ' ')}"
 WALLET_BIN="$(lez_wallet_bin)"
 export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
+export LEE_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
 
-echo "=== deploy-testnet (expected program-id $EXPECTED_ID, ELF $(stat -c%s "$PROGRAM_BIN") bytes) ==="
+echo "=== deploy-testnet (expected program-id ${EXPECTED_ID:-unknown}, ELF $(stat -c%s "$PROGRAM_BIN") bytes) ==="
 set +e
-"$WALLET_BIN" deploy-program "$PROGRAM_BIN" >/dev/null 2>&1
+"$WALLET_BIN" deploy-program "$PROGRAM_BIN"
 DEPLOY_RC=$?
 set -e
 
@@ -32,7 +33,7 @@ else
   echo "deploy-program exit 0"
 fi
 
-ACTUAL_ID="$(make -s program-id)"
+ACTUAL_ID="$(make -s program-id | sed -n 's/.*ImageID (hex bytes): //p' | tr -d ' ')"
 if [[ "$ACTUAL_ID" != "$EXPECTED_ID" ]]; then
   echo "WARN: make program-id ($ACTUAL_ID) != expected ($EXPECTED_ID)" >&2
 fi

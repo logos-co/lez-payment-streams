@@ -75,7 +75,7 @@ directly if needed).
 | `pauseStream` / `resumeStream` | `signer`, `vault_id`, `stream_id` |
 | `topUpStream` | `signer`, `vault_id`, `stream_id`, `increase_lo`, `increase_hi` |
 | `closeStream` | `signer`, `vault_id`, `stream_id`, optional `authority` |
-| `claim` | `provider`, `vault_id`, `stream_id` |
+| `claim` | `owner`, `provider`, `vault_id`, `stream_id` |
 | `getVaultStatus` | `owner`, `vault_id` |
 | `getStreamStatus` | `owner`, `vault_id`, `stream_id` |
 

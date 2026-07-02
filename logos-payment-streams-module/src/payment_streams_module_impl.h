@@ -61,7 +61,8 @@ private:
                         const QVariant& vaultId,
                         const QVariant& streamId,
                         const QVariant& authorityAccountIdBase58);
-    QString claim(const QVariant& providerAccountIdBase58,
+    QString claim(const QVariant& ownerAccountIdBase58,
+                  const QVariant& providerAccountIdBase58,
                   const QVariant& vaultId,
                   const QVariant& streamId);
     QString getVaultStatus(const QVariant& ownerAccountIdBase58,

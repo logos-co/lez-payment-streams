@@ -340,7 +340,7 @@ Claim (provider host, same manifest `vault_id` / `stream_id` as the run):
 
 ```bash
 logoscore "${LC_PROVIDER[@]}" call payment_streams_module chainAction claim \
-  '{"provider":"<provider_account_id>","vault_id":0,"stream_id":<run_stream_id>}'
+  '{"owner":"<owner_account_id>","provider":"<provider_account_id>","vault_id":0,"stream_id":<run_stream_id>}'
 ```
 
 If accrued is zero after close, the orchestrator logs `demo_claim` with
@@ -351,7 +351,7 @@ Legacy manual claim-only snippet (superseded by close-then-claim in the script):
 ```bash
 # Prefer: make verify-step17 (orchestrator owns stream_id from manifest)
 logoscore "${LC_PROVIDER[@]}" call payment_streams_module chainAction claim \
-  '{"provider":"<provider_account_id>","vault_id":0,"stream_id":0}'
+  '{"owner":"<owner_account_id>","provider":"<provider_account_id>","vault_id":0,"stream_id":0}'
 ```
 
 Script flag: `E2E_PHASE=core|claim|all` (default `all`). Claim-only phase is legacy; `core` includes

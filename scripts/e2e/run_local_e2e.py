@@ -2326,6 +2326,7 @@ def demo_teardown(
             return
 
     claim_body = {
+        "owner": manifest["owner_account_id"],
         "provider": manifest["provider_account_id"],
         "vault_id": vault_id,
         "stream_id": stream_id,

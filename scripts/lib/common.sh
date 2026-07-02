@@ -226,6 +226,20 @@ except Exception:
     print(0)"
 }
 
+# True when the account is registered under authenticated_transfer (non-default owner).
+ps_account_is_at_initialized() {
+  local acct="$1"
+  curl -sf -X POST "$(ps_seq_url)" -H 'Content-Type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$acct\"]}" \
+    2>/dev/null |
+    python3 -c "import json,sys
+try:
+    po=(json.load(sys.stdin).get('result') or {}).get('program_owner') or []
+    sys.exit(0 if any(int(x)!=0 for x in po) else 1)
+except Exception:
+    sys.exit(1)"
+}
+
 # Default paths
 ps_default_fixture_manifest() {
   if ps_is_testnet; then

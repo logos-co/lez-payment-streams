@@ -200,7 +200,7 @@ call_ps RESUME resumeStream "$(python3 -c "import json; print(json.dumps({'signe
 sync_wallet
 call_ps TOPUP topUpStream "$(python3 -c "import json; print(json.dumps({'signer':'$OWNER','vault_id':int('$VAULT_ID'),'stream_id':int('$STREAM_ID'),'increase_lo':1,'increase_hi':0}))")"
 sync_wallet
-call_ps CLAIM claim "$(python3 -c "import json; print(json.dumps({'provider':'$PROVIDER','vault_id':int('$VAULT_ID'),'stream_id':int('$STREAM_ID')}))")"
+call_ps CLAIM claim "$(python3 -c "import json; print(json.dumps({'owner':'$OWNER','provider':'$PROVIDER','vault_id':int('$VAULT_ID'),'stream_id':int('$STREAM_ID')}))")"
 sync_wallet
 call_ps_status_retry VSTATUS getVaultStatus "$(python3 -c "import json; print(json.dumps({'owner':'$OWNER','vault_id':int('$VAULT_ID')}))")" vault_id
 call_ps_status_retry SSTATUS getStreamStatus "$(python3 -c "import json; print(json.dumps({'owner':'$OWNER','vault_id':int('$VAULT_ID'),'stream_id':int('$STREAM_ID')}))")" stream_id

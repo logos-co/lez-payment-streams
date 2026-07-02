@@ -119,7 +119,7 @@ Logoscore (provider host):
 logoscore call payment_streams_module chainAction closeStream \
   '{"signer":"<owner>","vault_id":0,"stream_id":<id>,"authority":"<provider_account_id>"}'
 logoscore call payment_streams_module chainAction claim \
-  '{"provider":"<provider_account_id>","vault_id":0,"stream_id":<id>}'
+  '{"owner":"<owner_account_id>","provider":"<provider_account_id>","vault_id":0,"stream_id":<id>}'
 ```
 
 Owner-as-both-signer-and-authority close is invalid for the six-account layout unless the product

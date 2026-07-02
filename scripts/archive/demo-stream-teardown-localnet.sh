@@ -61,7 +61,7 @@ else
 fi
 
 if [[ "${VERIFY_TEARDOWN_CLAIM:-0}" == "1" ]] && command -v logoscore >/dev/null 2>&1; then
-  CLAIM_JSON="$(python3 -c "import json; print(json.dumps({'provider':'$PROVIDER','vault_id':int('$VAULT_ID'),'stream_id':int('$STREAM_ID')}))")"
+  CLAIM_JSON="$(python3 -c "import json; print(json.dumps({'owner':'$OWNER','provider':'$PROVIDER','vault_id':int('$VAULT_ID'),'stream_id':int('$STREAM_ID')}))")"
   logoscore stop 2>/dev/null || true
   sleep 1
   nix shell github:logos-co/logos-logoscore-cli --command bash -c "
