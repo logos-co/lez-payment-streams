@@ -31,24 +31,24 @@ index 0eadbc2..5930f57 100644
 +    if (!hexToBytes(instruction_hex, instruction_bytes)) {
 +        return transferResultToJson(nullptr, std::string("send_generic_public_transaction_json: instruction_hex invalid"));
 +    }
-+    if (instruction_bytes.empty()) {
-+        return transferResultToJson(nullptr, std::string("send_generic_public_transaction_json: instruction_hex empty"));
++    if (instruction_bytes.empty() || instruction_bytes.size() % 4 != 0) {
++        return transferResultToJson(nullptr, std::string("send_generic_public_transaction_json: instruction_hex length must be a positive multiple of 4 bytes"));
 +    }
 +
-+    FfiInstructionWords words = wallet_ffi_serialization_helper(
-+        instruction_bytes.data(),
-+        static_cast<uintptr_t>(instruction_bytes.size()));
-+    if (words.error != SUCCESS) {
-+        const std::string msg = std::string("send_generic_public_transaction_json: serialization_helper error ") + std::to_string(static_cast<int>(words.error));
-+        wallet_ffi_free_instruction_words(&words);
-+        return transferResultToJson(nullptr, msg);
-+    }
++    // instruction_hex is the little-endian byte expansion of the risc0 instruction
++    // words (Program::serialize_instruction then u32::to_le_bytes per word). Regroup
++    // each 4-byte little-endian chunk back into a u32 word. Do NOT route this through
++    // wallet_ffi_serialization_helper: that re-serializes the bytes as a seq (one word
++    // per byte) and corrupts the instruction.
 +    std::vector<uint32_t> instruction_words;
-+    instruction_words.reserve(words.instruction_words_size);
-+    for (uintptr_t i = 0; i < words.instruction_words_size; ++i) {
-+        instruction_words.push_back(words.instruction_words[i]);
++    instruction_words.reserve(instruction_bytes.size() / 4);
++    for (size_t i = 0; i < instruction_bytes.size(); i += 4) {
++        const uint32_t word = static_cast<uint32_t>(instruction_bytes[i])
++            | (static_cast<uint32_t>(instruction_bytes[i + 1]) << 8)
++            | (static_cast<uint32_t>(instruction_bytes[i + 2]) << 16)
++            | (static_cast<uint32_t>(instruction_bytes[i + 3]) << 24);
++        instruction_words.push_back(word);
 +    }
-+    wallet_ffi_free_instruction_words(&words);
 +
 +    const std::string program_id_hex = doc.value("program_id_hex", std::string());
 +
