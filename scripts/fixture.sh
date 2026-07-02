@@ -14,6 +14,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/lib/common.sh
 source "$REPO_ROOT/scripts/lib/common.sh"
+# shellcheck source=scripts/lib/auth_transfer.sh
+source "$REPO_ROOT/scripts/lib/auth_transfer.sh"
 
 # Default configuration
 export SEED_DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-1000}"
@@ -105,27 +107,6 @@ fund_owner_account() {
   ps_log_info "Owner $owner funded: balance=$bal"
 }
 
-# Initialize the provider account under the authenticated_transfer program.
-# LEZ v0.2.0: the guest `claim` instruction credits the provider by chaining
-# into `authenticated_transfer`, which claims a default-owned recipient.
-# The provider must be a fresh (default) account at init time, otherwise
-# `authenticated_transfer`'s `initialize_account` rejects it ("Account must
-# be uninitialized"). Call this BEFORE the provider is used as a signer in any
-# other transaction (e.g. `create_stream`), so it is owned by
-# `authenticated_transfer` rather than left default-owned with nonce > 0.
-# No faucet funding is needed: the provider receives funds from the claim,
-# not from the faucet. See step-27 Symptom D (D-fix-2).
-init_provider_account() {
-  local provider="$1"
-  [[ -z "$provider" ]] && ps_fatal "init_provider_account: provider is empty"
-
-  ps_log_info "Initializing provider $provider under authenticated_transfer program..."
-  if ! wallet auth-transfer init --account-id "Public/$provider" >/dev/null 2>&1; then
-    ps_log_info "auth-transfer init for $provider returned non-zero (may already be initialized); continuing"
-  fi
-  wait_chain_settle
-}
-
 # ============================================================================
 # Prefund — Initial funding of owner and vault deposit (baseline snapshot)
 # ============================================================================
@@ -160,6 +141,7 @@ cmd_prefund() {
   if [[ -x "$lez_wallet_dir/wallet" ]]; then
     export PATH="$lez_wallet_dir:$PATH"
   fi
+  ps_prepend_lez_wallet_path
 
   # Deploy the guest program if not already on chain (idempotent).
   # prefund-onchain submits initialize_vault + deposit, both of which
@@ -176,16 +158,17 @@ cmd_prefund() {
   # See docs/plan/upcoming/step-27-claim-fix-verification.md (Symptom A).
   fund_owner_account "$owner" "$SEED_DEPOSIT_AMOUNT"
 
-  # LEZ v0.2.0: the guest `claim` credits the provider by chaining into
-  # `authenticated_transfer`. Initialize the provider under
-  # `authenticated_transfer` so its post-state survives the spel macro's
-  # default-owned-account filter (Symptom D). Must happen before the
-  # provider is touched by any signer transaction (create_stream).
   local manifest provider
   manifest="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/localnet.json}"
   if [[ -f "$manifest" ]]; then
     provider="$(ps_json_get "$manifest" provider_account_id)"
-    [[ -n "$provider" ]] && init_provider_account "$provider"
+  fi
+  if [[ -n "${provider:-}" ]]; then
+    FIXTURE_ARTIFACT="${FIXTURE_ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/fixture-prefund-$(date +%Y%m%dT%H%M%S).log}"
+    export ARTIFACT="$FIXTURE_ARTIFACT"
+    : > "$ARTIFACT"
+    ps_log_info "Ensuring authenticated_transfer for owner and provider (artifact=$ARTIFACT)"
+    ps_auth_transfer_ensure "$owner" "$provider"
   fi
 
   # Run prefund via seed binary (prefund-onchain initializes vault + deposits)
