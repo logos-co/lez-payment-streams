@@ -24,10 +24,11 @@ https://github.com/logos-co/lez-payment-streams (FILL IN: exact repository URL)
 local LEZ (module only, single-host). The journey is verified end-to-end on
 localnet with the phase list below. On TestNet v0.2, run `make deploy-testnet`
 once after a sequencer relaunch, then `CHAIN=testnet ./scripts/module-e2e.sh`.
-The script keeps the funded fixture owner, creates a fresh provider each run,
-runs `authenticated_transfer` init (via the v0.2 wallet CLI on testnet), funds
-both accounts with pinata, then executes the full lifecycle including claim.
-See [Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
+The script reuses owner and provider from `fixtures/testnet.json` (keys in
+`.scaffold/e2e/testnet-wallet/`), ensures both are AT-initialized and funded
+via pinata, then runs the full lifecycle including claim. Replace a broken
+fixture provider id if it was never AT-registered. See
+[Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
 
 ## Prerequisites
 
@@ -41,10 +42,11 @@ Cold start: [docs/reference/verification-matrix.md#cold-start-first-time-on-a-ma
 ## Commands and expected outputs
 
 The journey exercises the complete payment stream lifecycle: create vault,
-deposit funds, open a stream to a provider, top up the stream, wait for value
-to accrue, have the provider claim accrued funds, then close the stream and
-reclaim the unspent allocation. The chain runs the phases through
-`scripts/module-e2e.sh`, dispatched by `scripts/e2e.sh`.
+deposit funds, open a stream to a provider, wait for value to accrue, have the
+provider claim accrued funds, then close the stream and reclaim the unspent
+allocation. An optional **top-up** phase (`topUpStream`) runs between stream
+creation and accrual when enabled (see `MODULE_E2E_TOPUP` below). The chain runs
+the phases through `scripts/module-e2e.sh`, dispatched by `scripts/e2e.sh`.
 
 Every balance- and state-changing step is verified by reading real on-chain
 state back, not by reporting the script's input values. After each write the
@@ -64,6 +66,12 @@ a TTY and `quiet` when piped; override with `--verbosity quiet|normal|verbose`.
 MODE=module CHAIN=local ./scripts/e2e.sh local run
 ```
 
+To include the optional `topUpStream` phase (longer run):
+
+```bash
+MODULE_E2E_TOPUP=1 MODE=module CHAIN=local ./scripts/e2e.sh local run
+```
+
 The localnet path creates fresh isolated owner/provider accounts under
 `.scaffold/module-e2e-wallet/` and funds them via `lgs wallet topup`, looping the
 faucet until the owner holds enough to cover the deposit plus gas. For this
@@ -74,19 +82,49 @@ share the vault id and stream id with him out of band so he knows where to
 claim. The demo collapses both roles into one wallet to keep the scenario
 single-host.
 
+### Testnet run
+
+One-time after a public sequencer relaunch, deploy the guest program:
+
+```bash
+make deploy-testnet
+```
+
+Ensure `fixtures/testnet-module.json` exists (`make bootstrap-testnet-module`) or
+fall back to `fixtures/testnet.json` with `owner_account_id` and
+`provider_account_id` set. Keys live under `.scaffold/e2e/testnet-wallet/`. The
+script AT-initializes owner and provider when needed and funds them via wallet
+pinata before writes.
+
+Use an unused `VAULT_ID` (and `STREAM_ID=0`) on repeat runs:
+
+```bash
+make verify-module-testnet
+```
+
+Or explicitly:
+
+```bash
+VAULT_ID=5 STREAM_ID=0 MODE=module CHAIN=testnet ./scripts/e2e.sh testnet run
+```
+
+Testnet defaults are smaller than localnet (`DEPOSIT=30`, `ALLOCATION=20`,
+`MIN_ACCRUED=1`) to keep wall clock down; see configuration below. Expect
+several minutes dominated by transaction inclusion, not accrual polling.
+
 ### Expected output
 
 Exit code 0. Console narrative ends with `E2E COMPLETE: All phases succeeded`.
-Artifact `.scaffold/e2e/artifacts/module-e2e-*.log`:
+Artifact `.scaffold/e2e/artifacts/module-e2e-*.log` (default scenario, no top-up):
 
 ```jsonl
 {"phase":"wallet_open","ok":true}
+{"phase":"auth_init_owner","ok":true}
+{"phase":"auth_init_provider","ok":true}
 {"phase":"vault_init","ok":true}
 {"phase":"deposit","ok":true}
 {"phase":"deposit_balance","ok":true}
 {"phase":"create_stream","ok":true}
-{"phase":"topup_stream","ok":true}
-{"phase":"topup_allocation","ok":true}
 {"phase":"accrual","ok":true}
 {"phase":"claim","ok":true}
 {"phase":"claim_balance","ok":true}
@@ -95,12 +133,15 @@ Artifact `.scaffold/e2e/artifacts/module-e2e-*.log`:
 {"phase":"module_e2e_complete","ok":true}
 ```
 
+With `MODULE_E2E_TOPUP=1`, the artifact also includes `topup_stream` and
+`topup_allocation` after `create_stream`.
+
 The `*_balance`, `*_allocation`, `*_state` lines are on-chain verification lines
 recorded by reading state back after the corresponding write settled:
 
 * `deposit_balance` — `getVaultStatus` vault holding balance equals the deposit.
-* `topup_allocation` — `getStreamStatus` allocation increased by exactly the
-  top-up amount.
+* `topup_allocation` — (only when `MODULE_E2E_TOPUP=1`) `getStreamStatus`
+  allocation increased by exactly the top-up amount.
 * `accrual` — polled via `getStreamStatus` until `accrued_lo` exceeds a minimum
   derived from the rate (no fixed sleep).
 * `claim_balance` — the provider's `getAccount` balance increased and the vault
@@ -116,18 +157,25 @@ points to re-reading or checking sequencer inclusion.
 
 ## Success command
 
+Localnet:
+
 ```bash
-MODE=module CHAIN=local ./scripts/e2e.sh local run
+make verify-module-local
 ```
 
-Make convenience alias: `make verify-module-local`.
+Testnet (pick an unused vault id):
+
+```bash
+VAULT_ID=<unused> make verify-module-testnet
+```
 
 ## Expected result
 
 Exit code 0. JSON-lines artifact at `.scaffold/e2e/artifacts/module-e2e-*.log`
-with all write and verification phases reporting `"ok":true`, including
-`deposit_balance`, `topup_allocation`, `accrual`, `claim_balance`,
-`close_state`, and ending with `module_e2e_complete`.
+with all write and verification phases for the selected scenario reporting
+`"ok":true`, including `deposit_balance`, `accrual`, `claim_balance`,
+`close_state`, and ending with `module_e2e_complete`. When
+`MODULE_E2E_TOPUP=1`, also expect `topup_stream` and `topup_allocation`.
 
 ## Configuration details
 
@@ -136,10 +184,17 @@ with all write and verification phases reporting `"ok":true`, including
 * `PAYMENT_STREAMS_GUEST_BIN`: Path to compiled guest ELF
 * `VAULT_ID`: Vault identifier (default: 0)
 * `STREAM_ID`: Stream identifier (default: 0)
-* `DEPOSIT`: Initial deposit amount (default: 500)
+* `DEPOSIT`: Initial deposit amount (default: 500 local, 30 testnet)
 * `RATE`: Stream accrual rate per second (default: 1)
-* `ALLOCATION`: Amount allocated to stream (default: 400)
-* `TOPUP_INCREASE`: Tokens added during the top-up phase (default: 1)
+* `ALLOCATION`: Amount allocated to stream (default: 400 local, 20 testnet)
+* `MIN_ACCRUED`: Tokens that must accrue before claim (default: `RATE * 3` local, 1 testnet)
+* `TOPUP_INCREASE`: Tokens added during the top-up phase when enabled (default: 1)
+* `MODULE_E2E_TOPUP`: Set to `1` to run `topUpStream` between create and accrual;
+  default `0` (skipped) for a shorter demo
+* `MODULE_E2E_SKIP_CLOSE`: Set to `1` to stop after claim (saves one testnet tx;
+  reuse requires a new `STREAM_ID` or close on chain)
+* `INCLUSION_ATTEMPTS`, `INCLUSION_SLEEP`: Poll budget for `getTransaction` after each write
+* `ACCRUAL_ATTEMPTS`, `ACCRUAL_POLL_SLEEP`: Poll budget for `getStreamStatus` accrual
 * `FIXTURE_MANIFEST`: Testnet fixture path (default: `fixtures/testnet-module.json`)
 
 ### Verbosity
@@ -151,6 +206,13 @@ or the `E2E_VERBOSITY` environment variable:
 * `normal` — phase headers, status markers, on-chain values
 * `verbose` — full narrative with inline payment-streams concept explanations (TTY default)
 
+Console markers (normal and verbose):
+
+* `→` — step about to run
+* `✓` — step succeeded
+* `✗` — step failed
+* `!` — clarification or warning (usually after a failure)
+
 ### Module requirements
 
 Single-host configuration:
@@ -158,6 +220,26 @@ Single-host configuration:
 * `payment_streams_module` — LIP-155 operations
 
 No `delivery_module` needed (this is the module-only flow).
+
+### Testnet run duration
+
+Wall clock on `CHAIN=testnet` is dominated by **serial transaction inclusion**, not
+the accrual wait. Each write waits for `getTransaction` with a poll budget
+(default 45×2s on testnet). Five required writes (vault, deposit, create stream,
+claim, close) can sum to many minutes when the public sequencer includes blocks
+irregularly (often on the order of **15–60 seconds** between heights; sometimes longer).
+
+Accrual for the demo only needs **`MIN_ACCRUED` tokens** (default **1** on testnet at
+`RATE=1`). That needs chain time to advance at least once after stream creation,
+which is usually one block, not three seconds of wall clock.
+
+To shorten a testnet demo further without dropping claim:
+
+* Keep defaults (`DEPOSIT=30`, `ALLOCATION=20`, `MODULE_E2E_TOPUP=0`).
+* Pick an unused `VAULT_ID` / `STREAM_ID` per run, or close the stream when reusing ids.
+* Optional: `MODULE_E2E_SKIP_CLOSE=1` (saves one tx; next run needs a new `STREAM_ID`).
+
+Localnet keeps larger defaults (`DEPOSIT=500`, `ALLOCATION=400`, `MIN_ACCRUED=RATE*3`) for regression parity.
 
 ## Failure modes and limits
 
@@ -190,10 +272,8 @@ No `delivery_module` needed (this is the module-only flow).
   retain a residual accrued balance that stays allocated until a later claim.
   The close narrative reports the real residual rather than assuming zero.
 * Stream IDs are per-vault sequential integers
-* The TestNet v0.2 path reuses the same script and phase list but is not
-  verified here: the shared testnet sequencer was stalled during validation
-  (block height near-static, submitted transactions never included). Re-run the
-  testnet path once the sequencer is healthy.
+* The TestNet v0.2 path reuses fixture owner and provider; use an unused
+  `VAULT_ID` on repeat runs. After a testnet relaunch, run `make deploy-testnet`.
 
 ## GitHub handle
 
@@ -214,7 +294,8 @@ FILL_IN
 ## Estimated time to complete
 
 * Cold start: 20–40 minutes
-* Subsequent runs: 2–5 minutes
+* Subsequent localnet runs: about 3–6 minutes (`make verify-module-local`)
+* Subsequent testnet runs: about 5–10 minutes when inclusion is healthy (`make verify-module-testnet` with a fresh `VAULT_ID`; can be longer on a slow sequencer)
 
 ## Security notes
 

@@ -55,6 +55,10 @@ Three levels, controlled by a `--verbosity` flag (short form `-v` takes
 | `normal` | Operator runs | Phase headers, status markers (✓/✗), elapsed time, on-chain values. No concept explanations. |
 | `verbose` | Demos | Full narrative with inline background on payment streams concepts. |
 
+Console markers in `module-e2e.sh`: `→` upcoming step, `✓` success, `✗` failure,
+`!` clarification after a failure. Failures never reuse success wording (e.g.
+`vault_init failed: transaction not included on chain`, not `✗ Vault created`).
+
 Default when run interactively (TTY): `verbose`. Default when piped or in CI:
 `quiet`. The `e2e.sh` wrapper accepts `--verbosity` and passes it through to
 whichever scenario script it dispatches to.

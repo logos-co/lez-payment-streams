@@ -2,7 +2,8 @@
 # module-e2e.sh — User Journey (Flow A, module only) single-host happy path.
 #
 # Exercises payment_streams_module chainAction end-to-end through logoscore:
-# vault init, deposit, stream create, pause/resume/top-up, accrual, claim, close.
+# vault init, deposit, stream create, optional top-up (MODULE_E2E_TOPUP=1), accrual,
+# claim, close.
 # No delivery_module, no Store, no eligibility. This is the module-only cell of
 # the 2x2 verification matrix (Flow A x localnet or testnet).
 #
@@ -90,7 +91,7 @@ narr_value() {
 }
 
 narr_hint() {
-  _narr always "  ! Hint: $*"
+  _narr always "  ! $*"
 }
 
 narr_complete() {
@@ -120,10 +121,36 @@ MODULES="${MODULES:-${MODULES_USER:-$REPO_ROOT/.scaffold/e2e/user/modules}}"
 
 VAULT_ID="${VAULT_ID:-0}"
 STREAM_ID="${STREAM_ID:-0}"
-DEPOSIT="${DEPOSIT:-500}"
 RATE="${RATE:-1}"
-ALLOCATION="${ALLOCATION:-400}"
 TOPUP_INCREASE="${TOPUP_INCREASE:-1}"
+# Default 0: skip topUpStream to keep the demo shorter. Set MODULE_E2E_TOPUP=1 to include it.
+MODULE_E2E_TOPUP="${MODULE_E2E_TOPUP:-0}"
+# Set MODULE_E2E_SKIP_CLOSE=1 to omit close (saves one testnet tx; same stream_id cannot be reused).
+MODULE_E2E_SKIP_CLOSE="${MODULE_E2E_SKIP_CLOSE:-0}"
+
+# Chain-specific demo sizing and poll budgets. Public testnet blocks advance irregularly
+# (often tens of seconds between heights); serial txs dominate wall clock via inclusion wait.
+if ps_is_testnet; then
+  DEPOSIT="${DEPOSIT:-30}"
+  ALLOCATION="${ALLOCATION:-20}"
+  MIN_ACCRUED="${MIN_ACCRUED:-1}"
+  INCLUSION_ATTEMPTS="${INCLUSION_ATTEMPTS:-45}"
+  INCLUSION_SLEEP="${INCLUSION_SLEEP:-2}"
+  ACCRUAL_ATTEMPTS="${ACCRUAL_ATTEMPTS:-24}"
+  ACCRUAL_POLL_SLEEP="${ACCRUAL_POLL_SLEEP:-3}"
+  POLL_READ_ATTEMPTS="${POLL_READ_ATTEMPTS:-8}"
+  POLL_READ_SLEEP="${POLL_READ_SLEEP:-3}"
+else
+  DEPOSIT="${DEPOSIT:-500}"
+  ALLOCATION="${ALLOCATION:-400}"
+  MIN_ACCRUED="${MIN_ACCRUED:-$((RATE * 3))}"
+  INCLUSION_ATTEMPTS="${INCLUSION_ATTEMPTS:-20}"
+  INCLUSION_SLEEP="${INCLUSION_SLEEP:-5}"
+  ACCRUAL_ATTEMPTS="${ACCRUAL_ATTEMPTS:-30}"
+  ACCRUAL_POLL_SLEEP="${ACCRUAL_POLL_SLEEP:-5}"
+  POLL_READ_ATTEMPTS="${POLL_READ_ATTEMPTS:-6}"
+  POLL_READ_SLEEP="${POLL_READ_SLEEP:-5}"
+fi
 
 ARTIFACT="${ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
 mkdir -p "$(dirname "$ARTIFACT")"
@@ -278,16 +305,6 @@ if ps_is_local; then
   [[ -z "$PROVIDER" ]] && { narr_fail "Could not create provider account"; ps_fatal "could not create provider account"; }
   [[ ${#PROVIDER} -eq 64 ]] && PROVIDER="$(to_base58 "$PROVIDER")"
   logoscore call logos_execution_zone save >/dev/null 2>&1 || true
-elif ps_is_testnet; then
-  # Fixture owner stays funded on public testnet; fixture provider is often still
-  # DEFAULT-owned (claim pays via authenticated_transfer). Create a fresh provider
-  # with nonce 0 so AT-init + claim work (see docs/archive/operator/testnet-claim-known-issue.md).
-  narr_step "Creating fresh provider account for this run (fixture owner unchanged)"
-  PROVIDER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
-  [[ -z "$PROVIDER" ]] && { narr_fail "Could not create provider account"; ps_fatal "could not create provider account"; }
-  [[ ${#PROVIDER} -eq 64 ]] && PROVIDER="$(to_base58 "$PROVIDER")"
-  logoscore call logos_execution_zone save >/dev/null 2>&1 || true
-  narr_ok "Provider Public/$PROVIDER"
 fi
 
 narr_value "owner=$OWNER provider=$PROVIDER vault=$VAULT_ID stream=$STREAM_ID chain=${CHAIN:-local}"
@@ -337,7 +354,7 @@ await_inclusion() {
     if seq_tx_included "$hash"; then
       return 0
     fi
-    sleep 5
+    sleep "${INCLUSION_SLEEP:-5}"
   done
   return 1
 }
@@ -405,9 +422,11 @@ except Exception:
 ' "$1" "$2" 2>/dev/null
 }
 
-# call_ps <phase> <required:0|1> <op> <params-json> [status-key] [narrative-label]
+# call_ps <phase> <required:0|1> <op> <params-json> [status-key] [success-label]
+# narr_step should describe intent (→). On success, prints ✓ success-label.
+# On failure, prints ✗ phase failed: … and ! clarification (never reuses success-label).
 call_ps() {
-  local phase="$1" required="$2" op="$3" params="$4" key="${5:-}" label="${6:-$phase}"
+  local phase="$1" required="$2" op="$3" params="$4" key="${5:-}" success_label="${6:-$phase}"
   local attempt line="" tx_hash=""
   for attempt in 1 2 3 4 5 6; do
     line="$(logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)"
@@ -415,8 +434,8 @@ call_ps() {
       tx_hash="$(extract_field "$line" tx_hash)"
       if [[ -n "$tx_hash" ]] && ! await_inclusion "$tx_hash"; then
         emit_phase "$phase" false "{\"op\":\"$op\",\"attempt\":$attempt,\"tx_hash\":\"$tx_hash\",\"inclusion\":\"timeout\"}"
-        narr_fail "$label"
-        narr_hint "Tx submitted but not included on chain (getTransaction null) — check sequencer mempool and nonce"
+        narr_fail "$phase failed: transaction not included on chain"
+        narr_hint "Submitted tx_hash=$tx_hash but getTransaction returned null — check mempool, nonce, and sequencer"
         if [[ "$required" == "1" ]]; then
           FAILURES=$((FAILURES + 1))
         fi
@@ -425,7 +444,7 @@ call_ps() {
         return 0
       fi
       emit_phase "$phase" true "{\"op\":\"$op\",\"attempt\":$attempt$( [[ -n "$tx_hash" ]] && echo ",\"tx_hash\":\"$tx_hash\"" )}"
-      narr_ok "$label"
+      narr_ok "$success_label"
       sync_wallet
       echo "$line"
       return 0
@@ -433,8 +452,8 @@ call_ps() {
     sleep 8
   done
   emit_phase "$phase" false "{\"op\":\"$op\",\"raw\":$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "${line:-}")}"
-  narr_fail "$label"
-  narr_hint "Check sequencer height, wallet sync, and gas balance"
+  narr_fail "$phase failed: chainAction rejected or module RPC error"
+  narr_hint "Check sequencer height, wallet sync, gas balance, and logoscore module load"
   if [[ "$required" == "1" ]]; then
     FAILURES=$((FAILURES + 1))
   fi
@@ -471,7 +490,7 @@ if ps_is_local || ps_is_testnet; then
   else
     emit_phase auth_init_provider false
     narr_fail "Provider AT-init not confirmed on chain"
-    narr_hint "Provider must be AT-initialized before claim; use a fresh provider account"
+    narr_hint "Fixture provider must be AT-initialized (wallet auth-transfer init) before claim"
     FAILURES=$((FAILURES + 1))
   fi
   sync_wallet
@@ -529,11 +548,18 @@ if ps_is_testnet; then
       FAILURES=$((FAILURES + 1))
     fi
     if ps_account_is_at_initialized "$PROVIDER"; then
-      "$SCAFFOLD_WALLET" pinata claim --to "Public/$PROVIDER" >/dev/null 2>&1 || true
-      sync_wallet
+      provider_min=50
+      provider_bal="$(ps_account_balance "$PROVIDER" 2>/dev/null || echo 0)"
+      provider_attempts=0
+      while (( provider_bal < provider_min && provider_attempts < 3 )); do
+        provider_attempts=$((provider_attempts + 1))
+        "$SCAFFOLD_WALLET" pinata claim --to "Public/$PROVIDER" >/dev/null 2>&1 || true
+        sync_wallet
+        provider_bal="$(ps_account_balance "$PROVIDER" 2>/dev/null || echo 0)"
+      done
+      narr_verbose "Provider balance after pinata: $provider_bal (min $provider_min)"
     fi
     provider_bal="$(ps_account_balance "$PROVIDER" 2>/dev/null || echo 0)"
-    narr_verbose "Provider balance after pinata: $provider_bal"
     if [[ -z "$provider_bal" || "$provider_bal" == "0" ]]; then
       narr_fail "Provider has zero balance after pinata (claim signer needs gas)"
       FAILURES=$((FAILURES + 1))
@@ -620,14 +646,14 @@ stream_state_name() {
 # returns 0; returns 1 (no output) after the retry budget is exhausted.
 poll_read() {
   local attempt out
-  for attempt in $(seq 1 6); do
+  for attempt in $(seq 1 "${POLL_READ_ATTEMPTS:-6}"); do
     sync_wallet
     out="$("$@")"
     if [[ -n "$out" ]]; then
       printf '%s' "$out"
       return 0
     fi
-    sleep 5
+    sleep "${POLL_READ_SLEEP:-5}"
   done
   return 1
 }
@@ -638,10 +664,10 @@ poll_read() {
 narr_phase "Vault Initialization"
 
 narr_step "Alice creates vault $VAULT_ID"
-call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID}")" "" "Vault created: vault_id=$VAULT_ID"
+call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID}")" "" "Vault $VAULT_ID created on chain"
 
 narr_step "Depositing $DEPOSIT tokens into vault"
-DEPOSIT_LINE="$(call_ps deposit 1 deposit "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}")" "" "Deposit accepted by sequencer")"
+DEPOSIT_LINE="$(call_ps deposit 1 deposit "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}")" "" "Deposit transaction included on chain")"
 
 # Verify the deposit settled on chain by reading the vault holding balance.
 if DEPOSIT_VAULT="$(poll_read read_vault "$OWNER" "$VAULT_ID")"; then
@@ -669,39 +695,42 @@ narr_step "Alice opens stream $STREAM_ID to Bob"
 narr_value "rate=$RATE tokens/sec, allocation=$ALLOCATION tokens, vault=$VAULT_ID"
 narr_verbose "A payment stream allocates tokens to a provider at a fixed rate."
 narr_verbose "The allocation is the maximum the stream can pay out."
-call_ps create_stream 1 createStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PROVIDER\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}")" "" "Stream created: stream_id=$STREAM_ID, status=ACTIVE"
+call_ps create_stream 1 createStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PROVIDER\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}")" "" "Stream $STREAM_ID created (ACTIVE)"
 
 # ---------------------------------------------------------------------------
-# PHASE: Stream Lifecycle
+# PHASE: Stream Lifecycle (optional top-up)
 # ---------------------------------------------------------------------------
-narr_phase "Stream Lifecycle"
+if [[ "$MODULE_E2E_TOPUP" == "1" ]]; then
+  narr_phase "Stream Lifecycle"
 
-narr_step "Topping up stream $STREAM_ID by $TOPUP_INCREASE token"
-# Capture on-chain allocation (accrued + unaccrued) before the top-up so we can
-# verify the delta equals the top-up amount.
-PRE_ALLOC=0
-if TOPUP_PRE="$(poll_read read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"; then
-  read -r PRE_ACC PRE_UNC _ <<< "$TOPUP_PRE"
-  PRE_ALLOC=$((PRE_ACC + PRE_UNC))
-fi
-TOPUP_LINE="$(call_ps topup_stream 1 topUpStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"increase_lo\":$TOPUP_INCREASE,\"increase_hi\":0}")" "" "Top-up accepted by sequencer")"
-if TOPUP_POST="$(poll_read read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"; then
-  read -r POST_ACC POST_UNC _ <<< "$TOPUP_POST"
-  POST_ALLOC=$((POST_ACC + POST_UNC))
-  TOPUP_DELTA=$((POST_ALLOC - PRE_ALLOC))
-  if [[ "$TOPUP_DELTA" -eq "$TOPUP_INCREASE" ]]; then
-    emit_phase topup_allocation true "{\"pre_allocation\":$PRE_ALLOC,\"post_allocation\":$POST_ALLOC,\"delta\":$TOPUP_DELTA,\"expected_delta\":$TOPUP_INCREASE}"
-    narr_ok "Top-up confirmed on chain: allocation $PRE_ALLOC -> $POST_ALLOC (+$TOPUP_DELTA)"
+  narr_step "Topping up stream $STREAM_ID by $TOPUP_INCREASE token"
+  # Capture on-chain allocation (accrued + unaccrued) before the top-up so we can
+  # verify the delta equals the top-up amount.
+  PRE_ALLOC=0
+  if TOPUP_PRE="$(poll_read read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"; then
+    read -r PRE_ACC PRE_UNC _ <<< "$TOPUP_PRE"
+    PRE_ALLOC=$((PRE_ACC + PRE_UNC))
+  fi
+  TOPUP_LINE="$(call_ps topup_stream 1 topUpStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"increase_lo\":$TOPUP_INCREASE,\"increase_hi\":0}")" "" "Top-up transaction included on chain")"
+  if TOPUP_POST="$(poll_read read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"; then
+    read -r POST_ACC POST_UNC _ <<< "$TOPUP_POST"
+    POST_ALLOC=$((POST_ACC + POST_UNC))
+    TOPUP_DELTA=$((POST_ALLOC - PRE_ALLOC))
+    if [[ "$TOPUP_DELTA" -eq "$TOPUP_INCREASE" ]]; then
+      emit_phase topup_allocation true "{\"pre_allocation\":$PRE_ALLOC,\"post_allocation\":$POST_ALLOC,\"delta\":$TOPUP_DELTA,\"expected_delta\":$TOPUP_INCREASE}"
+      narr_ok "Top-up confirmed on chain: allocation $PRE_ALLOC -> $POST_ALLOC (+$TOPUP_DELTA)"
+    else
+      emit_phase topup_allocation false "{\"pre_allocation\":$PRE_ALLOC,\"post_allocation\":$POST_ALLOC,\"delta\":$TOPUP_DELTA,\"expected_delta\":$TOPUP_INCREASE}"
+      narr_fail "Allocation delta $TOPUP_DELTA != expected $TOPUP_INCREASE"
+      narr_hint "Top-up may not be included yet; re-run getStreamStatus"
+    fi
   else
-    emit_phase topup_allocation false "{\"pre_allocation\":$PRE_ALLOC,\"post_allocation\":$POST_ALLOC,\"delta\":$TOPUP_DELTA,\"expected_delta\":$TOPUP_INCREASE}"
-    narr_fail "Allocation delta $TOPUP_DELTA != expected $TOPUP_INCREASE"
-    narr_hint "Top-up may not be included yet; re-run getStreamStatus"
+    emit_phase topup_allocation false "{\"error\":\"read_failed\"}"
+    narr_fail "Could not read stream allocation on chain"
+    narr_hint "getStreamStatus returned no data — check wallet sync and sequencer"
   fi
 else
-  POST_ALLOC="$((ALLOCATION + TOPUP_INCREASE))"
-  emit_phase topup_allocation false "{\"error\":\"read_failed\"}"
-  narr_fail "Could not read stream allocation on chain"
-  narr_hint "getStreamStatus returned no data — check wallet sync and sequencer"
+  narr_verbose "Skipping stream top-up (set MODULE_E2E_TOPUP=1 to include topUpStream)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -711,15 +740,17 @@ narr_phase "Accrual"
 
 narr_step "Waiting for funds to accrue (rate=$RATE tokens/sec)"
 narr_verbose "Accrual is timestamp-based: derived from on-chain accrued_as_of field."
-narr_verbose "On testnet, granularity is limited by block time."
+if ps_is_testnet; then
+  narr_verbose "Public testnet often advances a block every ~15–60s; accrual follows chain time, not wall clock."
+else
+  narr_verbose "Localnet folded clock advances quickly between polls."
+fi
 
-MIN_ACCRUED=$((RATE * 3))
 narr_value "Need at least $MIN_ACCRUED tokens accrued before claim"
 
 ACCRUED=0
 UNACCRUED=0
-ACCRUAL_ATTEMPTS=30
-for attempt in $(seq 1 $ACCRUAL_ATTEMPTS); do
+for attempt in $(seq 1 "${ACCRUAL_ATTEMPTS:-30}"); do
   sync_wallet
   STREAM_READ="$(read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"
   if [[ -n "$STREAM_READ" ]]; then
@@ -728,7 +759,7 @@ for attempt in $(seq 1 $ACCRUAL_ATTEMPTS); do
       break
     fi
   fi
-  sleep 5
+  sleep "${ACCRUAL_POLL_SLEEP:-5}"
 done
 
 emit_phase accrual "$([[ "$ACCRUED" -ge "$MIN_ACCRUED" ]] && echo true || echo false)" "{\"accrued_lo\":$ACCRUED,\"unaccrued_lo\":$UNACCRUED,\"min_required\":$MIN_ACCRUED,\"attempts\":$attempt}"
@@ -756,7 +787,7 @@ if CLAIM_PRE_VAULT="$(poll_read read_vault "$OWNER" "$VAULT_ID")"; then
 fi
 
 narr_step "Bob claims accrued funds from stream $STREAM_ID"
-CLAIM_LINE="$(call_ps claim 1 claim "$(j "{\"owner\":\"$OWNER\",\"provider\":\"$PROVIDER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Claim accepted by sequencer")"
+CLAIM_LINE="$(call_ps claim 1 claim "$(j "{\"owner\":\"$OWNER\",\"provider\":\"$PROVIDER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Claim transaction included on chain")"
 
 # Poll both balances until the payout settles (or the retry budget is
 # exhausted). A settled claim shows the provider balance increase and the vault
@@ -793,37 +824,42 @@ if [[ -n "$POST_CLAIM_BALANCE" && "$POST_CLAIM_BALANCE" -gt "${PRE_CLAIM_BALANCE
   fi
 else
   emit_phase claim_balance false "{\"provider_pre\":$PRE_CLAIM_BALANCE,\"provider_post\":${POST_CLAIM_BALANCE:-0},\"vault_pre\":$PRE_CLAIM_VAULT,\"vault_post\":${POST_CLAIM_VAULT:-0},\"attempts\":$CLAIM_BAL_ATTEMPTS}"
-  narr_ok "Claim accepted; on-chain balance not yet reflected"
-  narr_hint "Balance read-back did not settle — check sequencer inclusion and re-read getAccount"
+  narr_fail "Claim failed: provider balance did not increase on chain"
+  narr_hint "If claim tx included, re-read getAccount and getVaultStatus after wallet sync"
 fi
 
 # ---------------------------------------------------------------------------
 # PHASE: Close
 # ---------------------------------------------------------------------------
-narr_phase "Close"
+if [[ "$MODULE_E2E_SKIP_CLOSE" == "1" ]]; then
+  narr_verbose "Skipping close (MODULE_E2E_SKIP_CLOSE=1); use a fresh stream_id on the next run"
+  emit_phase close_stream true "{\"skipped\":true}"
+else
+  narr_phase "Close"
 
-narr_step "Alice closes stream $STREAM_ID, reclaims unspent allocation"
-CLOSE_LINE="$(call_ps close_stream 1 closeStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"authority\":\"$PROVIDER\"}")" "" "Close accepted by sequencer")"
+  narr_step "Alice closes stream $STREAM_ID, reclaims unspent allocation"
+  CLOSE_LINE="$(call_ps close_stream 1 closeStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"authority\":\"$PROVIDER\"}")" "" "Close transaction included on chain")"
 
-# Read the final on-chain state: the stream should be Closed with unaccrued=0
-# (the unspent allocation was reclaimed to the vault), and any residual accrued
-# stays allocated on the closed stream until a later claim.
-CLOSE_VAULT_BAL=""
-CLOSE_VAULT_TOT=""
-CLOSE_ACC=""
-CLOSE_UNC=""
-CLOSE_ST="-1"
-if CLOSE_VAULT="$(poll_read read_vault "$OWNER" "$VAULT_ID")"; then
-  read -r CLOSE_VAULT_BAL CLOSE_VAULT_TOT <<< "$CLOSE_VAULT"
+  # Read the final on-chain state: the stream should be Closed with unaccrued=0
+  # (the unspent allocation was reclaimed to the vault), and any residual accrued
+  # stays allocated on the closed stream until a later claim.
+  CLOSE_VAULT_BAL=""
+  CLOSE_VAULT_TOT=""
+  CLOSE_ACC=""
+  CLOSE_UNC=""
+  CLOSE_ST="-1"
+  if CLOSE_VAULT="$(poll_read read_vault "$OWNER" "$VAULT_ID")"; then
+    read -r CLOSE_VAULT_BAL CLOSE_VAULT_TOT <<< "$CLOSE_VAULT"
+  fi
+  if CLOSE_STREAM="$(poll_read read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"; then
+    read -r CLOSE_ACC CLOSE_UNC CLOSE_ST <<< "$CLOSE_STREAM"
+  fi
+
+  emit_phase close_state true "{\"vault_balance\":${CLOSE_VAULT_BAL:-0},\"total_allocated\":${CLOSE_VAULT_TOT:-0},\"stream_accrued\":${CLOSE_ACC:-0},\"stream_unaccrued\":${CLOSE_UNC:-0},\"stream_state\":${CLOSE_ST:--1}}"
+  narr_ok "Stream closed: on-chain state $(stream_state_name "$CLOSE_ST")"
+  narr_value "Stream residual: accrued=${CLOSE_ACC:-?}, unaccrued=${CLOSE_UNC:-?} (unaccrued reclaimed to vault)"
+  narr_value "Vault holding balance: ${CLOSE_VAULT_BAL:-?}, total_allocated: ${CLOSE_VAULT_TOT:-?}"
 fi
-if CLOSE_STREAM="$(poll_read read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"; then
-  read -r CLOSE_ACC CLOSE_UNC CLOSE_ST <<< "$CLOSE_STREAM"
-fi
-
-emit_phase close_state true "{\"vault_balance\":${CLOSE_VAULT_BAL:-0},\"total_allocated\":${CLOSE_VAULT_TOT:-0},\"stream_accrued\":${CLOSE_ACC:-0},\"stream_unaccrued\":${CLOSE_UNC:-0},\"stream_state\":${CLOSE_ST:--1}}"
-narr_ok "Stream closed: on-chain state $(stream_state_name "$CLOSE_ST")"
-narr_value "Stream residual: accrued=${CLOSE_ACC:-?}, unaccrued=${CLOSE_UNC:-?} (unaccrued reclaimed to vault)"
-narr_value "Vault holding balance: ${CLOSE_VAULT_BAL:-?}, total_allocated: ${CLOSE_VAULT_TOT:-?}"
 
 # ---------------------------------------------------------------------------
 # Done
