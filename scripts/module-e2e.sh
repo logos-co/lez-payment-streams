@@ -20,6 +20,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/lib/common.sh
 source "$REPO_ROOT/scripts/lib/common.sh"
+# shellcheck source=scripts/lib/chain_poll.sh
+source "$REPO_ROOT/scripts/lib/chain_poll.sh"
 
 # ---------------------------------------------------------------------------
 # Verbosity
@@ -321,42 +323,6 @@ sync_wallet() {
     logoscore call logos_execution_zone sync_to_block "$height" >/dev/null 2>&1 || true
   fi
   sleep 3
-}
-
-# seq_tx_included <tx_hash> -> returns 0 if the sequencer has included the tx
-# (getTransaction returns a non-null result), 1 otherwise. The module returns a
-# tx_hash on submission; this checks the sequencer's authoritative view of
-# inclusion, which is what actually determines whether state changed.
-seq_tx_included() {
-  local hash="$1" res
-  [[ -n "$hash" ]] || return 1
-  res="$(curl -sf -X POST "$(ps_seq_url)" -H 'Content-Type: application/json' \
-    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getTransaction\",\"params\":[\"$hash\"]}" 2>/dev/null || true)"
-  python3 -c '
-import json,sys
-try:
-    d=json.loads(sys.argv[1])
-    r=d.get("result")
-    ok = r is not None and r != "" and r != []
-except Exception:
-    ok=False
-sys.exit(0 if ok else 1)
-' "$res" 2>/dev/null
-}
-
-# await_inclusion <tx_hash> -> polls getTransaction until the tx is included,
-# returns 0 once included, 1 after the retry budget is exhausted. Serializing
-# writes on inclusion avoids nonce races where later txs are submitted before
-# earlier ones land and get dropped by the sequencer.
-await_inclusion() {
-  local hash="$1" attempt
-  for attempt in $(seq 1 "${INCLUSION_ATTEMPTS:-20}"); do
-    if seq_tx_included "$hash"; then
-      return 0
-    fi
-    sleep "${INCLUSION_SLEEP:-5}"
-  done
-  return 1
 }
 
 # auth_transfer_init <account_base58> -> initialize the account under the
