@@ -41,6 +41,5 @@ if [[ -f "$WALLET_HOME/storage.json" ]]; then
 fi
 
 export ARTIFACT
-: > "$ARTIFACT"
 
 ps_auth_transfer_ensure "$OWNER" "$PROVIDER"

@@ -328,6 +328,17 @@ def log_artifact(artifact: Path, phase: str, ok: bool, **fields: Any) -> None:
         f.write(json.dumps(row, separators=(",", ":")) + "\n")
 
 
+def emit_module_phase(artifact: Path, phase: str, ok: bool, extra: dict[str, Any]) -> None:
+    row = {"phase": phase, "ok": ok, "extra": extra}
+    with artifact.open("a") as f:
+        f.write(json.dumps(row, separators=(",", ":")) + "\n")
+
+
+def emit_claim_with_demo_alias(artifact: Path, ok: bool, extra: dict[str, Any]) -> None:
+    emit_module_phase(artifact, "claim", ok, extra)
+    emit_module_phase(artifact, "demo_claim", ok, extra)
+
+
 def run(cmd: list[str], *, cwd: Path | None = None, env: dict | None = None, timeout: int = 600) -> subprocess.CompletedProcess:
     merged = os.environ.copy()
     if env:
@@ -2051,6 +2062,89 @@ def stream_closed_on_chain(cfg: Path, manifest: dict) -> bool:
     return int(dec.get("stream_state", -1)) == 2
 
 
+def account_balance_seq(seq_url: str, account_id: str) -> int:
+    try:
+        acc = sequencer_json_rpc(seq_url, "getAccount", [account_id])
+    except E2EError:
+        return 0
+    if not isinstance(acc, dict):
+        return 0
+    return int(acc.get("balance", 0) or 0)
+
+
+def vault_status_balances(cfg: Path, manifest: dict) -> tuple[int, int]:
+    inner = vault_status_json(cfg, manifest)
+    h = str(inner.get("vault_holding_balance_hex") or "")
+    if h[:2].lower() == "0x":
+        h = h[2:]
+    bal = int.from_bytes(bytes.fromhex(h), "little") if h else 0
+    vc = inner.get("vault_config") if isinstance(inner.get("vault_config"), dict) else {}
+    total = int(vc.get("total_allocated_lo", 0) or 0)
+    return bal, total
+
+
+def stream_status_fields(cfg: Path, manifest: dict, stream_id: int) -> tuple[int, int, int]:
+    body = json.dumps(
+        {
+            "owner": manifest["owner_account_id"],
+            "vault_id": int(manifest.get("vault_id", 0)),
+            "stream_id": stream_id,
+        }
+    )
+    r = logoscore_cmd(cfg, "call", "payment_streams_module", "chainAction", "getStreamStatus", body)
+    parsed = call_result(r)
+    inner_raw = parsed.get("result")
+    inner = json.loads(inner_raw) if isinstance(inner_raw, str) else inner_raw
+    if not isinstance(inner, dict) or inner.get("status") != "ok":
+        return 0, 0, -1
+    return (
+        int(inner.get("accrued_lo") or 0),
+        int(inner.get("unaccrued_lo") or 0),
+        int(inner.get("stream_state", -1) if inner.get("stream_state") is not None else -1),
+    )
+
+
+def run_auth_transfer_ensure(
+    repo: Path,
+    cfg_user: Path,
+    cfg_provider: Path,
+    manifest: dict,
+    artifact: Path,
+    wallet_home: Path,
+) -> None:
+    seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
+    ensure_script = repo / "scripts" / "auth-transfer-ensure.sh"
+    if not ensure_script.is_file():
+        raise E2EError(f"missing auth-transfer ensure script: {ensure_script}")
+    release_logoscore_wallet(cfg_user)
+    release_logoscore_wallet(cfg_provider)
+    try:
+        env = os.environ.copy()
+        proc = run(
+            [
+                str(ensure_script),
+                "--owner",
+                str(manifest["owner_account_id"]),
+                "--provider",
+                str(manifest["provider_account_id"]),
+                "--artifact",
+                str(artifact),
+                "--wallet-home",
+                str(wallet_home),
+            ],
+            cwd=repo,
+            env=env,
+            timeout=600,
+        )
+        if proc.returncode != 0:
+            raise E2EError(f"auth-transfer-ensure failed: {proc.stderr or proc.stdout}")
+    finally:
+        reopen_logoscore_wallet(cfg_user, seq_url)
+        reopen_logoscore_wallet(cfg_provider, seq_url)
+        reload_payment_streams_wallet(cfg_user, seq_url)
+        reload_payment_streams_wallet(cfg_provider, seq_url)
+
+
 def seed_close_stream_onchain(
     repo: Path,
     manifest: dict,
@@ -2164,21 +2258,45 @@ def demo_teardown(
     manifest: dict,
     artifact: Path,
     repo: Path,
+    narrator: "Narrator",
 ) -> None:
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
     vault_id = int(manifest["vault_id"])
     stream_id = manifest_stream_id(manifest)
     stream_alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 200)))
     close_applied = False
+    narrator.phase("Close")
+    narrator.step(f"Closing stream {stream_id} on chain")
     if os.environ.get("E2E_CLOSE_VIA", "seed").strip().lower() != "chainaction":
         try:
             release_logoscore_wallet(cfg_user)
+            release_logoscore_wallet(cfg_provider)
             seed_close_stream_onchain(repo, manifest, vault_id, stream_id)
             log_artifact(artifact, "demo_close_stream", True, stream_id=stream_id, via="seed_close_stream_onchain")
+            emit_module_phase(
+                artifact,
+                "close_stream",
+                True,
+                {"stream_id": stream_id, "via": "seed_close_stream_onchain"},
+            )
         except (E2EError, subprocess.TimeoutExpired) as exc:
-            log_artifact(artifact, "demo_close_stream", False, stream_id=stream_id, via="seed_close_stream_onchain", error=str(exc))
+            log_artifact(
+                artifact,
+                "demo_close_stream",
+                False,
+                stream_id=stream_id,
+                via="seed_close_stream_onchain",
+                error=str(exc),
+            )
+            emit_module_phase(
+                artifact,
+                "close_stream",
+                False,
+                {"stream_id": stream_id, "via": "seed_close_stream_onchain", "error": str(exc)},
+            )
         finally:
             reopen_logoscore_wallet(cfg_user, seq_url)
+            reopen_logoscore_wallet(cfg_provider, seq_url)
             reload_payment_streams_wallet(cfg_user, seq_url)
             reload_payment_streams_wallet(cfg_provider, seq_url)
         inner = vault_status_json(cfg_user, manifest)
@@ -2249,6 +2367,17 @@ def demo_teardown(
             closed = stream_closed_on_chain(cfg_user, manifest)
             if closed:
                 close_applied = True
+                emit_module_phase(
+                    artifact,
+                    "close_stream",
+                    True,
+                    {
+                        "stream_id": stream_id,
+                        "attempt": attempt + 1,
+                        "via": "chainAction_closeStream",
+                        "tx_hash": tx_close,
+                    },
+                )
                 log_artifact(
                     artifact,
                     "demo_close_stream_verify",
@@ -2263,31 +2392,79 @@ def demo_teardown(
         raise E2EError(
             f"demo_close_stream did not apply on chain after retries (last parsed={parsed!r})"
         )
+    vb, tot = vault_status_balances(cfg_user, manifest)
+    s_acc, s_unc, s_st = stream_status_fields(cfg_user, manifest, stream_id)
+    emit_module_phase(
+        artifact,
+        "close_state",
+        True,
+        {
+            "vault_balance": vb,
+            "total_allocated": tot,
+            "stream_accrued": s_acc,
+            "stream_unaccrued": s_unc,
+            "stream_state": s_st,
+        },
+    )
     log_vault_liquidity(cfg_user, manifest, artifact, phase="vault_liquidity_after_close")
 
+    narrator.phase("Claim")
     accrued = stream_accrued_lo(cfg_user, vault_id, stream_id)
     if accrued <= 0:
-        log_artifact(
-            artifact,
-            "demo_claim",
-            True,
-            skipped=True,
-            reason="zero_accrued",
-            stream_id=stream_id,
-        )
+        claim_extra = {"skipped": True, "reason": "zero_accrued", "stream_id": stream_id}
+        emit_claim_with_demo_alias(artifact, True, claim_extra)
         return
 
+    narrator.step(f"Claiming residual accrued ({accrued}) on closed stream {stream_id}")
     # Prefer the direct-submit claim path (same rationale as close: testnet chainAction is
-    # unreliable). chainAction remains the fallback / opt-in via E2E_CLOSE_VIA=chainaction.
+    pre_provider = account_balance_seq(seq_url, manifest["provider_account_id"])
+    pre_vault, _ = vault_status_balances(cfg_user, manifest)
     if os.environ.get("E2E_CLOSE_VIA", "seed").strip().lower() != "chainaction":
         try:
             release_logoscore_wallet(cfg_user)
+            release_logoscore_wallet(cfg_provider)
             seed_claim_onchain(repo, manifest, vault_id, stream_id)
-            log_artifact(artifact, "demo_claim", True, skipped=False, accrued_lo=accrued, via="seed_claim_onchain", stream_id=stream_id)
+            log_artifact(
+                artifact,
+                "demo_claim",
+                True,
+                skipped=False,
+                accrued_lo=accrued,
+                via="seed_claim_onchain",
+                stream_id=stream_id,
+            )
+            claim_extra = {
+                "skipped": False,
+                "accrued_lo": accrued,
+                "via": "seed_claim_onchain",
+                "stream_id": stream_id,
+            }
+            emit_claim_with_demo_alias(artifact, True, claim_extra)
         except (E2EError, subprocess.TimeoutExpired) as exc:
-            log_artifact(artifact, "demo_claim", False, skipped=False, accrued_lo=accrued, via="seed_claim_onchain", error=str(exc), stream_id=stream_id)
+            log_artifact(
+                artifact,
+                "demo_claim",
+                False,
+                skipped=False,
+                accrued_lo=accrued,
+                via="seed_claim_onchain",
+                error=str(exc),
+                stream_id=stream_id,
+            )
+            emit_claim_with_demo_alias(
+                artifact,
+                False,
+                {
+                    "skipped": False,
+                    "accrued_lo": accrued,
+                    "via": "seed_claim_onchain",
+                    "error": str(exc),
+                    "stream_id": stream_id,
+                },
+            )
         finally:
             reopen_logoscore_wallet(cfg_user, seq_url)
+            reopen_logoscore_wallet(cfg_provider, seq_url)
             reload_payment_streams_wallet(cfg_user, seq_url)
             reload_payment_streams_wallet(cfg_provider, seq_url)
         # The claim tx can confirm after the seed subprocess returns/times out; poll the
@@ -2298,6 +2475,21 @@ def demo_teardown(
                 sync_wallet(cfg_user, seq_url)
                 sync_wallet(cfg_provider, seq_url)
                 logoscore_cmd(cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
+                post_provider = account_balance_seq(seq_url, manifest["provider_account_id"])
+                post_vault, _ = vault_status_balances(cfg_user, manifest)
+                received = max(0, post_provider - pre_provider)
+                vault_drop = pre_vault - post_vault
+                bal_extra = {
+                    "received": received,
+                    "provider_pre": pre_provider,
+                    "provider_post": post_provider,
+                    "vault_pre": pre_vault,
+                    "vault_post": post_vault,
+                    "attempts": poll_idx + 1,
+                }
+                if received > 0 and vault_drop != received:
+                    bal_extra["hint"] = "vault_drop_mismatch"
+                emit_module_phase(artifact, "claim_balance", received > 0, bal_extra)
                 log_vault_liquidity(cfg_user, manifest, artifact, phase="vault_liquidity_after_claim")
                 return
             if poll_idx < claim_poll_attempts - 1:
@@ -2312,17 +2504,15 @@ def demo_teardown(
             "E2E_CLAIM_OPTIONAL", "1" if is_testnet else "0"
         ).strip().lower() not in ("0", "false", "no")
         if claim_optional:
-            log_artifact(
-                artifact,
-                "demo_claim",
-                True,
-                skipped=True,
-                optional=True,
-                claimed=False,
-                reason="claim_optional_unconfirmed",
-                accrued_lo=accrued,
-                stream_id=stream_id,
-            )
+            claim_extra = {
+                "skipped": True,
+                "optional": True,
+                "claimed": False,
+                "reason": "claim_optional_unconfirmed",
+                "accrued_lo": accrued,
+                "stream_id": stream_id,
+            }
+            emit_claim_with_demo_alias(artifact, True, claim_extra)
             return
 
     claim_body = {
@@ -2343,6 +2533,13 @@ def demo_teardown(
     parsed = call_result(r)
     ok_claim = chain_action_success(parsed)
     tx_claim = chain_action_tx_hash(parsed)
+    claim_extra = {
+        "skipped": False,
+        "accrued_lo": accrued,
+        "tx_hash": tx_claim,
+        "stream_id": stream_id,
+        "via": "chainAction_claim",
+    }
     log_artifact(
         artifact,
         "demo_claim",
@@ -2352,6 +2549,7 @@ def demo_teardown(
         tx_hash=tx_claim,
         stream_id=stream_id,
     )
+    emit_claim_with_demo_alias(artifact, ok_claim, claim_extra)
     if not ok_claim:
         raise E2EError(f"demo_claim failed: {parsed}")
     if tx_claim:
@@ -2359,6 +2557,21 @@ def demo_teardown(
     sync_wallet(cfg_user, seq_url)
     sync_wallet(cfg_provider, seq_url)
     logoscore_cmd(cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
+    post_provider = account_balance_seq(seq_url, manifest["provider_account_id"])
+    post_vault, _ = vault_status_balances(cfg_user, manifest)
+    received = max(0, post_provider - pre_provider)
+    vault_drop = pre_vault - post_vault
+    bal_extra = {
+        "received": received,
+        "provider_pre": pre_provider,
+        "provider_post": post_provider,
+        "vault_pre": pre_vault,
+        "vault_post": post_vault,
+        "attempts": 1,
+    }
+    if received > 0 and vault_drop != received:
+        bal_extra["hint"] = "vault_drop_mismatch"
+    emit_module_phase(artifact, "claim_balance", received > 0, bal_extra)
     log_vault_liquidity(cfg_user, manifest, artifact, phase="vault_liquidity_after_claim")
 
 
@@ -2742,6 +2955,13 @@ def main() -> int:
             sync_wallet(cfg_user, seq_url)
             sync_wallet(cfg_provider, seq_url)
 
+            wallet_home = Path(wallet_config).parent
+            narrator.step("Ensuring owner and provider accounts under authenticated_transfer")
+            run_auth_transfer_ensure(
+                repo, cfg_user, cfg_provider, manifest, artifact, wallet_home
+            )
+            narrator.ok("authenticated_transfer ensure complete (see auth_init_* in artifact)")
+
             if (
                 os.environ.get("CHAIN", "local").strip().lower() == "local"
                 and continuation_e2e_run()
@@ -2899,11 +3119,10 @@ def main() -> int:
                 narrator.hint("Provider verifier may not be enabled or configured correctly")
                 raise E2EError(f"missing-proof path unexpected: {fail_resp!r}")
 
-            narrator.phase("Teardown")
-            narrator.step(f"Closing stream {stream_id}")
-            demo_teardown(cfg_user, cfg_provider, manifest, artifact, repo)
+            narrator.phase("Settlement")
+            demo_teardown(cfg_user, cfg_provider, manifest, artifact, repo, narrator)
             timer.mark("core_teardown_done")
-            narrator.ok("Stream closed, accrued funds claimed, vault liquidity verified")
+            narrator.ok("Stream closed, residual claim verified, vault liquidity checked")
 
         if args.phase == "claim":
             log_artifact(
