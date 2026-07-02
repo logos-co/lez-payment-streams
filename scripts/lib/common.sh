@@ -266,7 +266,7 @@ ps_authenticated_transfer_program_id_hex() {
 ps_get_account_result() {
   local acct="$1" attempt body
   for attempt in 1 2 3; do
-    body="$(curl -sf -X POST "$(ps_seq_url)" -H 'Content-Type: application/json' \
+    body="$(curl -sf --max-time 15 -X POST "$(ps_seq_url)" -H 'Content-Type: application/json' \
       -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$acct\"]}" 2>/dev/null || true)"
     if [[ -n "$body" ]] && python3 -c 'import json,sys
 try:
