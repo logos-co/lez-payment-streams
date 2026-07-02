@@ -213,6 +213,90 @@ ps_vault_next_stream_id() {
     --program-bin "$guest" --owner "$owner" --vault-id "$vault_id" 2>/dev/null
 }
 
+# Prepend the pinned LEZ release dir (wallet, spel) to PATH if present.
+ps_prepend_lez_wallet_path() {
+  local lez_release
+  lez_release="$(ps_lez_cache)/target/release"
+  if [[ -d "$lez_release" ]]; then
+    export PATH="$lez_release:$PATH"
+  fi
+}
+
+# ImageID (hex bytes) of the authenticated_transfer program for on-chain verify.
+# Override: PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX
+ps_authenticated_transfer_program_id_hex() {
+  if [[ -n "${PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX:-}" ]]; then
+    echo "${PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX}" | tr '[:upper:]' '[:lower:]'
+    return 0
+  fi
+  local cache bin
+  cache="$(ps_lez_cache)"
+  for bin in \
+    "$cache/artifacts/program_methods/authenticated_transfer.bin" \
+    "$cache/artifacts/lez/programs/authenticated_transfer.bin"; do
+    if [[ -f "$bin" ]] && command -v spel >/dev/null 2>&1; then
+      local hex
+      hex="$(spel inspect "$bin" 2>/dev/null | grep 'ImageID (hex bytes)' | awk '{print $NF}' || true)"
+      if [[ -n "$hex" ]]; then
+        echo "$hex" | tr '[:upper:]' '[:lower:]'
+        return 0
+      fi
+    fi
+  done
+  ps_prepend_lez_wallet_path
+  if command -v spel >/dev/null 2>&1; then
+    for bin in \
+      "$cache/artifacts/program_methods/authenticated_transfer.bin" \
+      "$cache/artifacts/lez/programs/authenticated_transfer.bin"; do
+      if [[ -f "$bin" ]]; then
+        local hex
+        hex="$(spel inspect "$bin" 2>/dev/null | grep 'ImageID (hex bytes)' | awk '{print $NF}' || true)"
+        if [[ -n "$hex" ]]; then
+          echo "$hex" | tr '[:upper:]' '[:lower:]'
+          return 0
+        fi
+      fi
+    done
+  fi
+  return 1
+}
+
+# Fetch getAccount JSON result for acct; up to 3 attempts on curl/RPC failure.
+# Prints result JSON object on stdout; non-zero exit on failure.
+ps_get_account_result() {
+  local acct="$1" attempt body
+  for attempt in 1 2 3; do
+    body="$(curl -sf -X POST "$(ps_seq_url)" -H 'Content-Type: application/json' \
+      -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$acct\"]}" 2>/dev/null || true)"
+    if [[ -n "$body" ]] && python3 -c 'import json,sys
+try:
+    d=json.loads(sys.argv[1])
+    sys.exit(0 if d.get("result") is not None else 1)
+except Exception:
+    sys.exit(1)
+' "$body" 2>/dev/null; then
+      python3 -c 'import json,sys; print(json.dumps(json.loads(sys.argv[1]).get("result") or {}))' "$body"
+      return 0
+    fi
+    [[ "$attempt" -lt 3 ]] && sleep 2
+  done
+  return 1
+}
+
+# Normalize program_owner limb array to 64-char lowercase hex (empty if invalid).
+ps_program_owner_limbs_to_hex() {
+  python3 -c 'import json,struct,sys
+try:
+    po=json.loads(sys.argv[1])
+    if not isinstance(po, list) or len(po) != 8:
+        sys.exit(0)
+    h="".join(struct.pack("<I", int(x) & 0xFFFFFFFF).hex() for x in po)
+    print(h.lower())
+except Exception:
+    pass
+' "$1" 2>/dev/null
+}
+
 # Balance of an account via the sequencer JSON-RPC (0 when absent).
 ps_account_balance() {
   local acct="$1"
@@ -226,18 +310,39 @@ except Exception:
     print(0)"
 }
 
-# True when the account is registered under authenticated_transfer (non-default owner).
+# True when program_owner matches authenticated_transfer ImageID (strict).
+# Sets PS_AT_VERIFY_MODE=image_id|nonzero_only|rpc_error on failure paths when exported by caller.
 ps_account_is_at_initialized() {
   local acct="$1"
-  curl -sf -X POST "$(ps_seq_url)" -H 'Content-Type: application/json' \
-    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$acct\"]}" \
-    2>/dev/null |
-    python3 -c "import json,sys
+  local result po_hex at_hex
+  if ! result="$(ps_get_account_result "$acct")"; then
+    PS_AT_VERIFY_MODE=rpc_error
+    export PS_AT_VERIFY_MODE
+    return 1
+  fi
+  po_hex="$(python3 -c 'import json,sys; r=json.loads(sys.argv[1]); print(json.dumps(r.get("program_owner") or []))' "$result")"
+  po_hex="$(ps_program_owner_limbs_to_hex "$po_hex")"
+  [[ -n "$po_hex" ]] || return 1
+  if at_hex="$(ps_authenticated_transfer_program_id_hex)"; then
+    PS_AT_VERIFY_MODE=image_id
+    export PS_AT_VERIFY_MODE
+    [[ "$po_hex" == "$at_hex" ]]
+    return $?
+  fi
+  if ps_is_testnet; then
+    PS_AT_VERIFY_MODE=image_id_unresolved
+    export PS_AT_VERIFY_MODE
+    return 1
+  fi
+  PS_AT_VERIFY_MODE=nonzero_only
+  export PS_AT_VERIFY_MODE
+  python3 -c 'import json,sys
 try:
-    po=(json.load(sys.stdin).get('result') or {}).get('program_owner') or []
+    po=json.loads(sys.argv[1]).get("program_owner") or []
     sys.exit(0 if any(int(x)!=0 for x in po) else 1)
 except Exception:
-    sys.exit(1)"
+    sys.exit(1)
+' "$result"
 }
 
 # Default paths
