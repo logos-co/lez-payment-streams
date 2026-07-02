@@ -42,9 +42,9 @@ Cold start: [docs/reference/verification-matrix.md#cold-start-first-time-on-a-ma
 ## Commands and expected outputs
 
 The journey exercises the complete payment stream lifecycle: create vault,
-deposit funds, open a stream to a provider, wait for value to accrue, have the
-provider claim accrued funds, then close the stream and reclaim the unspent
-allocation. An optional **top-up** phase (`topUpStream`) runs between stream
+deposit funds, open a stream to a provider, wait for value to accrue, close the
+stream, then have the provider claim residual accrued on the closed stream.
+An optional **top-up** phase (`topUpStream`) runs between stream
 creation and accrual when enabled (see `MODULE_E2E_TOPUP` below). The chain runs
 the phases through `scripts/module-e2e.sh`, dispatched by `scripts/e2e.sh`.
 
@@ -126,10 +126,10 @@ Artifact `.scaffold/e2e/artifacts/module-e2e-*.log` (default scenario, no top-up
 {"phase":"deposit_balance","ok":true}
 {"phase":"create_stream","ok":true}
 {"phase":"accrual","ok":true}
-{"phase":"claim","ok":true}
-{"phase":"claim_balance","ok":true}
 {"phase":"close_stream","ok":true}
 {"phase":"close_state","ok":true}
+{"phase":"claim","ok":true}
+{"phase":"claim_balance","ok":true}
 {"phase":"module_e2e_complete","ok":true}
 ```
 
@@ -191,8 +191,11 @@ with all write and verification phases for the selected scenario reporting
 * `TOPUP_INCREASE`: Tokens added during the top-up phase when enabled (default: 1)
 * `MODULE_E2E_TOPUP`: Set to `1` to run `topUpStream` between create and accrual;
   default `0` (skipped) for a shorter demo
-* `MODULE_E2E_SKIP_CLOSE`: Set to `1` to stop after claim (saves one testnet tx;
-  reuse requires a new `STREAM_ID` or close on chain)
+* `MODULE_E2E_SKIP_CLOSE`: Set to `1` to skip settlement (close and claim;
+  saves testnet txs). Do not claim on an active stream when skipped.
+* `LEE_WALLET_HOME_DIR`: Set by the script — local module runs use
+  `.scaffold/module-e2e-wallet`; testnet module runs use
+  `.scaffold/e2e/testnet-wallet` (same bundle as Store testnet per Step 32 D1).
 * `INCLUSION_ATTEMPTS`, `INCLUSION_SLEEP`: Poll budget for `getTransaction` after each write
 * `ACCRUAL_ATTEMPTS`, `ACCRUAL_POLL_SLEEP`: Poll budget for `getStreamStatus` accrual
 * `FIXTURE_MANIFEST`: Testnet fixture path (default: `fixtures/testnet-module.json`)

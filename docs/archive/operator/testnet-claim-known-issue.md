@@ -42,14 +42,14 @@ so the encoding and witness construction are not the obvious cause.
 
 ## Next diagnostic step
 
-The "capture the sequencer reject reason" diagnostic is now completed
-for the v0.2.0 localnet path (Symptom D — see the Step 27 re-test
-result above). For the public testnet (Symptom C), the next diagnostic
-remains: capture the sequencer reject reason for `Instruction::Claim`
-on the v0.2.0 testnet and compare the claim message bytes against a
-known-good close message. Since account order and signer are identical,
-the difference is the instruction variant in the message payload and
-the guest dispatch for it.
+Symptom C (public testnet claim) is addressed by Step 32: shared
+`scripts/auth-transfer-ensure.sh` with strict `authenticated_transfer`
+ImageID verify runs before Store and module provider-signed work. If claim
+still fails after ensure, rotate `provider_account_id` in the fixture and
+re-run bootstrap rather than repeating ad-hoc `wallet auth-transfer init`.
+
+Historical note: the pre-v0.2.0 diagnostic was to capture the sequencer
+reject reason for `Instruction::Claim` and compare message bytes to close.
 
 ## Demo policy claim is optional
 

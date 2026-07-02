@@ -65,9 +65,13 @@ Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-r
   Localnet needs no fixture; clone and verify on your machine.
   Testnet needs `fixtures/testnet.json` (one-time `make bootstrap-testnet`); module-only
   users can use `fixtures/testnet-module.json` (one-time `make bootstrap-testnet-module`).
-- Claim is required on both chains. The v0.2.0 testnet upgrade resolved the
-  previous claim reliability issue; see
+- Claim is required on both chains for the module (User Journey). The v0.2.0
+  testnet upgrade resolved the previous claim reliability issue; see
   [archive/operator/testnet-claim-known-issue.md](../archive/operator/testnet-claim-known-issue.md).
+- Developer Journey Store testnet teardown keeps default `E2E_CLAIM_OPTIONAL=1`
+  until Step 32 D3 gate passes; strict runs use `E2E_CLAIM_OPTIONAL=0`.
+  Artifact parsers treat phase `claim` as canonical (`demo_claim` is a
+  transitional alias).
 
 ## Commands (canonical)
 

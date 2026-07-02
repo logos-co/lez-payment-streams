@@ -104,6 +104,12 @@ logoscore call payment_streams_module prepareEligibilityProofWithStreamProofForS
 
 Close then claim for the **run’s** `stream_id` (not a fixed stream 0).
 
+E2E scripts (User Journey and Developer Journey) treat settlement as **close the
+stream, then claim residual accrued on the closed stream**. That matches how
+unaccrued allocation returns to the vault at close while accrued remains
+claimable until the provider claims. Integrators may still claim on an active
+stream in product code; the E2E norm is post-close claim only.
+
 Local seed close (fixture helper):
 
 ```bash

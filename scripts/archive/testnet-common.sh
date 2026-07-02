@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Shared Step 18 testnet operator helpers (operational LEZ pin v0.2.0).
+# AT ensure for E2E: prefer scripts/auth-transfer-ensure.sh (Step 32); bootstrap
+# one-liner migration deferred (Step 32 D6).
 set -euo pipefail
 
 if [[ -z "${REPO_ROOT:-}" ]]; then

@@ -45,8 +45,10 @@ MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run
 ```
 
 Optional: `make deploy-testnet` (guest ELF change), `make verify-step18-testnet-read-smoke`.
-Payee `claim` may be optional on testnet —
-[archive/operator/testnet-claim-known-issue.md](../archive/operator/testnet-claim-known-issue.md).
+On LEZ v0.2.0, bootstrap runs `auth-transfer init` for owner and provider; claim in
+teardown needs a healthy AT-initialized provider. See
+[archive/operator/testnet-claim-known-issue.md](../archive/operator/testnet-claim-known-issue.md)
+(resolved) and `E2E_CLAIM_OPTIONAL` in [DEVELOPER_JOURNEY.md](../journeys/DEVELOPER_JOURNEY.md).
 
 ## Step-by-step path (without orchestrator)
 
@@ -56,16 +58,16 @@ Key operations:
 - Provider host: load `payment_streams_module` and `delivery_module`, run `verifyEligibilityForStoreQuery`
 - User host: `chainAction initializeVault`, `deposit`, `createStream`, `registerProviderMapping`, `prepareEligibilityProofWithStreamProofForStoreQuery`
 - User host: `delivery_module.storeQuery` with eligibility proof attached
-- Provider host: `chainAction claim` to withdraw accrued stream value
+- Provider host: `chainAction claim` with `"owner"` set to the vault owner account id (provider signs)
 
 See integration-contracts for method signatures and JSON shapes.
 
 ## Developer Journey (published)
 
-Root-level Developer Journey: [DEVELOPER_JOURNEY.md](../../DEVELOPER_JOURNEY.md).
+In-repo draft: [docs/journeys/DEVELOPER_JOURNEY.md](../journeys/DEVELOPER_JOURNEY.md).
 
-For the standalone payment streams journey (no Store integration), see the
-[User Journey](../../USER_JOURNEY.md).
+For the standalone payment streams journey (no Store integration), see
+[User Journey](../journeys/USER_JOURNEY.md).
 
 ## Recovery
 

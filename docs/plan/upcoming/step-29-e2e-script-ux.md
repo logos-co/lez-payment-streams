@@ -115,7 +115,7 @@ messaging stack, or the presenter explains it verbally during a live demo.
 [19:00:01] ============================================
 [19:00:01] Payment Streams E2E: User Journey (LocalNet)
 [19:00:01] Scenario: Alice creates a stream to Bob, funds accrue,
-[19:00:01]          Bob claims accrued amount, Alice closes stream
+[19:00:01]          Alice closes stream, Bob claims residual accrued
 [19:00:01] ============================================
 [19:00:01]
 [19:00:02] PHASE: Environment Setup
@@ -150,15 +150,15 @@ messaging stack, or the presenter explains it verbally during a live demo.
 [19:00:19]     by block time.
 [19:00:24]   ✓ Accrued: ~50 tokens after 5s of chain time
 [19:00:24]
-[19:00:24] PHASE: Claim
-[19:00:24]   → Bob claims accrued funds from stream 0
-[19:00:26]   ✓ Claim successful: Bob received 50 tokens
-[19:00:26]   ✓ Provider balance: 50
+[19:00:24] PHASE: Close
+[19:00:24]   → Alice closes stream 0, reclaims unspent allocation
+[19:00:26]   ✓ Stream closed
+[19:00:26]   ✓ Stream status: accrued=50, unspent reclaimed=31, vault balance=81
 [19:00:26]
-[19:00:26] PHASE: Close
-[19:00:26]   → Alice closes stream 0, reclaims unspent allocation
-[19:00:28]   ✓ Stream closed
-[19:00:28]   ✓ Stream status: accrued=50, unspent reclaimed=31, vault balance=81
+[19:00:26] PHASE: Claim
+[19:00:26]   → Bob claims residual accrued from closed stream 0
+[19:00:28]   ✓ Claim successful: Bob received 50 tokens
+[19:00:28]   ✓ Provider balance: 50
 [19:00:28]
 [19:00:28] ============================================
 [19:00:28] E2E COMPLETE: All phases succeeded
@@ -212,10 +212,14 @@ messaging stack, or the presenter explains it verbally during a live demo.
 [19:06:37]   ✗ Query rejected (no eligibility proof)
 [19:06:37]   ✓ Provider correctly returned 0 messages
 [19:06:37]
-[19:06:37] PHASE: Teardown
-[19:06:37]   → Closing stream 0
+[19:06:37] PHASE: Settlement
+[19:06:37]
+[19:06:37] PHASE: Close
+[19:06:37]   → Closing stream 0 on chain
 [19:06:39]   ✓ Stream closed
-[19:06:39]   → Provider claims accrued funds
+[19:06:39]
+[19:06:39] PHASE: Claim
+[19:06:39]   → Provider claims residual accrued on closed stream 0
 [19:06:41]   ✓ Claim successful: 64 tokens claimed, provider balance: 64
 [19:06:41]   ✓ Vault liquidity verified: allocated=0, unallocated=800
 [19:06:41]
@@ -229,8 +233,9 @@ messaging stack, or the presenter explains it verbally during a live demo.
 
 ### User Journey (`scripts/module-e2e.sh`)
 
-- Add `closeStream` call after `claim` (currently missing).
-- Replace fixed `sleep 5` before claim with on-chain accrual polling
+- Settlement order: close then claim residual (Step 32). Optional top-up remains
+  between create and accrual when `MODULE_E2E_TOPUP=1`.
+- Replace fixed `sleep 5` before accrual check with on-chain accrual polling
   (poll `getStreamStatus` until `unaccrued_lo` exceeds a minimum threshold,
   similar to `wait_for_stream_fundable` in the Python orchestrator).
 - Add narrative printing functions: `narrative_phase`, `narrative_step`,
