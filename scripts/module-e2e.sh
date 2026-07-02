@@ -3,12 +3,12 @@
 #
 # Exercises payment_streams_module chainAction end-to-end through logoscore:
 # vault init, deposit, stream create, optional top-up (MODULE_E2E_TOPUP=1), accrual,
-# claim, close.
+# close, then claim residual on the closed stream.
 # No delivery_module, no Store, no eligibility. This is the module-only cell of
 # the 2x2 verification matrix (Flow A x localnet or testnet).
 #
-# Scenario: Alice creates a payment stream to Bob, funds accrue, Bob claims
-# accrued amount, Alice closes stream and reclaims unspent allocation.
+# Scenario: Alice creates a payment stream to Bob, funds accrue, Alice closes
+# the stream, Bob claims residual accrued on the closed stream.
 #
 # Usage:
 #   CHAIN=local   ./scripts/module-e2e.sh   (default)
@@ -22,6 +22,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$REPO_ROOT/scripts/lib/common.sh"
 # shellcheck source=scripts/lib/chain_poll.sh
 source "$REPO_ROOT/scripts/lib/chain_poll.sh"
+# shellcheck source=scripts/lib/auth_transfer.sh
+source "$REPO_ROOT/scripts/lib/auth_transfer.sh"
 
 # ---------------------------------------------------------------------------
 # Verbosity
@@ -63,7 +65,7 @@ narr_header() {
   echo "[$(_narr_ts)] $line" >&2
   echo "[$(_narr_ts)] Payment Streams E2E: User Journey ($([ "$CHAIN" = "testnet" ] && echo TestNet || echo LocalNet))" >&2
   echo "[$(_narr_ts)] Scenario: Alice creates a stream to Bob, funds accrue," >&2
-  echo "[$(_narr_ts)]          Bob claims accrued amount, Alice closes stream" >&2
+  echo "[$(_narr_ts)]          Alice closes stream, Bob claims residual accrued" >&2
   echo "[$(_narr_ts)] $line" >&2
 }
 
@@ -127,7 +129,7 @@ RATE="${RATE:-1}"
 TOPUP_INCREASE="${TOPUP_INCREASE:-1}"
 # Default 0: skip topUpStream to keep the demo shorter. Set MODULE_E2E_TOPUP=1 to include it.
 MODULE_E2E_TOPUP="${MODULE_E2E_TOPUP:-0}"
-# Set MODULE_E2E_SKIP_CLOSE=1 to omit close (saves one testnet tx; same stream_id cannot be reused).
+# Set MODULE_E2E_SKIP_CLOSE=1 to skip settlement (close + claim; saves testnet txs).
 MODULE_E2E_SKIP_CLOSE="${MODULE_E2E_SKIP_CLOSE:-0}"
 
 # Chain-specific demo sizing and poll budgets. Public testnet blocks advance irregularly
@@ -325,35 +327,7 @@ sync_wallet() {
   sleep 3
 }
 
-# auth_transfer_init <account_base58> -> initialize the account under the
-# authenticated_transfer program (LEZ v0.2.0 requires this before the account
-# can be debited by deposit or credited by claim). The account must still be
-# default-owned, so call this before topup and before the account signs any tx.
-# Returns 0 once the init tx is included on chain, 1 otherwise.
-auth_transfer_init() {
-  local acct="$1"
-  if ps_account_is_at_initialized "$acct"; then
-    return 0
-  fi
-  local hex line tx_hash wallet_bin
-  if ps_is_testnet; then
-    wallet_bin="$(ps_lez_cache)/target/release/wallet"
-    if [[ -x "$wallet_bin" ]]; then
-      export LEE_WALLET_HOME_DIR="$WALLET_HOME" NSSA_WALLET_HOME_DIR="$WALLET_HOME"
-      if "$wallet_bin" auth-transfer init --account-id "Public/$acct" >/dev/null 2>&1; then
-        sync_wallet
-        ps_account_is_at_initialized "$acct" && return 0
-      fi
-    fi
-  fi
-  hex="$(logoscore call logos_execution_zone account_id_from_base58 "$acct" 2>/dev/null | tail -1)"
-  hex="$(python3 -c 'import json,sys; o=json.loads(sys.argv[1]); r=o.get("result",""); print(r if isinstance(r,str) else "")' "$hex" 2>/dev/null || true)"
-  [[ -n "$hex" ]] || return 1
-  line="$(logoscore call logos_execution_zone register_public_account "$hex" 2>/dev/null | tail -1)"
-  tx_hash="$(extract_field "$line" tx_hash)"
-  [[ -n "$tx_hash" ]] || return 1
-  await_inclusion "$tx_hash"
-}
+# auth_transfer_init — see scripts/lib/auth_transfer.sh (ps_auth_transfer_ensure).
 
 inner_status_ok() {
   python3 -c '
@@ -440,23 +414,16 @@ j() { python3 -c 'import json,sys; print(json.dumps(json.loads(sys.argv[1])))' "
 # (which chains into AT to credit the provider) are rejected on chain.
 # ---------------------------------------------------------------------------
 if ps_is_local || ps_is_testnet; then
+  export LEE_WALLET_HOME_DIR="$WALLET_HOME"
+  export WALLET_CONFIG="${WALLET_CONFIG:-$WALLET_HOME/wallet_config.json}"
+  export WALLET_STORAGE="${WALLET_STORAGE:-$WALLET_HOME/storage.json}"
+  export PS_AT_LOGOSCORE_WALLET_HANDOFF=1
   narr_step "Initializing accounts under authenticated_transfer program"
-  if auth_transfer_init "$OWNER"; then
-    emit_phase auth_init_owner true
-    narr_ok "Owner initialized under authenticated_transfer"
+  if ps_auth_transfer_ensure "$OWNER" "$PROVIDER"; then
+    narr_ok "Owner and provider verified under authenticated_transfer"
   else
-    emit_phase auth_init_owner false
-    narr_fail "Owner AT-init not confirmed on chain"
-    narr_hint "register_public_account did not settle; deposit will be rejected"
-    FAILURES=$((FAILURES + 1))
-  fi
-  if auth_transfer_init "$PROVIDER"; then
-    emit_phase auth_init_provider true
-    narr_ok "Provider initialized under authenticated_transfer"
-  else
-    emit_phase auth_init_provider false
-    narr_fail "Provider AT-init not confirmed on chain"
-    narr_hint "Fixture provider must be AT-initialized (wallet auth-transfer init) before claim"
+    narr_fail "authenticated_transfer ensure failed (see artifact auth_init_* phases)"
+    narr_hint "register_public_account or wallet auth-transfer init did not settle"
     FAILURES=$((FAILURES + 1))
   fi
   sync_wallet
@@ -498,7 +465,7 @@ if ps_is_testnet; then
   SCAFFOLD_WALLET="$(ps_lez_cache)/target/release/wallet"
   if [[ -x "$SCAFFOLD_WALLET" ]]; then
     export PATH="$(dirname "$SCAFFOLD_WALLET"):$PATH"
-    export LEE_WALLET_HOME_DIR="$WALLET_HOME" NSSA_WALLET_HOME_DIR="$WALLET_HOME"
+    export LEE_WALLET_HOME_DIR="$WALLET_HOME"
     owner_target=$((DEPOSIT + 50))
     owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null || echo 0)"
     owner_attempts=0
@@ -737,78 +704,18 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# PHASE: Claim
-# ---------------------------------------------------------------------------
-narr_phase "Claim"
-
-# Verify the claim against two on-chain balances: the provider's account
-# balance should increase by the payout, and the vault holding balance should
-# decrease by the same payout. Both are captured before the claim and polled
-# after. The provider may carry a pre-existing balance (e.g. localnet gas
-# top-up), so deltas are reported rather than absolute values.
-PRE_CLAIM_BALANCE="$(ps_account_balance "$PROVIDER" || echo 0)"
-PRE_CLAIM_VAULT=0
-if CLAIM_PRE_VAULT="$(poll_read read_vault "$OWNER" "$VAULT_ID")"; then
-  read -r PRE_CLAIM_VAULT _ <<< "$CLAIM_PRE_VAULT"
-fi
-
-narr_step "Bob claims accrued funds from stream $STREAM_ID"
-CLAIM_LINE="$(call_ps claim 1 claim "$(j "{\"owner\":\"$OWNER\",\"provider\":\"$PROVIDER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Claim transaction included on chain")"
-
-# Poll both balances until the payout settles (or the retry budget is
-# exhausted). A settled claim shows the provider balance increase and the vault
-# holding balance decrease by the same amount.
-POST_CLAIM_BALANCE=""
-POST_CLAIM_VAULT=""
-CLAIM_BAL_ATTEMPTS=6
-for attempt in $(seq 1 $CLAIM_BAL_ATTEMPTS); do
-  sync_wallet
-  POST_CLAIM_BALANCE="$(ps_account_balance "$PROVIDER" || echo 0)"
-  if CLAIM_POST_VAULT="$(read_vault "$OWNER" "$VAULT_ID")"; then
-    read -r POST_CLAIM_VAULT _ <<< "$CLAIM_POST_VAULT"
-  fi
-  if [[ -n "$POST_CLAIM_BALANCE" && "$POST_CLAIM_BALANCE" -gt "${PRE_CLAIM_BALANCE:-0}" ]]; then
-    break
-  fi
-  sleep 5
-done
-
-if [[ -n "$POST_CLAIM_BALANCE" && "$POST_CLAIM_BALANCE" -gt "${PRE_CLAIM_BALANCE:-0}" ]]; then
-  RECEIVED=$((POST_CLAIM_BALANCE - PRE_CLAIM_BALANCE))
-  VAULT_DROP=$((PRE_CLAIM_VAULT - ${POST_CLAIM_VAULT:-0}))
-  if [[ -n "$POST_CLAIM_VAULT" && "$VAULT_DROP" -eq "$RECEIVED" ]]; then
-    emit_phase claim_balance true "{\"received\":$RECEIVED,\"provider_pre\":$PRE_CLAIM_BALANCE,\"provider_post\":$POST_CLAIM_BALANCE,\"vault_pre\":$PRE_CLAIM_VAULT,\"vault_post\":$POST_CLAIM_VAULT,\"attempts\":$attempt}"
-    narr_ok "Claim confirmed on chain: Bob received $RECEIVED tokens"
-    narr_value "Provider balance: $PRE_CLAIM_BALANCE -> $POST_CLAIM_BALANCE"
-    narr_value "Vault holding: $PRE_CLAIM_VAULT -> $POST_CLAIM_VAULT (paid out $VAULT_DROP)"
-  else
-    emit_phase claim_balance true "{\"received\":$RECEIVED,\"provider_pre\":$PRE_CLAIM_BALANCE,\"provider_post\":$POST_CLAIM_BALANCE,\"vault_pre\":$PRE_CLAIM_VAULT,\"vault_post\":${POST_CLAIM_VAULT:-0},\"attempts\":$attempt}"
-    narr_ok "Claim confirmed on chain: Bob received $RECEIVED tokens"
-    narr_value "Provider balance: $PRE_CLAIM_BALANCE -> $POST_CLAIM_BALANCE"
-    narr_value "Vault holding: $PRE_CLAIM_VAULT -> ${POST_CLAIM_VAULT:-?} (drop $VAULT_DROP vs payout $RECEIVED)"
-    narr_hint "Vault holding drop did not match payout — may still be settling"
-  fi
-else
-  emit_phase claim_balance false "{\"provider_pre\":$PRE_CLAIM_BALANCE,\"provider_post\":${POST_CLAIM_BALANCE:-0},\"vault_pre\":$PRE_CLAIM_VAULT,\"vault_post\":${POST_CLAIM_VAULT:-0},\"attempts\":$CLAIM_BAL_ATTEMPTS}"
-  narr_fail "Claim failed: provider balance did not increase on chain"
-  narr_hint "If claim tx included, re-read getAccount and getVaultStatus after wallet sync"
-fi
-
-# ---------------------------------------------------------------------------
-# PHASE: Close
+# PHASE: Settlement (close then claim residual)
 # ---------------------------------------------------------------------------
 if [[ "$MODULE_E2E_SKIP_CLOSE" == "1" ]]; then
-  narr_verbose "Skipping close (MODULE_E2E_SKIP_CLOSE=1); use a fresh stream_id on the next run"
-  emit_phase close_stream true "{\"skipped\":true}"
+  narr_verbose "Skipping settlement (MODULE_E2E_SKIP_CLOSE=1); close and claim omitted"
+  emit_phase close_stream true "{\"skipped\":true,\"reason\":\"MODULE_E2E_SKIP_CLOSE\"}"
+  emit_phase claim true "{\"skipped\":true,\"reason\":\"MODULE_E2E_SKIP_CLOSE\"}"
 else
   narr_phase "Close"
 
   narr_step "Alice closes stream $STREAM_ID, reclaims unspent allocation"
   CLOSE_LINE="$(call_ps close_stream 1 closeStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"authority\":\"$PROVIDER\"}")" "" "Close transaction included on chain")"
 
-  # Read the final on-chain state: the stream should be Closed with unaccrued=0
-  # (the unspent allocation was reclaimed to the vault), and any residual accrued
-  # stays allocated on the closed stream until a later claim.
   CLOSE_VAULT_BAL=""
   CLOSE_VAULT_TOT=""
   CLOSE_ACC=""
@@ -825,6 +732,64 @@ else
   narr_ok "Stream closed: on-chain state $(stream_state_name "$CLOSE_ST")"
   narr_value "Stream residual: accrued=${CLOSE_ACC:-?}, unaccrued=${CLOSE_UNC:-?} (unaccrued reclaimed to vault)"
   narr_value "Vault holding balance: ${CLOSE_VAULT_BAL:-?}, total_allocated: ${CLOSE_VAULT_TOT:-?}"
+
+  narr_phase "Claim"
+
+  CLAIM_ACCRUED=""
+  if CLAIM_STREAM="$(poll_read read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"; then
+    read -r CLAIM_ACCRUED _ _ <<< "$CLAIM_STREAM"
+  fi
+  CLAIM_ACCRUED="${CLAIM_ACCRUED:-0}"
+
+  if [[ "${CLAIM_ACCRUED:-0}" -le 0 ]]; then
+    emit_phase claim true "{\"skipped\":true,\"reason\":\"zero_accrued\"}"
+    narr_ok "No residual accrued to claim after close"
+  else
+    PRE_CLAIM_BALANCE="$(ps_account_balance "$PROVIDER" || echo 0)"
+    PRE_CLAIM_VAULT=0
+    if CLAIM_PRE_VAULT="$(poll_read read_vault "$OWNER" "$VAULT_ID")"; then
+      read -r PRE_CLAIM_VAULT _ <<< "$CLAIM_PRE_VAULT"
+    fi
+
+    narr_step "Bob claims residual accrued ($CLAIM_ACCRUED) from closed stream $STREAM_ID"
+    CLAIM_LINE="$(call_ps claim 1 claim "$(j "{\"owner\":\"$OWNER\",\"provider\":\"$PROVIDER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Claim transaction included on chain")"
+
+    POST_CLAIM_BALANCE=""
+    POST_CLAIM_VAULT=""
+    CLAIM_BAL_ATTEMPTS=6
+    for attempt in $(seq 1 $CLAIM_BAL_ATTEMPTS); do
+      sync_wallet
+      POST_CLAIM_BALANCE="$(ps_account_balance "$PROVIDER" || echo 0)"
+      if CLAIM_POST_VAULT="$(read_vault "$OWNER" "$VAULT_ID")"; then
+        read -r POST_CLAIM_VAULT _ <<< "$CLAIM_POST_VAULT"
+      fi
+      if [[ -n "$POST_CLAIM_BALANCE" && "$POST_CLAIM_BALANCE" -gt "${PRE_CLAIM_BALANCE:-0}" ]]; then
+        break
+      fi
+      sleep 5
+    done
+
+    if [[ -n "$POST_CLAIM_BALANCE" && "$POST_CLAIM_BALANCE" -gt "${PRE_CLAIM_BALANCE:-0}" ]]; then
+      RECEIVED=$((POST_CLAIM_BALANCE - PRE_CLAIM_BALANCE))
+      VAULT_DROP=$((PRE_CLAIM_VAULT - ${POST_CLAIM_VAULT:-0}))
+      if [[ -n "$POST_CLAIM_VAULT" && "$VAULT_DROP" -eq "$RECEIVED" ]]; then
+        emit_phase claim_balance true "{\"received\":$RECEIVED,\"provider_pre\":$PRE_CLAIM_BALANCE,\"provider_post\":$POST_CLAIM_BALANCE,\"vault_pre\":$PRE_CLAIM_VAULT,\"vault_post\":$POST_CLAIM_VAULT,\"attempts\":$attempt}"
+        narr_ok "Claim confirmed on chain: Bob received $RECEIVED tokens"
+        narr_value "Provider balance: $PRE_CLAIM_BALANCE -> $POST_CLAIM_BALANCE"
+        narr_value "Vault holding: $PRE_CLAIM_VAULT -> $POST_CLAIM_VAULT (paid out $VAULT_DROP)"
+      else
+        emit_phase claim_balance true "{\"received\":$RECEIVED,\"provider_pre\":$PRE_CLAIM_BALANCE,\"provider_post\":$POST_CLAIM_BALANCE,\"vault_pre\":$PRE_CLAIM_VAULT,\"vault_post\":${POST_CLAIM_VAULT:-0},\"attempts\":$attempt}"
+        narr_ok "Claim confirmed on chain: Bob received $RECEIVED tokens"
+        narr_value "Provider balance: $PRE_CLAIM_BALANCE -> $POST_CLAIM_BALANCE"
+        narr_value "Vault holding: $PRE_CLAIM_VAULT -> ${POST_CLAIM_VAULT:-?} (drop $VAULT_DROP vs payout $RECEIVED)"
+        narr_hint "Vault holding drop did not match payout — may still be settling"
+      fi
+    else
+      emit_phase claim_balance false "{\"provider_pre\":$PRE_CLAIM_BALANCE,\"provider_post\":${POST_CLAIM_BALANCE:-0},\"vault_pre\":$PRE_CLAIM_VAULT,\"vault_post\":${POST_CLAIM_VAULT:-0},\"attempts\":$CLAIM_BAL_ATTEMPTS}"
+      narr_fail "Claim failed: provider balance did not increase on chain"
+      narr_hint "If claim tx included, re-read getAccount and getVaultStatus after wallet sync"
+    fi
+  fi
 fi
 
 # ---------------------------------------------------------------------------
