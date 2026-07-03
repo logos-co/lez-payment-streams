@@ -12,7 +12,7 @@ import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 # Static sharding config - simpler for E2E demo without autosharding complexity
@@ -55,6 +55,31 @@ def set_manifest_allocation(manifest: dict, value: int) -> None:
 def min_unaccrued_lo_for_proof(manifest: dict) -> int:
     alloc = manifest_allocation_lo(manifest)
     return max(64, min(alloc // 4, 50_000))
+
+
+def store_reuse_baseline_vault() -> bool:
+    return os.environ.get("E2E_REUSE_BASELINE_VAULT", "0").strip() == "1"
+
+
+def vault_config_is_empty_from_probe(read_ok: bool) -> bool:
+    """True when the vault config account is missing or has no data."""
+    return not read_ok
+
+
+def scan_first_empty_vault_id(
+    is_empty_for_id: Callable[[int], bool], start: int = 0, limit: int = 100_000
+) -> int:
+    for vault_id in range(start, start + limit):
+        if is_empty_for_id(vault_id):
+            return vault_id
+    raise E2EError(f"no empty vault id found in scan range [{start}, {start + limit})")
+
+
+def testnet_e2e_create_via() -> str:
+    explicit = os.environ.get("E2E_CREATE_VIA", "").strip().lower()
+    if explicit:
+        return explicit
+    return "chainaction"
 
 
 def stream_fundable_wait_s() -> int:
@@ -1685,6 +1710,168 @@ def refresh_manifest_pdas(repo: Path, manifest_path: Path, stream_id: int, manif
     manifest.update(json.loads(manifest_path.read_text()))
 
 
+def seed_deposit_amount_lo(manifest: dict) -> int:
+    raw = os.environ.get("SEED_DEPOSIT_AMOUNT", "").strip()
+    if raw:
+        return int(raw)
+    demo = manifest.get("demo_deposit_amount")
+    if demo is not None:
+        return int(demo)
+    return manifest_allocation_lo(manifest) + 100
+
+
+def refresh_manifest_vault_baseline(
+    repo: Path, manifest_path: Path, manifest: dict, vault_id: int
+) -> None:
+    guest = Path(os.environ["PAYMENT_STREAMS_GUEST_BIN"])
+    deposit = seed_deposit_amount_lo(manifest)
+    proc = run(
+        [
+            "cargo",
+            "run",
+            "-q",
+            "--manifest-path",
+            "examples/Cargo.toml",
+            "--bin",
+            "seed_localnet_fixture",
+            "--",
+            "write-vault-manifest",
+            "--program-bin",
+            str(guest),
+            "--owner",
+            manifest["owner_account_id"],
+            "--provider",
+            manifest["provider_account_id"],
+            "--vault-id",
+            str(vault_id),
+            "--deposit-amount",
+            str(deposit),
+            "--stream-rate",
+            str(int(manifest.get("stream_rate", 1))),
+            "--allocation",
+            str(manifest_allocation_lo(manifest)),
+            "--sequencer-url",
+            manifest.get("sequencer_url", "http://127.0.0.1:3040"),
+            "--output",
+            str(manifest_path),
+        ],
+        cwd=repo,
+        timeout=300,
+    )
+    if proc.returncode != 0:
+        raise E2EError(f"write-vault-manifest failed: {proc.stderr or proc.stdout}")
+    manifest.clear()
+    manifest.update(json.loads(manifest_path.read_text()))
+
+
+def resolve_store_vault_id_subprocess(repo: Path) -> int:
+    env = os.environ.copy()
+    proc = run(
+        ["bash", str(repo / "scripts" / "fixture.sh"), "vault", "resolve-id"],
+        cwd=repo,
+        env=env,
+        timeout=120,
+    )
+    if proc.returncode != 0:
+        raise E2EError(f"vault resolve-id failed: {proc.stderr or proc.stdout}")
+    raw = (proc.stdout or "").strip().splitlines()[-1].strip()
+    return int(raw)
+
+
+def ensure_fresh_vault_for_store_run(
+    repo: Path,
+    manifest_path: Path,
+    manifest: dict,
+    artifact: Path,
+) -> int:
+    chain = os.environ.get("CHAIN", "local").strip().lower()
+    strip_snapshot_stream_fields(manifest, manifest_path)
+    vault_id = resolve_store_vault_id_subprocess(repo)
+    deposit_lo = seed_deposit_amount_lo(manifest)
+    log_artifact(
+        artifact,
+        "plan_demo_vault",
+        True,
+        vault_id=vault_id,
+        deposit_lo=deposit_lo,
+        chain=chain,
+        source="resolve_store_vault_id",
+    )
+    if chain == "testnet":
+        ensure_script = repo / "scripts" / "e2e" / "ensure-testnet-vault.sh"
+        wc = os.environ.get("WALLET_CONFIG", "")
+        ws = os.environ.get("WALLET_STORAGE", "")
+        seq = manifest.get("sequencer_url", "https://testnet.lez.logos.co/")
+        prog_hex = manifest.get("program_id_hex", "")
+        guest = os.environ["PAYMENT_STREAMS_GUEST_BIN"]
+        submit = os.environ.get("LEZ_TESTNET_SUBMIT", "")
+        cmd = [
+            "bash",
+            str(ensure_script),
+            "--manifest",
+            str(manifest_path),
+            "--vault-id",
+            str(vault_id),
+            "--deposit-amount",
+            str(deposit_lo),
+            "--wallet-config",
+            wc,
+            "--wallet-storage",
+            ws,
+            "--sequencer-url",
+            seq,
+            "--program-id-hex",
+            prog_hex,
+            "--program-bin",
+            guest,
+        ]
+        if submit:
+            cmd.extend(["--submit-helper", submit])
+        proc = run(cmd, cwd=repo, timeout=e2e_subprocess_timeout_s())
+        ok = proc.returncode == 0
+        log_artifact(
+            artifact,
+            "vault_ensure",
+            ok,
+            vault_id=vault_id,
+            via="ensure-testnet-vault.sh",
+            deposit_lo=deposit_lo,
+            stderr=(proc.stderr or "")[-800:],
+        )
+        if not ok:
+            raise E2EError(f"ensure-testnet-vault failed: {proc.stderr or proc.stdout}")
+        manifest.clear()
+        manifest.update(json.loads(manifest_path.read_text()))
+    else:
+        env = os.environ.copy()
+        env["FIXTURE_MANIFEST"] = str(manifest_path)
+        env["VAULT_ID"] = str(vault_id)
+        env["SEED_DEPOSIT_AMOUNT"] = str(deposit_lo)
+        env["SEED_ALLOCATION"] = str(manifest_allocation_lo(manifest))
+        proc = run(
+            ["bash", str(repo / "scripts" / "fixture.sh"), "vault", "ensure", str(vault_id)],
+            cwd=repo,
+            env=env,
+            timeout=e2e_subprocess_timeout_s(),
+        )
+        ok = proc.returncode == 0
+        log_artifact(
+            artifact,
+            "vault_ensure",
+            ok,
+            vault_id=vault_id,
+            via="fixture.sh_vault_ensure",
+            deposit_lo=deposit_lo,
+            stderr=(proc.stderr or "")[-800:],
+        )
+        if not ok:
+            raise E2EError(f"fixture vault ensure failed: {proc.stderr or proc.stdout}")
+        refresh_manifest_vault_baseline(repo, manifest_path, manifest, vault_id)
+    manifest["vault_id"] = vault_id
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    return vault_id
+
+
 def create_demo_stream_for_run(
     cfg_user: Path,
     cfg_provider: Path,
@@ -1709,7 +1896,10 @@ def create_demo_stream_for_run(
         create_id = int(precreated_raw)
     else:
         strip_snapshot_stream_fields(manifest, manifest_path)
-        create_id = vault_next_stream_id(cfg_user, manifest)
+        if store_reuse_baseline_vault() or continuation_e2e_run():
+            create_id = vault_next_stream_id(cfg_user, manifest)
+        else:
+            create_id = 0
     precreated = precreated_raw
     if precreated and int(precreated) == create_id and manifest.get("stream_config_account_id"):
         log_artifact(
@@ -1919,7 +2109,7 @@ def create_demo_stream_for_run(
                 manifest.update(json.loads(manifest_path.read_text()))
                 wait_for_stream_config_on_chain(cfg_user, manifest, create_id, seq_url, artifact)
     elif chain == "testnet":
-        create_via = os.environ.get("E2E_CREATE_VIA", "seed").strip().lower()
+        create_via = testnet_e2e_create_via()
         if create_via == "chainaction":
             create_body = {
                 "signer": manifest["owner_account_id"],
@@ -2868,7 +3058,7 @@ def main() -> int:
         e2e_subproc_timeout_s=e2e_subprocess_timeout_s(),
         stream_fundable_wait_s=stream_fundable_wait_s(),
         publish_wait_s=PUBLISH_WAIT_S,
-        create_via=local_e2e_create_via() if os.environ.get("CHAIN", "local").strip().lower() == "local" else os.environ.get("E2E_CREATE_VIA", "seed"),
+        create_via=local_e2e_create_via() if os.environ.get("CHAIN", "local").strip().lower() == "local" else testnet_e2e_create_via(),
         skip_build=os.environ.get("SKIP_BUILD", ""),
         **wallet_tx_poll_budget_s(wallet_config),
     )
@@ -2972,6 +3162,14 @@ def main() -> int:
             )
             narrator.ok("authenticated_transfer ensure complete (see auth_init_* in artifact)")
 
+            if not store_reuse_baseline_vault():
+                narrator.phase("Vault Ensure")
+                deposit_lo = seed_deposit_amount_lo(manifest)
+                narrator.step("Ensuring fresh vault for this run (init + deposit)")
+                narrator.value(f"target deposit={deposit_lo} lo (allocation + buffer)")
+                ensure_fresh_vault_for_store_run(repo, manifest_path, manifest, artifact)
+                narrator.ok(f"Vault {manifest.get('vault_id')} ready on chain")
+
             if (
                 os.environ.get("CHAIN", "local").strip().lower() == "local"
                 and continuation_e2e_run()
@@ -2996,27 +3194,12 @@ def main() -> int:
                 )
                 timer.mark("create_demo_stream_done")
 
-            narrator.step("Publishing test messages to Store...")
-            logoscore_cmd(cfg_user, "call", "delivery_module", "subscribe", CONTENT_TOPIC)
-            logoscore_cmd(cfg_provider, "call", "delivery_module", "subscribe", CONTENT_TOPIC)
-            payload = f"e2e-{uuid.uuid4().hex[:8]}"
-            logoscore_cmd(cfg_user, "call", "delivery_module", "send", CONTENT_TOPIC, payload)
-            publish_wait = PUBLISH_WAIT_S
-            if continuation_e2e_run():
-                publish_wait = int(os.environ.get("E2E_CONTINUATION_PUBLISH_WAIT_S", "5"))
-            time.sleep(publish_wait)
-            narrator.ok("Messages published and propagated")
-
-            sync_wallet(cfg_user, seq_url)
-            sync_wallet(cfg_provider, seq_url)
-            timer.mark("messaging_publish_wait")
-
             if not os.environ.get("E2E_PRECREATED_STREAM_ID", "").strip():
                 narrator.phase("Stream Creation")
                 vault_id = int(manifest.get("vault_id", 0))
                 rate = int(manifest.get("stream_rate", 1))
                 alloc = manifest_allocation_lo(manifest)
-                narrator.step(f"User creates payment stream to provider")
+                narrator.step("User creates payment stream to provider")
                 narrator.value(f"rate={rate} token/sec, allocation={alloc} tokens, vault={vault_id}")
                 create_demo_stream_for_run(
                     cfg_user,
@@ -3039,6 +3222,20 @@ def main() -> int:
             else:
                 stream_id = manifest_stream_id(manifest)
 
+            narrator.step("Publishing test messages to Store...")
+            logoscore_cmd(cfg_user, "call", "delivery_module", "subscribe", CONTENT_TOPIC)
+            logoscore_cmd(cfg_provider, "call", "delivery_module", "subscribe", CONTENT_TOPIC)
+            payload = f"e2e-{uuid.uuid4().hex[:8]}"
+            logoscore_cmd(cfg_user, "call", "delivery_module", "send", CONTENT_TOPIC, payload)
+            publish_wait = PUBLISH_WAIT_S
+            if continuation_e2e_run():
+                publish_wait = int(os.environ.get("E2E_CONTINUATION_PUBLISH_WAIT_S", "5"))
+            time.sleep(publish_wait)
+            narrator.ok("Messages published and propagated")
+            sync_wallet(cfg_user, seq_url)
+            sync_wallet(cfg_provider, seq_url)
+            timer.mark("messaging_publish_wait")
+
             # Mint proof immediately before storeQuery so provider verify still sees unaccrued balance.
             narrator.phase("Eligibility Proof Generation")
             narrator.step("User generates LIP-155 eligibility proof from active stream")
@@ -3048,6 +3245,10 @@ def main() -> int:
             seed_provider_session_from_user(persist_user, persist_provider, manifest_path, repo)
             reload_provider_payment_streams_module(cfg_provider)
             sync_wallet(cfg_provider, seq_url)
+            vault_id = int(manifest.get("vault_id", 0))
+            logoscore_cmd(
+                cfg_provider, "call", "payment_streams_module", "rediscoverStreams", str(vault_id)
+            )
 
             narrator.phase("Paid Store Query")
             narrator.step("User sends Store query with eligibility proof attached")

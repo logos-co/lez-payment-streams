@@ -57,7 +57,6 @@ doc = {
     "program_id_hex": prog,
     "owner_account_id": owner,
     "provider_account_id": provider,
-    "vault_id": 0,
     "deposit_amount": int(deposit),
     "stream_rate": int(rate),
     "allocation": int(alloc),

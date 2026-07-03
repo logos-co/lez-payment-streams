@@ -202,6 +202,9 @@ resolve_owner() {
   echo "$owner"
 }
 
+# shellcheck source=scripts/lib/vault_scan.sh
+source "$REPO_ROOT/scripts/lib/vault_scan.sh"
+
 # A vault is "funded" when its config account is initialized (next_stream_id is
 # readable) and, when the holding account id is known, enough unallocated balance
 # for at least one createStream at the configured allocation.
@@ -236,6 +239,23 @@ cmd_vault_is_funded() {
   return 1
 }
 
+cmd_vault_config_is_empty() {
+  local vault_id="${1:-0}"
+  local owner
+  owner="$(resolve_owner)"
+  [[ -n "$owner" ]] || ps_fatal "No owner in state/manifest"
+  if vault_config_is_empty "$owner" "$vault_id"; then
+    ps_log_info "Vault $vault_id config is empty (uninitialized)"
+    return 0
+  fi
+  ps_log_info "Vault $vault_id config is initialized"
+  return 1
+}
+
+cmd_vault_resolve_id() {
+  resolve_store_vault_id
+}
+
 # Write a vault-baseline fixture manifest (schema v2, no per-run stream fields)
 # from the restored owner/provider markers. The orchestrator reads this for
 # owner/provider/program_id and then creates the per-run stream from chain.
@@ -250,13 +270,15 @@ cmd_manifest_write() {
   guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
   wallet_home="${LEE_WALLET_HOME_DIR:-$(ps_chain_wallet_home)}"
 
-  ps_log_info "Writing vault baseline manifest: $manifest"
+  local vault_id="${1:-${VAULT_ID:-0}}"
+  ps_log_info "Writing vault baseline manifest: $manifest (vault_id=$vault_id)"
   LEE_WALLET_HOME_DIR="$wallet_home" cargo run -q \
     --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
     --bin seed_localnet_fixture -- write-vault-manifest \
     --program-bin "$guest" \
     --owner "$owner" \
     --provider "$provider" \
+    --vault-id "$vault_id" \
     --deposit-amount "$SEED_DEPOSIT_AMOUNT" \
     --stream-rate "$SEED_STREAM_RATE" \
     --allocation "$SEED_ALLOCATION" \
@@ -432,7 +454,9 @@ Commands:
   prefund                      — Fund owner and provider accounts
   vault ensure [vault-id]      — Initialize vault and deposit if under-funded (default: 0)
   vault is-funded [vault-id]   — Exit 0 if the vault is initialized and funded
-  vault manifest               — Write vault-baseline fixture manifest from markers
+  vault config-is-empty [id]   — Exit 0 if vault config account is missing or empty
+  vault resolve-id             — Print Store run vault id (env VAULT_ID or scan)
+  vault manifest [vault-id]    — Write vault-baseline fixture manifest from markers
   stream create [vault-id]     — Create stream (default vault: 0)
   stream close <vault> <id>    — Close specific stream
   stream claim <vault> <id>    — Claim from specific stream
@@ -460,6 +484,8 @@ main() {
       case "$subcmd" in
         ensure)           cmd_vault_ensure "$@" ;;
         is-funded)        cmd_vault_is_funded "$@" ;;
+        config-is-empty)  cmd_vault_config_is_empty "$@" ;;
+        resolve-id)       cmd_vault_resolve_id "$@" ;;
         manifest)         cmd_manifest_write "$@" ;;
         *)                usage; exit 1 ;;
       esac

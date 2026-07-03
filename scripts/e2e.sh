@@ -117,6 +117,17 @@ cmd_prepare() {
 cmd_prepare_local() {
   ps_log_info "Preparing localnet..."
 
+  if [[ "${E2E_PREPARE_DRY_RUN:-0}" == "1" ]]; then
+    ps_log_info "E2E_PREPARE_DRY_RUN=1 — no prepare side effects"
+    if ps_is_module_mode; then
+      ps_log_info "module mode: would ensure localnet running only"
+    else
+      ps_log_info "store default: orchestrator ensures fresh vault per run (no vault ensure 0 here)"
+      ps_log_info "E2E_REUSE_BASELINE_VAULT=1: would restore snapshot and vault ensure 0"
+    fi
+    return 0
+  fi
+
   # Flow A drives its own vault lifecycle through the module (initializeVault,
   # deposit, createStream); it only needs localnet up. The Store-flow vault
   # snapshot/prefund baseline below does not apply.
@@ -137,8 +148,10 @@ cmd_prepare_local() {
     if [[ "$($REPO_ROOT/scripts/lifecycle.sh localnet status)" != "running" ]]; then
       "$REPO_ROOT/scripts/lifecycle.sh" localnet start
     fi
-    "$REPO_ROOT/scripts/fixture.sh" vault ensure 0
-    "$REPO_ROOT/scripts/fixture.sh" vault manifest
+    if [[ "${E2E_REUSE_BASELINE_VAULT:-0}" == "1" ]]; then
+      "$REPO_ROOT/scripts/fixture.sh" vault ensure 0
+      "$REPO_ROOT/scripts/fixture.sh" vault manifest 0
+    fi
     ps_log_info "Local prepare complete (continuation)"
     return 0
   fi
@@ -172,13 +185,10 @@ cmd_prepare_local() {
     "$REPO_ROOT/scripts/lifecycle.sh" localnet start
   fi
 
-  # Idempotent: only initializes/deposits when the vault is missing or low on
-  # unallocated balance. The per-run stream is created by the orchestrator.
-  "$REPO_ROOT/scripts/fixture.sh" vault ensure 0
-
-  # Restore clears the per-run manifest; regenerate the vault baseline so the
-  # orchestrator can read owner/provider/program_id before it creates a stream.
-  "$REPO_ROOT/scripts/fixture.sh" vault manifest
+  if [[ "${E2E_REUSE_BASELINE_VAULT:-0}" == "1" ]]; then
+    "$REPO_ROOT/scripts/fixture.sh" vault ensure 0
+    "$REPO_ROOT/scripts/fixture.sh" vault manifest 0
+  fi
 
   ps_log_info "Local prepare complete"
 }
@@ -259,6 +269,13 @@ cmd_run() {
   # so an inherited localnet value cannot redirect testnet ops to 127.0.0.1.
   export LEE_WALLET_HOME_DIR="$(ps_chain_wallet_home)"
   export FIXTURE_MANIFEST="$(ps_default_fixture_manifest)"
+  if ps_is_testnet && ! ps_is_module_mode; then
+    export SEED_ALLOCATION="${SEED_ALLOCATION:-400}"
+    export SEED_DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-500}"
+    export E2E_CREATE_VIA="${E2E_CREATE_VIA:-chainaction}"
+    export E2E_CLAIM_OPTIONAL="${E2E_CLAIM_OPTIONAL:-1}"
+    ps_log_info "Store testnet sizing: SEED_ALLOCATION=$SEED_ALLOCATION SEED_DEPOSIT_AMOUNT=$SEED_DEPOSIT_AMOUNT (override via env; optional VAULT_ID)"
+  fi
   export WALLET_CONFIG="$(ps_default_wallet_config)"
   export WALLET_STORAGE="$(ps_default_wallet_storage)"
   export MODULES_USER="${MODULES_USER:-$REPO_ROOT/.scaffold/e2e/user/modules}"
@@ -361,6 +378,9 @@ Environment:
   SKIP_BUILD         — Skip module build (default: 0)
   SKIP_TEARDOWN      — Skip cleanup (default: 0)
   E2E_PHASE          — core, claim, or all (default: all)
+  E2E_REUSE_BASELINE_VAULT — Store: reuse vault 0 snapshot path (lifecycle)
+  VAULT_ID           — Store: optional fixed vault id (else scan for empty config)
+  E2E_PREPARE_DRY_RUN — prepare prints intent only (no side effects)
 
 Flags:
   --verbosity quiet|normal|verbose
