@@ -3051,6 +3051,15 @@ def main() -> int:
     os.environ["FIXTURE_MANIFEST"] = str(manifest_path)
 
     manifest = json.loads(manifest_path.read_text())
+    if not store_reuse_baseline_vault():
+        narrator.phase("Vault Ensure")
+        deposit_lo = seed_deposit_amount_lo(manifest)
+        narrator.step("Ensuring fresh vault for this run (init + deposit)")
+        narrator.value(f"target deposit={deposit_lo} lo (allocation + buffer)")
+        ensure_fresh_vault_for_store_run(repo, manifest_path, manifest, artifact)
+        manifest.clear()
+        manifest.update(json.loads(manifest_path.read_text()))
+        narrator.ok(f"Vault {manifest.get('vault_id')} ready on chain")
     log_artifact(
         artifact,
         "run_config",
@@ -3161,14 +3170,6 @@ def main() -> int:
                 repo, cfg_user, cfg_provider, manifest, artifact, wallet_home
             )
             narrator.ok("authenticated_transfer ensure complete (see auth_init_* in artifact)")
-
-            if not store_reuse_baseline_vault():
-                narrator.phase("Vault Ensure")
-                deposit_lo = seed_deposit_amount_lo(manifest)
-                narrator.step("Ensuring fresh vault for this run (init + deposit)")
-                narrator.value(f"target deposit={deposit_lo} lo (allocation + buffer)")
-                ensure_fresh_vault_for_store_run(repo, manifest_path, manifest, artifact)
-                narrator.ok(f"Vault {manifest.get('vault_id')} ready on chain")
 
             if (
                 os.environ.get("CHAIN", "local").strip().lower() == "local"
