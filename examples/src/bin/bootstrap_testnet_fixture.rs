@@ -48,8 +48,8 @@ struct Args {
     deposit_amount: Balance,
     #[arg(long, default_value_t = 1)]
     stream_rate: TokensPerSecond,
-    #[arg(long, default_value_t = 200)]
-    stream_allocation: Balance,
+    #[arg(long, default_value_t = 200, alias = "stream-allocation")]
+    allocation: Balance,
     #[arg(long, default_value = DEFAULT_SEQUENCER)]
     sequencer_url: String,
     #[arg(long, default_value = "fixtures/testnet.json")]
@@ -81,7 +81,8 @@ struct TestnetFixture {
     clock_10_account_id: String,
     demo_deposit_amount: Balance,
     stream_rate: TokensPerSecond,
-    stream_allocation: Balance,
+    #[serde(alias = "stream_allocation")]
+    allocation: Balance,
     reserved_for_step_18: String,
 }
 
@@ -277,7 +278,7 @@ fn run_create_stream_only(
                 stream_id: args.stream_id,
                 provider: provider_id,
                 rate: args.stream_rate,
-                allocation: args.stream_allocation,
+                allocation: args.allocation,
             },
             owner_id,
             &[],
@@ -297,7 +298,7 @@ fn run_create_stream_only(
     fixture.stream_id = Some(args.stream_id);
     fixture.stream_config_account_id = Some(account_id_to_base58(stream_accounts[2]));
     fixture.stream_rate = args.stream_rate;
-    fixture.stream_allocation = args.stream_allocation;
+    fixture.allocation = args.allocation;
     fixture.reserved_for_step_18 =
         "E2E per-run stream (Step 24c / bootstrap create-stream-only)".to_string();
     std::fs::write(
@@ -398,7 +399,7 @@ async fn main() -> Result<()> {
         clock_10_account_id: account_id_to_base58(CLOCK_01_PROGRAM_ACCOUNT_ID),
         demo_deposit_amount: args.deposit_amount,
         stream_rate: args.stream_rate,
-        stream_allocation: args.stream_allocation,
+        allocation: args.allocation,
         reserved_for_step_18: "Vault baseline only (Step 24c). Per-run stream created in E2E.".to_string(),
     };
 

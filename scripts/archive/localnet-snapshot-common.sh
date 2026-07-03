@@ -35,7 +35,7 @@ localnet_snapshot_write_metadata() {
   local snap_dir="$2"
   local deposit="${SEED_DEPOSIT_AMOUNT:-1000}"
   local rate="${SEED_STREAM_RATE:-1}"
-  local alloc="${SEED_STREAM_ALLOCATION:-200}"
+  local alloc="${SEED_ALLOCATION:-${SEED_STREAM_ALLOCATION:-200}}"
   local owner="" provider=""
   if [[ -f "$repo/.lez_payment_streams-state" ]]; then
     # shellcheck disable=SC1090

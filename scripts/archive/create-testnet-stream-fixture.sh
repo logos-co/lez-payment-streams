@@ -36,8 +36,8 @@ PROVIDER="$(python3 -c "import json; print(json.load(open('$MANIFEST')).get('pro
 VAULT_ID="$(python3 -c "import json; print(int(json.load(open('$MANIFEST')).get('vault_id',0)))")"
 SEQ_URL="$(python3 -c "import json; print(json.load(open('$MANIFEST')).get('sequencer_url','').strip())")"
 
-STREAM_RATE="${SEED_STREAM_RATE:-$(python3 -c "import json; print(int(json.load(open('$MANIFEST')).get('stream_rate',50)))")}"
-STREAM_ALLOCATION="${SEED_STREAM_ALLOCATION:-$(python3 -c "import json; print(int(json.load(open('$MANIFEST')).get('stream_allocation',350)))")}"
+STREAM_RATE="${SEED_STREAM_RATE:-$(python3 -c "import json; m=json.load(open('$MANIFEST')); print(int(m.get('stream_rate',50)))")}"
+ALLOCATION="${SEED_ALLOCATION:-${SEED_STREAM_ALLOCATION:-$(python3 -c "import json; m=json.load(open('$MANIFEST')); print(int(m.get('allocation', m.get('stream_allocation', 350))))")}}"
 
 if [[ -z "${STREAM_ID:-}" ]]; then
   echo "ERROR: STREAM_ID required for testnet per-run create" >&2
@@ -49,7 +49,7 @@ if [[ "${CREATE_FORCE:-0}" == "1" || "${E2E_PER_RUN_STREAM:-0}" == "1" ]]; then
   CREATE_EXTRA+=(--force)
 fi
 
-echo "Creating testnet stream ${STREAM_ID} (rate=$STREAM_RATE allocation=$STREAM_ALLOCATION)…"
+echo "Creating testnet stream ${STREAM_ID} (rate=$STREAM_RATE allocation=$ALLOCATION)…"
 SEQUENCER_URL="${SEQUENCER_URL:-$SEQ_URL}" FIXTURE_MANIFEST="$MANIFEST" \
   "$REPO_ROOT/scripts/archive/wait-chain-settle.sh" "$OWNER" || true
 
@@ -65,7 +65,7 @@ cargo run --quiet --manifest-path examples/Cargo.toml --bin bootstrap_testnet_fi
   --vault-id "$VAULT_ID" \
   --stream-id "$STREAM_ID" \
   --stream-rate "$STREAM_RATE" \
-  --stream-allocation "$STREAM_ALLOCATION" \
+  --allocation "$ALLOCATION" \
   --write-manifest "$MANIFEST" \
   --create-stream-only \
   "${CREATE_EXTRA[@]}"

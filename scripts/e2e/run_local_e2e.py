@@ -38,8 +38,22 @@ STORE_QUERY_RETRIES = 4
 DAEMON_START_WAIT_S = 6
 # Provider verify rejects streams with zero unaccrued allocation; accrual runs between
 # prepare and verify, so proof must be minted immediately before storeQuery.
+def manifest_allocation_lo(manifest: dict, default: int = 200) -> int:
+    if manifest.get("allocation") is not None:
+        return int(manifest["allocation"])
+    legacy = manifest.get("stream_allocation")
+    if legacy is not None:
+        return int(legacy)
+    return default
+
+
+def set_manifest_allocation(manifest: dict, value: int) -> None:
+    manifest["allocation"] = int(value)
+    manifest.pop("stream_allocation", None)
+
+
 def min_unaccrued_lo_for_proof(manifest: dict) -> int:
-    alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 200)))
+    alloc = manifest_allocation_lo(manifest)
     return max(64, min(alloc // 4, 50_000))
 
 
@@ -281,7 +295,7 @@ def check_stream_fundable(
     unaccrued = int(row.get("unaccrued_lo", 0))
     if unaccrued < min_unaccrued:
         accrued = int(row.get("accrued_lo", 0))
-        alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 80)))
+        alloc = manifest_allocation_lo(manifest, default=80)
         sub_reason = "unaccrued_below_min"
         if unaccrued == 0 and accrued > 0:
             sub_reason = "stream_fully_accrued_or_depleted"
@@ -309,12 +323,7 @@ def check_stream_fundable(
 
 
 def default_topup_increase_lo(manifest: dict) -> int:
-    alloc = int(
-        manifest.get(
-            "stream_allocation",
-            manifest.get("allocation", 200),
-        )
-    )
+    alloc = manifest_allocation_lo(manifest)
     return max(100, alloc // 2)
 
 
@@ -1102,7 +1111,7 @@ def log_chain_checkpoint_after_create(
     )
 
 
-def bump_stream_allocation_on_chain(
+def bump_allocation_on_chain(
     cfg: Path,
     manifest: dict,
     vault_id: int,
@@ -1430,8 +1439,8 @@ def ensure_continuation_vault_funded(
     )
 
 
-def continuation_stream_allocation_lo(manifest: dict, cfg: Path | None = None) -> int:
-    default = int(manifest.get("stream_allocation", manifest.get("allocation", 200)))
+def continuation_allocation_lo(manifest: dict, cfg: Path | None = None) -> int:
+    default = manifest_allocation_lo(manifest)
     if not continuation_e2e_run():
         return default
     cap = int(os.environ.get("E2E_CONTINUATION_ALLOCATION_LO", str(default)))
@@ -1446,14 +1455,19 @@ def continuation_stream_allocation_lo(manifest: dict, cfg: Path | None = None) -
     buffer_lo = int(os.environ.get("E2E_VAULT_UNALLOC_BUFFER_LO", "50"))
     afford = max(0, unalloc - buffer_lo)
     chosen = min(target, afford)
-    min_create = int(os.environ.get("E2E_MIN_STREAM_ALLOCATION_LO", "450"))
+    min_create = int(
+        os.environ.get(
+            "E2E_MIN_ALLOCATION_LO",
+            os.environ.get("E2E_MIN_STREAM_ALLOCATION_LO", "450"),
+        )
+    )
     if chosen >= min_create:
         return chosen
     if afford >= min_create:
         return afford
     raise E2EError(
         f"continuation run vault unallocated {unalloc} lo (afford {afford}) "
-        f"below minimum stream allocation {min_create}; "
+        f"below minimum allocation {min_create}; "
         f"run make full-reset-localnet or deposit to vault before back-to-back leg 2"
     )
 
@@ -1568,7 +1582,7 @@ def precreate_stream_before_daemons(
     strip_snapshot_stream_fields(manifest, manifest_path)
     reload_payment_streams_wallet(cfg_user, seq_url)
     create_id = vault_next_stream_id(cfg_user, manifest)
-    target_alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 200)))
+    target_alloc = manifest_allocation_lo(manifest)
     ensure_continuation_vault_funded(cfg_user, manifest, seq_url, artifact, target_alloc + 50)
     log_artifact(
         artifact,
@@ -1579,9 +1593,7 @@ def precreate_stream_before_daemons(
         source="chain_getVaultStatus",
         precreate_after_wallet_sync=True,
     )
-    if "stream_allocation" not in manifest and "allocation" in manifest:
-        manifest["stream_allocation"] = int(manifest["allocation"])
-    alloc = continuation_stream_allocation_lo(manifest, cfg_user)
+    alloc = continuation_allocation_lo(manifest, cfg_user)
     log_artifact(
         artifact,
         "continuation_vault_unallocated",
@@ -1601,7 +1613,7 @@ def precreate_stream_before_daemons(
     env["REPO"] = str(repo)
     env["STREAM_ID"] = str(create_id)
     env["SEQUENCER_URL"] = seq_url
-    env["SEED_STREAM_ALLOCATION"] = str(alloc)
+    env["SEED_ALLOCATION"] = str(alloc)
     env["CREATE_FORCE"] = "1"
     env["E2E_PER_RUN_STREAM"] = "1"
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
@@ -1629,7 +1641,7 @@ def precreate_stream_before_daemons(
     )
     if not ok:
         raise E2EError(f"precreate stream failed: {proc.stderr or proc.stdout}")
-    manifest["stream_allocation"] = alloc
+    set_manifest_allocation(manifest, alloc)
     refresh_manifest_pdas(repo, manifest_path, create_id, manifest)
     wait_for_stream_config_on_chain(cfg_user, manifest, create_id, seq_url, artifact)
     manifest.clear()
@@ -1733,9 +1745,7 @@ def create_demo_stream_for_run(
         reload_payment_streams_wallet(cfg_user, seq_url)
 
     rate = int(manifest.get("stream_rate", 1))
-    if "stream_allocation" not in manifest and "allocation" in manifest:
-        manifest["stream_allocation"] = int(manifest["allocation"])
-    alloc = continuation_stream_allocation_lo(manifest, cfg_user)
+    alloc = continuation_allocation_lo(manifest, cfg_user)
 
     if chain == "local":
         create_via = local_e2e_create_via()
@@ -1789,7 +1799,7 @@ def create_demo_stream_for_run(
             env["REPO"] = str(repo)
             env["STREAM_ID"] = str(create_id)
             env["SEQUENCER_URL"] = seq_url
-            env["SEED_STREAM_ALLOCATION"] = str(alloc)
+            env["SEED_ALLOCATION"] = str(alloc)
             env["CREATE_FORCE"] = "1"
             env["E2E_PER_RUN_STREAM"] = "1"
             fixture = repo / "scripts" / "fixture.sh"
@@ -1956,7 +1966,7 @@ def create_demo_stream_for_run(
             env["REPO"] = str(repo)
             env["STREAM_ID"] = str(create_id)
             env["SEQUENCER_URL"] = seq_url
-            env["SEED_STREAM_ALLOCATION"] = str(alloc)
+            env["SEED_ALLOCATION"] = str(alloc)
             env["SEED_STREAM_RATE"] = str(rate)
             env["CREATE_FORCE"] = "1"
             env["E2E_PER_RUN_STREAM"] = "1"
@@ -2263,7 +2273,7 @@ def demo_teardown(
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
     vault_id = int(manifest["vault_id"])
     stream_id = manifest_stream_id(manifest)
-    stream_alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 200)))
+    stream_alloc = manifest_allocation_lo(manifest)
     close_applied = False
     narrator.phase("Close")
     narrator.step(f"Closing stream {stream_id} on chain")
@@ -3005,7 +3015,7 @@ def main() -> int:
                 narrator.phase("Stream Creation")
                 vault_id = int(manifest.get("vault_id", 0))
                 rate = int(manifest.get("stream_rate", 1))
-                alloc = int(manifest.get("stream_allocation", manifest.get("allocation", 200)))
+                alloc = manifest_allocation_lo(manifest)
                 narrator.step(f"User creates payment stream to provider")
                 narrator.value(f"rate={rate} token/sec, allocation={alloc} tokens, vault={vault_id}")
                 create_demo_stream_for_run(

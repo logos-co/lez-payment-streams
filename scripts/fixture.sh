@@ -19,7 +19,7 @@ source "$REPO_ROOT/scripts/lib/auth_transfer.sh"
 
 # Default configuration
 export SEED_DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-1000}"
-export SEED_STREAM_ALLOCATION="${SEED_STREAM_ALLOCATION:-200}"
+export SEED_ALLOCATION="${SEED_ALLOCATION:-${SEED_STREAM_ALLOCATION:-200}}"
 export SEED_STREAM_RATE="${SEED_STREAM_RATE:-1}"
 
 # Seed CLI sequencer follows the wallet home, which MUST match CHAIN. Set it
@@ -203,8 +203,8 @@ resolve_owner() {
 }
 
 # A vault is "funded" when its config account is initialized (next_stream_id is
-# readable) and, when the holding account id is known, it carries at least one
-# stream allocation of unallocated-ish balance.
+# readable) and, when the holding account id is known, enough unallocated balance
+# for at least one createStream at the configured allocation.
 vault_is_funded() {
   local vault_id="${1:-0}"
   local owner next holding bal min_balance manifest
@@ -222,7 +222,7 @@ vault_is_funded() {
   [[ -z "$holding" ]] && return 0
 
   bal="$(ps_account_balance "$holding")"
-  min_balance="${SEED_STREAM_ALLOCATION:-200}"
+  min_balance="${SEED_ALLOCATION:-200}"
   [[ "${bal:-0}" -ge "$min_balance" ]]
 }
 
@@ -259,7 +259,7 @@ cmd_manifest_write() {
     --provider "$provider" \
     --deposit-amount "$SEED_DEPOSIT_AMOUNT" \
     --stream-rate "$SEED_STREAM_RATE" \
-    --allocation "$SEED_STREAM_ALLOCATION" \
+    --allocation "$SEED_ALLOCATION" \
     --sequencer-url "$(ps_seq_url)" \
     --output "$manifest"
 }
@@ -337,7 +337,7 @@ with open('$manifest') as f:
   local force_args=()
   [[ "${CREATE_FORCE:-0}" == "1" ]] && force_args+=(--force)
 
-  ps_log_info "Creating stream $next_stream_id (vault $vault_id, rate=$SEED_STREAM_RATE, allocation=$SEED_STREAM_ALLOCATION)"
+  ps_log_info "Creating stream $next_stream_id (vault $vault_id, rate=$SEED_STREAM_RATE, allocation=$SEED_ALLOCATION)"
   
   cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
     --bin seed_localnet_fixture -- \
@@ -348,7 +348,7 @@ with open('$manifest') as f:
     --vault-id "$vault_id" \
     --stream-id "$next_stream_id" \
     --stream-rate "$SEED_STREAM_RATE" \
-    --allocation "$SEED_STREAM_ALLOCATION" \
+    --allocation "$SEED_ALLOCATION" \
     --sequencer-url "$(ps_seq_url)" \
     --write-manifest "$manifest" \
     ${force_args[@]+"${force_args[@]}"}
@@ -440,7 +440,7 @@ Commands:
 Environment:
   FIXTURE_MANIFEST    — Path to fixture JSON (default: fixtures/localnet.json)
   SEED_DEPOSIT_AMOUNT — Deposit for vault (default: 1000)
-  SEED_STREAM_ALLOCATION — Stream allocation (default: 200)
+  SEED_ALLOCATION       — CreateStream allocation lo (default: 200; legacy env: SEED_STREAM_ALLOCATION)
   SEED_STREAM_RATE    — Stream rate (default: 1)
   PAYMENT_STREAMS_GUEST_BIN — Path to guest binary
 EOF

@@ -12,6 +12,6 @@
   "clock_10_account_id": "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWNU",
   "demo_deposit_amount": 2000,
   "stream_rate": 1,
-  "stream_allocation": 1800,
+  "allocation": 1800,
   "reserved_for_step_18": "Copy to gitignored fixtures/testnet.json after make bootstrap-testnet. Per-operator manifest; do not copy owner/provider ids from localnet.json. Shared chain fields: sequencer_url, program_id_hex, deploy_tx_hash, deploy_block_id (org deploy), clock_10_account_id."
 }

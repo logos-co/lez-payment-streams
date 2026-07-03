@@ -659,7 +659,7 @@ if [[ "$MODULE_E2E_TOPUP" == "1" ]]; then
     fi
   else
     emit_phase topup_allocation false "{\"error\":\"read_failed\"}"
-    narr_fail "Could not read stream allocation on chain"
+    narr_fail "Could not read allocation on chain"
     narr_hint "getStreamStatus returned no data — check wallet sync and sequencer"
   fi
 else

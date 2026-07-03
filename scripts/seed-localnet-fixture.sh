@@ -71,7 +71,7 @@ echo "Funding owner Public/$OWNER (pinata; repeat for larger demo deposit)…"
 TOPUP_ROUNDS="${SEED_WALLET_TOPUP_ROUNDS:-11}"
 DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-1000}"
 STREAM_RATE="${SEED_STREAM_RATE:-1}"
-STREAM_ALLOCATION="${SEED_STREAM_ALLOCATION:-200}"
+ALLOCATION="${SEED_ALLOCATION:-${SEED_STREAM_ALLOCATION:-200}}"
 for ((round = 1; round <= TOPUP_ROUNDS; round++)); do
   echo "  topup round ${round}/${TOPUP_ROUNDS}…"
   lgs wallet topup --address "Public/$OWNER"
@@ -98,7 +98,7 @@ cargo run --quiet --manifest-path examples/Cargo.toml --bin seed_localnet_fixtur
   --provider "$PROVIDER" \
   --deposit-amount "$DEPOSIT_AMOUNT" \
   --stream-rate "$STREAM_RATE" \
-  --allocation "$STREAM_ALLOCATION" \
+  --allocation "$ALLOCATION" \
   "${SKIP_EXTRA[@]}" \
   --write-manifest "$MANIFEST"
 

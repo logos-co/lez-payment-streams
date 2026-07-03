@@ -17,7 +17,7 @@ export LEE_WALLET_HOME_DIR="$WALLET_HOME"
 
 DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-1000}"
 STREAM_RATE="${SEED_STREAM_RATE:-1}"
-STREAM_ALLOCATION="${SEED_STREAM_ALLOCATION:-200}"
+ALLOCATION="${SEED_ALLOCATION:-${SEED_STREAM_ALLOCATION:-200}}"
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -69,7 +69,7 @@ if [[ "${CREATE_FORCE:-0}" == "1" || "${E2E_PER_RUN_STREAM:-0}" == "1" ]]; then
   CREATE_EXTRA+=(--force)
 fi
 
-echo "Creating stream ${STREAM_ID} (rate=$STREAM_RATE allocation=$STREAM_ALLOCATION)…"
+echo "Creating stream ${STREAM_ID} (rate=$STREAM_RATE allocation=$ALLOCATION)…"
 logoscore stop 2>/dev/null || true
 sleep 1
 # Step 24c: let any pending owner tx from a prior logoscore smoke fold before the seed
@@ -84,7 +84,7 @@ cargo run --quiet --manifest-path examples/Cargo.toml --bin seed_localnet_fixtur
   --provider "$PROVIDER" \
   --stream-id "$STREAM_ID" \
   --stream-rate "$STREAM_RATE" \
-  --allocation "$STREAM_ALLOCATION" \
+  --allocation "$ALLOCATION" \
   "${CREATE_EXTRA[@]}" \
   --write-manifest "$MANIFEST"
 

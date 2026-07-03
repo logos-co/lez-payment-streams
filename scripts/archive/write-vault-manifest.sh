@@ -12,7 +12,7 @@ export LEE_WALLET_HOME_DIR="$WALLET_HOME"
 
 DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-1000}"
 STREAM_RATE="${SEED_STREAM_RATE:-1}"
-STREAM_ALLOCATION="${SEED_STREAM_ALLOCATION:-200}"
+ALLOCATION="${SEED_ALLOCATION:-${SEED_STREAM_ALLOCATION:-200}}"
 SEQUENCER_URL="${SEQUENCER_URL:-http://127.0.0.1:3040}"
 
 STATE_FILE=".lez_payment_streams-state"
@@ -40,7 +40,7 @@ cargo run --quiet --manifest-path examples/Cargo.toml --bin seed_localnet_fixtur
   --provider "$PROVIDER" \
   --deposit-amount "$DEPOSIT_AMOUNT" \
   --stream-rate "$STREAM_RATE" \
-  --allocation "$STREAM_ALLOCATION" \
+  --allocation "$ALLOCATION" \
   --sequencer-url "$SEQUENCER_URL" \
   --output "$MANIFEST"
 
