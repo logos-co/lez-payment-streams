@@ -2025,7 +2025,7 @@ def create_demo_stream_for_run(
                 if attempt > 0:
                     time.sleep(5 * attempt)
                 if fixture.is_file():
-                    proc = run(["bash", str(fixture), "stream", "create", "0"], cwd=repo, env=env, timeout=subproc_timeout)
+                    proc = run(["bash", str(fixture), "stream", "create", str(vault_id)], cwd=repo, env=env, timeout=subproc_timeout)
                 else:
                     proc = run(["bash", str(script)], cwd=repo, env=env, timeout=subproc_timeout)
                 attempt_elapsed = round(time.monotonic() - attempt_t0, 2)
@@ -2163,7 +2163,7 @@ def create_demo_stream_for_run(
             fixture = repo / "scripts" / "fixture.sh"
             script = repo / "scripts" / "create-testnet-stream-fixture.sh"
             if fixture.is_file():
-                proc = run(["bash", str(fixture), "stream", "create", "0"], cwd=repo, env=env, timeout=subproc_timeout)
+                proc = run(["bash", str(fixture), "stream", "create", str(vault_id)], cwd=repo, env=env, timeout=subproc_timeout)
             else:
                 proc = run(["bash", str(script)], cwd=repo, env=env, timeout=subproc_timeout)
             ok_create = proc.returncode == 0
