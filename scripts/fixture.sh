@@ -191,7 +191,10 @@ cmd_prefund() {
 # reset on restore), then fall back to the fixture manifest.
 resolve_owner() {
   local owner=""
-  if [[ -f "$REPO_ROOT/.lez_payment_streams-state" ]]; then
+  # The localnet SIGNER_ID state file does not apply to testnet, whose owner is
+  # the manifest vault owner; a stale localnet signer would redirect vault probes
+  # to the wrong account and make resolve_store_vault_id return 0 unconditionally.
+  if ! ps_is_testnet && [[ -f "$REPO_ROOT/.lez_payment_streams-state" ]]; then
     owner="$(grep '^SIGNER_ID=' "$REPO_ROOT/.lez_payment_streams-state" 2>/dev/null |
       cut -d= -f2 | tr -d '"'\''')"
   fi
