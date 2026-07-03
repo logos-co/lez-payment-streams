@@ -86,7 +86,7 @@ Dual-host demo coordination stays in host scripts
 | 29 | E2E script UX enhancement | Active -- [step-29-e2e-script-ux.md](upcoming/step-29-e2e-script-ux.md) |
 | 30 | Static dependency migration | Complete -- [step-30-static-dependency-migration.md](completed/step-30-static-dependency-migration.md) |
 | 32 | AT-init unify + Store claim phase | Active -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
-| 33 | Store E2E fresh vault + testnet sizing | Decided -- ready after Step 32 merge; Q1–Q4 resolved in packet -- [step-33-store-e2e-fresh-vault.md](upcoming/step-33-store-e2e-fresh-vault.md) |
+| 33 | Store E2E fresh vault + testnet sizing | Complete -- [step-33-store-e2e-fresh-vault.md](completed/step-33-store-e2e-fresh-vault.md) |
 
 ## Delivery integration branches
 
