@@ -819,7 +819,14 @@ def seed_provider_session_from_user(
     repo: Path,
 ) -> None:
     user_state = find_ps_state_file(persist_user)
-    provider_state = find_ps_state_file(persist_provider)
+    try:
+        provider_state = find_ps_state_file(persist_provider)
+    except E2EError:
+        # The provider's payment_streams_module has not written a state file yet
+        # (no stateful call before the seed step). Seed into the module's
+        # instance-specific persist dir so the upcoming reload picks it up;
+        # seed_provider_acceptance.py creates the file if missing.
+        provider_state = provider_ps_state_path(persist_provider)
     seed = run(
         [
             sys.executable,
@@ -2978,6 +2985,26 @@ def find_ps_state_file(persist_root: Path) -> Path:
         if "payment_streams_module" in path.parts:
             return path
     return matches[0]
+
+
+def provider_ps_state_path(persist_provider: Path) -> Path:
+    """Resolve the provider's payment_streams_state.json path, creating the
+    instance dir if no state file exists yet. The module writes state into a
+    payment_streams_module/<instance_hash>/ subdirectory; seed there so the
+    reload after seeding picks up the acceptance row."""
+    module_root = persist_provider / "payment_streams_module"
+    existing = sorted(module_root.glob("*/payment_streams_state.json"))
+    if existing:
+        return existing[0]
+    # No state file yet: pick the first instance dir (or create one) and return
+    # the canonical path. seed_provider_acceptance.py writes the file.
+    instance_dirs = [d for d in module_root.iterdir() if d.is_dir()] if module_root.is_dir() else []
+    if instance_dirs:
+        instance_dir = instance_dirs[0]
+    else:
+        instance_dir = module_root / uuid.uuid4().hex[:12]
+    instance_dir.mkdir(parents=True, exist_ok=True)
+    return instance_dir / "payment_streams_state.json"
 
 
 def message_count(response: dict) -> int:
