@@ -31,9 +31,13 @@ lgs init      # if .scaffold/ is missing
 lgs setup     # if scaffold.toml / layout is missing
 ```
 
-5. Store integration only: sibling checkouts at default paths
-   `../logos-delivery-module` and `../logos-delivery` on the branch in
-   [feature-branch-pins.md](feature-branch-pins.md). Module verification does not need them.
+5. Store integration only: clone `logos-delivery-module` at the default path
+   `../logos-delivery-module` (or set `DELIVERY_MODULE_ROOT`) on the branch in
+   [feature-branch-pins.md](feature-branch-pins.md).
+   E2E does not clone it; build fails if the directory is missing.
+   A `../logos-delivery` sibling is optional (local `liblogosdelivery` overlay only; Nix
+   fetches the locked delivery input when building the module).
+   Module verification (`MODE=module`) does not need delivery checkouts.
 6. First local run (builds `.lgx` via Nix, starts localnet, installs modules). Expect a long
    first build; later runs can use `SKIP_BUILD=1` when `.scaffold/e2e/*/modules` are already
    populated.

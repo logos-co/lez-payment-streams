@@ -4,7 +4,7 @@ Append-only record for the fresh-vault-per-run Store testnet gate.
 Definition of done: two consecutive green passes (Store + Module) on the
 public testnet sequencer with no manual deposit or vault bootstrap.
 
-Pass criteria and scope: [step-33-store-e2e-fresh-vault.md](../upcoming/step-33-store-e2e-fresh-vault.md) Verification section.
+Pass criteria and scope: [step-33-store-e2e-fresh-vault.md](step-33-store-e2e-fresh-vault.md) Verification section.
 
 ## Commands
 

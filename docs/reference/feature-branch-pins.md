@@ -241,6 +241,6 @@ run as gates.
 `#lgx-portable` (not `#lgx`) is required for `lgpm` 0.2.0 / `logoscore`,
 which reject `linux-amd64-dev` variants. The wallet bundle uses
 `nix-bundle-lgx#portable` for the same reason
-([Step 31](plan/upcoming/step-31-dependencies-upgrade.md)).
+([Step 31](plan/completed/step-31-dependencies-upgrade.md)).
 
 For `lgpm`, `logoscore`, and the Step 7+ loop see [`logos-runtime-guide.md`](logos-runtime-guide.md).

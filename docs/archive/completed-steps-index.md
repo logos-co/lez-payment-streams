@@ -39,8 +39,11 @@ Product gates: [verification-matrix.md](../reference/verification-matrix.md).
 | 26 | TestNet v0.2 migration | Complete -- [step-26-testnet-v02-migration.md](../plan/completed/step-26-testnet-v02-migration.md) |
 | 27 | Claim fix and verification | Complete -- [step-27-claim-fix-verification.md](../plan/completed/step-27-claim-fix-verification.md) |
 | 28 | User Journey on TestNet v0.2 | Complete -- [step-28-user-journey-testnet.md](../plan/completed/step-28-user-journey-testnet.md) |
-| 29 | E2E script UX enhancement | Active -- see [plan/index.md](../plan/index.md) |
+| 29 | E2E script UX enhancement | Complete -- [step-29-e2e-script-ux.md](../plan/completed/step-29-e2e-script-ux.md) |
 | 30 | Static dependency migration | Complete -- [step-30-static-dependency-migration.md](../plan/completed/step-30-static-dependency-migration.md) |
+| 31 | Delivery fork rebase + wallet bump | Complete -- [step-31-dependencies-upgrade.md](../plan/completed/step-31-dependencies-upgrade.md) |
+| 32 | AT-init unify + Store claim phase | Active -- [step-32-auth-transfer-unify-store-claim.md](../plan/upcoming/step-32-auth-transfer-unify-store-claim.md) |
+| 33 | Store E2E fresh vault + testnet sizing | Complete -- [step-33-store-e2e-fresh-vault.md](../plan/completed/step-33-store-e2e-fresh-vault.md) |
 
 ## Completed steps -- summary
 

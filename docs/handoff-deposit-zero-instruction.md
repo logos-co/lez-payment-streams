@@ -1,7 +1,7 @@
 # Hand-off - deposit / createStream execution failure (zero instruction)
 
 Source of truth investigation for the LIP-155 payment streams User Journey demo on localnet.
-Created 2026-07-02. Read alongside [step-29](plan/upcoming/step-29-e2e-script-ux.md) and [USER_JOURNEY](journeys/USER_JOURNEY.md).
+Created 2026-07-02. Read alongside [step-29](plan/completed/step-29-e2e-script-ux.md) and [USER_JOURNEY](journeys/USER_JOURNEY.md).
 
 ## TL;DR (the proven root cause)
 

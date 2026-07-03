@@ -25,6 +25,9 @@ Details: [reference/verification-matrix.md](reference/verification-matrix.md) (i
 [cold start](reference/verification-matrix.md#cold-start-first-time-on-a-machine)),
 [scripts/README.md](../scripts/README.md).
 
+Machine and toolchain prerequisites for running these commands:
+[../README.md](../README.md#prerequisites).
+
 ## Reference
 
 | Doc | Role |

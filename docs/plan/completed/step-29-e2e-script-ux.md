@@ -1,6 +1,7 @@
 # Step 29 — E2E Script UX Enhancement
 
-Active-work packet for agents. Index: [index.md](../index.md).
+Index: [index.md](../index.md). Status: **complete** (2026-07-01) — narrative output and
+`--verbosity` in `module-e2e.sh`, `run_local_e2e.py`, and `e2e.sh`.
 
 ## Goal
 

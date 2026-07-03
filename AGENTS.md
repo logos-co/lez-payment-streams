@@ -29,21 +29,21 @@ User Journey — CLI doc packet: [Step 22](docs/plan/upcoming/step-22-ui-journey
 User Journey on TestNet v0.2: [Step 28](docs/plan/completed/step-28-user-journey-testnet.md) (complete).
 User Journey UI (optional) — Basecamp plugin: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md).
 
-### TestNet v0.2 migration (Step 29) and static dependency migration (Step 30)
+### E2E and migration (Steps 26-33)
 
-Steps 26-28 and 30 are complete
+Steps 26-31 and 33 are complete
 ([26](docs/plan/completed/step-26-testnet-v02-migration.md),
 [27](docs/plan/completed/step-27-claim-fix-verification.md),
 [28](docs/plan/completed/step-28-user-journey-testnet.md),
-[30](docs/plan/completed/step-30-static-dependency-migration.md)).
-Step 33 is complete
-([33](docs/plan/completed/step-33-store-e2e-fresh-vault.md)).
-The remaining steps parallelize and can proceed while documentation matures:
+[29](docs/plan/completed/step-29-e2e-script-ux.md),
+[30](docs/plan/completed/step-30-static-dependency-migration.md),
+[31](docs/plan/completed/step-31-dependencies-upgrade.md),
+[33](docs/plan/completed/step-33-store-e2e-fresh-vault.md)).
+Active engineering packet:
 
 | Step | Focus | Can Start |
 |------|-------|-----------|
-| [29](docs/plan/upcoming/step-29-e2e-script-ux.md) | E2E script UX enhancement | **Now** — use `CHAIN=local` |
-| [32](docs/plan/upcoming/step-32-auth-transfer-unify-store-claim.md) | AT-init unify + Store claim phase | **Now** — after Step 27/28 patterns in `module-e2e.sh` |
+| [32](docs/plan/upcoming/step-32-auth-transfer-unify-store-claim.md) | AT-init unify + Store claim phase (D3 testnet gate pending) | **Now** — maintainer gate in [step-32-testnet-gate-log.md](docs/plan/completed/step-32-testnet-gate-log.md) |
 
 Optional: [step-23-public-store-provider.md](docs/plan/upcoming/step-23-public-store-provider.md).
 Cancelled: [step-25-demo-coordination-module.md](docs/plan/cancelled/step-25-demo-coordination-module.md).

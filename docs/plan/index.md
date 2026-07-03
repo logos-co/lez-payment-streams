@@ -12,8 +12,8 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | Path | Contents |
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
-| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 24, 26-28, 30) |
-| [upcoming/](upcoming/) | Steps 20, 22, 29, 32-33 (active); optional 21 (UI), 23 |
+| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 24, 26-31, 33) |
+| [upcoming/](upcoming/) | Steps 20, 22, 32 (active); optional 21 (UI), 23 |
 | [cancelled/](cancelled/) | Step 25 won't fix |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
@@ -22,8 +22,12 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 Developer Journey (Store integration): Step 20 + Step 17 scripts.
 User Journey: Step 22 (active, CLI-based doc packet).
 User Journey UI (optional): Step 21 (Basecamp plugin) — if shipped, Step 22 may include UI content.
-TestNet v0.2 migration: Step 29 (active, can parallelize with documentation); Steps 26-28 complete.
+TestNet v0.2 migration: Steps 26-28 (complete).
+E2E narrative UX: Step 29 (complete).
+Delivery fork rebase + wallet bump: Step 31 (complete).
 Static dependency migration: Step 30 (complete; D6 revisit condition closed).
+Store fresh vault per run: Step 33 (complete).
+AT-init unify + Store claim phase: Step 32 (active; D3 testnet gate pending).
 See [N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 
 ## Program scope
@@ -54,10 +58,11 @@ paid Store mode on the provider.
 | TestNet v0.2 migration | 26 (complete) |
 | Claim fix: both journeys, both chains | 27 (complete; testnet v0.2 re-test deferred) |
 | User Journey on TestNet v0.2 | 28 (complete) |
-| E2E script UX enhancement | 29 (active, parallel) |
+| E2E script UX enhancement | 29 (complete) |
 | Static dependency migration | 30 (complete) |
-| AT-init unify + Store claim phase | 32 (active) |
-| Store E2E fresh vault + testnet sizing | 33 (decided, ready after Step 32) |
+| Delivery fork rebase + wallet module bump | 31 (complete) |
+| AT-init unify + Store claim phase | 32 (active; D3 gate pending) |
+| Store E2E fresh vault + testnet sizing | 33 (complete) |
 
 Step 25 (in-process demo coordinator module) is **won't fix**
 ([cancelled packet](cancelled/step-25-demo-coordination-module.md)).
@@ -71,22 +76,30 @@ Upstream N6 is no longer a gate for Steps 14-20.
 Dual-host demo coordination stays in host scripts
 ([N17](../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06)).
 
+## Completed step packets
+
+| Step | Focus | Packet |
+| --- | --- | --- |
+| 26 | TestNet v0.2 migration | [step-26-testnet-v02-migration.md](completed/step-26-testnet-v02-migration.md) |
+| 27 | Claim fix and verification | [step-27-claim-fix-verification.md](completed/step-27-claim-fix-verification.md) |
+| 28 | User Journey on TestNet v0.2 | [step-28-user-journey-testnet.md](completed/step-28-user-journey-testnet.md) |
+| 29 | E2E script UX enhancement | [step-29-e2e-script-ux.md](completed/step-29-e2e-script-ux.md) |
+| 30 | Static dependency migration | [step-30-static-dependency-migration.md](completed/step-30-static-dependency-migration.md) |
+| 31 | Delivery fork rebase + wallet bump | [step-31-dependencies-upgrade.md](completed/step-31-dependencies-upgrade.md) |
+| 33 | Store E2E fresh vault + testnet sizing | [step-33-store-e2e-fresh-vault.md](completed/step-33-store-e2e-fresh-vault.md) |
+
+Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
+[step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33).
+
 ## Upcoming steps
 
 | Step | Focus | Status |
 | --- | --- | --- |
 | 20 | Developer Journey: Store integration | Active -- [step-20-developer-journey.md](upcoming/step-20-developer-journey.md) |
 | 21 | User Journey: Basecamp UI plugin (optional) | Optional -- [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
-| 22 | User Journey: doc packet (CLI-based, active) | Active -- [step-22-ui-journey.md](upcoming/step-22-ui-journey.md) |
+| 22 | User Journey: doc packet (CLI-based) | Active -- [step-22-ui-journey.md](upcoming/step-22-ui-journey.md) |
 | 23 | Public Store provider | Optional -- [step-23-public-store-provider.md](upcoming/step-23-public-store-provider.md) |
-| 25 | Demo coordination Logos module | Won't fix -- [cancelled/step-25](cancelled/step-25-demo-coordination-module.md) |
-| 26 | TestNet v0.2 migration | Complete -- [step-26-testnet-v02-migration.md](completed/step-26-testnet-v02-migration.md) |
-| 27 | Claim fix and verification | Complete -- [step-27-claim-fix-verification.md](completed/step-27-claim-fix-verification.md) |
-| 28 | User Journey on TestNet v0.2 | Complete -- [step-28-user-journey-testnet.md](completed/step-28-user-journey-testnet.md) |
-| 29 | E2E script UX enhancement | Active -- [step-29-e2e-script-ux.md](upcoming/step-29-e2e-script-ux.md) |
-| 30 | Static dependency migration | Complete -- [step-30-static-dependency-migration.md](completed/step-30-static-dependency-migration.md) |
-| 32 | AT-init unify + Store claim phase | Active -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
-| 33 | Store E2E fresh vault + testnet sizing | Complete -- [step-33-store-e2e-fresh-vault.md](completed/step-33-store-e2e-fresh-vault.md) |
+| 32 | AT-init unify + Store claim phase | Active (signed off; D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
 
 ## Delivery integration branches
 

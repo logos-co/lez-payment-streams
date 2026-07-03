@@ -9,7 +9,7 @@
   "plan_index": "docs/plan/index.md",
   "program_index": "docs/plan/index.md",
   "verification_matrix": "docs/reference/verification-matrix.md",
-  "active_steps": [20],
+  "active_steps": [20, 22, 32],
   "paused_steps": [],
   "cancelled_steps": [25],
   "optional_stretch_steps": [21, 22],
@@ -29,7 +29,15 @@
     "23": "docs/plan/upcoming/step-23-public-store-provider.md",
     "24": "docs/plan/completed/step-24-lee-harness-upgrade.md",
     "24b": "docs/plan/completed/step-24b-rc5-rust-lee-unify.md",
-    "24c": "docs/plan/completed/step-24c-simplify-demo-flow.md"
+    "24c": "docs/plan/completed/step-24c-simplify-demo-flow.md",
+    "26": "docs/plan/completed/step-26-testnet-v02-migration.md",
+    "27": "docs/plan/completed/step-27-claim-fix-verification.md",
+    "28": "docs/plan/completed/step-28-user-journey-testnet.md",
+    "29": "docs/plan/completed/step-29-e2e-script-ux.md",
+    "30": "docs/plan/completed/step-30-static-dependency-migration.md",
+    "31": "docs/plan/completed/step-31-dependencies-upgrade.md",
+    "32": "docs/plan/upcoming/step-32-auth-transfer-unify-store-claim.md",
+    "33": "docs/plan/completed/step-33-store-e2e-fresh-vault.md"
   },
   "completed_normative": {
     "12": "docs/plan/completed/step-12-normative.md",

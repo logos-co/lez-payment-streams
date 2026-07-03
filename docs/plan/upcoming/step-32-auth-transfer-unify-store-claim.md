@@ -18,7 +18,7 @@ Evidence logs: [step-32-step0-validation.md](../completed/step-32-step0-validati
 
 Prerequisites: [Step 27](../completed/step-27-claim-fix-verification.md),
 [Step 28](../completed/step-28-user-journey-testnet.md),
-[Step 24c](../completed/step-24c-simplify-demo-flow.md). Update [Step 29](step-29-e2e-script-ux.md)
+[Step 24c](../completed/step-24c-simplify-demo-flow.md). Update [Step 29](../completed/step-29-e2e-script-ux.md)
 phase tables in the same PR as orchestrator changes.
 
 ## Scope

@@ -1,14 +1,13 @@
 # Step 33 — Store E2E fresh vault and testnet sizing
 
-Index: [index.md](../index.md). Status: **decided** — Q1–Q4 are resolved in the
-[Decision log](#decision-log); implementation proceeds from the safe defaults below.
+Index: [index.md](../index.md). Status: **complete** — testnet gate in
+[step-33-testnet-gate-log.md](step-33-testnet-gate-log.md) (2026-07-03).
 
 Prerequisites: [Step 24c](../completed/step-24c-simplify-demo-flow.md) (per-run stream,
 vault baseline model), [Step 28](../completed/step-28-user-journey-testnet.md) (module
-testnet patterns), [Step 32](step-32-auth-transfer-unify-store-claim.md) (AT ensure,
-close-then-claim). **Step 32 must be merged before Step 33 implementation starts.**
-Related UX: [Step 29](step-29-e2e-script-ux.md) (Step 29 phase-table update lands in the
-same PR as Step 33 orchestrator changes).
+testnet patterns), [Step 32](../upcoming/step-32-auth-transfer-unify-store-claim.md) (AT ensure,
+close-then-claim). Related UX: [Step 29](step-29-e2e-script-ux.md) (phase tables updated with
+orchestrator changes).
 
 ## Summary
 
