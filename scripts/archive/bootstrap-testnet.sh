@@ -2,7 +2,7 @@
 # Step 18 Part B — vault/stream bootstrap on public testnet.
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
 # shellcheck source=scripts/testnet-common.sh

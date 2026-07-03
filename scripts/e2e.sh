@@ -226,6 +226,13 @@ cmd_run() {
 
   # Flow A (module only): single-host happy path, no Store / dual-host / N8.
   if ps_is_module_mode; then
+    export LEE_WALLET_HOME_DIR="$(ps_chain_wallet_home)"
+    export FIXTURE_MANIFEST="$(ps_default_fixture_manifest)"
+    if ps_is_testnet && [[ -f "$REPO_ROOT/fixtures/testnet-module.json" ]]; then
+      export FIXTURE_MANIFEST="$REPO_ROOT/fixtures/testnet-module.json"
+    fi
+    export WALLET_CONFIG="$(ps_default_wallet_config)"
+    export WALLET_STORAGE="$(ps_default_wallet_storage)"
     export MODULES_USER="${MODULES_USER:-$REPO_ROOT/.scaffold/e2e/user/modules}"
     export ARTIFACT="${ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
     mkdir -p "$(dirname "$ARTIFACT")"

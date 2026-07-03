@@ -46,7 +46,15 @@ Store integration also requires sibling checkouts `logos-delivery` and `logos-de
 
 ## Commands and expected outputs
 
-The verification runs a per-run stream (Step 24c): user creates vault/stream (or continues from fixture), registers the provider peer mapping, performs a paid Store query with a stream proof, checks rejection without proof, then teardown closes the stream and claims accrued value to the provider when non-zero.
+The verification runs a per-run stream (Step 24c): user creates vault/stream (or continues from fixture), registers the provider peer mapping, performs a paid Store query with a stream proof, checks rejection without proof, then settlement **Close** then **Claim** (residual accrued on the closed stream when non-zero).
+
+After both logoscore wallets open, the orchestrator runs
+`scripts/auth-transfer-ensure.sh` (same `ps_auth_transfer_ensure` as module E2E and
+`scripts/fixture.sh prefund`) and records `auth_init_owner` / `auth_init_provider`
+with an `extra` object (`account_id`, `already_initialized`, `via`, `verify`, optional
+`tx_hash`). `./scripts/e2e.sh` sets `FIXTURE_MANIFEST`, `WALLET_CONFIG`, and
+`WALLET_STORAGE` from `CHAIN` on each run so `CHAIN=testnet` always uses
+`.scaffold/e2e/testnet-wallet` and the testnet fixture path.
 
 Integrators must learn the provider’s libp2p `PeerId` out of band to call `registerProviderMapping` ([N18](docs/reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)); the E2E script uses manifest-backed ids.
 
@@ -69,7 +77,21 @@ Expected: exit 0; artifact `.scaffold/e2e/artifacts/e2e-*.log` with headline gat
 {"phase":"store_query_missing_proof","ok":true}
 ```
 
-Teardown (same run, end of core phase) also records close/claim lines such as `demo_close_stream_verify` and `demo_claim` when accrued balance is non-zero.
+Settlement (same run, after Store gates) uses module-shaped lines plus legacy
+`demo_*` aliases until D3 follow-up:
+
+```jsonl
+{"phase":"auth_init_owner","ok":true,"extra":{…}}
+{"phase":"auth_init_provider","ok":true,"extra":{…}}
+{"phase":"close_stream","ok":true,"extra":{"stream_id":0,"via":"seed_close_stream_onchain"}}
+{"phase":"close_state","ok":true,"extra":{"vault_balance":…,"stream_accrued":…,"stream_state":"Closed"}}
+{"phase":"claim","ok":true,"extra":{"stream_id":0,"via":"seed_claim_onchain"}}
+{"phase":"claim_balance","ok":true,"extra":{…}}
+```
+
+Legacy lines `demo_close_stream`, `demo_close_stream_verify`, and `demo_claim`
+mirror the same steps for older log parsers. Skipped claim records
+`{"phase":"claim","ok":true,"extra":{"skipped":true,"reason":"zero_accrued",…}}`.
 
 ### Testnet verification (advanced)
 
@@ -123,7 +145,7 @@ The orchestrator prefers `seed_localnet_fixture claim-onchain` on testnet; `chai
 
 For explicit commands without the orchestrator, see [docs/store-integration/README.md#step-by-step-path](docs/store-integration/README.md#step-by-step-path) and the archived runbook [docs/archive/steps/local-store-dual-host-runbook.md](docs/archive/steps/local-store-dual-host-runbook.md).
 
-Provider host: `verifyEligibilityForStoreQuery`. User host: `initializeVault`, `deposit`, `createStream`, `registerProviderMapping`, `prepareEligibilityProofWithStreamProofForStoreQuery`, then `delivery_module.storeQuery`. Teardown: provider-signed `closeStream` (authority = provider account) and `claim` with **`owner`** set to the vault owner account id.
+Provider host: `verifyEligibilityForStoreQuery`. User host: `initializeVault`, `deposit`, `createStream`, `registerProviderMapping`, `prepareEligibilityProofWithStreamProofForStoreQuery`, then `delivery_module.storeQuery`. Settlement: provider-signed `closeStream` (authority = provider account), then `claim` with **`owner`** set to the vault owner account id on the **closed** stream.
 
 ## Success command
 
@@ -153,7 +175,9 @@ Default local fixture: `fixtures/localnet.json` with `owner_account_id`, `provid
 * `CHAIN`: `local` or `testnet`
 * `SKIP_BUILD=1`: Skip `.lgx` rebuilds on subsequent runs
 * `E2E_CLAIM_OPTIONAL`: On testnet defaults to `1`; set `0` to require confirming claim in teardown
-* `FIXTURE_MANIFEST`: Override fixture path
+* `FIXTURE_MANIFEST`: Override fixture path (`e2e.sh` defaults from `CHAIN`)
+* `E2E_CLOSE_VIA`: `seed` (default) or `chainaction` for close/claim submit path
+* `PS_AT_LOGOSCORE_WALLET_HANDOFF`: Set by Store E2E when releasing logoscore wallet before standalone wallet CLI for seed close/claim
 
 ### Module dependencies
 
@@ -167,7 +191,8 @@ Store integration requires `logos_execution_zone`, `payment_streams_module`, and
 | `STREAM_DEPLETED` | Stream ran out of allocated funds | `topUpStream` or create a new stream |
 | `PROOF_INVALID` | Eligibility proof verification failed | Ensure stream is active; check N8 canonical payload |
 | `STREAM_NOT_ACTIVE` | Stream closed (or not yet active) | Create a new stream; pause/resume are not part of this demo |
-| Claim succeeds in module E2E but fails in Store testnet teardown | Provider not AT-initialized or wrong fixture provider | Re-run bootstrap auth-transfer init; fix `provider_account_id` |
+| Claim succeeds in module E2E but fails in Store testnet teardown | Provider not AT-initialized or wrong fixture provider | Re-run `ps_auth_transfer_ensure` / bootstrap; fix `provider_account_id` |
+| `create_demo_stream` / vault unallocated | Testnet vault holding depleted for fixture owner | `deposit-onchain` or `make bootstrap-testnet` with `FIXTURE_MANIFEST=fixtures/testnet.json` and testnet wallet home |
 | Store query dial failures | Provider not reachable on libp2p | Check provider node multiaddr and peer id in manifest |
 
 Full error reference: [docs/reference/integration-contracts.md](docs/reference/integration-contracts.md)
@@ -190,6 +215,7 @@ FILL_IN
 * **Store integration**: [docs/store-integration/README.md](docs/store-integration/)
 * **Verification matrix**: [docs/reference/verification-matrix.md](docs/reference/verification-matrix.md)
 * **Step 20 plan packet**: [docs/plan/upcoming/step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md)
+* **Step 32 (AT unify, close-then-claim)**: [docs/plan/upcoming/step-32-auth-transfer-unify-store-claim.md](docs/plan/upcoming/step-32-auth-transfer-unify-store-claim.md)
 
 ## Additional context
 

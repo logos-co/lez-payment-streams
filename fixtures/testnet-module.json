@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "sequencer_url": "https://testnet.lez.logos.co/",
+  "program_id_hex": "16b95d3701d256eecd41d5a55e4f570331994d787abf0cba44eec209e24f8a44",
+  "owner_account_id": "DkT97NZPog2attaFURoMUFU5m996QtDnsS53PSnx41oG",
+  "provider_account_id": "FQ8fd3P5ko6AvLdwUMry4Mytzp33Wzif3RtabraKNxqq",
+  "vault_id": 0,
+  "vault_config_account_id": "5eVd8F6P4RqTNHEg9Zr27Ha4GFWhVxCBNoukQ8v2gVkd",
+  "vault_holding_account_id": "55oaHXvNxkDvVtQqZsKNmmTwgyMkqJpwZVtRYPjReNiL",
+  "clock_10_account_id": "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWNU",
+  "demo_deposit_amount": 500,
+  "stream_rate": 1,
+  "allocation": 80,
+  "reserved_for_step_11b": "Per-run manifest after create_stream-onchain (Step 24c)."
+}

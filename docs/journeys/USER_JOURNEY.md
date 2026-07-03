@@ -24,11 +24,14 @@ https://github.com/logos-co/lez-payment-streams (FILL IN: exact repository URL)
 local LEZ (module only, single-host). The journey is verified end-to-end on
 localnet with the phase list below. On TestNet v0.2, run `make deploy-testnet`
 once after a sequencer relaunch, then `CHAIN=testnet ./scripts/module-e2e.sh`.
-The script reuses owner and provider from `fixtures/testnet.json` (keys in
-`.scaffold/e2e/testnet-wallet/`), ensures both are AT-initialized and funded
-via pinata, then runs the full lifecycle including claim. Replace a broken
-fixture provider id if it was never AT-registered. See
-[Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
+The script reuses owner and provider from `fixtures/testnet-module.json` or
+`fixtures/testnet.json` (keys in `.scaffold/e2e/testnet-wallet/`), runs shared
+`ps_auth_transfer_ensure` ([scripts/lib/auth_transfer.sh](scripts/lib/auth_transfer.sh)
+via [scripts/auth-transfer-ensure.sh](scripts/auth-transfer-ensure.sh)) so both
+accounts are registered under the `authenticated_transfer` program ImageID, then
+funds via wallet pinata when balances are low, then runs the full lifecycle
+(close, then claim). Replace a broken fixture provider id if AT verify fails.
+See [Step 28](docs/plan/completed/step-28-user-journey-testnet.md) and Step 32.
 
 ## Prerequisites
 
@@ -92,9 +95,12 @@ make deploy-testnet
 
 Ensure `fixtures/testnet-module.json` exists (`make bootstrap-testnet-module`) or
 fall back to `fixtures/testnet.json` with `owner_account_id` and
-`provider_account_id` set. Keys live under `.scaffold/e2e/testnet-wallet/`. The
-script AT-initializes owner and provider when needed and funds them via wallet
-pinata before writes.
+`provider_account_id` set. Keys live under `.scaffold/e2e/testnet-wallet/`.
+Before chain writes, `scripts/module-e2e.sh` calls `ps_auth_transfer_ensure`
+(strict on-chain `program_owner` check against the AT ImageID; init via wallet
+`auth-transfer init` when missing) and pinata-funds accounts when needed.
+`./scripts/e2e.sh` recomputes `FIXTURE_MANIFEST`, `WALLET_CONFIG`, and
+`WALLET_STORAGE` from `CHAIN` so testnet runs never pick up local fixture paths.
 
 Use an unused `VAULT_ID` (and `STREAM_ID=0`) on repeat runs:
 
@@ -119,8 +125,8 @@ Artifact `.scaffold/e2e/artifacts/module-e2e-*.log` (default scenario, no top-up
 
 ```jsonl
 {"phase":"wallet_open","ok":true}
-{"phase":"auth_init_owner","ok":true}
-{"phase":"auth_init_provider","ok":true}
+{"phase":"auth_init_owner","ok":true,"extra":{"account_id":"…","already_initialized":true,"via":"on_chain","verify":"image_id"}}
+{"phase":"auth_init_provider","ok":true,"extra":{"account_id":"…","already_initialized":false,"via":"wallet_cli","verify":"image_id","tx_hash":"…"}}
 {"phase":"vault_init","ok":true}
 {"phase":"deposit","ok":true}
 {"phase":"deposit_balance","ok":true}
@@ -191,8 +197,8 @@ with all write and verification phases for the selected scenario reporting
 * `TOPUP_INCREASE`: Tokens added during the top-up phase when enabled (default: 1)
 * `MODULE_E2E_TOPUP`: Set to `1` to run `topUpStream` between create and accrual;
   default `0` (skipped) for a shorter demo
-* `MODULE_E2E_SKIP_CLOSE`: Set to `1` to skip settlement (close and claim;
-  saves testnet txs). Do not claim on an active stream when skipped.
+* `MODULE_E2E_SKIP_CLOSE`: Set to `1` to skip settlement (**close and claim**;
+  saves two testnet txs). Do not claim on an active stream when skipped.
 * `LEE_WALLET_HOME_DIR`: Set by the script — local module runs use
   `.scaffold/module-e2e-wallet`; testnet module runs use
   `.scaffold/e2e/testnet-wallet` (same bundle as Store testnet per Step 32 D1).
@@ -228,8 +234,9 @@ No `delivery_module` needed (this is the module-only flow).
 
 Wall clock on `CHAIN=testnet` is dominated by **serial transaction inclusion**, not
 the accrual wait. Each write waits for `getTransaction` with a poll budget
-(default 45×2s on testnet). Five required writes (vault, deposit, create stream,
-claim, close) can sum to many minutes when the public sequencer includes blocks
+(default 45×2s on testnet). Five required payment-stream writes after AT ensure
+(vault init, deposit, create stream, **close**, **claim**) can sum to many minutes
+when the public sequencer includes blocks
 irregularly (often on the order of **15–60 seconds** between heights; sometimes longer).
 
 Accrual for the demo only needs **`MIN_ACCRUED` tokens** (default **1** on testnet at
@@ -240,7 +247,7 @@ To shorten a testnet demo further without dropping claim:
 
 * Keep defaults (`DEPOSIT=30`, `ALLOCATION=20`, `MODULE_E2E_TOPUP=0`).
 * Pick an unused `VAULT_ID` / `STREAM_ID` per run, or close the stream when reusing ids.
-* Optional: `MODULE_E2E_SKIP_CLOSE=1` (saves one tx; next run needs a new `STREAM_ID`).
+* Optional: `MODULE_E2E_SKIP_CLOSE=1` (skips close and claim; next run needs a new `STREAM_ID`).
 
 Localnet keeps larger defaults (`DEPOSIT=500`, `ALLOCATION=400`, `MIN_ACCRUED=RATE*3`) for regression parity.
 
@@ -251,7 +258,8 @@ Localnet keeps larger defaults (`DEPOSIT=500`, `ALLOCATION=400`, `MIN_ACCRUED=RA
 | Verification phase `ok:false` (`deposit_balance`, `topup_allocation`, `claim_balance`, `close_state`, …) | Write accepted but on-chain read did not settle within poll budget | Re-run the `getVaultStatus` / `getStreamStatus` / `getAccount` read; check sequencer inclusion and wallet sync |
 | `NO_ELIGIBLE_VAULT` | Vault not initialized or wrong ID | Run `initializeVault` first |
 | `STREAM_DEPLETED` | Stream ran out of allocated funds | `topUpStream` or `closeStream` then create new |
-| `claim` returns 0 | No time elapsed for accrual | Wait longer between create and claim |
+| `claim` skipped or zero payout | Stream closed with no residual accrued | Expected when `MIN_ACCRUED` was not met before close; increase accrual wait or `MIN_ACCRUED` |
+| AT init / verify fails | Account not under `authenticated_transfer` ImageID | Re-run ensure: `scripts/auth-transfer-ensure.sh --owner … --provider …`; rotate broken provider in fixture |
 | Wallet open fails | Wrong password or missing config | Check `wallet_config.json` path |
 
 ### Limits
@@ -271,9 +279,10 @@ Localnet keeps larger defaults (`DEPOSIT=500`, `ALLOCATION=400`, `MIN_ACCRUED=RA
   expected change did not settle within the poll budget, while the write phase
   itself still reports `ok:true`. See
   [docs/archive/steps/module-chain-writes-runbook.md](docs/archive/steps/module-chain-writes-runbook.md).
-* Accrual between claim and close keeps accumulating: the closed stream may
-  retain a residual accrued balance that stays allocated until a later claim.
-  The close narrative reports the real residual rather than assuming zero.
+* Settlement order is **close then claim**: unaccrued allocation returns to the
+  vault at close; residual **accrued** on the closed stream is what the provider
+  claims next. The `close_state` line reports accrued/unaccrued after close; claim
+  is skipped with `"reason":"zero_accrued"` when nothing remains to pay out.
 * Stream IDs are per-vault sequential integers
 * The TestNet v0.2 path reuses fixture owner and provider; use an unused
   `VAULT_ID` on repeat runs. After a testnet relaunch, run `make deploy-testnet`.
@@ -291,6 +300,7 @@ FILL_IN
 * **LIP-155 (Payment Streams)**: https://lip.logos.co/anoncomms/raw/payment-streams.html
 * **Payment streams module**: [docs/payment-streams-module/README.md](docs/payment-streams-module/)
 * **Module E2E script**: [scripts/module-e2e.sh](scripts/module-e2e.sh)
+* **AT ensure (shared)**: [scripts/lib/auth_transfer.sh](scripts/lib/auth_transfer.sh), [scripts/auth-transfer-ensure.sh](scripts/auth-transfer-ensure.sh)
 * **Entrypoint / dispatcher**: [scripts/e2e.sh](scripts/e2e.sh)
 * **Verification matrix**: [docs/reference/verification-matrix.md](docs/reference/verification-matrix.md)
 
