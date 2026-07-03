@@ -40,3 +40,7 @@ rust_out
 store.sqlite3
 store.sqlite3-shm
 store.sqlite3-wal
+
+# Runtime wallet artifacts (not committed)
+storage.json
+wallet_config.json

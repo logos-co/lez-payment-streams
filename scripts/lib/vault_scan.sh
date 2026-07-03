@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # vault_scan.sh — Shared vault config probe and Store E2E vault id resolution.
 # Sourced by fixture.sh and ensure-testnet-vault.sh (do not execute directly).
 
