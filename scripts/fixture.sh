@@ -206,27 +206,22 @@ resolve_owner() {
 source "$REPO_ROOT/scripts/lib/vault_scan.sh"
 
 # A vault is "funded" when its config account is initialized (next_stream_id is
-# readable) and, when the holding account id is known, enough unallocated balance
-# for at least one createStream at the configured allocation.
+# readable) and its unallocated balance (holding - total_allocated) covers at
+# least one createStream at the configured allocation. Reads unallocated
+# directly from chain via the seed binary so the check is correct for any
+# vault id, not just the one whose PDAs are in the manifest.
 vault_is_funded() {
   local vault_id="${1:-0}"
-  local owner next holding bal min_balance manifest
+  local owner next unallocated min_balance
   owner="$(resolve_owner)"
   [[ -z "$owner" ]] && return 1
 
   next="$(ps_vault_next_stream_id "$owner" "$vault_id")" || return 1
   [[ -n "$next" ]] || return 1
 
-  manifest="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/localnet.json}"
-  holding=""
-  [[ -f "$manifest" ]] && holding="$(ps_json_get "$manifest" vault_holding_account_id)"
-  # Initialized but no manifest holding id (e.g. fresh restore): trust the
-  # snapshot/seed that funded it.
-  [[ -z "$holding" ]] && return 0
-
-  bal="$(ps_account_balance "$holding")"
+  unallocated="$(ps_vault_unallocated_lo "$owner" "$vault_id" 2>/dev/null)" || return 1
   min_balance="${SEED_ALLOCATION:-200}"
-  [[ "${bal:-0}" -ge "$min_balance" ]]
+  [[ "${unallocated:-0}" -ge "$min_balance" ]]
 }
 
 cmd_vault_is_funded() {
@@ -308,21 +303,29 @@ cmd_vault_ensure() {
     prefund_extra+=(--force)
   fi
 
-  cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
-    --bin seed_localnet_fixture -- \
-    prefund-onchain \
-    --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
-    --owner "$owner" \
-    --vault-id "$vault_id" \
-    --deposit-amount "$SEED_DEPOSIT_AMOUNT" \
-    "${prefund_extra[@]}" || {
+  local ensure_attempts=0 max_ensure_attempts="${VAULT_ENSURE_MAX_RETRIES:-3}"
+  while true; do
+    ensure_attempts=$((ensure_attempts + 1))
+    cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
+      --bin seed_localnet_fixture -- \
+      prefund-onchain \
+      --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
+      --owner "$owner" \
+      --vault-id "$vault_id" \
+      --deposit-amount "$SEED_DEPOSIT_AMOUNT" \
+      "${prefund_extra[@]}" && break
     if vault_is_funded "$vault_id"; then
       ps_log_info "prefund-onchain returned error but vault $vault_id is funded on chain (confirm race)"
-    else
+      break
+    fi
+    if (( ensure_attempts >= max_ensure_attempts )); then
+      ps_log_error "prefund-onchain failed after $max_ensure_attempts attempts and vault $vault_id is not funded"
       return 1
     fi
-  }
-  
+    ps_log_info "prefund-onchain attempt $ensure_attempts failed; waiting for chain settle before retry"
+    wait_chain_settle
+  done
+
   wait_chain_settle
   ps_log_info "Vault $vault_id ensured with $SEED_DEPOSIT_AMOUNT"
 }

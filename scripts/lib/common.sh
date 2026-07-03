@@ -213,6 +213,18 @@ ps_vault_next_stream_id() {
     --program-bin "$guest" --owner "$owner" --vault-id "$vault_id" 2>/dev/null
 }
 
+# Print the vault's unallocated balance (holding - total_allocated) from chain.
+ps_vault_unallocated_lo() {
+  local owner="$1" vault_id="${2:-0}"
+  local guest wallet_home
+  guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+  wallet_home="${LEE_WALLET_HOME_DIR:-$(ps_chain_wallet_home)}"
+  LEE_WALLET_HOME_DIR="$wallet_home" cargo run -q \
+    --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
+    --bin seed_localnet_fixture -- read-vault-unallocated \
+    --program-bin "$guest" --owner "$owner" --vault-id "$vault_id" 2>/dev/null
+}
+
 # Prepend the pinned LEZ release dir (wallet, spel) to PATH if present.
 ps_prepend_lez_wallet_path() {
   local lez_release

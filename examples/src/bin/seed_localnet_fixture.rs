@@ -114,6 +114,17 @@ enum Commands {
         #[arg(long, default_value = DEFAULT_SEQUENCER)]
         sequencer_url: String,
     },
+    /// Print vault unallocated balance (holding - total_allocated) from chain (stdout decimal).
+    ReadVaultUnallocated {
+        #[arg(long)]
+        program_bin: PathBuf,
+        #[arg(long)]
+        owner: String,
+        #[arg(long, default_value = "0")]
+        vault_id: u64,
+        #[arg(long, default_value = DEFAULT_SEQUENCER)]
+        sequencer_url: String,
+    },
     /// Initialize vault and deposit only (Step 17b baseline snapshot; no stream).
     PrefundOnchain {
         #[arg(long)]
@@ -958,6 +969,17 @@ async fn main() -> Result<()> {
             let cfg = VaultConfig::try_from_slice(&acc.data)
                 .map_err(|e| anyhow!("decode VaultConfig: {e}"))?;
             println!("{}", cfg.next_stream_id);
+        },
+        Commands::ReadVaultUnallocated {
+            program_bin,
+            owner,
+            vault_id,
+            sequencer_url: _,
+        } => {
+            ensure_wallet_home_env()?;
+            let ctx = open_onchain(&program_bin, &owner, vault_id).await?;
+            let unallocated = vault_unallocated_lo(&ctx).await?;
+            println!("{unallocated}");
         },
         Commands::WaitClockSynced {
             max_skew_s,
