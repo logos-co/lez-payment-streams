@@ -306,6 +306,10 @@ cmd_vault_ensure() {
   local ensure_attempts=0 max_ensure_attempts="${VAULT_ENSURE_MAX_RETRIES:-3}"
   while true; do
     ensure_attempts=$((ensure_attempts + 1))
+    # After the first attempt, force the deposit even if the vault config
+    # account exists: the init may have landed but the deposit confirm raced.
+    local attempt_extra=()
+    (( ensure_attempts > 1 )) && attempt_extra=(--force)
     cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
       --bin seed_localnet_fixture -- \
       prefund-onchain \
@@ -313,7 +317,7 @@ cmd_vault_ensure() {
       --owner "$owner" \
       --vault-id "$vault_id" \
       --deposit-amount "$SEED_DEPOSIT_AMOUNT" \
-      "${prefund_extra[@]}" && break
+      "${prefund_extra[@]}" "${attempt_extra[@]}" && break
     if vault_is_funded "$vault_id"; then
       ps_log_info "prefund-onchain returned error but vault $vault_id is funded on chain (confirm race)"
       break
