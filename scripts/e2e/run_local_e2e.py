@@ -1696,6 +1696,8 @@ def refresh_manifest_pdas(repo: Path, manifest_path: Path, stream_id: int, manif
             manifest["provider_account_id"],
             "--stream-id",
             str(stream_id),
+            "--vault-id",
+            str(int(manifest.get("vault_id", 0))),
             "--sequencer-url",
             manifest.get("sequencer_url", "http://127.0.0.1:3040"),
             "--output",
