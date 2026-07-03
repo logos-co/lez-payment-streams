@@ -65,6 +65,8 @@ Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-r
   Localnet needs no fixture; clone and verify on your machine.
   Testnet needs `fixtures/testnet.json` (one-time `make bootstrap-testnet`); module-only
   users can use `fixtures/testnet-module.json` (one-time `make bootstrap-testnet-module`).
+  Store runs use a fresh vault per run (Step 33); set `VAULT_ID` to pin a vault id
+  or `E2E_REUSE_BASELINE_VAULT=1` for the legacy vault-0 lifecycle path.
 - Claim is required on both chains for the module (User Journey). The v0.2.0
   testnet upgrade resolved the previous claim reliability issue; see
   [archive/operator/testnet-claim-known-issue.md](../archive/operator/testnet-claim-known-issue.md).
@@ -100,8 +102,12 @@ Maintainer-only (not integrator gates): `make verify-store-local-lifecycle` or
 
 ## Notes
 
-- Localnet prepare restores or seeds a funded vault baseline for Store flow;
-  module flow only ensures localnet is up and skips `delivery_module` build.
+- Store local prepare restores a funded snapshot (identity + policy only, no
+  program vault) and writes `fixtures/localnet.json` from owner/provider markers.
+  The orchestrator scans for a fresh vault id and ensures it (init + deposit)
+  before stream creation. Set `E2E_REUSE_BASELINE_VAULT=1` to use the legacy
+  vault-0 reuse path (used by `verify-store-local-lifecycle`).
+- Module flow only ensures localnet is up and skips `delivery_module` build.
 - Artifacts: `.scaffold/e2e/artifacts/` JSON-lines logs.
   Module: `module-e2e-*.log` (`vault_init`, `deposit`, `create_stream`, `claim`, …).
   Store: `e2e-*.log` (`store_query_success`, `store_query_missing_proof`, `claim`, …).

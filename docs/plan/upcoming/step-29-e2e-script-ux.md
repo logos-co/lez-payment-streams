@@ -102,10 +102,11 @@ artifact retains the raw error for programmatic diagnosis.
 ## Messaging is a black box
 
 The developer journey publishes a payload to a content topic to seed the
-Store with messages before the query phase. The narrative treats this as a
-setup step ("Publishing test messages to Store...") without explaining the
-Waku/delivery layer. The audience is assumed to be familiar with the
-messaging stack, or the presenter explains it verbally during a live demo.
+Store while the stream is accruing funds. The narrative treats this as a
+background activity inside the accrual phase ("Publishing test messages to
+Store...") without explaining the Waku/delivery layer. The audience is assumed
+to be familiar with the messaging stack, or the presenter explains it verbally
+during a live demo.
 
 ## Phase lists
 
@@ -182,13 +183,15 @@ messaging stack, or the presenter explains it verbally during a live demo.
 [19:05:07]   ✓ Provider ready: delivery_module (Store enabled), payment_streams_module
 [19:05:07]   → Starting user logoscore, loading modules
 [19:05:10]   ✓ User ready: delivery_module (Store client), payment_streams_module
-[19:05:10]   → Publishing test messages to Store...
-[19:05:25]   ✓ Messages published and propagated
-[19:05:25]
-[19:05:25] PHASE: Stream Creation
-[19:05:25]   → User creates payment stream to provider
-[19:05:25]     rate=1 token/sec, allocation=200 tokens, vault=0
-[19:05:27]   ✓ Stream created: stream_id=0, status=ACTIVE
+[19:05:10]
+[19:05:10] PHASE: Stream Creation
+[19:05:10]   → User creates payment stream to provider
+[19:05:10]     rate=1 token/sec, allocation=200 tokens, vault=0
+[19:05:12]   ✓ Stream created: stream_id=0, status=ACTIVE
+[19:05:12]
+[19:05:12] PHASE: Accrual
+[19:05:12]   → Publishing test messages to Store while stream accrues...
+[19:05:27]   ✓ Messages published and propagated
 [19:05:27]   → Waiting for stream to become fundable (need ≥64 unaccrued tokens)
 [19:05:27]     Accrual is timestamp-based: derived from on-chain
 [19:05:27]     accrued_as_of field. On testnet, granularity is limited
@@ -250,6 +253,9 @@ messaging stack, or the presenter explains it verbally during a live demo.
 - Add narrative printing alongside existing `log_artifact` calls. The
   JSON-lines artifact format stays unchanged; narrative is printed to
   stderr or stdout depending on verbosity.
+- Narrative phase order follows Step 33: create the stream immediately after
+  daemons/AT ensure, then publish Store messages while waiting for the stream
+  to become fundable.
 - Add `--verbosity` argument to `argparse` in `main()`.
 - Extract on-chain values from existing query responses
   (`vault_status_json`, `stream_config_on_chain`, `vault_liquidity_*`)
@@ -306,3 +312,4 @@ messaging stack, or the presenter explains it verbally during a live demo.
 - `scripts/e2e.sh` — entrypoint / dispatcher
 - [step-20-developer-journey.md](step-20-developer-journey.md) — benefits from clear UX
 - [step-22-ui-journey.md](step-22-ui-journey.md) — CLI journey benefits from clear UX
+- [step-33-store-e2e-fresh-vault.md](step-33-store-e2e-fresh-vault.md) — governs Developer Journey phase order (create stream before messaging)

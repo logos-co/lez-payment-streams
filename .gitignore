@@ -44,3 +44,7 @@ store.sqlite3-wal
 # Runtime wallet artifacts (not committed)
 storage.json
 wallet_config.json
+
+# Python test cache
+__pycache__/
+.pytest_cache/

@@ -13,7 +13,7 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 24, 26-28, 30) |
-| [upcoming/](upcoming/) | Steps 20, 22, 29, 32 (active); optional 21 (UI), 23 |
+| [upcoming/](upcoming/) | Steps 20, 22, 29, 32-33 (active); optional 21 (UI), 23 |
 | [cancelled/](cancelled/) | Step 25 won't fix |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
@@ -57,6 +57,7 @@ paid Store mode on the provider.
 | E2E script UX enhancement | 29 (active, parallel) |
 | Static dependency migration | 30 (complete) |
 | AT-init unify + Store claim phase | 32 (active) |
+| Store E2E fresh vault + testnet sizing | 33 (decided, ready after Step 32) |
 
 Step 25 (in-process demo coordinator module) is **won't fix**
 ([cancelled packet](cancelled/step-25-demo-coordination-module.md)).
@@ -85,6 +86,7 @@ Dual-host demo coordination stays in host scripts
 | 29 | E2E script UX enhancement | Active -- [step-29-e2e-script-ux.md](upcoming/step-29-e2e-script-ux.md) |
 | 30 | Static dependency migration | Complete -- [step-30-static-dependency-migration.md](completed/step-30-static-dependency-migration.md) |
 | 32 | AT-init unify + Store claim phase | Active -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
+| 33 | Store E2E fresh vault + testnet sizing | Decided -- ready after Step 32 merge; Q1–Q4 resolved in packet -- [step-33-store-e2e-fresh-vault.md](upcoming/step-33-store-e2e-fresh-vault.md) |
 
 ## Delivery integration branches
 

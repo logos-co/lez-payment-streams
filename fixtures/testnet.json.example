@@ -6,12 +6,9 @@
   "deploy_block_id": 3284,
   "owner_account_id": "",
   "provider_account_id": "",
-  "vault_id": 0,
-  "vault_config_account_id": "",
-  "vault_holding_account_id": "",
   "clock_10_account_id": "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWNU",
-  "demo_deposit_amount": 2000,
+  "demo_deposit_amount": 500,
   "stream_rate": 1,
-  "allocation": 1800,
-  "reserved_for_step_18": "Copy to gitignored fixtures/testnet.json after make bootstrap-testnet. Per-operator manifest; do not copy owner/provider ids from localnet.json. Shared chain fields: sequencer_url, program_id_hex, deploy_tx_hash, deploy_block_id (org deploy), clock_10_account_id."
+  "allocation": 400,
+  "_comment": "Copy to gitignored fixtures/testnet.json after make bootstrap-testnet. Per-operator manifest; do not copy owner/provider ids from localnet.json. Shared chain fields: sequencer_url, program_id_hex, deploy_tx_hash, deploy_block_id, clock_10_account_id. vault_id and PDAs are written by the run orchestrator."
 }

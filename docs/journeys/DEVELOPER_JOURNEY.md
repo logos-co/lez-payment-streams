@@ -56,7 +56,33 @@ with an `extra` object (`account_id`, `already_initialized`, `via`, `verify`, op
 `WALLET_STORAGE` from `CHAIN` on each run so `CHAIN=testnet` always uses
 `.scaffold/e2e/testnet-wallet` and the testnet fixture path.
 
-Integrators must learn the provider’s libp2p `PeerId` out of band to call `registerProviderMapping` ([N18](docs/reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)); the E2E script uses manifest-backed ids.
+Integrators must learn the provider's libp2p `PeerId` out of band to call `registerProviderMapping` ([N18](docs/reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)); the E2E script uses manifest-backed ids.
+
+### Fresh vault per run (Step 33)
+
+Each Store run ensures a **fresh vault** on chain instead of reusing a shared
+vault 0. The orchestrator scans vault ids upward from 0 using an empty-config
+probe (`vault_config_is_empty`) and picks the first id whose vault config
+account has no data. It then runs `fixture.sh vault ensure <id>` (localnet) or
+`scripts/e2e/ensure-testnet-vault.sh` (testnet) to initialize and deposit,
+and creates **stream id 0** on that vault. The fixture baseline
+(`fixtures/localnet.json`, `fixtures/testnet.json`) carries identity and
+policy fields only (owner, provider, program id, `allocation`, `stream_rate`);
+`vault_id`, `vault_config_account_id`, and `vault_holding_account_id` are
+written by the orchestrator after ensure.
+
+Set `VAULT_ID=<id>` to skip the scan and pin a specific vault. Set
+`E2E_REUSE_BASELINE_VAULT=1` to restore the legacy vault-0 reuse path used by
+`make verify-store-local-lifecycle`.
+
+Testnet Store sizing defaults (Step 33): `SEED_ALLOCATION=400`,
+`SEED_DEPOSIT_AMOUNT=500`, `E2E_CREATE_VIA=chainaction`. Override via env. The
+provider calls `rediscoverStreams` after stream creation and before the first
+paid Store query so the eligibility verifier sees the new stream.
+
+Phase ordering (D3): vault ensure -> environment setup -> AT ensure -> stream
+creation -> publish Store messages during accrual wait -> eligibility proof ->
+paid Store query -> close then claim.
 
 ### One-command verification (recommended, localnet)
 
@@ -178,6 +204,11 @@ Default local fixture: `fixtures/localnet.json` with `owner_account_id`, `provid
 * `FIXTURE_MANIFEST`: Override fixture path (`e2e.sh` defaults from `CHAIN`)
 * `E2E_CLOSE_VIA`: `seed` (default) or `chainaction` for close/claim submit path
 * `PS_AT_LOGOSCORE_WALLET_HANDOFF`: Set by Store E2E when releasing logoscore wallet before standalone wallet CLI for seed close/claim
+* `VAULT_ID`: Pin a specific vault id for Store runs (default: scan for first empty config)
+* `E2E_REUSE_BASELINE_VAULT=1`: Use legacy vault-0 reuse path (lifecycle regression)
+* `SEED_ALLOCATION`: CreateStream allocation in lo (testnet Store default: 400)
+* `SEED_DEPOSIT_AMOUNT`: Vault deposit in lo (testnet Store default: 500)
+* `E2E_CREATE_VIA`: `seed` or `chainaction` for stream create path (testnet Store default: `chainaction`)
 
 ### Module dependencies
 
@@ -216,6 +247,7 @@ FILL_IN
 * **Verification matrix**: [docs/reference/verification-matrix.md](docs/reference/verification-matrix.md)
 * **Step 20 plan packet**: [docs/plan/upcoming/step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md)
 * **Step 32 (AT unify, close-then-claim)**: [docs/plan/upcoming/step-32-auth-transfer-unify-store-claim.md](docs/plan/upcoming/step-32-auth-transfer-unify-store-claim.md)
+* **Step 33 (fresh vault, testnet sizing)**: [docs/plan/upcoming/step-33-store-e2e-fresh-vault.md](docs/plan/upcoming/step-33-store-e2e-fresh-vault.md)
 
 ## Additional context
 
