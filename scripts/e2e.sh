@@ -151,6 +151,8 @@ cmd_prepare_local() {
     if [[ "${E2E_REUSE_BASELINE_VAULT:-0}" == "1" ]]; then
       "$REPO_ROOT/scripts/fixture.sh" vault ensure 0
       "$REPO_ROOT/scripts/fixture.sh" vault manifest 0
+    else
+      "$REPO_ROOT/scripts/fixture.sh" vault manifest 0
     fi
     ps_log_info "Local prepare complete (continuation)"
     return 0
@@ -187,6 +189,9 @@ cmd_prepare_local() {
 
   if [[ "${E2E_REUSE_BASELINE_VAULT:-0}" == "1" ]]; then
     "$REPO_ROOT/scripts/fixture.sh" vault ensure 0
+    "$REPO_ROOT/scripts/fixture.sh" vault manifest 0
+  else
+    # Identity + policy baseline; orchestrator ensures a fresh vault and rewrites PDAs per run.
     "$REPO_ROOT/scripts/fixture.sh" vault manifest 0
   fi
 
