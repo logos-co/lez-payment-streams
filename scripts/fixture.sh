@@ -299,26 +299,23 @@ cmd_vault_ensure() {
   # Idempotent: a funded vault needs no re-init/deposit. Re-running deposit on a
   # live ledger churns the wallet nonce and risks wallet/chain desync.
   if [[ "${FORCE_DEPOSIT:-0}" != "1" ]] && vault_is_funded "$vault_id"; then
-    ps_log_info "Vault $vault_id already funded (skip initialize/deposit; FORCE_DEPOSIT=1 to override)"
+    ps_log_info "Vault $vault_id already funded (skip prefund; FORCE_DEPOSIT=1 to override)"
     return 0
   fi
 
-  # Initialize vault if needed
+  local prefund_extra=()
+  if [[ "${FORCE_DEPOSIT:-0}" == "1" ]]; then
+    prefund_extra+=(--force)
+  fi
+
   cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
     --bin seed_localnet_fixture -- \
-    initialize-vault-onchain \
-    --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
-    --owner "$owner" \
-    --vault-id "$vault_id" 2>/dev/null || ps_log_info "Vault may already exist, continuing..."
-  
-  # Deposit
-  cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
-    --bin seed_localnet_fixture -- \
-    deposit-onchain \
+    prefund-onchain \
     --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
     --owner "$owner" \
     --vault-id "$vault_id" \
-    --deposit-amount "$SEED_DEPOSIT_AMOUNT"
+    --deposit-amount "$SEED_DEPOSIT_AMOUNT" \
+    "${prefund_extra[@]}"
   
   wait_chain_settle
   ps_log_info "Vault $vault_id ensured with $SEED_DEPOSIT_AMOUNT"
