@@ -251,9 +251,9 @@ cmd_run() {
   # Seed CLI + orchestrator wallet home must follow CHAIN; set unconditionally
   # so an inherited localnet value cannot redirect testnet ops to 127.0.0.1.
   export LEE_WALLET_HOME_DIR="$(ps_chain_wallet_home)"
-  export FIXTURE_MANIFEST
-  export WALLET_CONFIG
-  export WALLET_STORAGE
+  export FIXTURE_MANIFEST="$(ps_default_fixture_manifest)"
+  export WALLET_CONFIG="$(ps_default_wallet_config)"
+  export WALLET_STORAGE="$(ps_default_wallet_storage)"
   export MODULES_USER="${MODULES_USER:-$REPO_ROOT/.scaffold/e2e/user/modules}"
   export MODULES_PROVIDER="${MODULES_PROVIDER:-$REPO_ROOT/.scaffold/e2e/provider/modules}"
   export LOGOSCORE_CONFIG_USER="${LOGOSCORE_CONFIG_USER:-$REPO_ROOT/.scaffold/e2e/user/logoscore}"
