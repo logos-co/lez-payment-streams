@@ -315,7 +315,13 @@ cmd_vault_ensure() {
     --owner "$owner" \
     --vault-id "$vault_id" \
     --deposit-amount "$SEED_DEPOSIT_AMOUNT" \
-    "${prefund_extra[@]}"
+    "${prefund_extra[@]}" || {
+    if vault_is_funded "$vault_id"; then
+      ps_log_info "prefund-onchain returned error but vault $vault_id is funded on chain (confirm race)"
+    else
+      return 1
+    fi
+  }
   
   wait_chain_settle
   ps_log_info "Vault $vault_id ensured with $SEED_DEPOSIT_AMOUNT"
