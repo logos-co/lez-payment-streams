@@ -298,6 +298,14 @@ cmd_vault_ensure() {
     return 0
   fi
 
+  # The deposit instruction chains into authenticated_transfer to debit the
+  # owner, so the owner must hold at least the deposit amount. Top up from
+  # the pinata faucet when the balance is short (localnet only; testnet
+  # assumes the operator pre-funds the owner).
+  if ! ps_is_testnet; then
+    fund_owner_account "$owner" "$SEED_DEPOSIT_AMOUNT"
+  fi
+
   local prefund_extra=()
   if [[ "${FORCE_DEPOSIT:-0}" == "1" ]]; then
     prefund_extra+=(--force)
