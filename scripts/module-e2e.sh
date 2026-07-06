@@ -123,6 +123,10 @@ narr_complete_fail() {
 # ---------------------------------------------------------------------------
 MODULES="${MODULES:-${MODULES_USER:-$REPO_ROOT/.scaffold/e2e/user/modules}}"
 
+# Capture explicit overrides before applying defaults so testnet can auto-resolve
+# fresh ids when the caller did not pin them.
+VAULT_ID_EXPLICIT="${VAULT_ID+x}"
+STREAM_ID_EXPLICIT="${STREAM_ID+x}"
 VAULT_ID="${VAULT_ID:-0}"
 STREAM_ID="${STREAM_ID:-0}"
 RATE="${RATE:-1}"
@@ -131,6 +135,11 @@ TOPUP_INCREASE="${TOPUP_INCREASE:-1}"
 MODULE_E2E_TOPUP="${MODULE_E2E_TOPUP:-0}"
 # Set MODULE_E2E_SKIP_CLOSE=1 to skip settlement (close + claim; saves testnet txs).
 MODULE_E2E_SKIP_CLOSE="${MODULE_E2E_SKIP_CLOSE:-0}"
+# Testnet fixture pins a single owner, so hardcoded vault 0 / stream 0 reuse
+# stale, already-closed/claimed state across runs. Auto-resolve a fresh empty
+# vault (and stream 0 within it) unless VAULT_ID is pinned or this is disabled.
+# Localnet uses an isolated per-run wallet, so the defaults already start fresh.
+MODULE_E2E_FRESH_VAULT="${MODULE_E2E_FRESH_VAULT:-1}"
 
 # Chain-specific demo sizing and poll budgets. Public testnet blocks advance irregularly
 # (often tens of seconds between heights); serial txs dominate wall clock via inclusion wait.
@@ -598,6 +607,32 @@ poll_read() {
 # PHASE: Vault Initialization
 # ---------------------------------------------------------------------------
 narr_phase "Vault Initialization"
+
+# Testnet: resolve a fresh empty vault under the fixture owner so each run
+# starts from a clean vault/stream instead of reusing the pinned vault 0 /
+# stream 0, which holds stale, already-closed/claimed state from prior runs.
+# Localnet is exempt: its isolated per-run wallet already guarantees fresh
+# vault 0 / stream 0. read_vault returns empty for an uninitialized vault
+# config account, so the scan finds the first empty vault id under the owner.
+if ps_is_testnet && [[ "$MODULE_E2E_FRESH_VAULT" != "0" ]] \
+   && [[ "$VAULT_ID_EXPLICIT" != "x" ]]; then
+  narr_step "Resolving fresh vault under owner $OWNER"
+  fresh_vid="$VAULT_ID"
+  while [[ -n "$(read_vault "$OWNER" "$fresh_vid")" ]]; do
+    fresh_vid=$((fresh_vid + 1))
+  done
+  VAULT_ID="$fresh_vid"
+  if [[ "$STREAM_ID_EXPLICIT" != "x" ]]; then
+    fresh_sid="$STREAM_ID"
+  else
+    # A freshly resolved vault is uninitialized, so its first stream is 0.
+    fresh_sid=0
+  fi
+  STREAM_ID="$fresh_sid"
+  emit_phase plan_vault true "{\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"source\":\"vault_config_scan\",\"owner\":\"$OWNER\"}"
+  narr_ok "Fresh vault resolved: vault_id=$VAULT_ID stream_id=$STREAM_ID"
+  narr_value "owner=$OWNER provider=$PROVIDER vault=$VAULT_ID stream=$STREAM_ID chain=${CHAIN:-local}"
+fi
 
 narr_step "Alice creates vault $VAULT_ID"
 call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID}")" "" "Vault $VAULT_ID created on chain"
