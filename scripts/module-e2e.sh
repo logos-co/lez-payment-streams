@@ -371,17 +371,32 @@ except Exception:
 ' "$1" "$2" 2>/dev/null
 }
 
-# call_ps <phase> <required:0|1> <op> <params-json> [status-key] [success-label]
+# call_ps <phase> <required:0|1> <op> <params-json> [status-key] [success-label] [verify-fn]
 # narr_step should describe intent (→). On success, prints ✓ success-label.
 # On failure, prints ✗ phase failed: … and ! clarification (never reuses success-label).
+#
+# When getTransaction stays null for a submitted tx (observed on public testnet
+# for txs that are nevertheless confirmed), an optional verify-fn is polled: if
+# it observes the expected on-chain state the phase is recorded as succeeded
+# with inclusion:"state_verified" instead of a false timeout failure.
 call_ps() {
-  local phase="$1" required="$2" op="$3" params="$4" key="${5:-}" success_label="${6:-$phase}"
+  local phase="$1" required="$2" op="$3" params="$4" key="${5:-}" success_label="${6:-$phase}" verify_fn="${7:-}"
   local attempt line="" tx_hash=""
   for attempt in 1 2 3 4 5 6; do
     line="$(logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)"
     if inner_status_ok "$line" "$key"; then
       tx_hash="$(extract_field "$line" tx_hash)"
       if [[ -n "$tx_hash" ]] && ! await_inclusion "$tx_hash"; then
+        if [[ -n "$verify_fn" ]] && ps_poll_verify "$verify_fn"; then
+          emit_phase "$phase" true "{\"op\":\"$op\",\"attempt\":$attempt,\"tx_hash\":\"$tx_hash\",\"inclusion\":\"state_verified\"}"
+          narr_ok "$success_label"
+          if [[ -n "$tx_hash" ]]; then
+            narr_value "tx published on chain: $tx_hash (verified via state read; getTransaction returned null)"
+          fi
+          sync_wallet
+          echo "$line"
+          return 0
+        fi
         emit_phase "$phase" false "{\"op\":\"$op\",\"attempt\":$attempt,\"tx_hash\":\"$tx_hash\",\"inclusion\":\"timeout\"}"
         narr_fail "$phase failed: transaction not included on chain"
         narr_hint "Submitted tx_hash=$tx_hash but getTransaction returned null — check mempool, nonce, and sequencer"
@@ -412,6 +427,22 @@ call_ps() {
   sync_wallet
   echo ""
   return 0
+}
+
+# ps_poll_verify <fn> -> poll a state-verification function (returns 0 when the
+# expected on-chain state is observed) for VERIFY_ATTEMPTS attempts. Returns 0
+# on success, 1 if the budget is exhausted. Used by call_ps as a fallback when
+# getTransaction returns null for a confirmed tx.
+ps_poll_verify() {
+  local fn="$1" attempt
+  for attempt in $(seq 1 "${VERIFY_ATTEMPTS:-6}"); do
+    sync_wallet
+    if "$fn"; then
+      return 0
+    fi
+    sleep "${VERIFY_SLEEP:-3}"
+  done
+  return 1
 }
 
 sync_wallet
@@ -603,6 +634,42 @@ poll_read() {
   return 1
 }
 
+# State-verification functions used by call_ps when getTransaction returns null
+# for a confirmed tx. Each returns 0 once the expected on-chain state is
+# observed via the module read ops (getVaultStatus / getStreamStatus) or the
+# sequencer getAccount. They close over OWNER / VAULT_ID / STREAM_ID globals.
+verify_vault_init()      { [[ -n "$(read_vault "$OWNER" "$VAULT_ID")" ]]; }
+
+verify_deposit() {
+  local bal
+  read -r bal _ <<< "$(read_vault "$OWNER" "$VAULT_ID")"
+  [[ -n "${bal:-}" && "$bal" -ge "$DEPOSIT" ]]
+}
+
+verify_create_stream() {
+  local read _ _ st
+  read="$(read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"
+  [[ -n "$read" ]] || return 1
+  read -r _ _ st <<< "$read"
+  [[ "${st:-}" == "0" ]]   # Active
+}
+
+verify_close_stream() {
+  local read _ _ st
+  read="$(read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"
+  [[ -n "$read" ]] || return 1
+  read -r _ _ st <<< "$read"
+  [[ "${st:-}" == "2" ]]   # Closed
+}
+
+# Claim credits the provider via authenticated_transfer; confirm the provider
+# account balance rose above the snapshot captured before the claim call.
+verify_claim() {
+  local bal
+  bal="$(ps_account_balance "$PROVIDER" || echo 0)"
+  [[ -n "${bal:-}" && "$bal" -gt "${PRE_CLAIM_BALANCE:-0}" ]]
+}
+
 # ---------------------------------------------------------------------------
 # PHASE: Vault Initialization
 # ---------------------------------------------------------------------------
@@ -635,10 +702,10 @@ if ps_is_testnet && [[ "$MODULE_E2E_FRESH_VAULT" != "0" ]] \
 fi
 
 narr_step "Alice creates vault $VAULT_ID"
-call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID}")" "" "Vault $VAULT_ID created on chain"
+call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID}")" "" "Vault $VAULT_ID created on chain" verify_vault_init
 
 narr_step "Depositing $DEPOSIT tokens into vault"
-DEPOSIT_LINE="$(call_ps deposit 1 deposit "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}")" "" "Deposit transaction included on chain")"
+DEPOSIT_LINE="$(call_ps deposit 1 deposit "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}")" "" "Deposit transaction included on chain" verify_deposit)"
 
 # Verify the deposit settled on chain by reading the vault holding balance.
 if DEPOSIT_VAULT="$(poll_read read_vault "$OWNER" "$VAULT_ID")"; then
@@ -666,7 +733,7 @@ narr_step "Alice opens stream $STREAM_ID to Bob"
 narr_value "rate=$RATE tokens/sec, allocation=$ALLOCATION tokens, vault=$VAULT_ID"
 narr_verbose "A payment stream allocates tokens to a provider at a fixed rate."
 narr_verbose "The allocation is the maximum the stream can pay out."
-call_ps create_stream 1 createStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PROVIDER\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}")" "" "Stream $STREAM_ID created (ACTIVE)"
+call_ps create_stream 1 createStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PROVIDER\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}")" "" "Stream $STREAM_ID created (ACTIVE)" verify_create_stream
 
 # ---------------------------------------------------------------------------
 # PHASE: Stream Lifecycle (optional top-up)
@@ -752,7 +819,7 @@ else
   narr_phase "Close"
 
   narr_step "Alice closes stream $STREAM_ID, reclaims unspent allocation"
-  CLOSE_LINE="$(call_ps close_stream 1 closeStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"authority\":\"$PROVIDER\"}")" "" "Close transaction included on chain")"
+  CLOSE_LINE="$(call_ps close_stream 1 closeStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"authority\":\"$PROVIDER\"}")" "" "Close transaction included on chain" verify_close_stream)"
 
   CLOSE_VAULT_BAL=""
   CLOSE_VAULT_TOT=""
@@ -790,7 +857,7 @@ else
     fi
 
     narr_step "Bob claims residual accrued ($CLAIM_ACCRUED) from closed stream $STREAM_ID"
-    CLAIM_LINE="$(call_ps claim 1 claim "$(j "{\"owner\":\"$OWNER\",\"provider\":\"$PROVIDER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Claim transaction included on chain")"
+    CLAIM_LINE="$(call_ps claim 1 claim "$(j "{\"owner\":\"$OWNER\",\"provider\":\"$PROVIDER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Claim transaction included on chain" verify_claim)"
 
     POST_CLAIM_BALANCE=""
     POST_CLAIM_VAULT=""
