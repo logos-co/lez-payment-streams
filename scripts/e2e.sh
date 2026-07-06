@@ -43,11 +43,14 @@ cmd_build() {
   
   # Build wallet module (patched)
   ps_log_info "Building logos_execution_zone (wallet)..."
-  if [[ ! -f "$REPO_ROOT/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out/"*.lgx ]]; then
+  local wallet_out="$REPO_ROOT/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out"
+  # compgen -G expands the glob (unlike [[ -f ... ]], where it stays literal);
+  # otherwise the wallet lgx would be re-bundled on every run.
+  if ! compgen -G "$wallet_out/*.lgx" >/dev/null; then
     "$REPO_ROOT/scripts/archive/build-wallet-lgx.sh"
   fi
   local wallet_lgx
-  wallet_lgx="$(readlink -f "$REPO_ROOT/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out/"*.lgx)"
+  wallet_lgx="$(readlink -f "$wallet_out/"*.lgx)"
   ps_install_lgx "$wallet_lgx" "$modules_user"
   ps_install_lgx "$wallet_lgx" "$modules_provider"
 

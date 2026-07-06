@@ -218,6 +218,12 @@ class Narrator:
     def value(self, text: str) -> None:
         self._emit("always", f"    {text}")
 
+    def txid(self, tx_hash: str | None, label: str | None = None) -> None:
+        if not tx_hash:
+            return
+        suffix = f" ({label})" if label else ""
+        self._emit("always", f"    tx published on chain{suffix}: {tx_hash}")
+
     def concept(self, text: str) -> None:
         self._emit("verbose", f"    {text}")
 
@@ -1039,6 +1045,7 @@ def await_chain_action_inclusion(
             reason="wallet_submit_success",
             tx_hash=chain_action_tx_hash(parsed),
         )
+        narrator.txid(chain_action_tx_hash(parsed), label)
         return
     tx_hash = chain_action_tx_hash(parsed)
     if not tx_hash:
@@ -1251,6 +1258,7 @@ def wait_for_sequencer_tx(
                 attempts=attempt,
                 elapsed_s=round(time.monotonic() - t0, 2),
             )
+            narrator.txid(h, label)
             return
         time.sleep(delay)
         delay = min(delay * 1.5, 5.0)
@@ -2106,6 +2114,8 @@ def create_demo_stream_for_run(
                     tx_hash=tx_hash,
                     elapsed_s=round(time.monotonic() - create_t0, 2),
                 )
+                if ok_create and tx_hash:
+                    narrator.txid(tx_hash, "chainAction_createStream")
                 if ok_create:
                     refresh_manifest_pdas(repo, manifest_path, create_id, manifest)
                     wait_for_stream_config_on_chain(cfg_user, manifest, create_id, seq_url, artifact)
@@ -2228,6 +2238,8 @@ def create_demo_stream_for_run(
         )
         if not ok_create:
             raise E2EError(f"create_demo_stream failed: {parsed}")
+        if tx_hash:
+            narrator.txid(tx_hash, "chainAction_createStream")
         refresh_manifest_pdas(repo, manifest_path, create_id, manifest)
         wait_for_stream_config_on_chain(cfg_user, manifest, create_id, seq_url, artifact)
 

@@ -385,6 +385,9 @@ call_ps() {
       fi
       emit_phase "$phase" true "{\"op\":\"$op\",\"attempt\":$attempt$( [[ -n "$tx_hash" ]] && echo ",\"tx_hash\":\"$tx_hash\"" )}"
       narr_ok "$success_label"
+      if [[ -n "$tx_hash" ]]; then
+        narr_value "tx published on chain: $tx_hash"
+      fi
       sync_wallet
       echo "$line"
       return 0
