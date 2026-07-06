@@ -214,10 +214,16 @@ if ps_is_testnet; then
   WALLET_CONFIG="${WALLET_CONFIG:-$(ps_default_wallet_config)}"
   WALLET_STORAGE="${WALLET_STORAGE:-$(ps_default_wallet_storage)}"
 
-  FIXTURE="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/testnet-module.json}"
-  if [[ ! -f "$FIXTURE" && -z "${FIXTURE_MANIFEST:-}" ]]; then
-    FIXTURE="$REPO_ROOT/fixtures/testnet.json"
+  # Always resolve a testnet fixture: ignore a stale FIXTURE_MANIFEST pointing
+  # at a non-testnet manifest (e.g. localnet.json left in the shell env), which
+  # would target accounts the testnet wallet does not own. Honor an explicit
+  # FIXTURE_MANIFEST only if it actually points to a testnet fixture file.
+  FIXTURE=""
+  if [[ -n "${FIXTURE_MANIFEST:-}" ]] && [[ "${FIXTURE_MANIFEST##*/}" == testnet*.json ]] && [[ -f "$FIXTURE_MANIFEST" ]]; then
+    FIXTURE="$FIXTURE_MANIFEST"
   fi
+  [[ -n "$FIXTURE" ]] || FIXTURE="$REPO_ROOT/fixtures/testnet-module.json"
+  [[ -f "$FIXTURE" ]] || FIXTURE="$REPO_ROOT/fixtures/testnet.json"
   if [[ ! -f "$FIXTURE" ]]; then
     ps_fatal "Testnet fixture not found: $FIXTURE (run: make bootstrap-testnet-module)"
   fi

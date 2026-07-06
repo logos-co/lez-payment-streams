@@ -14,13 +14,26 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/lib/common.sh
 source "$REPO_ROOT/scripts/lib/common.sh"
+# shellcheck source=scripts/lib/chain_poll.sh
+source "$REPO_ROOT/scripts/lib/chain_poll.sh"
+# shellcheck source=scripts/lib/auth_transfer.sh
+source "$REPO_ROOT/scripts/lib/auth_transfer.sh"
 # shellcheck source=scripts/lib/fund_testnet.sh
 source "$REPO_ROOT/scripts/lib/fund_testnet.sh"
 
 CHAIN=testnet
 export CHAIN
 
-FIXTURE="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/testnet-module.json}"
+# ps_auth_transfer_init_one records phases to ARTIFACT; give it a fund log.
+ARTIFACT="${ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/fund-testnet-$(date +%Y%m%dT%H%M%S).log}"
+mkdir -p "$(dirname "$ARTIFACT")"
+: > "$ARTIFACT"
+export ARTIFACT
+
+# Always resolve a testnet fixture: ignore a stale FIXTURE_MANIFEST pointing at
+# a non-testnet manifest (e.g. localnet.json left in the shell env), which would
+# fund accounts the testnet wallet does not own.
+FIXTURE="$REPO_ROOT/fixtures/testnet-module.json"
 [[ -f "$FIXTURE" ]] || FIXTURE="$REPO_ROOT/fixtures/testnet.json"
 [[ -f "$FIXTURE" ]] || ps_fatal "Testnet fixture not found (run: make bootstrap-testnet-module)"
 
@@ -28,6 +41,16 @@ OWNER="${OWNER:-$(ps_json_get "$FIXTURE" owner_account_id)}"
 PROVIDER="${PROVIDER:-$(ps_json_get "$FIXTURE" provider_account_id)}"
 [[ -n "$OWNER" ]] || ps_fatal "fixture missing owner_account_id"
 [[ -n "$PROVIDER" ]] || ps_fatal "fixture missing provider_account_id"
+
+export LEE_WALLET_HOME_DIR="$(ps_chain_wallet_home)"
+
+# The pinata faucet refuses uninitialized accounts, so AT-init both first.
+# Idempotent: already-initialized accounts (the common case) short-circuit.
+ps_log_info "Ensuring authenticated_transfer init for owner and provider"
+if ! ps_auth_transfer_ensure "$OWNER" "$PROVIDER"; then
+  ps_log_error "authenticated_transfer init failed (see $ARTIFACT)"
+  exit 1
+fi
 
 DEPOSIT="${DEPOSIT:-500}"
 OWNER_TARGET="${OWNER_TARGET:-$((DEPOSIT + 50))}"
