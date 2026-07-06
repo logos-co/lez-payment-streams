@@ -390,6 +390,31 @@ except Exception:
 ' "$1" "$2" 2>/dev/null
 }
 
+# Extract the tx hash from a chainAction response. The field name varies by
+# chain/wallet build (tx_hash, txHash, or nested under wallet), so check all
+# known shapes (mirrors run_local_e2e.py chain_action_tx_hash). Prints empty on
+# miss. extract_tx_hash <json-line>
+extract_tx_hash() {
+  python3 -c '
+import json,sys
+try:
+    outer=json.loads(sys.argv[1])
+    inner=outer.get("result","{}")
+    if isinstance(inner,str):
+        inner=json.loads(inner) if inner.strip().startswith("{") else {}
+    h = inner.get("tx_hash") or inner.get("txHash")
+    if isinstance(h,str) and h.strip():
+        print(h.strip()); sys.exit(0)
+    w = inner.get("wallet")
+    if isinstance(w,dict):
+        wh = w.get("tx_hash") or w.get("txHash")
+        if isinstance(wh,str) and wh.strip():
+            print(wh.strip()); sys.exit(0)
+except Exception:
+    pass
+' "$1" 2>/dev/null
+}
+
 # call_ps <phase> <required:0|1> <op> <params-json> [status-key] [success-label] [verify-fn]
 # narr_step should describe intent (→). On success, prints ✓ success-label.
 # On failure, prints ✗ phase failed: … and ! clarification (never reuses success-label).
@@ -404,7 +429,7 @@ call_ps() {
   for attempt in 1 2 3 4 5 6; do
     line="$(logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)"
     if inner_status_ok "$line" "$key"; then
-      tx_hash="$(extract_field "$line" tx_hash)"
+      tx_hash="$(extract_tx_hash "$line")"
       if [[ -n "$tx_hash" ]] && ! await_inclusion "$tx_hash"; then
         if [[ -n "$verify_fn" ]] && ps_poll_verify "$verify_fn"; then
           emit_phase "$phase" true "{\"op\":\"$op\",\"attempt\":$attempt,\"tx_hash\":\"$tx_hash\",\"inclusion\":\"state_verified\"}"

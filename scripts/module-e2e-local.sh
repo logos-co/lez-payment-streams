@@ -113,14 +113,41 @@ sys.exit(0 if ok else 1)
 ' "$1" "${2:-}" 2>/dev/null
 }
 
+# Extract the tx hash from a chainAction response. Field name varies by
+# chain/wallet build (tx_hash, txHash, or nested under wallet). extract_tx_hash <json-line>
+extract_tx_hash() {
+  python3 -c '
+import json,sys
+try:
+    outer=json.loads(sys.argv[1])
+    inner=outer.get("result","{}")
+    if isinstance(inner,str):
+        inner=json.loads(inner) if inner.strip().startswith("{") else {}
+    h = inner.get("tx_hash") or inner.get("txHash")
+    if isinstance(h,str) and h.strip():
+        print(h.strip()); sys.exit(0)
+    w = inner.get("wallet")
+    if isinstance(w,dict):
+        wh = w.get("tx_hash") or w.get("txHash")
+        if isinstance(wh,str) and wh.strip():
+            print(wh.strip()); sys.exit(0)
+except Exception:
+    pass
+' "$1" 2>/dev/null
+}
+
 # call_ps <phase> <required:0|1> <op> <params-json> [status-key]
 call_ps() {
   local phase="$1" required="$2" op="$3" params="$4" key="${5:-}"
-  local attempt line=""
+  local attempt line="" tx_hash=""
   for attempt in 1 2 3 4 5 6; do
     line="$(logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)"
     if inner_status_ok "$line" "$key"; then
-      emit_phase "$phase" true "{\"op\":\"$op\",\"attempt\":$attempt}"
+      tx_hash="$(extract_tx_hash "$line")"
+      emit_phase "$phase" true "{\"op\":\"$op\",\"attempt\":$attempt$( [[ -n "$tx_hash" ]] && echo ",\"tx_hash\":\"$tx_hash\"" )}"
+      if [[ -n "$tx_hash" ]]; then
+        ps_log_info "    tx published on chain: $tx_hash"
+      fi
       sync_wallet
       return 0
     fi
