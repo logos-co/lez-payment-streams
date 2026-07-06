@@ -184,7 +184,7 @@ class Narrator:
         self._chain_label = "LocalNet" if os.environ.get("CHAIN", "local").strip().lower() == "local" else "TestNet"
 
     def _ts(self) -> str:
-        return time.strftime("%H:%M:%S")
+        return time.strftime("%Y-%m-%dT%H:%M:%S")
 
     def _emit(self, level: str, text: str) -> None:
         if self.verbosity == "quiet":
@@ -3059,7 +3059,7 @@ def main() -> int:
 
     narrator.header(
         "Scenario: User proves stream eligibility to Provider\n"
-        f"[{time.strftime('%H:%M:%S')}]          for paid Store query (LIP-155, RFC 73 tag 30)"
+        f"[{time.strftime('%Y-%m-%dT%H:%M:%S')}]          for paid Store query (LIP-155, RFC 73 tag 30)"
     )
 
     repo = args.repo.resolve()
