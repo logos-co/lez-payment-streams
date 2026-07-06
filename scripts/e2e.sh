@@ -314,7 +314,6 @@ cmd_run() {
     }
   
   ps_log_info "E2E complete. Artifact: $ARTIFACT"
-  cat "$ARTIFACT"
 }
 
 # ============================================================================
