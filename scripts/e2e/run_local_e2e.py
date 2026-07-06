@@ -274,12 +274,21 @@ def strip_snapshot_stream_fields(manifest: dict, manifest_path: Path) -> None:
 
 
 def reset_payment_streams_module_persist(persist_user: Path, persist_provider: Path) -> None:
-    """Drop module inventory/negotiation so listMyStreams reflects this run's stream only."""
+    """Drop module inventory/negotiation so listMyStreams reflects this run's stream only.
+
+    Also wipe the provider Store sqlite so the paid Store query returns only this
+    run's just-published message. The provider Store persists messages on the
+    static content topic across runs; without this wipe the query returns
+    accumulated history from prior runs (page-capped at 100), which misleads the
+    demo into reporting 100 messages when this run published exactly 1.
+    """
     for root in (persist_user, persist_provider):
         if not root.exists():
             continue
         for state_file in root.glob("**/payment_streams_state.json"):
             state_file.unlink(missing_ok=True)
+    for db in persist_provider.glob("**/store.sqlite3*"):
+        db.unlink(missing_ok=True)
 
 
 def list_my_streams_inner(cfg: Path, vault_id: int) -> dict[str, Any]:
@@ -3030,6 +3039,43 @@ def message_count(response: dict) -> int:
     return 0
 
 
+def response_messages(response: dict) -> list:
+    if "messages" in response:
+        return response["messages"]
+    inner = response.get("responseJson")
+    if isinstance(inner, str):
+        try:
+            inner = json.loads(inner)
+        except json.JSONDecodeError:
+            return []
+    if isinstance(inner, dict):
+        return inner.get("messages", [])
+    return []
+
+
+# Count Store results whose payload equals this run's published payload. The
+# provider Store persists messages on the static content topic across runs, so a
+# Store query returns accumulated history (page-capped), not just this run's one
+# message. This isolates this run's message from that accumulated set.
+def count_payload_matches(response: dict, our_payload: str) -> int:
+    target = our_payload.encode("utf-8")
+    n = 0
+    for m in response_messages(response):
+        # Store v3 results nest the WakuMessage under a "message" key; payload
+        # may be a list of byte-ints, a str, or raw bytes.
+        msg = m.get("message", m)
+        p = msg.get("payload")
+        if isinstance(p, list):
+            try:
+                if bytes(p) == target:
+                    n += 1
+            except Exception:
+                pass
+        elif isinstance(p, (str, bytes)) and (p == our_payload or p == target):
+            n += 1
+    return n
+
+
 def store_status_code(response: dict) -> int | None:
     body = response
     if "responseJson" in body and isinstance(body["responseJson"], str):
@@ -3319,18 +3365,24 @@ def main() -> int:
             mc = message_count(response)
             sc = store_status_code(response)
             store_ok = mc > 0 or sc == 200
+            ours = count_payload_matches(response, payload)
             log_artifact(
                 artifact,
                 "store_query_success",
                 store_ok,
                 message_count=mc,
+                this_run_matches=ours,
                 status=sc,
                 response_preview=str(response)[:500],
             )
             if store_ok:
                 narrator.step("Provider verifies proof against LEZ on-chain state")
                 narrator.ok(f"Proof valid: stream active, serving historical messages")
-                narrator.ok(f"Store query returned {mc} messages, status {sc}")
+                if ours:
+                    narrator.ok(f"Store query served this run's message ({ours} of {mc} retrieved), status {sc}")
+                else:
+                    narrator.ok(f"Store query served {mc} message(s), status {sc}")
+                    narrator.hint("This run's payload not in the returned page window (static topic retains history across runs)")
             else:
                 narrator.fail(f"Store query failed: {mc} messages, status {sc}")
                 narrator.hint("Check provider verifier, stream state, and proof freshness")
