@@ -48,3 +48,6 @@ wallet_config.json
 # Python test cache
 __pycache__/
 .pytest_cache/
+
+# Slide deck working files (marp exports, asciinema casts, run notes)
+docs/journeys/slides/
