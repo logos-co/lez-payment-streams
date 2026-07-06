@@ -105,6 +105,7 @@ narr_complete() {
   echo "[$(_narr_ts)] $line" >&2
   echo "[$(_narr_ts)] E2E COMPLETE: All phases succeeded" >&2
   echo "[$(_narr_ts)] Artifact: $ARTIFACT" >&2
+  echo "[$(_narr_ts)] Daemon log: $DAEMON_LOG" >&2
   echo "[$(_narr_ts)] $line" >&2
 }
 
@@ -115,6 +116,7 @@ narr_complete_fail() {
   echo "[$(_narr_ts)] $line" >&2
   echo "[$(_narr_ts)] E2E FAILED: $FAILURES phase(s) failed" >&2
   echo "[$(_narr_ts)] Artifact: $ARTIFACT" >&2
+  echo "[$(_narr_ts)] Daemon log: $DAEMON_LOG" >&2
   echo "[$(_narr_ts)] $line" >&2
 }
 
@@ -168,6 +170,12 @@ fi
 ARTIFACT="${ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
 mkdir -p "$(dirname "$ARTIFACT")"
 : > "$ARTIFACT"
+
+# Daemon log: logoscore prints per-block "Stored persistent accounts at ..." and
+# sync lines that are noise for the narrative. Redirect to a logfile (mirroring
+# the Python orchestrator's start_daemon) and surface its path on failure.
+DAEMON_LOG="${DAEMON_LOG:-$(dirname "$ARTIFACT")/module-e2e-daemon.log}"
+: > "$DAEMON_LOG"
 
 FAILURES=0
 DAEMON_PID=""
@@ -252,7 +260,7 @@ narr_ok "Sequencer ready"
 narr_step "Starting logoscore, loading modules"
 logoscore stop 2>/dev/null || true
 sleep 2
-logoscore -D -m "$MODULES" -q &
+logoscore -D -m "$MODULES" -q >>"$DAEMON_LOG" 2>&1 &
 DAEMON_PID=$!
 sleep 3
 logoscore load-module logos_execution_zone >/dev/null

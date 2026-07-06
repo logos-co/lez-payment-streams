@@ -38,6 +38,11 @@ ARTIFACT="${ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/module-e2e-$(date +%Y%m
 mkdir -p "$(dirname "$ARTIFACT")"
 : > "$ARTIFACT"
 
+# Daemon log: redirect logoscore's per-block "Stored persistent accounts at ..."
+# and sync lines out of the narrative (mirrors run_local_e2e.py start_daemon).
+DAEMON_LOG="${DAEMON_LOG:-$(dirname "$ARTIFACT")/module-e2e-daemon.log}"
+: > "$DAEMON_LOG"
+
 FAILURES=0
 DAEMON_PID=""
 
@@ -134,7 +139,7 @@ call_ps() {
 # ---------------------------------------------------------------------------
 logoscore stop 2>/dev/null || true
 sleep 2
-logoscore -D -m "$MODULES" -q &
+logoscore -D -m "$MODULES" -q >>"$DAEMON_LOG" 2>&1 &
 DAEMON_PID=$!
 sleep 3
 logoscore load-module logos_execution_zone >/dev/null
@@ -223,10 +228,10 @@ call_ps claim        1 claim           "$(j "{\"provider\":\"$PROVIDER\",\"vault
 
 if [[ "$FAILURES" -eq 0 ]]; then
   emit_phase module_e2e_complete true "{\"artifact\":$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$ARTIFACT")}"
-  ps_log_info "Flow A (module) local happy path GREEN. Artifact: $ARTIFACT"
+  ps_log_info "Flow A (module) local happy path GREEN. Artifact: $ARTIFACT Daemon log: $DAEMON_LOG"
   exit 0
 else
   emit_phase module_e2e_complete false "{\"failures\":$FAILURES}"
-  ps_log_error "Flow A (module) local happy path had $FAILURES failure(s). Artifact: $ARTIFACT"
+  ps_log_error "Flow A (module) local happy path had $FAILURES failure(s). Artifact: $ARTIFACT Daemon log: $DAEMON_LOG"
   exit 1
 fi
