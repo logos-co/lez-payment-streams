@@ -144,8 +144,8 @@ MODULE_E2E_FRESH_VAULT="${MODULE_E2E_FRESH_VAULT:-1}"
 # Chain-specific demo sizing and poll budgets. Public testnet blocks advance irregularly
 # (often tens of seconds between heights); serial txs dominate wall clock via inclusion wait.
 if ps_is_testnet; then
-  DEPOSIT="${DEPOSIT:-30}"
-  ALLOCATION="${ALLOCATION:-20}"
+  DEPOSIT="${DEPOSIT:-500}"
+  ALLOCATION="${ALLOCATION:-400}"
   MIN_ACCRUED="${MIN_ACCRUED:-1}"
   INCLUSION_ATTEMPTS="${INCLUSION_ATTEMPTS:-45}"
   INCLUSION_SLEEP="${INCLUSION_SLEEP:-2}"
