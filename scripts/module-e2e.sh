@@ -24,6 +24,8 @@ source "$REPO_ROOT/scripts/lib/common.sh"
 source "$REPO_ROOT/scripts/lib/chain_poll.sh"
 # shellcheck source=scripts/lib/auth_transfer.sh
 source "$REPO_ROOT/scripts/lib/auth_transfer.sh"
+# shellcheck source=scripts/lib/fund_testnet.sh
+source "$REPO_ROOT/scripts/lib/fund_testnet.sh"
 
 # ---------------------------------------------------------------------------
 # Verbosity
@@ -137,6 +139,9 @@ TOPUP_INCREASE="${TOPUP_INCREASE:-1}"
 MODULE_E2E_TOPUP="${MODULE_E2E_TOPUP:-0}"
 # Set MODULE_E2E_SKIP_CLOSE=1 to skip settlement (close + claim; saves testnet txs).
 MODULE_E2E_SKIP_CLOSE="${MODULE_E2E_SKIP_CLOSE:-0}"
+# Set MODULE_E2E_SKIP_FUND=1 to skip inline testnet pinata funding (assumes the
+# fixture owner/provider were pre-funded via scripts/fund-testnet-accounts.sh).
+MODULE_E2E_SKIP_FUND="${MODULE_E2E_SKIP_FUND:-0}"
 # Testnet fixture pins a single owner, so hardcoded vault 0 / stream 0 reuse
 # stale, already-closed/claimed state across runs. Auto-resolve a fresh empty
 # vault (and stream 0 within it) unless VAULT_ID is pinned or this is disabled.
@@ -512,45 +517,30 @@ if ps_is_local; then
 fi
 
 if ps_is_testnet; then
-  narr_step "Funding owner and provider on testnet (wallet pinata)"
-  SCAFFOLD_WALLET="$(ps_lez_cache)/target/release/wallet"
-  if [[ -x "$SCAFFOLD_WALLET" ]]; then
-    export PATH="$(dirname "$SCAFFOLD_WALLET"):$PATH"
-    export LEE_WALLET_HOME_DIR="$WALLET_HOME"
+  export LEE_WALLET_HOME_DIR="$WALLET_HOME"
+  if [[ "${MODULE_E2E_SKIP_FUND:-0}" == "1" ]]; then
+    narr_step "Skipping testnet funding (MODULE_E2E_SKIP_FUND=1; assuming pre-funded)"
+    narr_hint "Pre-fund with ./scripts/fund-testnet-accounts.sh before the demo"
+  else
+    narr_step "Funding owner and provider on testnet (wallet pinata)"
     owner_target=$((DEPOSIT + 50))
-    owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null || echo 0)"
-    owner_attempts=0
-    while (( owner_bal < owner_target && owner_attempts < 6 )); do
-      owner_attempts=$((owner_attempts + 1))
-      "$SCAFFOLD_WALLET" pinata claim --to "Public/$OWNER" >/dev/null 2>&1 || true
-      sync_wallet
-      owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null || echo 0)"
-    done
-    narr_verbose "Owner balance $owner_bal (target $owner_target)"
-    if (( owner_bal < owner_target )); then
-      narr_fail "Owner balance $owner_bal below deposit target $owner_target"
+    owner_bal="0"
+    if ! owner_bal="$(ps_fund_testnet_account "$OWNER" "$owner_target" 6)"; then
+      narr_fail "Owner balance ${owner_bal:-0} below deposit target $owner_target"
       FAILURES=$((FAILURES + 1))
+    else
+      narr_verbose "Owner balance $owner_bal (target $owner_target)"
     fi
-    if ps_account_is_at_initialized "$PROVIDER"; then
-      provider_min=50
-      provider_bal="$(ps_account_balance "$PROVIDER" 2>/dev/null || echo 0)"
-      provider_attempts=0
-      while (( provider_bal < provider_min && provider_attempts < 3 )); do
-        provider_attempts=$((provider_attempts + 1))
-        "$SCAFFOLD_WALLET" pinata claim --to "Public/$PROVIDER" >/dev/null 2>&1 || true
-        sync_wallet
-        provider_bal="$(ps_account_balance "$PROVIDER" 2>/dev/null || echo 0)"
-      done
-      narr_verbose "Provider balance after pinata: $provider_bal (min $provider_min)"
+    provider_bal="0"
+    if ! provider_bal="$(ps_fund_testnet_account "$PROVIDER" "${PROVIDER_MIN:-50}" 3)"; then
+      narr_verbose "Provider balance ${provider_bal:-0} (min ${PROVIDER_MIN:-50})"
+    else
+      narr_verbose "Provider balance after pinata: $provider_bal (min ${PROVIDER_MIN:-50})"
     fi
-    provider_bal="$(ps_account_balance "$PROVIDER" 2>/dev/null || echo 0)"
     if [[ -z "$provider_bal" || "$provider_bal" == "0" ]]; then
       narr_fail "Provider has zero balance after pinata (claim signer needs gas)"
       FAILURES=$((FAILURES + 1))
     fi
-  else
-    narr_fail "Scaffold wallet not found; cannot fund testnet accounts"
-    FAILURES=$((FAILURES + 1))
   fi
 fi
 
