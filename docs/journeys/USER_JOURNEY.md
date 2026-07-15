@@ -41,7 +41,7 @@ chmod +x scripts/user-journey-*.sh
 ./scripts/user-journey-shell.sh
 ```
 
-Inside the shell, run Steps 1–19 in [USER_JOURNEY.md](USER_JOURNEY.md). Re-export Step 1 if you open a new terminal.
+Inside the shell, run Steps 1–18 in [USER_JOURNEY.md](USER_JOURNEY.md). Re-export Step 1 if you open a new terminal.
 
 `user-journey-shell.sh` installs `lgs` when missing (with a LEZ v0.2 wallet-config patch if upstream scaffold needs it), then opens a Nix shell with pinned `logoscore` and `lgpm` that load `linux-amd64-dev` modules. Steps 4, 5, and 9 call `./scripts/user-journey-lgs-setup.sh`, `./scripts/user-journey-install-modules.sh`, and `./scripts/user-journey-auth-transfer.sh`.
 
@@ -250,42 +250,11 @@ echo "Payer balance $pb (target $PAYER_TARGET); payee balance $pe (target $PAYEE
 sync_to_chain
 ```
 
-## Step 11 — Pick vault id
+## Step 11 — Initialize vault
 
-The scan treats a vault as taken only when the inner `getVaultStatus` result has
-`"status":"ok"`. The outer logoscore line also has `"status":"ok"` on every successful RPC — do not grep that.
-
-```bash
-vault_is_initialized() {
-  local vid="$1" line
-  line="$(logoscore call payment_streams_module chainAction getVaultStatus \
-    "{\"owner\":\"$PAYER\",\"vault_id\":$vid}" 2>/dev/null | tail -1)"
-  python3 -c '
-import json, sys
-try:
-    o = json.loads(sys.argv[1])
-    inner = o.get("result", "{}")
-    if isinstance(inner, str):
-        inner = json.loads(inner) if inner.strip().startswith("{") else {}
-    sys.exit(0 if inner.get("status") == "ok" else 1)
-except Exception:
-    sys.exit(1)
-' "$line"
-}
-
-export VAULT_ID=0
-while vault_is_initialized "$VAULT_ID"; do
-  VAULT_ID=$((VAULT_ID + 1))
-  if (( VAULT_ID > 128 )); then
-    echo "vault id scan exceeded 128; check getVaultStatus / owner $PAYER" >&2
-    exit 1
-  fi
-done
-export VAULT_ID
-echo "Using vault_id=$VAULT_ID"
-```
-
-## Step 12 — Initialize vault
+Step 1 sets `VAULT_ID=0`. After Step 7 you have a new payer, so vault 0 is usually free. If
+`initializeVault` fails because that vault already exists for `$PAYER`, run
+`export VAULT_ID=1` (or the next free id) and repeat this step.
 
 ```bash
 logoscore call payment_streams_module chainAction initializeVault \
@@ -295,7 +264,7 @@ logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
 
-## Step 13 — Deposit
+## Step 12 — Deposit
 
 ```bash
 logoscore call payment_streams_module chainAction deposit \
@@ -305,7 +274,7 @@ logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
 
-## Step 14 — Create stream
+## Step 13 — Create stream
 
 ```bash
 logoscore call payment_streams_module chainAction createStream \
@@ -315,7 +284,7 @@ logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-## Step 15 — Wait for accrual
+## Step 14 — Wait for accrual
 
 Wait at least `$MIN_ACCRUED` seconds, then:
 
@@ -325,7 +294,7 @@ logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-## Step 16 — Close stream (payer)
+## Step 15 — Close stream (payer)
 
 Omit `authority` so the payer (`signer`) signs close.
 
@@ -337,7 +306,7 @@ logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-## Step 17 — Claim (payee)
+## Step 16 — Claim (payee)
 
 ```bash
 logoscore call payment_streams_module chainAction claim \
@@ -345,7 +314,7 @@ logoscore call payment_streams_module chainAction claim \
 sync_to_chain
 ```
 
-## Step 18 — Confirm
+## Step 17 — Confirm
 
 ```bash
 logoscore call payment_streams_module chainAction getStreamStatus \
@@ -353,7 +322,7 @@ logoscore call payment_streams_module chainAction getStreamStatus \
 chain_balance "$PAYEE"
 ```
 
-## Step 19 — Shut down
+## Step 18 — Shut down
 
 ```bash
 logoscore call logos_execution_zone close 2>/dev/null || true
@@ -371,10 +340,10 @@ exit
 | `Run this from the journey toolchain shell` | `./scripts/user-journey-shell.sh` before Step 5 |
 | `missing wallet debug config in lez repo` | `./scripts/user-journey-lgs-setup.sh` (fallback copy built in) |
 | Stale reads | `sync_to_chain`, poll again |
-| Vault id scan runs forever | Step 11 must use inner `getVaultStatus` status, not outer RPC grep |
+| `initializeVault` fails for vault 0 | Reuse of `$PAYER` from an earlier run: `export VAULT_ID=1` and retry Step 11, or `./scripts/user-journey-reset.sh` and new accounts in Step 7 |
 | Deposit rejected | Step 10 pinata for payer |
-| Stream not Closed | Run `sync_to_chain`; Step 16 without `authority` |
-| Empty claim | Step 15 until `accrued_lo` ≥ `MIN_ACCRUED` |
+| Stream not Closed | Run `sync_to_chain`; Step 15 without `authority` |
+| Empty claim | Step 14 until `accrued_lo` ≥ `MIN_ACCRUED` |
 | AT errors | Step 9 `./scripts/user-journey-auth-transfer.sh`; check `.scaffold/e2e/user-journey-at.jsonl` |
 | Pinata no effect | `LEE_WALLET_HOME_DIR` = `$WALLET_HOME`; close wallet before claims (Step 10) |
 
