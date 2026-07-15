@@ -33,7 +33,7 @@ Host and toolchain:
 * Linux (Ubuntu 22.04+) or macOS 14+
 * Nix with flakes enabled
 * Rust toolchain with RISC Zero for the guest ELF (`make build` or `cargo risczero build` under `methods/guest/`)
-* Logos scaffold CLI (`lgs`) on `PATH` for localnet
+* Logos scaffold CLI (`lgs`) on `PATH` — see [USER_JOURNEY.md](docs/journeys/USER_JOURNEY.md#prerequisites)
 * Internet access for Nix flakes (and for testnet runs)
 
 Run verification inside a shell that provides `logoscore` and `lgpm`, for example:

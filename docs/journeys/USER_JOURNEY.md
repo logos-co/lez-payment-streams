@@ -1,14 +1,12 @@
 # User Journey — payment streams on TestNet v0.2
 
-CLI on public testnet: vault, deposit, stream to a payee, payer closes, payee claims.
-Uses `logos_execution_zone` and `payment_streams_module`.
+Install `payment_streams_module` next to `logos_execution_zone`, then on public testnet run the
+LIP-155 flow as payer (vault, deposit, stream, close) and payee (claim). One `logoscore` daemon
+and one wallet file hold two public accounts on a single host.
 
-One `logoscore` daemon and one wallet file hold both payer and payee public accounts — you
-simulate two parties on one machine. Pause, resume, and top-up are out of scope here (see module
-catalogue).
+Pause, resume, and top-up are out of scope ([chainAction catalogue](../payment-streams-module/README.md#chainaction-catalogue)).
 
 ## Glossary
-
 
 | Term (prose)               | JSON / wire                                      | Meaning                                                                                     |
 | -------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
@@ -22,31 +20,39 @@ catalogue).
 | `MIN_ACCRUED`              | (shell only)                                     | Minimum `accrued_lo` before close in this walkthrough; token units, not seconds             |
 | Authenticated transfer (AT) | `register_public_account` on testnet            | Lets public accounts spend tokens; required before deposit and stream writes                  |
 
-
 Default sizing: sequencer `https://testnet.lez.logos.co/`, program id
 `de17c0db368abf9f6476f4d67a56ad24e89ddb23bc49b58f7effb566146c1677` (release guest ELF
 361716 bytes), deposit 500 (must cover
 `allocation` 80; leftover deposit stays in the vault after close), rate 1 token per second of chain
-clock time, `MIN_ACCRUED` 1, vault/stream ids start at 0.
+clock time, `MIN_ACCRUED` 1, vault/stream ids start at 0. Testnet program id is org-deployed;
+your built guest must match `fixtures/testnet-module.json` (Step 3).
 
-## Before Step 1 — Clone and enter the repo
+## Prerequisites
 
-Skip if you already have a checkout and are in its root.
+Host: Git, Nix (flakes), Docker, RISC Zero CLI (`cargo-risczero`, `rzup install`), Rust/cargo
+(for `lgs setup`), network access to the public sequencer.
+
+Logos Scaffold (`lgs`) on `PATH`, able to read this repo’s `scaffold.toml` and seed wallet debug
+config from `lez/wallet/configs/debug/wallet_config.json` in the pinned LEZ tree.
 
 ```bash
 git clone https://github.com/logos-co/lez-payment-streams.git
 cd lez-payment-streams
+chmod +x scripts/user-journey-shell.sh
+./scripts/user-journey-shell.sh
 ```
 
-Expected outcome: repository root contains `scaffold.toml`, `Makefile`, and `docs/journeys/USER_JOURNEY.md`.
+If `lgs` is not installed yet (once per host):
+
+```bash
+git clone https://github.com/logos-co/scaffold.git
+cd scaffold && cargo install --path . --locked --force
+```
+
+Run the journey from the repo root inside the shell opened by `user-journey-shell.sh`. Re-export
+Step 1 if you open a new terminal.
 
 ## Step 1 — Session variables
-
-Run from the repository root (`pwd` becomes `REPO_ROOT`). Logos Scaffold pins
-logos-execution-zone in `scaffold.toml` (`[repos.lez]` → `pin`); `lgs setup` (Step 5) builds that
-commit under `~/.cache/logos-scaffold/repos/lez/<pin>/` for `$SCAFFOLD_WALLET`. Wallet data for
-this walkthrough lives under `$REPO_ROOT/.scaffold/e2e/`. `LEE_WALLET_HOME_DIR` is set to
-`WALLET_HOME`.
 
 ```bash
 export REPO_ROOT="$(pwd)"
@@ -71,8 +77,6 @@ export PAYER=""
 export PAYEE=""
 ```
 
-Expected outcome: `echo "$LEZ_PIN"` prints the 40-character git pin from `scaffold.toml` (starts with `a58fbce`). `test -d "$REPO_ROOT"` succeeds.
-
 ## Step 2 — Sequencer up
 
 ```bash
@@ -80,33 +84,17 @@ curl -sf -X POST "$SEQUENCER_URL" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}'
 ```
 
-Expected outcome: JSON on stdout with `"result"` set to a non-negative block height (integer). Exit code 0. A connection error means fix network or `SEQUENCER_URL` before continuing.
-
 ## Step 3 — Build guest ELF and check ImageID
 
-On a fresh machine you need Docker running and the RISC Zero CLI (`cargo install cargo-risczero`,
-then `rzup install`). `make build` compiles the guest inside Docker image
-`risczero/risc0-guest-builder:r0.1.88.0` (Rust 1.88). The repo pins `methods/guest/Cargo.lock`
-so that build succeeds; do not run `cargo update` under `methods/guest/` unless you mean to change
-program identity.
-
-The first `make build` can take several minutes. Output path must match `PAYMENT_STREAMS_GUEST_BIN`
-from Step 1.
-
-Build:
+`make build` uses Docker guest-builder `risczero/risc0-guest-builder:r0.1.88.0` and the pinned
+`methods/guest/Cargo.lock`. Do not run `cargo update` under `methods/guest/` unless you intend to
+change program identity.
 
 ```bash
 cd "$REPO_ROOT"
 make build
 test -f "$PAYMENT_STREAMS_GUEST_BIN"
 ```
-
-Expected outcome: `make build` finishes without error; `test -f` is silent (exit 0). Guest ELF path matches Step 1 (`…/docker/lez_payment_streams.bin`).
-
-Confirm the built guest matches the program deployed on testnet (`fixtures/testnet-module.json`).
-The check compares the `ImageID (hex bytes)` line from `make program-id` to `program_id_hex` in
-the fixture. On mismatch, stop before module install — do not use `exit` in a pasted block (it
-closes your shell).
 
 ```bash
 cd "$REPO_ROOT"
@@ -121,65 +109,21 @@ else
   echo "Guest ImageID mismatch." >&2
   echo "  built:    $BUILT" >&2
   echo "  expected: $EXPECTED" >&2
-  echo "Stop: redeploy testnet from this guest or obtain the fixture-matching binary before Steps 7+." >&2
 fi
 ```
 
-Expected outcome: line `Program id matches testnet fixture.` on stdout when your checkout matches deployed testnet. On mismatch, stderr shows built vs expected hex; do not continue to module install until they match.
+Stop if ImageID does not match the fixture.
 
-If Docker fails with `rustc 1.88.0-dev is not supported` and crates requiring 1.89+, your checkout
-is missing the pinned guest lockfile — use an up-to-date `lez-payment-streams` clone (or restore
-`methods/guest/Cargo.lock` from upstream).
-
-## Step 4 — Tooling on PATH
-
-You need three CLIs. This walkthrough does not assert a single semver for `logoscore` or `lgpm`;
-use builds that expose the RPCs and commands below. Maintainers use the Nix flakes in
-[README.md](../../README.md) (`logos-logoscore-cli`, `logos-package-manager`). Arbitrary older
-installs may lack `chainAction` or wallet module RPCs.
-
-| Tool | What must match |
-| --- | --- |
-| `lgs` | Logos Scaffold that reads this repo’s `scaffold.toml` (`[scaffold] version = "0.2.0"`, LEZ pin `a58fbce…`). |
-| `logoscore` | Daemon + `logoscore call …` (Steps 8–20). |
-| `lgpm` | `lgpm install` for `.lgx` bundles (Step 7). Scaffold also pins LGPM at `e5c25989…` when you install via scaffold. |
-
-`lgs` alone is enough through Step 6 (LEZ wallet CLI from `lgs setup`). Steps 7+ require all three.
-
-```bash
-lgs --version
-logoscore --version
-lgpm --version
-```
-
-Expected outcome: each command prints a version or help banner and exits 0 (no “command not found”).
-
-## Step 5 — LEZ scaffold and wallet CLI
-
-Builds the LEZ commit pinned in `scaffold.toml` (same `LEZ_PIN` as Step 1). Journey
-wallet data stays under `$REPO_ROOT/.scaffold/e2e/`.
+## Step 4 — Scaffold and wallet CLI
 
 ```bash
 cd "$REPO_ROOT"
 lgs init
 lgs setup
-```
-
-Expected outcome: `lgs init` creates or refreshes `.scaffold/` under the repo. `lgs setup` completes without error and populates `~/.cache/logos-scaffold/repos/lez/<LEZ_PIN>/` (including `target/release/wallet` after Step 6).
-
-## Step 6 — LEZ wallet binary
-
-```bash
 test -x "$SCAFFOLD_WALLET"
 ```
 
-Expected outcome: silent exit 0. If the file is missing, re-run Step 5 or build the wallet from the pinned LEZ checkout under `$SCAFFOLD_LEZ_CACHE`.
-
-## Step 7 — Wallet config and module install
-
-Copy the testnet wallet config template (edit `sequencer_addr` only if you use another endpoint).
-Install two bundles: `payment_streams_module` (LIP-155 chain writes) and a patched
-`logos_execution_zone` wallet module from this repo’s flake (testnet authenticated-transfer support).
+## Step 5 — Wallet config and module install
 
 ```bash
 mkdir -p "$WALLET_HOME" "$MODULES"
@@ -194,9 +138,7 @@ WALLET_FLAKE="$REPO_ROOT/logos-payment-streams-module/nix/flakes/logos-execution
 lgpm --modules-dir "$MODULES" install --file "$(readlink -f "$WALLET_FLAKE/wallet-lgx-out"/*.lgx)"
 ```
 
-Expected outcome: `$WALLET_CONFIG` exists with `sequencer_addr` pointing at testnet. `$MODULES` contains installed `payment_streams_module` and `logos_execution_zone` plugins (from `lgpm install` success messages). Nix builds may take several minutes on first run.
-
-## Step 8 — Start logoscore and open wallet
+## Step 6 — Start logoscore and open wallet
 
 ```bash
 cd "$REPO_ROOT"
@@ -213,15 +155,9 @@ fi
 logoscore call logos_execution_zone save
 ```
 
-Expected outcome: `logoscore load-module` succeeds for both modules. Last line of `create_new` or `open` is JSON with `"status":"ok"` or `"result":0`. `$WALLET_STORAGE` exists after first run.
+Use the last line of each `logoscore call` for JSON `status` / `result`.
 
-`logoscore call` prints JSON on the last line (`status`, `result`). Use the `result` field in
-the steps below. If `load-module` fails, ensure no other `logoscore` daemon is using
-`$MODULES`.
-
-## Step 9 — Create payer and payee accounts
-
-Set payer (skipped when `PAYER` is already set):
+## Step 7 — Create payer and payee accounts
 
 ```bash
 if [[ -z "$PAYER" ]]; then
@@ -231,11 +167,6 @@ if [[ -z "$PAYER" ]]; then
     | sed -n 's/.*"result":"\([^"]*\)".*/\1/p')
   export PAYER
 fi
-```
-
-Set payee (skip when `PAYEE` is already set):
-
-```bash
 if [[ -z "$PAYEE" ]]; then
   PAYEE_HEX=$(logoscore call logos_execution_zone create_account_public | tail -1 \
     | sed -n 's/.*"result":"\([^"]*\)".*/\1/p')
@@ -243,22 +174,12 @@ if [[ -z "$PAYEE" ]]; then
     | sed -n 's/.*"result":"\([^"]*\)".*/\1/p')
   export PAYEE
 fi
-```
-
-Expected outcome: `echo "$PAYER"` and `echo "$PAYEE"` each print a base58 public account id (about 44 characters). They must differ.
-
-Save:
-
-```bash
 logoscore call logos_execution_zone save
 ```
 
-Expected outcome: save returns JSON with ok status; payer and payee ids remain exported in the shell.
+## Step 8 — Sync to chain
 
-## Step 10 — Sync to chain
-
-After every write in Steps 11–20, run this once before trusting reads (repeat if values look
-stale):
+Define once; run after chain writes before trusting reads.
 
 ```bash
 sync_to_chain() {
@@ -278,11 +199,9 @@ sync_to_chain() {
 }
 ```
 
-Expected outcome: defining the function prints nothing; later `sync_to_chain` exits 0 and advances the wallet to the sequencer’s latest block id.
+When a step says sync to chain, run `sync_to_chain`.
 
-When a step says sync to chain — Step 10, run `sync_to_chain`.
-
-## Step 11 — Authenticated transfer registration
+## Step 9 — Authenticated transfer registration
 
 Payer:
 
@@ -292,9 +211,7 @@ PAYER_HEX=$(logoscore call logos_execution_zone account_id_from_base58 "$PAYER" 
 logoscore call logos_execution_zone register_public_account "$PAYER_HEX"
 ```
 
-Expected outcome: last line JSON indicates success (inner `status":"ok"` or equivalent). Failures often mean the account is already registered or the wallet is out of sync — sync (Step 10) and retry if needed.
-
-Sync to chain — Step 10. Payee:
+Sync to chain. Payee:
 
 ```bash
 PAYEE_HEX=$(logoscore call logos_execution_zone account_id_from_base58 "$PAYEE" | tail -1 \
@@ -302,17 +219,11 @@ PAYEE_HEX=$(logoscore call logos_execution_zone account_id_from_base58 "$PAYEE" 
 logoscore call logos_execution_zone register_public_account "$PAYEE_HEX"
 ```
 
-Expected outcome: same as payer registration — successful JSON on the last line.
+Sync to chain.
 
-Sync to chain — Step 10.
+## Step 10 — Fund accounts (pinata)
 
-## Step 12 — Fund accounts (pinata)
-
-Pinata pays testnet tokens per claim (~150 each, rate-limited). Only the standalone scaffold
-`wallet` binary can claim; release the in-process wallet lock first so both tools do not open
-`storage.json` at once.
-
-Sequencer balance for a base58 public account (no wallet sync required):
+Close the in-process wallet before the standalone `wallet` binary claims pinata.
 
 ```bash
 chain_balance() {
@@ -320,14 +231,7 @@ chain_balance() {
     -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$1\"]}" \
     | sed -n 's/.*"balance":\([0-9][0-9]*\).*/\1/p' | head -1
 }
-```
 
-Expected outcome: function defined; a test call `chain_balance "$PAYER"` after accounts exist returns a non-negative integer (may be `0` before funding).
-
-Fund with enough pinata claims for the targets (~150 tokens per claim), then check balances on
-the sequencer:
-
-```bash
 export PATH="$(dirname "$SCAFFOLD_WALLET"):$PATH"
 PINATA_PER_CLAIM=150
 PAYER_TARGET=$((DEPOSIT + 50))
@@ -364,17 +268,9 @@ pe=$(chain_balance "$PAYEE"); pe=${pe:-0}
 echo "Payer balance $pb (target $PAYER_TARGET); payee balance $pe (target $PAYEE_TARGET)"
 ```
 
-Expected outcome: printed payer balance ≥ `PAYER_TARGET` (`DEPOSIT + 50`, default 550) and payee balance ≥ `PAYEE_TARGET` (default 50). Each successful pinata claim prints a transaction hash from `$SCAFFOLD_WALLET`.
+Sync to chain.
 
-If either balance is still below target (rate limit or a short claim), wait a minute and re-run
-Step 12 — only the claim loops run again; balances already at target need no more claims.
-
-Sync to chain — Step 10.
-
-## Step 13 — Pick vault id
-
-Use the lowest `vault_id` that is not initialized yet. On a fresh wallet that is usually `0`.
-When the inner `result` contains `"status":"ok"`, that vault already exists — try the next id.
+## Step 11 — Pick vault id
 
 ```bash
 export VAULT_ID=0
@@ -386,118 +282,83 @@ export VAULT_ID
 echo "Using vault_id=$VAULT_ID"
 ```
 
-Expected outcome: prints `Using vault_id=N` where `N` is the first vault id whose config is not yet initialized on chain for `$PAYER`.
-
-## Step 14 — Initialize vault
+## Step 12 — Initialize vault
 
 ```bash
 logoscore call payment_streams_module chainAction initializeVault \
   "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
 
-Expected outcome: last line JSON shows initialize accepted (`status":"ok"` / success).
-
-Sync to chain — Step 10, then read vault status:
+Sync to chain, then:
 
 ```bash
 logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
 
-Expected outcome: after sync, `getVaultStatus` inner `result` has `"status":"ok"` and vault holding balance 0 (or expected empty vault fields).
-
-## Step 15 — Deposit
+## Step 13 — Deposit
 
 ```bash
 logoscore call payment_streams_module chainAction deposit \
   "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}"
 ```
 
-Expected outcome: last line JSON shows deposit accepted.
-
-Sync to chain — Step 10, then:
+Sync to chain, then:
 
 ```bash
 logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
 
-Expected outcome: after sync, vault holding balance equals `$DEPOSIT` (default 500) in the status read.
-
-## Step 16 — Create stream
+## Step 14 — Create stream
 
 ```bash
 logoscore call payment_streams_module chainAction createStream \
   "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PAYEE\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}"
 ```
 
-Expected outcome: last line JSON shows stream creation accepted.
-
-Sync to chain — Step 10, then:
+Sync to chain, then:
 
 ```bash
 logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-Expected outcome: after sync, `getStreamStatus` shows `"stream_state":0` (Active), `rate` matching `$RATE`, and allocation fields consistent with `$ALLOCATION`.
+## Step 15 — Wait for accrual
 
-In production the payee runs `getStreamStatus` and `claim` from their own wallet using payer
-account id (`owner`), `vault_id`, and `stream_id` (out of band).
-
-## Step 17 — Wait for accrual
-
-While the stream is active, `accrued_lo` grows on chain at `RATE` tokens per second of chain
-clock time (default `RATE` 1 → one token per second). The payee’s wallet balance changes
-only after Step 19 (`claim`); until then only `accrued_lo` increases.
-
-Wait at least `MIN_ACCRUED` seconds (plus a sync — Step 10) so `accrued_lo` reaches
-`MIN_ACCRUED`. Longer waits accrue more up to `allocation`. Then check status:
+Wait at least `$MIN_ACCRUED` seconds, sync to chain, then:
 
 ```bash
 logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-Expected outcome: `"accrued_lo"` ≥ `$MIN_ACCRUED` (default 1), `"stream_state":0`, and `"unaccrued_lo"` less than `$ALLOCATION` if time has not fully accrued the allocation.
+## Step 16 — Close stream (payer)
 
-If the read looks stale or too low, wait longer, sync again, and re-run the command.
-
-## Step 18 — Close stream (payer)
-
-`authority` optionally delegates who signs close; omit it so the payer (`signer`) signs. Do not
-set `authority` to the payee. Close moves `unaccrued_lo` back to the vault; `accrued_lo` stays
-claimable in Step 19.
+Omit `authority` so the payer (`signer`) signs close.
 
 ```bash
 logoscore call payment_streams_module chainAction closeStream \
   "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-Expected outcome: last line JSON shows close accepted.
-
-Sync to chain — Step 10, then:
+Sync to chain, then:
 
 ```bash
 logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-Expected outcome: `"stream_state":2` (Closed) in the inner `result`; unaccrued allocation returned toward the vault.
-
-## Step 19 — Claim (payee)
-
-Pays `accrued_lo` from the stream to the payee (`provider`). Unaccrued allocation already
-returned to the vault at close.
+## Step 17 — Claim (payee)
 
 ```bash
 logoscore call payment_streams_module chainAction claim \
   "{\"owner\":\"$PAYER\",\"provider\":\"$PAYEE\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-Expected outcome: last line JSON shows claim accepted (`status":"ok"` / success flag). Sync (Step 10) before Step 20 reads.
+Sync to chain.
 
-## Step 20 — Confirm success
+## Step 18 — Confirm
 
 ```bash
 logoscore call payment_streams_module chainAction getStreamStatus \
@@ -505,23 +366,20 @@ logoscore call payment_streams_module chainAction getStreamStatus \
 chain_balance "$PAYEE"
 ```
 
-Expected outcome: stream still `"stream_state":2`; `accrued_lo` 0 or settled after claim. Payee `chain_balance` increased by roughly the accrued amount claimed (net of gas).
-
 ## If something fails
 
-
-| Symptom           | Try                                                       |
-| ----------------- | --------------------------------------------------------- |
-| Stale reads       | Sync to chain — Step 10, poll again                       |
-| Deposit rejected  | Pinata fund payer; redo step 12                           |
-| Stream not Closed | Sync to chain — Step 10; redo step 18 without `authority` |
-| Empty claim       | Wait longer in step 17 until `accrued_lo` ≥ `MIN_ACCRUED` |
-| AT errors         | Redo authenticated transfer (step 11); sync — Step 10     |
-
+| Symptom | Try |
+| --- | --- |
+| `missing wallet debug config in lez repo` after `lgs setup` | Update `lgs` from logos-co/scaffold, or copy `$SCAFFOLD_LEZ_CACHE/lez/wallet/configs/debug/wallet_config.json` to `$REPO_ROOT/.scaffold/wallet/wallet_config.json` and re-run Step 4 |
+| Stale reads | `sync_to_chain`, poll again |
+| Deposit rejected | Step 10 pinata for payer |
+| Stream not Closed | Sync; Step 16 without `authority` |
+| Empty claim | Step 15 until `accrued_lo` ≥ `MIN_ACCRUED` |
+| AT errors | Step 9; sync |
+| Pinata no effect | `LEE_WALLET_HOME_DIR` = `$WALLET_HOME`; close wallet before claims (Step 10) |
 
 ## Reference
 
 - [LIP-155](https://lip.logos.co/anoncomms/raw/payment-streams.html)
 - [Logos build-and-run](https://docs.logos.co/core/build-modules/build-and-run-a-logos-core-module)
 - [payment-streams-module chainAction catalogue](../payment-streams-module/README.md#chainaction-catalogue)
-

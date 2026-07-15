@@ -191,6 +191,9 @@ Full command-level dry-run not executed in this pass (requires local `logoscore`
 Re-run Runtime through Claim blocks from [USER_JOURNEY.md](../../journeys/USER_JOURNEY.md) after
 `make bootstrap-testnet-module` and `MODE=module CHAIN=testnet ./scripts/e2e.sh testnet prepare`.
 
+Tooling entrypoint: [USER_JOURNEY.md#prerequisites](../../journeys/USER_JOURNEY.md#prerequisites)
+(`scripts/user-journey-shell.sh`).
+
 #### Not in scope
 
 - Developer Journey / Store / `delivery_module` / eligibility proofs.
