@@ -252,11 +252,34 @@ sync_to_chain
 
 ## Step 11 — Pick vault id
 
+The scan treats a vault as taken only when the inner `getVaultStatus` result has
+`"status":"ok"`. The outer logoscore line also has `"status":"ok"` on every successful RPC — do not grep that.
+
 ```bash
+vault_is_initialized() {
+  local vid="$1" line
+  line="$(logoscore call payment_streams_module chainAction getVaultStatus \
+    "{\"owner\":\"$PAYER\",\"vault_id\":$vid}" 2>/dev/null | tail -1)"
+  python3 -c '
+import json, sys
+try:
+    o = json.loads(sys.argv[1])
+    inner = o.get("result", "{}")
+    if isinstance(inner, str):
+        inner = json.loads(inner) if inner.strip().startswith("{") else {}
+    sys.exit(0 if inner.get("status") == "ok" else 1)
+except Exception:
+    sys.exit(1)
+' "$line"
+}
+
 export VAULT_ID=0
-while logoscore call payment_streams_module chainAction getVaultStatus \
-  "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}" | tail -1 | grep -q '"status":"ok"'; do
+while vault_is_initialized "$VAULT_ID"; do
   VAULT_ID=$((VAULT_ID + 1))
+  if (( VAULT_ID > 128 )); then
+    echo "vault id scan exceeded 128; check getVaultStatus / owner $PAYER" >&2
+    exit 1
+  fi
 done
 export VAULT_ID
 echo "Using vault_id=$VAULT_ID"
@@ -348,6 +371,7 @@ exit
 | `Run this from the journey toolchain shell` | `./scripts/user-journey-shell.sh` before Step 5 |
 | `missing wallet debug config in lez repo` | `./scripts/user-journey-lgs-setup.sh` (fallback copy built in) |
 | Stale reads | `sync_to_chain`, poll again |
+| Vault id scan runs forever | Step 11 must use inner `getVaultStatus` status, not outer RPC grep |
 | Deposit rejected | Step 10 pinata for payer |
 | Stream not Closed | Run `sync_to_chain`; Step 16 without `authority` |
 | Empty claim | Step 15 until `accrued_lo` ≥ `MIN_ACCRUED` |
