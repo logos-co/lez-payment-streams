@@ -26,7 +26,9 @@ Developer Journey — Store integration. Packet:
 In-repo SSOT draft: [docs/store-integration/README.md](docs/store-integration/README.md).
 
 User Journey — CLI doc packet: [Step 22](docs/plan/upcoming/step-22-ui-journey.md) (active, independent of UI).
+User Journey — testnet manual walkthrough: [Step 34](docs/plan/upcoming/step-34-user-journey-manual-walkthrough.md) (active).
 User Journey on TestNet v0.2: [Step 28](docs/plan/completed/step-28-user-journey-testnet.md) (complete).
+Raw TODOs (unscheduled ideas): [docs/plan/raw-todos/](docs/plan/raw-todos/).
 User Journey UI (optional) — Basecamp plugin: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md).
 
 ### E2E and migration (Steps 26-33)

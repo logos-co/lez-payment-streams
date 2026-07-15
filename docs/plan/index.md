@@ -20,7 +20,7 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |
 
 Developer Journey (Store integration): Step 20 + Step 17 scripts.
-User Journey: Step 22 (active, CLI-based doc packet).
+User Journey: Step 22 (active, CLI-based doc packet); Step 34 (active, in-repo manual walkthrough).
 User Journey UI (optional): Step 21 (Basecamp plugin) — if shipped, Step 22 may include UI content.
 TestNet v0.2 migration: Steps 26-28 (complete).
 E2E narrative UX: Step 29 (complete).
@@ -51,6 +51,7 @@ paid Store mode on the provider.
 | LIP-155 on-chain spec (branch pin) | 19 (complete) |
 | Developer Journey: integrators, Store integration | 20 (**next**) |
 | User Journey: CLI doc packet | 22 (active) |
+| User Journey: testnet manual walkthrough | 34 (active) |
 | User Journey UI: Basecamp plugin (optional) | 21 (optional) |
 | Public hosted Store provider | 23 (optional) |
 | LEZ in-process harness (`program_tests`, rc5 `lee`) | 24 + 24b (complete) |
@@ -100,6 +101,9 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | 22 | User Journey: doc packet (CLI-based) | Active -- [step-22-ui-journey.md](upcoming/step-22-ui-journey.md) |
 | 23 | Public Store provider | Optional -- [step-23-public-store-provider.md](upcoming/step-23-public-store-provider.md) |
 | 32 | AT-init unify + Store claim phase | Active (signed off; D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
+| 34 | User Journey manual walkthrough (testnet CLI) | Active -- [step-34-user-journey-manual-walkthrough.md](upcoming/step-34-user-journey-manual-walkthrough.md) |
+
+Ideas not yet steps: [raw-todos/](raw-todos/).
 
 ## Delivery integration branches
 
