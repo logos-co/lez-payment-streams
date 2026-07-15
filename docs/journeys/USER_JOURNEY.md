@@ -34,7 +34,7 @@ Set `REPO_ROOT` to your lez-payment-streams checkout.
 
 Logos Scaffold pins logos-execution-zone in `scaffold.toml` (`[repos.lez]` → `pin` = git
 commit). `lgs setup` (Step 5) builds that commit under
-`~/.cache/logos-scaffold/repos/lez/<pin>/`. Set `LEZ_PIN` to that pin so Step 6 and Step 13
+`~/.cache/logos-scaffold/repos/lez/<pin>/`. Set `LEZ_PIN` to that pin so Step 6 and Step 12
 can use `$SCAFFOLD_WALLET`. Wallet files for this walkthrough live under
 `$REPO_ROOT/.scaffold/e2e/`. Tools read `LEE_WALLET_HOME_DIR` for wallet data; this journey sets
 it equal to `WALLET_HOME`.
@@ -80,13 +80,38 @@ curl -sf -X POST "$SEQUENCER_URL" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}'
 ```
 
-## Step 3 — Guest ImageID matches deployed program
+## Step 3 — Build guest ELF and check ImageID
+
+On a fresh machine you need Docker running and the RISC Zero CLI (`cargo install cargo-risczero`,
+then `rzup install`). `make build` compiles the guest inside Docker image
+`risczero/risc0-guest-builder:r0.1.88.0` (Rust 1.88). The repo pins `methods/guest/Cargo.lock`
+so that build succeeds; do not run `cargo update` under `methods/guest/` unless you mean to change
+program identity.
+
+The first `make build` can take several minutes. Output path must match `PAYMENT_STREAMS_GUEST_BIN`
+from Step 1.
+
+Build:
 
 ```bash
 cd "$REPO_ROOT"
-make program-id | grep -F '16b95d3701d256eecd41d5a55e4f570331994d787abf0cba44eec209e24f8a44' \
-  || { echo "Guest ImageID does not match deployed program id; rebuild the guest ELF (Step 7)." >&2; exit 1; }
+make build
+test -f "$PAYMENT_STREAMS_GUEST_BIN"
 ```
+
+Confirm the built guest matches the program deployed on testnet (`fixtures/testnet-module.json`):
+
+```bash
+cd "$REPO_ROOT"
+EXPECTED=$(grep -o '"program_id_hex": "[^"]*"' "$REPO_ROOT/fixtures/testnet-module.json" \
+  | sed -n 's/.*"program_id_hex": "\([^"]*\)".*/\1/p')
+make program-id | grep -F "$EXPECTED" \
+  || { echo "Guest ImageID does not match testnet fixture; use current repo pin and make build." >&2; exit 1; }
+```
+
+If Docker fails with `rustc 1.88.0-dev is not supported` and crates requiring 1.89+, your checkout
+is missing the pinned guest lockfile — use an up-to-date `lez-payment-streams` clone (or restore
+`methods/guest/Cargo.lock` from upstream).
 
 ## Step 4 — Tooling on PATH
 
@@ -113,13 +138,7 @@ lgs setup
 test -x "$SCAFFOLD_WALLET"
 ```
 
-## Step 7 — Guest ELF present
-
-```bash
-test -f "$PAYMENT_STREAMS_GUEST_BIN"
-```
-
-## Step 8 — Wallet config and module install
+## Step 7 — Wallet config and module install
 
 Copy the testnet wallet config template (edit `sequencer_addr` only if you use another endpoint).
 Install two bundles: `payment_streams_module` (LIP-155 chain writes) and a patched
@@ -138,7 +157,7 @@ WALLET_FLAKE="$REPO_ROOT/logos-payment-streams-module/nix/flakes/logos-execution
 lgpm --modules-dir "$MODULES" install --file "$(readlink -f "$WALLET_FLAKE/wallet-lgx-out"/*.lgx)"
 ```
 
-## Step 9 — Start logoscore and open wallet
+## Step 8 — Start logoscore and open wallet
 
 ```bash
 cd "$REPO_ROOT"
@@ -159,7 +178,7 @@ logoscore call logos_execution_zone save
 the steps below. If `load-module` fails, ensure no other `logoscore` daemon is using
 `$MODULES`.
 
-## Step 10 — Create payer and payee accounts
+## Step 9 — Create payer and payee accounts
 
 Set payer (skipped when `PAYER` is already set):
 
@@ -191,9 +210,9 @@ Save:
 logoscore call logos_execution_zone save
 ```
 
-## Step 11 — Sync to chain
+## Step 10 — Sync to chain
 
-After every write in Steps 12–21, run this once before trusting reads (repeat if values look
+After every write in Steps 11–20, run this once before trusting reads (repeat if values look
 stale):
 
 ```bash
@@ -214,9 +233,9 @@ sync_to_chain() {
 }
 ```
 
-When a step says sync to chain — Step 11, run `sync_to_chain`.
+When a step says sync to chain — Step 10, run `sync_to_chain`.
 
-## Step 12 — Authenticated transfer registration
+## Step 11 — Authenticated transfer registration
 
 Payer:
 
@@ -226,7 +245,7 @@ PAYER_HEX=$(logoscore call logos_execution_zone account_id_from_base58 "$PAYER" 
 logoscore call logos_execution_zone register_public_account "$PAYER_HEX"
 ```
 
-Sync to chain — Step 11. Payee:
+Sync to chain — Step 10. Payee:
 
 ```bash
 PAYEE_HEX=$(logoscore call logos_execution_zone account_id_from_base58 "$PAYEE" | tail -1 \
@@ -234,9 +253,9 @@ PAYEE_HEX=$(logoscore call logos_execution_zone account_id_from_base58 "$PAYEE" 
 logoscore call logos_execution_zone register_public_account "$PAYEE_HEX"
 ```
 
-Sync to chain — Step 11.
+Sync to chain — Step 10.
 
-## Step 13 — Fund accounts (pinata)
+## Step 12 — Fund accounts (pinata)
 
 Pinata pays testnet tokens per claim (~150 each, rate-limited). Only the standalone scaffold
 `wallet` binary can claim; release the in-process wallet lock first so both tools do not open
@@ -293,11 +312,11 @@ echo "Payer balance $pb (target $PAYER_TARGET); payee balance $pe (target $PAYEE
 ```
 
 If either balance is still below target (rate limit or a short claim), wait a minute and re-run
-Step 13 — only the claim loops run again; balances already at target need no more claims.
+Step 12 — only the claim loops run again; balances already at target need no more claims.
 
-Sync to chain — Step 11.
+Sync to chain — Step 10.
 
-## Step 14 — Pick vault id
+## Step 13 — Pick vault id
 
 Use the lowest `vault_id` that is not initialized yet. On a fresh wallet that is usually `0`.
 When the inner `result` contains `"status":"ok"`, that vault already exists — try the next id.
@@ -312,42 +331,42 @@ export VAULT_ID
 echo "Using vault_id=$VAULT_ID"
 ```
 
-## Step 15 — Initialize vault
+## Step 14 — Initialize vault
 
 ```bash
 logoscore call payment_streams_module chainAction initializeVault \
   "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
 
-Sync to chain — Step 11, then read vault status:
+Sync to chain — Step 10, then read vault status:
 
 ```bash
 logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
 
-## Step 16 — Deposit
+## Step 15 — Deposit
 
 ```bash
 logoscore call payment_streams_module chainAction deposit \
   "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}"
 ```
 
-Sync to chain — Step 11, then:
+Sync to chain — Step 10, then:
 
 ```bash
 logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
 
-## Step 17 — Create stream
+## Step 16 — Create stream
 
 ```bash
 logoscore call payment_streams_module chainAction createStream \
   "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PAYEE\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}"
 ```
 
-Sync to chain — Step 11, then:
+Sync to chain — Step 10, then:
 
 ```bash
 logoscore call payment_streams_module chainAction getStreamStatus \
@@ -357,13 +376,13 @@ logoscore call payment_streams_module chainAction getStreamStatus \
 In production the payee runs `getStreamStatus` and `claim` from their own wallet using payer
 account id (`owner`), `vault_id`, and `stream_id` (out of band).
 
-## Step 18 — Wait for accrual
+## Step 17 — Wait for accrual
 
 While the stream is active, `accrued_lo` grows on chain at `RATE` tokens per second of chain
 clock time (default `RATE` 1 → one token per second). The payee’s wallet balance changes
-only after Step 20 (`claim`); until then only `accrued_lo` increases.
+only after Step 19 (`claim`); until then only `accrued_lo` increases.
 
-Wait at least `MIN_ACCRUED` seconds (plus a sync — Step 11) so `accrued_lo` reaches
+Wait at least `MIN_ACCRUED` seconds (plus a sync — Step 10) so `accrued_lo` reaches
 `MIN_ACCRUED`. Longer waits accrue more up to `allocation`. Then check status:
 
 ```bash
@@ -371,24 +390,24 @@ logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-Confirm `accrued_lo` ≥ `MIN_ACCRUED` before Step 19. The last line’s inner `result` is JSON; look
+Confirm `accrued_lo` ≥ `MIN_ACCRUED` before Step 18. The last line’s inner `result` is JSON; look
 for `"accrued_lo":1` (or higher), `"stream_state":0`, and `"unaccrued_lo"` (allocation not yet
 accrued).
 
 If the read looks stale or too low, wait longer, sync again, and re-run the command.
 
-## Step 19 — Close stream (payer)
+## Step 18 — Close stream (payer)
 
 `authority` optionally delegates who signs close; omit it so the payer (`signer`) signs. Do not
 set `authority` to the payee. Close moves `unaccrued_lo` back to the vault; `accrued_lo` stays
-claimable in Step 20.
+claimable in Step 19.
 
 ```bash
 logoscore call payment_streams_module chainAction closeStream \
   "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-Sync to chain — Step 11, then:
+Sync to chain — Step 10, then:
 
 ```bash
 logoscore call payment_streams_module chainAction getStreamStatus \
@@ -397,7 +416,7 @@ logoscore call payment_streams_module chainAction getStreamStatus \
 
 Expect `"stream_state":2` (Closed) in the inner `result`.
 
-## Step 20 — Claim (payee)
+## Step 19 — Claim (payee)
 
 Pays `accrued_lo` from the stream to the payee (`provider`). Unaccrued allocation already
 returned to the vault at close.
@@ -407,9 +426,9 @@ logoscore call payment_streams_module chainAction claim \
   "{\"owner\":\"$PAYER\",\"provider\":\"$PAYEE\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-Sync to chain — Step 11.
+Sync to chain — Step 10.
 
-## Step 21 — Confirm success
+## Step 20 — Confirm success
 
 ```bash
 logoscore call payment_streams_module chainAction getStreamStatus \
@@ -425,11 +444,11 @@ claim). Payee sequencer balance should reflect the claimed tokens (minus gas).
 
 | Symptom           | Try                                                       |
 | ----------------- | --------------------------------------------------------- |
-| Stale reads       | Sync to chain — Step 11, poll again                       |
-| Deposit rejected  | Pinata fund payer; redo step 13                           |
-| Stream not Closed | Sync to chain — Step 11; redo step 19 without `authority` |
-| Empty claim       | Wait longer in step 18 until `accrued_lo` ≥ `MIN_ACCRUED` |
-| AT errors         | Redo authenticated transfer (step 12); sync — Step 11     |
+| Stale reads       | Sync to chain — Step 10, poll again                       |
+| Deposit rejected  | Pinata fund payer; redo step 12                           |
+| Stream not Closed | Sync to chain — Step 10; redo step 18 without `authority` |
+| Empty claim       | Wait longer in step 17 until `accrued_lo` ≥ `MIN_ACCRUED` |
+| AT errors         | Redo authenticated transfer (step 11); sync — Step 10     |
 
 
 ## Reference
