@@ -10,10 +10,11 @@ Full checklist: [verification-matrix.md — Cold start](../docs/reference/verifi
 Minimal sequence from repo root:
 
 ```bash
-# Testnet user walkthrough (logoscore + lgpm); see docs/journeys/USER_JOURNEY.md
+# Testnet user walkthrough — reset, toolchain shell, then docs/journeys/USER_JOURNEY.md
+./scripts/user-journey-reset.sh
 ./scripts/user-journey-shell.sh
 
-# Maintainer E2E tooling shell (same flakes, manual cd)
+# Maintainer E2E tooling shell (portable .lgx / #lgx-portable — not the user journey path)
 nix shell --accept-flake-config \
   github:logos-co/logos-logoscore-cli \
   github:logos-co/logos-package-manager \

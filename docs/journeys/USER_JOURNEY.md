@@ -36,13 +36,14 @@ public sequencer.
 ```bash
 git clone https://github.com/logos-co/lez-payment-streams.git
 cd lez-payment-streams
-chmod +x scripts/user-journey-shell.sh
+chmod +x scripts/user-journey-*.sh
+./scripts/user-journey-reset.sh
 ./scripts/user-journey-shell.sh
 ```
 
-The script installs Logos Scaffold (`lgs`) from [logos-co/scaffold](https://github.com/logos-co/scaffold)
-when it is not on `PATH`, then opens a shell with `logoscore` and `lgpm` 0.2.0. Run the journey
-from the repo root inside that shell. Re-export Step 1 if you open a new terminal.
+Inside the shell, run Steps 1–18 in [USER_JOURNEY.md](USER_JOURNEY.md). Re-export Step 1 if you open a new terminal.
+
+`user-journey-shell.sh` installs `lgs` when missing (with a LEZ v0.2 wallet-config patch if upstream scaffold needs it), then opens a Nix shell with pinned `logoscore` and `lgpm` that load `linux-amd64-dev` modules. Step 4 and Step 5 call `./scripts/user-journey-lgs-setup.sh` and `./scripts/user-journey-install-modules.sh`.
 
 ## Step 1 — Session variables
 
@@ -110,24 +111,18 @@ Stop if ImageID does not match the fixture.
 
 ```bash
 cd "$REPO_ROOT"
-lgs init
-lgs setup
+./scripts/user-journey-lgs-setup.sh
+export SCAFFOLD_WALLET="${SCAFFOLD_LEZ_CACHE}/target/release/wallet"
 test -x "$SCAFFOLD_WALLET"
 ```
 
 ## Step 5 — Wallet config and module install
 
 ```bash
-mkdir -p "$WALLET_HOME" "$MODULES"
-cp "$REPO_ROOT/fixtures/testnet-wallet_config.example.json" "$WALLET_CONFIG"
-
 cd "$REPO_ROOT"
-PS_LGX_OUT=$(nix build ./logos-payment-streams-module#lgx-portable -L --no-link --print-out-paths | tail -1)
-lgpm --modules-dir "$MODULES" install --file "$PS_LGX_OUT"/*.lgx --force
-
-"$REPO_ROOT/scripts/archive/build-wallet-lgx.sh"
-WALLET_LGX=$(readlink -f "$REPO_ROOT/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out/"*.lgx)
-lgpm --modules-dir "$MODULES" install --file "$WALLET_LGX" --force
+./scripts/user-journey-install-modules.sh
+export WALLET_CONFIG="$WALLET_HOME/wallet_config.json"
+export LEE_WALLET_HOME_DIR="$WALLET_HOME"
 ```
 
 ## Step 6 — Start logoscore and open wallet
@@ -362,9 +357,9 @@ chain_balance "$PAYEE"
 
 | Symptom | Try |
 | --- | --- |
-| `Source plugin file does not exist` on `lgpm install` | Step 5 uses `#lgx-portable` and `"$PS_LGX_OUT"/*.lgx`, not `#lgx` |
-| `linux-x86_64-dev` / `linux-amd64-dev` variant mismatch | Run `./scripts/user-journey-shell.sh` (`logos-logoscore-cli/0.2.0` includes matching `lgpm`) |
-| `missing wallet debug config in lez repo` after `lgs setup` | Update `lgs` from logos-co/scaffold, or copy `$SCAFFOLD_LEZ_CACHE/lez/wallet/configs/debug/wallet_config.json` to `$REPO_ROOT/.scaffold/wallet/wallet_config.json` and re-run Step 4 |
+| Module variant / `load-module` failed | `./scripts/user-journey-reset.sh`, re-enter `./scripts/user-journey-shell.sh`, Step 5 `./scripts/user-journey-install-modules.sh` |
+| `Run this from the journey toolchain shell` | `./scripts/user-journey-shell.sh` before Step 5 |
+| `missing wallet debug config in lez repo` | `./scripts/user-journey-lgs-setup.sh` (fallback copy built in) |
 | Stale reads | `sync_to_chain`, poll again |
 | Deposit rejected | Step 10 pinata for payer |
 | Stream not Closed | Sync; Step 16 without `authority` |
