@@ -8,6 +8,5 @@ if ! command -v lgs >/dev/null 2>&1; then
   exit 1
 fi
 exec nix shell --accept-flake-config \
-  github:logos-co/logos-logoscore-cli \
-  github:logos-co/logos-package-manager \
+  github:logos-co/logos-logoscore-cli/0.2.0 \
   --command bash -c "cd \"${REPO_ROOT}\" && exec bash"

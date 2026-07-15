@@ -130,12 +130,12 @@ mkdir -p "$WALLET_HOME" "$MODULES"
 cp "$REPO_ROOT/fixtures/testnet-wallet_config.example.json" "$WALLET_CONFIG"
 
 cd "$REPO_ROOT"
-nix build ./logos-payment-streams-module#lgx -o "$MODULES/payment_streams.lgx"
-lgpm --modules-dir "$MODULES" install --file "$(readlink -f "$MODULES/payment_streams.lgx")"
+PS_LGX_OUT=$(nix build ./logos-payment-streams-module#lgx-portable -L --no-link --print-out-paths | tail -1)
+lgpm --modules-dir "$MODULES" install --file "$PS_LGX_OUT"/*.lgx --force
 
-WALLET_FLAKE="$REPO_ROOT/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched"
-(cd "$WALLET_FLAKE" && nix bundle --impure --bundler github:logos-co/nix-bundle-lgx#portable .#lib -o wallet-lgx-out -L)
-lgpm --modules-dir "$MODULES" install --file "$(readlink -f "$WALLET_FLAKE/wallet-lgx-out"/*.lgx)"
+"$REPO_ROOT/scripts/archive/build-wallet-lgx.sh"
+WALLET_LGX=$(readlink -f "$REPO_ROOT/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out/"*.lgx)
+lgpm --modules-dir "$MODULES" install --file "$WALLET_LGX" --force
 ```
 
 ## Step 6 — Start logoscore and open wallet
@@ -370,6 +370,8 @@ chain_balance "$PAYEE"
 
 | Symptom | Try |
 | --- | --- |
+| `Source plugin file does not exist` on `lgpm install` | Step 5 uses `#lgx-portable` and `"$PS_LGX_OUT"/*.lgx`, not `#lgx` |
+| `linux-x86_64-dev` / `linux-amd64-dev` variant mismatch | Run `./scripts/user-journey-shell.sh` (`logos-logoscore-cli/0.2.0` includes matching `lgpm`) |
 | `missing wallet debug config in lez repo` after `lgs setup` | Update `lgs` from logos-co/scaffold, or copy `$SCAFFOLD_LEZ_CACHE/lez/wallet/configs/debug/wallet_config.json` to `$REPO_ROOT/.scaffold/wallet/wallet_config.json` and re-run Step 4 |
 | Stale reads | `sync_to_chain`, poll again |
 | Deposit rejected | Step 10 pinata for payer |
