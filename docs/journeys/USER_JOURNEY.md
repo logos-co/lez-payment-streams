@@ -28,31 +28,26 @@ Default sizing: sequencer `https://testnet.lez.logos.co/`, program id
 `allocation` 80; leftover deposit stays in the vault after close), rate 1 token per second of chain
 clock time, `MIN_ACCRUED` 1, vault/stream ids start at 0.
 
+## Before Step 1 — Clone and enter the repo
+
+Skip if you already have a checkout and are in its root.
+
+```bash
+git clone https://github.com/logos-co/lez-payment-streams.git
+cd lez-payment-streams
+```
+
 ## Step 1 — Session variables
 
-Set `REPO_ROOT` to your lez-payment-streams checkout.
-
-Logos Scaffold pins logos-execution-zone in `scaffold.toml` (`[repos.lez]` → `pin` = git
-commit). `lgs setup` (Step 5) builds that commit under
-`~/.cache/logos-scaffold/repos/lez/<pin>/`. Set `LEZ_PIN` to that pin so Step 6 and Step 12
-can use `$SCAFFOLD_WALLET`. Wallet files for this walkthrough live under
-`$REPO_ROOT/.scaffold/e2e/`. Tools read `LEE_WALLET_HOME_DIR` for wallet data; this journey sets
-it equal to `WALLET_HOME`.
+Run from the repository root (`pwd` becomes `REPO_ROOT`). Logos Scaffold pins
+logos-execution-zone in `scaffold.toml` (`[repos.lez]` → `pin`); `lgs setup` (Step 5) builds that
+commit under `~/.cache/logos-scaffold/repos/lez/<pin>/` for `$SCAFFOLD_WALLET`. Wallet data for
+this walkthrough lives under `$REPO_ROOT/.scaffold/e2e/`. `LEE_WALLET_HOME_DIR` is set to
+`WALLET_HOME`.
 
 ```bash
-export REPO_ROOT="/path/to/lez-payment-streams"
-```
-
-Print the pinned commit (one line):
-
-```bash
-grep -A2 '^\[repos.lez\]' "$REPO_ROOT/scaffold.toml" | sed -n 's/^pin = "\(.*\)"/\1/p'
-```
-
-Export the rest of the session. Paste the commit into `LEZ_PIN`.
-
-```bash
-export LEZ_PIN="paste-the-commit-from-above"
+export REPO_ROOT="$(pwd)"
+export LEZ_PIN="$(grep -A2 '^\[repos.lez\]' "$REPO_ROOT/scaffold.toml" | sed -n 's/^pin = "\(.*\)"/\1/p')"
 export SCAFFOLD_LEZ_CACHE="${HOME}/.cache/logos-scaffold/repos/lez/${LEZ_PIN}"
 export SCAFFOLD_WALLET="${SCAFFOLD_LEZ_CACHE}/target/release/wallet"
 export MODULES="$REPO_ROOT/.scaffold/e2e/user/modules"
@@ -99,14 +94,26 @@ make build
 test -f "$PAYMENT_STREAMS_GUEST_BIN"
 ```
 
-Confirm the built guest matches the program deployed on testnet (`fixtures/testnet-module.json`):
+Confirm the built guest matches the program deployed on testnet (`fixtures/testnet-module.json`).
+The check compares the `ImageID (hex bytes)` line from `make program-id` to `program_id_hex` in
+the fixture. On mismatch, stop before module install — do not use `exit` in a pasted block (it
+closes your shell).
 
 ```bash
 cd "$REPO_ROOT"
 EXPECTED=$(grep -o '"program_id_hex": "[^"]*"' "$REPO_ROOT/fixtures/testnet-module.json" \
   | sed -n 's/.*"program_id_hex": "\([^"]*\)".*/\1/p')
-make program-id | grep -F "$EXPECTED" \
-  || { echo "Guest ImageID does not match testnet fixture; use current repo pin and make build." >&2; exit 1; }
+BUILT=$(make program-id 2>/dev/null | sed -n 's/.*ImageID (hex bytes): //p' | tr -d '[:space:]')
+if [[ -z "$BUILT" ]]; then
+  echo "Could not read ImageID from make program-id (run make build first)." >&2
+elif [[ "$BUILT" == "$EXPECTED" ]]; then
+  echo "Program id matches testnet fixture."
+else
+  echo "Guest ImageID mismatch." >&2
+  echo "  built:    $BUILT" >&2
+  echo "  expected: $EXPECTED" >&2
+  echo "Use the repo pin, make build, and fix source or fixture before continuing." >&2
+fi
 ```
 
 If Docker fails with `rustc 1.88.0-dev is not supported` and crates requiring 1.89+, your checkout
