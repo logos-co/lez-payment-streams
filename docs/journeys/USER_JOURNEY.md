@@ -30,10 +30,8 @@ your built guest must match `fixtures/testnet-module.json` (Step 3).
 ## Prerequisites
 
 Host: Git, Nix (flakes), Docker, RISC Zero CLI (`cargo-risczero`, `rzup install`), Rust/cargo
-(for `lgs setup`), network access to the public sequencer.
-
-Logos Scaffold (`lgs`) on `PATH`, able to read this repo’s `scaffold.toml` and seed wallet debug
-config from `lez/wallet/configs/debug/wallet_config.json` in the pinned LEZ tree.
+(for `lgs setup` and for the shell to install `lgs` when it is missing), network access to the
+public sequencer.
 
 ```bash
 git clone https://github.com/logos-co/lez-payment-streams.git
@@ -42,15 +40,9 @@ chmod +x scripts/user-journey-shell.sh
 ./scripts/user-journey-shell.sh
 ```
 
-If `lgs` is not installed yet (once per host):
-
-```bash
-git clone https://github.com/logos-co/scaffold.git
-cd scaffold && cargo install --path . --locked --force
-```
-
-Run the journey from the repo root inside the shell opened by `user-journey-shell.sh`. Re-export
-Step 1 if you open a new terminal.
+The script installs Logos Scaffold (`lgs`) from [logos-co/scaffold](https://github.com/logos-co/scaffold)
+when it is not on `PATH`, then opens a shell with `logoscore` and `lgpm` 0.2.0. Run the journey
+from the repo root inside that shell. Re-export Step 1 if you open a new terminal.
 
 ## Step 1 — Session variables
 
