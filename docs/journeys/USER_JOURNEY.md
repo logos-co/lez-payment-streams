@@ -24,7 +24,8 @@ catalogue).
 
 
 Default sizing: sequencer `https://testnet.lez.logos.co/`, program id
-`16b95d3701d256eecd41d5a55e4f570331994d787abf0cba44eec209e24f8a44`, deposit 500 (must cover
+`de17c0db368abf9f6476f4d67a56ad24e89ddb23bc49b58f7effb566146c1677` (release guest ELF
+361716 bytes), deposit 500 (must cover
 `allocation` 80; leftover deposit stays in the vault after close), rate 1 token per second of chain
 clock time, `MIN_ACCRUED` 1, vault/stream ids start at 0.
 
@@ -112,7 +113,7 @@ else
   echo "Guest ImageID mismatch." >&2
   echo "  built:    $BUILT" >&2
   echo "  expected: $EXPECTED" >&2
-  echo "Use the repo pin, make build, and fix source or fixture before continuing." >&2
+  echo "Stop: redeploy testnet from this guest or obtain the fixture-matching binary before Steps 7+." >&2
 fi
 ```
 

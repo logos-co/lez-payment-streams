@@ -35,7 +35,7 @@ Parsed the on-chain `deposit` tx `16d07d3e2d7e966b12c08d09a005f846c262a3624791fd
 
 ```
 tag         : 0
-program_id  : 16b95d3701d256eecd41d5a55e4f570331994d787abf0cba44eec209e24f8a44   (= current ps program id)
+program_id  : de17c0db368abf9f6476f4d67a56ad24e89ddb23bc49b58f7effb566146c1677   (= current ps program id)
 accounts    : [vault_config 470c2719..., vault_holding 31ed9558..., owner 71fcb1c6...]   (correct deposit plan)
 nonces      : [(1, 0)]   (owner nonce 1, correct at submit time)
 instruction_data word count : 16
@@ -105,7 +105,7 @@ correct `u32` instruction words.
 ## What is NOT the cause (rules out, with evidence)
 
 - Stale deployed program / ImageID mismatch: ruled out. The on-chain `program_id`
-  `16b95d3701d256eecd41d5a55e4f570331994d787abf0cba44eec209e24f8a44` equals the current
+  `de17c0db368abf9f6476f4d67a56ad24e89ddb23bc49b58f7effb566146c1677` equals the current
   `ps_program_id_hex` derived from the current guest build, and equals the program id in the
   restored `funded` snapshot. The seeder (`examples/src/bin/seed_localnet_fixture.rs`) successfully
   deposits 1000 with the same program, so the guest `deposit` logic is sound.

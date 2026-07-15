@@ -12,6 +12,17 @@ Module `chainAction` catalogue:
 [docs/payment-streams-module/README.md#chainaction-catalogue](docs/payment-streams-module/README.md#chainaction-catalogue).
 Maintainer E2E recipes: [docs/journeys/E2E.md](docs/journeys/E2E.md).
 
+## Public testnet guest program
+
+The payment-streams guest on public testnet (`https://testnet.lez.logos.co/`) was last deployed
+on 2026-07-15 from git commit
+`6772238bed072d87e62f57f5194d717d9b4ee0b9` (tree includes pinned `methods/guest/Cargo.lock` for
+Docker guest-builder rustc 1.88). ImageID / `program_id_hex`:
+`de17c0db368abf9f6476f4d67a56ad24e89ddb23bc49b58f7effb566146c1677` (release ELF 361716 bytes).
+SSOT fixture: [fixtures/testnet-module.json](fixtures/testnet-module.json). After changing guest
+source or release profile, rebuild (`make build`), redeploy (`make deploy-testnet`), refresh
+fixtures and bootstrap helpers, then re-run module testnet E2E.
+
 ## Prerequisites
 
 Everything below is required to run the verification scripts from this repository (`scripts/e2e.sh`, `make verify-*`).
