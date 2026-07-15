@@ -27,8 +27,9 @@ MODE=module CHAIN=local ./scripts/e2e.sh local run   # or ./scripts/e2e.sh local
 ```
 
 Use `SKIP_BUILD=1` on later runs when modules under `.scaffold/e2e/user/modules` are already
-installed. `make verify-module-local` / `make verify-store-local` are the same commands but
-still require `logoscore` and `lgpm` on `PATH` (use the nix shell above).
+installed. Path layout: [naming-conventions.md](../docs/reference/naming-conventions.md#scaffold-layout).
+`make verify-module-local` / `make verify-store-local` are the same commands but still require
+`logoscore` and `lgpm` on `PATH` (use the nix shell above).
 
 ## External verification (three paths)
 

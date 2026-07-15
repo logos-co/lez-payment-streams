@@ -81,23 +81,10 @@ Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-r
 
 ## Commands (canonical)
 
-```bash
-# Module verification — Required, localnet
-MODE=module CHAIN=local ./scripts/e2e.sh local run
+Per-cell prepare, bootstrap one-liners, verbosity flags, and expected artifacts:
+[journeys/E2E.md](../journeys/E2E.md).
 
-# Module verification — Required, testnet
-make bootstrap-testnet-module   # one-time
-MODE=module CHAIN=testnet ./scripts/e2e.sh testnet run
-
-# Store integration — Required, localnet
-./scripts/e2e.sh local run
-
-# Store integration — Required, testnet
-make bootstrap-testnet   # one-time
-MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run
-```
-
-Make convenience aliases (same commands): `verify-module-local`, `verify-module-testnet`,
+Make convenience aliases: `verify-module-local`, `verify-module-testnet`,
 `verify-store-local`, `verify-store-testnet`. Legacy names `verify-step17` / `verify-step18`
 still work.
 
@@ -118,5 +105,6 @@ Maintainer-only (not integrator gates): `make verify-store-local-lifecycle` or
   Module testnet uses `VAULT_ID` to pin a fresh vault (default fixture vault 0
   accumulates stale streams across runs).
 - Artifacts: `.scaffold/e2e/artifacts/` JSON-lines logs.
+  Layout: [naming-conventions.md#scaffold-layout](naming-conventions.md#scaffold-layout).
   Module: `module-e2e-*.log` (`vault_init`, `deposit`, `create_stream`, `claim`, …).
   Store: `e2e-*.log` (`store_query_success`, `store_query_missing_proof`, `claim`, …).

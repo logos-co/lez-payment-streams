@@ -204,7 +204,7 @@ cmd_snapshot_validate() {
 # Testnet wallet commands
 # ============================================================================
 
-TESTNET_WALLET_DIR="$REPO_ROOT/.scaffold/e2e/testnet-wallet"
+TESTNET_WALLET_DIR="$(ps_e2e_testnet_wallet_dir)"
 
 cmd_testnet_wallet_ensure() {
   ps_log_info "Ensuring testnet wallet..."
@@ -231,7 +231,7 @@ EOF
 cmd_testnet_read_smoke() {
   ps_log_info "Running testnet read smoke..."
   
-  local wallet_home="${TESTNET_WALLET_DIR:-$REPO_ROOT/.scaffold/e2e/testnet-wallet}"
+  local wallet_home="${TESTNET_WALLET_DIR:-$(ps_e2e_testnet_wallet_dir)}"
   
   # Check sequencer accessible
   if ! curl -sf "https://testnet.lez.logos.co/" -X POST \

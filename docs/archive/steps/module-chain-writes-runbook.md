@@ -11,6 +11,9 @@ Decisions: integration plan [N10](../reference/integration-decisions.md#n10-step
 
 Related: [Step 11a reads](archive/steps/module-chain-reads-runbook.md), [Step 10b wallet](archive/steps/wallet-runtime-runbook.md).
 
+Current `chainAction` catalogue (writes, reads, pause/resume/top-up):
+[payment-streams-module/README.md](../../payment-streams-module/README.md#chainaction-catalogue).
+
 ## Environment
 
 | Variable | Purpose |

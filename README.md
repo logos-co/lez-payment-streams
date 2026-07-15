@@ -6,6 +6,12 @@ integration (eligibility on paid queries).
 
 Documentation hub: [docs/README.md](docs/README.md). Maintainers: [AGENTS.md](AGENTS.md).
 
+User-facing testnet walkthrough (LIP-155 via `payment_streams_module`):
+[docs/journeys/USER_JOURNEY.md](docs/journeys/USER_JOURNEY.md).
+Module `chainAction` catalogue:
+[docs/payment-streams-module/README.md#chainaction-catalogue](docs/payment-streams-module/README.md#chainaction-catalogue).
+Maintainer E2E recipes: [docs/journeys/E2E.md](docs/journeys/E2E.md).
+
 ## Prerequisites
 
 Everything below is required to run the verification scripts from this repository (`scripts/e2e.sh`, `make verify-*`).
@@ -59,8 +65,9 @@ MODE=module CHAIN=local ./scripts/e2e.sh local run
 ./scripts/e2e.sh local run
 ```
 
-Advanced testnet Store path and artifact expectations:
-[docs/reference/verification-matrix.md](docs/reference/verification-matrix.md).
+Run recipes and artifact expectations:
+[docs/journeys/E2E.md](docs/journeys/E2E.md) (matrix tiers:
+[docs/reference/verification-matrix.md](docs/reference/verification-matrix.md)).
 
 ## License
 

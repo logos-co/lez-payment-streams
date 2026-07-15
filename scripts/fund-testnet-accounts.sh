@@ -25,7 +25,7 @@ CHAIN=testnet
 export CHAIN
 
 # ps_auth_transfer_init_one records phases to ARTIFACT; give it a fund log.
-ARTIFACT="${ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/fund-testnet-$(date +%Y%m%dT%H%M%S).log}"
+ARTIFACT="${ARTIFACT:-$(ps_e2e_artifacts_dir)/fund-testnet-$(date +%Y%m%dT%H%M%S).log}"
 mkdir -p "$(dirname "$ARTIFACT")"
 : > "$ARTIFACT"
 export ARTIFACT

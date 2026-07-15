@@ -164,7 +164,7 @@ cmd_prefund() {
     provider="$(ps_json_get "$manifest" provider_account_id)"
   fi
   if [[ -n "${provider:-}" ]]; then
-    FIXTURE_ARTIFACT="${FIXTURE_ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/fixture-prefund-$(date +%Y%m%dT%H%M%S).log}"
+    FIXTURE_ARTIFACT="${FIXTURE_ARTIFACT:-$(ps_e2e_artifacts_dir)/fixture-prefund-$(date +%Y%m%dT%H%M%S).log}"
     export ARTIFACT="$FIXTURE_ARTIFACT"
     : > "$ARTIFACT"
     ps_log_info "Ensuring authenticated_transfer for owner and provider (artifact=$ARTIFACT)"

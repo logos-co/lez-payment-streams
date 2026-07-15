@@ -173,15 +173,23 @@ verification-matrix link to E2E.md.
 
 #### Definition of done
 
-- [USER_JOURNEY.md](../../journeys/USER_JOURNEY.md) rewritten as testnet manual walkthrough per
+- [x] [USER_JOURNEY.md](../../journeys/USER_JOURNEY.md) rewritten as testnet manual walkthrough per
   scenario and blocks above (single Glossary section per Terminology above).
-- [E2E.md](../../journeys/E2E.md) exists with RUN.md content merged; `slides/RUN.md` removed;
+- [x] [E2E.md](../../journeys/E2E.md) exists with RUN.md content merged; `slides/RUN.md` removed;
   matrix links to E2E.md.
-- [payment-streams-module/README.md](../../payment-streams-module/README.md) contains SSOT
+- [x] [payment-streams-module/README.md](../../payment-streams-module/README.md) contains SSOT
   `chainAction` catalogue; root README links to it.
-- Author dry-run: walkthrough commands executed on testnet (or recorded blockers in packet).
+- [ ] Author dry-run: walkthrough commands executed on testnet (or recorded blockers in packet).
 - Step 22 and completed step packets **not edited in this step** (except index/AGENTS pointers to
   Step 34). Stale Step 22 table fixes stay in the deferred pass below.
+
+#### Dry-run log (2026-07-15)
+
+Sequencer RPC reachable (`getLastBlockId` on fixture URL).
+Full command-level dry-run not executed in this pass (requires local `logoscore`, prepared
+`.scaffold/e2e/user/modules`, bootstrap wallet, and testnet pinata funding).
+Re-run Runtime through Claim blocks from [USER_JOURNEY.md](../../journeys/USER_JOURNEY.md) after
+`make bootstrap-testnet-module` and `MODE=module CHAIN=testnet ./scripts/e2e.sh testnet prepare`.
 
 #### Not in scope
 

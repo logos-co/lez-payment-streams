@@ -357,6 +357,56 @@ except Exception:
 ' "$result"
 }
 
+# E2E scaffold layout (SSOT for paths): docs/reference/naming-conventions.md#scaffold-layout
+ps_scaffold_e2e_dir() {
+  echo "$REPO_ROOT/.scaffold/e2e"
+}
+
+ps_e2e_user_modules_dir() {
+  echo "$(ps_scaffold_e2e_dir)/user/modules"
+}
+
+ps_e2e_provider_modules_dir() {
+  echo "$(ps_scaffold_e2e_dir)/provider/modules"
+}
+
+ps_e2e_user_logoscore_dir() {
+  echo "$(ps_scaffold_e2e_dir)/user/logoscore"
+}
+
+ps_e2e_provider_logoscore_dir() {
+  echo "$(ps_scaffold_e2e_dir)/provider/logoscore"
+}
+
+ps_e2e_user_persist_dir() {
+  echo "$(ps_scaffold_e2e_dir)/user/persist"
+}
+
+ps_e2e_provider_persist_dir() {
+  echo "$(ps_scaffold_e2e_dir)/provider/persist"
+}
+
+ps_e2e_artifacts_dir() {
+  echo "$(ps_scaffold_e2e_dir)/artifacts"
+}
+
+ps_e2e_testnet_wallet_dir() {
+  echo "$(ps_scaffold_e2e_dir)/testnet-wallet"
+}
+
+# User Journey localnet: isolated wallet reset each module-e2e run (fresh owner/provider).
+ps_e2e_user_wallet_local_dir() {
+  echo "$(ps_scaffold_e2e_dir)/user/wallet-local"
+}
+
+ps_e2e_provider_ad_path() {
+  echo "$(ps_scaffold_e2e_dir)/provider-advertisement.json"
+}
+
+ps_scaffold_localnet_wallet_dir() {
+  echo "$REPO_ROOT/.scaffold/wallet"
+}
+
 # Default paths
 ps_default_fixture_manifest() {
   if ps_is_testnet; then
@@ -368,17 +418,17 @@ ps_default_fixture_manifest() {
 
 ps_default_wallet_config() {
   if ps_is_testnet; then
-    echo "$REPO_ROOT/.scaffold/e2e/testnet-wallet/wallet_config.json"
+    echo "$(ps_e2e_testnet_wallet_dir)/wallet_config.json"
   else
-    echo "$REPO_ROOT/.scaffold/wallet/wallet_config.json"
+    echo "$(ps_scaffold_localnet_wallet_dir)/wallet_config.json"
   fi
 }
 
 ps_default_wallet_storage() {
   if ps_is_testnet; then
-    echo "$REPO_ROOT/.scaffold/e2e/testnet-wallet/storage.json"
+    echo "$(ps_e2e_testnet_wallet_dir)/storage.json"
   else
-    echo "$REPO_ROOT/.scaffold/wallet/storage.json"
+    echo "$(ps_scaffold_localnet_wallet_dir)/storage.json"
   fi
 }
 
@@ -388,9 +438,9 @@ ps_default_wallet_storage() {
 # not the localnet one.
 ps_chain_wallet_home() {
   if ps_is_testnet; then
-    echo "$REPO_ROOT/.scaffold/e2e/testnet-wallet"
+    ps_e2e_testnet_wallet_dir
   else
-    echo "$REPO_ROOT/.scaffold/wallet"
+    ps_scaffold_localnet_wallet_dir
   fi
 }
 

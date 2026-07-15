@@ -51,3 +51,23 @@ Legacy aliases: `verify-step17`, `verify-step18`, `verify-step17-back-to-back`.
 
 Canonical commands: [verification-matrix.md](verification-matrix.md),
 [scripts/README.md](../../scripts/README.md).
+
+## Scaffold layout
+
+Gitignored state under `$REPO_ROOT/.scaffold/`. Path helpers live in
+`scripts/lib/common.sh` (`ps_e2e_*`, `ps_scaffold_*`).
+
+| Path | Journey | Role |
+| --- | --- | --- |
+| `e2e/user/modules` | User (+ Store client install) | `lgpm` install tree (`MODULES_USER`) |
+| `e2e/user/logoscore`, `e2e/user/persist` | User / Store client host | Dual-host logoscore daemon state |
+| `e2e/user/wallet-local` | User (localnet module E2E) | Isolated wallet; reset each `module-e2e.sh` local run (`WALLET_E2E_DIR`) |
+| `e2e/provider/modules`, `e2e/provider/logoscore`, `e2e/provider/persist` | Developer (Store provider) | Provider host |
+| `e2e/testnet-wallet` | User + Store (testnet) | Testnet wallet home (`ps_chain_wallet_home` when `CHAIN=testnet`) |
+| `e2e/artifacts` | E2E verification | JSONL logs (`module-e2e-*.log`, `e2e-*.log`, …) |
+| `e2e/provider-advertisement.json` | Developer | Off-band provider ad file (orchestrator) |
+| `wallet` | Localnet (scaffold) | Default localnet wallet when not using `e2e/user/wallet-local` |
+
+Override defaults with env vars (`MODULES_USER`, `MODULES_PROVIDER`, `WALLET_E2E_DIR`,
+`TESTNET_WALLET_DIR`, …). Manual User Journey on testnet uses the same paths as
+`MODE=module` E2E: [USER_JOURNEY.md](../journeys/USER_JOURNEY.md).

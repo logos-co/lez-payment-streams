@@ -29,8 +29,8 @@ ps_is_module_mode() { [[ "$MODE" == "module" ]]; }
 cmd_build() {
   ps_log_info "Building modules..."
   
-  local modules_user="${MODULES_USER:-$REPO_ROOT/.scaffold/e2e/user/modules}"
-  local modules_provider="${MODULES_PROVIDER:-$REPO_ROOT/.scaffold/e2e/provider/modules}"
+  local modules_user="${MODULES_USER:-$(ps_e2e_user_modules_dir)}"
+  local modules_provider="${MODULES_PROVIDER:-$(ps_e2e_provider_modules_dir)}"
   
   mkdir -p "$modules_user" "$modules_provider"
   
@@ -251,8 +251,8 @@ cmd_run() {
     fi
     export WALLET_CONFIG="$(ps_default_wallet_config)"
     export WALLET_STORAGE="$(ps_default_wallet_storage)"
-    export MODULES_USER="${MODULES_USER:-$REPO_ROOT/.scaffold/e2e/user/modules}"
-    export ARTIFACT="${ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
+    export MODULES_USER="${MODULES_USER:-$(ps_e2e_user_modules_dir)}"
+    export ARTIFACT="${ARTIFACT:-$(ps_e2e_artifacts_dir)/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
     mkdir -p "$(dirname "$ARTIFACT")"
     ps_log_info "Launching module happy path (Flow A)..."
     MODULES="$MODULES_USER" ARTIFACT="$ARTIFACT" \
@@ -286,15 +286,15 @@ cmd_run() {
   fi
   export WALLET_CONFIG="$(ps_default_wallet_config)"
   export WALLET_STORAGE="$(ps_default_wallet_storage)"
-  export MODULES_USER="${MODULES_USER:-$REPO_ROOT/.scaffold/e2e/user/modules}"
-  export MODULES_PROVIDER="${MODULES_PROVIDER:-$REPO_ROOT/.scaffold/e2e/provider/modules}"
-  export LOGOSCORE_CONFIG_USER="${LOGOSCORE_CONFIG_USER:-$REPO_ROOT/.scaffold/e2e/user/logoscore}"
-  export LOGOSCORE_CONFIG_PROVIDER="${LOGOSCORE_CONFIG_PROVIDER:-$REPO_ROOT/.scaffold/e2e/provider/logoscore}"
-  export PERSIST_USER="${PERSIST_USER:-$REPO_ROOT/.scaffold/e2e/user/persist}"
-  export PERSIST_PROVIDER="${PERSIST_PROVIDER:-$REPO_ROOT/.scaffold/e2e/provider/persist}"
-  export E2E_PROVIDER_AD="${E2E_PROVIDER_AD:-$REPO_ROOT/.scaffold/e2e/provider-advertisement.json}"
+  export MODULES_USER="${MODULES_USER:-$(ps_e2e_user_modules_dir)}"
+  export MODULES_PROVIDER="${MODULES_PROVIDER:-$(ps_e2e_provider_modules_dir)}"
+  export LOGOSCORE_CONFIG_USER="${LOGOSCORE_CONFIG_USER:-$(ps_e2e_user_logoscore_dir)}"
+  export LOGOSCORE_CONFIG_PROVIDER="${LOGOSCORE_CONFIG_PROVIDER:-$(ps_e2e_provider_logoscore_dir)}"
+  export PERSIST_USER="${PERSIST_USER:-$(ps_e2e_user_persist_dir)}"
+  export PERSIST_PROVIDER="${PERSIST_PROVIDER:-$(ps_e2e_provider_persist_dir)}"
+  export E2E_PROVIDER_AD="${E2E_PROVIDER_AD:-$(ps_e2e_provider_ad_path)}"
   export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
-  export ARTIFACT="${ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/e2e-$(date +%Y%m%dT%H%M%S).log}"
+  export ARTIFACT="${ARTIFACT:-$(ps_e2e_artifacts_dir)/e2e-$(date +%Y%m%dT%H%M%S).log}"
   export E2E_PHASE="${E2E_PHASE:-all}"
   export SKIP_BUILD="${SKIP_BUILD:-1}"  # Already built in prepare
   export SKIP_SEED="${SKIP_SEED:-0}"
@@ -325,8 +325,8 @@ cmd_teardown() {
   
   # Stop logoscore daemons if running
   ps_log_info "Stopping logoscore daemons..."
-  local user_cfg="${LOGOSCORE_CONFIG_USER:-$REPO_ROOT/.scaffold/e2e/user/logoscore}"
-  local provider_cfg="${LOGOSCORE_CONFIG_PROVIDER:-$REPO_ROOT/.scaffold/e2e/provider/logoscore}"
+  local user_cfg="${LOGOSCORE_CONFIG_USER:-$(ps_e2e_user_logoscore_dir)}"
+  local provider_cfg="${LOGOSCORE_CONFIG_PROVIDER:-$(ps_e2e_provider_logoscore_dir)}"
   
   logoscore --config-dir "$user_cfg" stop 2>/dev/null || true
   logoscore --config-dir "$provider_cfg" stop 2>/dev/null || true

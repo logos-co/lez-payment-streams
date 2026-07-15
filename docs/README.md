@@ -23,6 +23,8 @@ MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run  # Store — Advanced
 
 Details: [reference/verification-matrix.md](reference/verification-matrix.md) (includes
 [cold start](reference/verification-matrix.md#cold-start-first-time-on-a-machine)),
+[journeys/E2E.md](journeys/E2E.md) (run recipes),
+[journeys/USER_JOURNEY.md](journeys/USER_JOURNEY.md) (testnet manual walkthrough),
 [scripts/README.md](../scripts/README.md).
 
 Machine and toolchain prerequisites for running these commands:
@@ -35,7 +37,7 @@ Machine and toolchain prerequisites for running these commands:
 | [integration-contracts.md](reference/integration-contracts.md) | Cross-repo APIs, tag 30 |
 | [integration-decisions.md](reference/integration-decisions.md) | Integration decisions (trimmed) |
 | [feature-branch-pins.md](reference/feature-branch-pins.md) | Fork branches and flakes |
-| [naming-conventions.md](reference/naming-conventions.md) | `MODE` values, Makefile names |
+| [naming-conventions.md](reference/naming-conventions.md) | `MODE` values, Makefile names, [scaffold layout](reference/naming-conventions.md#scaffold-layout) |
 | [verification-matrix.md](reference/verification-matrix.md) | Mode × chain matrix |
 
 ## Archive

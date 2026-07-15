@@ -22,9 +22,9 @@ if ps_is_testnet; then
   ps_fatal "module-e2e-local.sh is localnet only (A-testnet is future work)"
 fi
 
-MODULES="${MODULES:-${MODULES_USER:-$REPO_ROOT/.scaffold/e2e/user/modules}}"
-WALLET_CONFIG="${WALLET_CONFIG:-$REPO_ROOT/.scaffold/wallet/wallet_config.json}"
-WALLET_E2E_DIR="${WALLET_E2E_DIR:-$REPO_ROOT/.scaffold/module-e2e-wallet}"
+MODULES="${MODULES:-${MODULES_USER:-$(ps_e2e_user_modules_dir)}}"
+WALLET_CONFIG="${WALLET_CONFIG:-$(ps_scaffold_localnet_wallet_dir)/wallet_config.json}"
+WALLET_E2E_DIR="${WALLET_E2E_DIR:-$(ps_e2e_user_wallet_local_dir)}"
 WALLET_E2E_PASSWORD="${WALLET_E2E_PASSWORD:-scaffold-local-dev}"
 
 VAULT_ID="${VAULT_ID:-0}"
@@ -34,7 +34,7 @@ RATE="${RATE:-10}"
 ALLOCATION="${ALLOCATION:-80}"
 TOPUP_INCREASE="${TOPUP_INCREASE:-1}"
 
-ARTIFACT="${ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
+ARTIFACT="${ARTIFACT:-$(ps_e2e_artifacts_dir)/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
 mkdir -p "$(dirname "$ARTIFACT")"
 : > "$ARTIFACT"
 

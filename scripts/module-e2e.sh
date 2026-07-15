@@ -125,7 +125,7 @@ narr_complete_fail() {
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-MODULES="${MODULES:-${MODULES_USER:-$REPO_ROOT/.scaffold/e2e/user/modules}}"
+MODULES="${MODULES:-${MODULES_USER:-$(ps_e2e_user_modules_dir)}}"
 
 # Capture explicit overrides before applying defaults so testnet can auto-resolve
 # fresh ids when the caller did not pin them.
@@ -172,7 +172,7 @@ else
   POLL_READ_SLEEP="${POLL_READ_SLEEP:-5}"
 fi
 
-ARTIFACT="${ARTIFACT:-$REPO_ROOT/.scaffold/e2e/artifacts/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
+ARTIFACT="${ARTIFACT:-$(ps_e2e_artifacts_dir)/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
 mkdir -p "$(dirname "$ARTIFACT")"
 : > "$ARTIFACT"
 
@@ -239,12 +239,12 @@ if ps_is_testnet; then
   narr_step "Using testnet fixture: owner=$OWNER provider=$PROVIDER"
 else
   # Localnet: fresh isolated wallet with its own owner + provider accounts.
-  WALLET_E2E_DIR="${WALLET_E2E_DIR:-$REPO_ROOT/.scaffold/module-e2e-wallet}"
+  WALLET_E2E_DIR="${WALLET_E2E_DIR:-$(ps_e2e_user_wallet_local_dir)}"
   WALLET_E2E_PASSWORD="${WALLET_E2E_PASSWORD:-scaffold-local-dev}"
 
   mkdir -p "$WALLET_E2E_DIR"
   rm -f "$WALLET_E2E_DIR/storage.json"
-  cp "${WALLET_CONFIG:-$REPO_ROOT/.scaffold/wallet/wallet_config.json}" "$WALLET_E2E_DIR/wallet_config.json"
+  cp "${WALLET_CONFIG:-$(ps_scaffold_localnet_wallet_dir)/wallet_config.json}" "$WALLET_E2E_DIR/wallet_config.json"
   WALLET_CONFIG="$WALLET_E2E_DIR/wallet_config.json"
   WALLET_STORAGE="$WALLET_E2E_DIR/storage.json"
   WALLET_HOME="$WALLET_E2E_DIR"

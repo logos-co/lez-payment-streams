@@ -37,6 +37,9 @@ Localnet remains useful for faster iteration.
 
 Verification setup (host, Nix, scaffold, Store delivery checkout, testnet bootstrap) is documented in the lez-payment-streams repository README (Prerequisites section at https://github.com/logos-co/lez-payment-streams#prerequisites).
 
+Scaffold directories for dual-host runs (`e2e/user/*`, `e2e/provider/*`, testnet wallet, artifacts):
+[naming-conventions.md](../reference/naming-conventions.md#scaffold-layout).
+
 ### Commands and expected outputs
 
 End-to-end flow: vault ensure and deposit, provider peer mapping, stream create, Store messages during accrual, eligibility proof, paid Store query, Store query without proof (expect rejection), close stream, claim when teardown accrual is non-zero.
