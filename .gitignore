@@ -30,6 +30,7 @@ logos-payment-streams-module/result
 
 # Local `nix bundle -o …` under the patched wallet flake (see operator guide)
 logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out
+logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-dev-out
 logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/*lgx-out
 logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/*lgx-dev
 

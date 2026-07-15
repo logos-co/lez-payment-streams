@@ -353,6 +353,16 @@ logoscore call payment_streams_module chainAction getStreamStatus \
 chain_balance "$PAYEE"
 ```
 
+## Step 19 — Shut down
+
+```bash
+logoscore call logos_execution_zone close 2>/dev/null || true
+logoscore stop
+exit
+```
+
+`logoscore stop` stops the daemon started in Step 6. `exit` leaves the Nix journey shell. Wallet files remain under `$WALLET_HOME` unless you run `./scripts/user-journey-reset.sh` before the next walkthrough.
+
 ## If something fails
 
 | Symptom | Try |
