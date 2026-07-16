@@ -99,7 +99,7 @@ Chain writes use generic public transactions and program deploy FFI from LEZ `v0
 | Layer | Upstream | Role |
 | --- | --- | --- |
 | LEZ `wallet_ffi` | [`logos-execution-zone`](https://github.com/logos-blockchain/logos-execution-zone) @ `a58fbce…` (`v0.2.0`) | Deploy, program ELF helpers, LEE v0.3 public tx signing |
-| Wallet module | [`logos-execution-zone-module`](https://github.com/logos-blockchain/logos-execution-zone-module) @ `main` (Universal, `b555cd5…`) | Expose FFI to Logos modules (std::string / LogosAPI) |
+| Wallet module | [`logos-execution-zone-module`](https://github.com/logos-blockchain/logos-execution-zone-module) @ `92dd9e2…` (Universal, post-rename / pre-labels) | Expose FFI to Logos modules (std::string / LogosAPI) |
 
 Do not pin [PR 429 / PR 16](archive/superseded-wallet-pr-429-16.md) in this integration.
 
@@ -112,24 +112,46 @@ Do not pin [PR 429 / PR 16](archive/superseded-wallet-pr-429-16.md) in this inte
   - `tools/lez-testnet-submit` (testnet submit helper; same pin)
 - `lez-payment-streams-core`, guest, FFI, and `examples/` use LEZ `v0.2.0` (`a58fbce…`) — same rev as operational pin.
 - Patched wallet wrapper `upstream` =
-  `github:logos-blockchain/logos-execution-zone-module` (plain `main`,
-  post-PR 19 merge). `upstream.inputs.logos-execution-zone.follows` the
-  same LEZ input as payment streams.
+  `github:logos-blockchain/logos-execution-zone-module/92dd9e25bcc6be04f841671e8da7b94bd2449f39`
+  (post-rename `lez_core`, pre-labels). Pinned to a rev that still builds
+  against the LEZ `v0.2.0` wallet_ffi; later `main` adds a labels feature
+  that needs a newer wallet_ffi than this pin.
+  `upstream.inputs.logos-execution-zone.follows` the same LEZ input as payment streams.
 
 ### Our patch (wrapper flake)
 
 We use the local wrapper flake for payment-streams wallet behavior
 (`send_generic_public_transaction_json`, `sign_public_payload`) and build
 fixes (codegen API headers, `.lgx` metadata for bundler). Logos module id
-matches upstream: `logos_execution_zone`. The wallet module on `main` is
+matches upstream: `logos_execution_zone`. The wallet module is
 Universal (std::string/std::vector); the Qt patches were rewritten in
 Step 26 against that surface and the 4-argument
 `send_generic_public_transaction(account_ids, signing_requirements,
 instruction, program_id_hex)` signature. The payload now carries
 `program_id_hex` (not `program_elf_hex` / `program_dependencies_hex`).
-`wallet-qt-cmake-ffi-include.patch` in the same directory is optional
-(Qt include propagation); wire it in `postPatch` if the wallet plugin
-fails to find `wallet_ffi.h`.
+
+Patches in `logos-execution-zone-module-patched/` (applied in `postPatch`):
+
+- `wallet-qt-sign-public-payload.patch` — `sign_public_payload` Qt entry
+  point, rebased onto `lez_core_module.{cpp,h}` / `LEZCoreModule`.
+- `wallet-qt-send-generic-public-transaction-json.patch` — JSON IPC wrapper
+  for instruction submit, rebased onto `lez_core_module.{cpp,h}` / `LEZCoreModule`.
+- `wallet-qt-cmake-module-name.patch` — `logos_module(NAME lez_core)` →
+  `NAME logos_execution_zone` so the built plugin is
+  `logos_execution_zone_plugin.so`.
+- `wallet-qt-metadata-module-name.patch` — `metadata.json` `name`/`main` →
+  `logos_execution_zone` / `logos_execution_zone_plugin` so the embedded
+  module identity and codegen class (`LogosExecutionZone`) are preserved.
+
+Upstream renamed the module identity to `lez_core`; the two identity patches
+plus the wrapper flake `preInstall`/`postInstall` hooks (bridge the
+eval-time-templated `lez_core_plugin.so` installPhase to the
+`logos_execution_zone_plugin.so` we ship) and the `lidl`/`lez_core-lidl`
+output rename (republish the sidecar as `logos_execution_zone.lidl`) keep
+the ~25 `payment_streams_module` call sites, `metadata.json` dependency,
+Qt client name, and codegen header unchanged. The obsolete
+`wallet-qt-cmake-ffi-include.patch` (targeted the removed `qt_add_plugin`
+CMake) was dropped.
 If `nix bundle` fails after a pin bump, adjust
 `logos-execution-zone-module-patched/flake.nix` against current `main` packages.
 
