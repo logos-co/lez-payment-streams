@@ -48,7 +48,7 @@ Optional: `make deploy-testnet` (guest ELF change), `make verify-step18-testnet-
 On LEZ v0.2.0, bootstrap runs `auth-transfer init` for owner and provider; claim in
 teardown needs a healthy AT-initialized provider. See
 [archive/operator/testnet-claim-known-issue.md](../archive/operator/testnet-claim-known-issue.md)
-(resolved) and `E2E_CLAIM_OPTIONAL` in [DEVELOPER_JOURNEY.md](../journeys/DEVELOPER_JOURNEY.md).
+(resolved) and `E2E_CLAIM_OPTIONAL` in [E2E.md](../journeys/E2E.md).
 
 ## Step-by-step path (without orchestrator)
 
@@ -64,7 +64,9 @@ See integration-contracts for method signatures and JSON shapes.
 
 ## Developer Journey (published)
 
-In-repo draft: [docs/journeys/DEVELOPER_JOURNEY.md](../journeys/DEVELOPER_JOURNEY.md).
+Runnable Store verification recipes: [docs/journeys/E2E.md](../journeys/E2E.md).
+Protocol-agnostic eligibility integration guide (Store as worked example):
+[docs/journeys/DEVELOPER_JOURNEY.md](../journeys/DEVELOPER_JOURNEY.md).
 
 For the standalone payment streams journey (no Store integration), see
 [User Journey](../journeys/USER_JOURNEY.md).

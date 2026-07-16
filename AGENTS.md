@@ -24,6 +24,8 @@ Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conven
 Developer Journey — Store integration. Packet:
 [docs/plan/upcoming/step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md).
 In-repo SSOT draft: [docs/store-integration/README.md](docs/store-integration/README.md).
+Developer Journey generalization — rewrite as a protocol-agnostic eligibility guide:
+[Step 35](docs/plan/upcoming/step-35-developer-journey-generalization.md) (active).
 
 User Journey — CLI doc packet: [Step 22](docs/plan/upcoming/step-22-ui-journey.md) (active, independent of UI).
 User Journey — testnet manual walkthrough: [Step 34](docs/plan/upcoming/step-34-user-journey-manual-walkthrough.md) (active).

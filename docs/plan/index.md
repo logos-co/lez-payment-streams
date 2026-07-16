@@ -13,7 +13,7 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 24, 26-31, 33) |
-| [upcoming/](upcoming/) | Steps 20, 22, 32 (active); optional 21 (UI), 23 |
+| [upcoming/](upcoming/) | Steps 20, 22, 32, 34, 35 (active); optional 21 (UI), 23 |
 | [cancelled/](cancelled/) | Step 25 won't fix |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
@@ -50,6 +50,7 @@ paid Store mode on the provider.
 | Runnable integration demo (CLI, Store + eligibility) | 17 (local LEZ), 18 (testnet, historical) |
 | LIP-155 on-chain spec (branch pin) | 19 (complete) |
 | Developer Journey: integrators, Store integration | 20 (**next**) |
+| Developer Journey: protocol-agnostic eligibility guide | 35 (active) |
 | User Journey: CLI doc packet | 22 (active) |
 | User Journey: testnet manual walkthrough | 34 (active) |
 | User Journey UI: Basecamp plugin (optional) | 21 (optional) |
@@ -102,6 +103,7 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | 23 | Public Store provider | Optional -- [step-23-public-store-provider.md](upcoming/step-23-public-store-provider.md) |
 | 32 | AT-init unify + Store claim phase | Active (signed off; D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
 | 34 | User Journey manual walkthrough (testnet CLI) | Active -- [step-34-user-journey-manual-walkthrough.md](upcoming/step-34-user-journey-manual-walkthrough.md) |
+| 35 | Developer Journey generalization (protocol-agnostic eligibility guide) | Active -- [step-35-developer-journey-generalization.md](upcoming/step-35-developer-journey-generalization.md) |
 
 Ideas not yet steps: [raw-todos/](raw-todos/).
 
