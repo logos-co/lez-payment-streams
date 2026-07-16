@@ -8,17 +8,18 @@ Pause, resume, and top-up are out of scope ([chainAction catalogue](../payment-s
 
 ## Glossary
 
-| Term (prose)               | JSON / wire                                      | Meaning                                                                                     |
-| -------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| Payer                      | `signer` on writes; `owner` on reads and `claim` | Vault owner; closes the stream in this flow                                                 |
-| Payee                      | `provider` on `createStream` and `claim`         | Recipient; claims after close                                                               |
-| Vault                      | `vault_id`                                       | Holds deposits and allocations                                                              |
-| Stream                     | `stream_id`                                      | Pays payee at `rate` up to `allocation`                                                     |
-| `*_lo` / `*_hi`            | writes and `getStreamStatus`                     | 128-bit amount as two uint64s: `lo + (hi << 64)`. Values here fit in `*_lo` with `*_hi` = 0 |
-| `accrued_*`, `unaccrued_*` | `getStreamStatus`                                | Claimable vs not-yet-time-accrued allocation                                                |
-| `stream_state`             | 0 Active, 1 Paused, 2 Closed                     |                                                                                             |
-| `MIN_ACCRUED`              | (shell only)                                     | Minimum `accrued_lo` before close in this walkthrough; token units, not seconds             |
-| Authenticated transfer (AT) | `wallet auth-transfer init` / `register_public_account` | Lets public accounts spend tokens; required before deposit and stream writes                  |
+| Term (prose)                | JSON / wire                                             | Meaning                                                                                     |
+| --------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Payer                       | `signer` on writes; `owner` on reads and `claim`        | Vault owner; closes the stream in this flow                                                 |
+| Payee                       | `provider` on `createStream` and `claim`                | Recipient; claims after close                                                               |
+| Vault                       | `vault_id`                                              | Holds deposits and allocations                                                              |
+| Stream                      | `stream_id`                                             | Pays payee at `rate` up to `allocation`                                                     |
+| `*_lo` / `*_hi`             | writes and `getStreamStatus`                            | 128-bit amount as two uint64s: `lo + (hi << 64)`. Values here fit in `*_lo` with `*_hi` = 0 |
+| `accrued_*`, `unaccrued_*`  | `getStreamStatus`                                       | Claimable vs not-yet-time-accrued allocation                                                |
+| `stream_state`              | 0 Active, 1 Paused, 2 Closed                            |                                                                                             |
+| `MIN_ACCRUED`               | (shell only)                                            | Minimum `accrued_lo` before close in this walkthrough; token units, not seconds             |
+| Authenticated transfer (AT) | `wallet auth-transfer init` / `register_public_account` | Lets public accounts spend tokens; required before deposit and stream writes                |
+
 
 Default sizing: sequencer `https://testnet.lez.logos.co/`, program id
 `de17c0db368abf9f6476f4d67a56ad24e89ddb23bc49b58f7effb566146c1677` (release guest ELF
@@ -33,17 +34,24 @@ Host: Git, Nix (flakes), Docker, RISC Zero CLI (`cargo-risczero`, `rzup install`
 (for `lgs setup` and for the shell to install `lgs` when it is missing), network access to the
 public sequencer.
 
+Clone the repo:
+
 ```bash
 git clone https://github.com/logos-co/lez-payment-streams.git
 cd lez-payment-streams
+```
+
+Initialize the shell:
+
+```bash
 chmod +x scripts/user-journey-*.sh
 ./scripts/user-journey-reset.sh
 ./scripts/user-journey-shell.sh
 ```
 
-Inside the shell, run Steps 1–18 in [USER_JOURNEY.md](USER_JOURNEY.md). If you open a new terminal, re-run Step 1 (exports and shell helper functions) before continuing.
+Inside the shell, run Steps 1–17 in [USER_JOURNEY.md](USER_JOURNEY.md). If you open a new terminal, re-run Step 1 (exports and shell helper functions) before continuing.
 
-`user-journey-shell.sh` installs `lgs` when missing (with a LEZ v0.2 wallet-config patch if upstream scaffold needs it), then opens a Nix shell with pinned `logoscore` and `lgpm` that load `linux-amd64-dev` modules. Steps 4, 5, and 9 call `./scripts/user-journey-lgs-setup.sh`, `./scripts/user-journey-install-modules.sh`, and `./scripts/user-journey-auth-transfer.sh`.
+`user-journey-shell.sh` installs `lgs` when missing (with a LEZ v0.2 wallet-config patch if upstream scaffold needs it), then opens a Nix shell with pinned `logoscore` and `lgpm` that load `linux-amd64-dev` modules. Steps 4, 5, and 8 call `./scripts/user-journey-lgs-setup.sh`, `./scripts/user-journey-install-modules.sh`, and `./scripts/user-journey-auth-transfer.sh`.
 
 ## Step 1 — Session variables
 
@@ -73,21 +81,12 @@ export PAYEE=""
 export LOGOSCORE_DAEMON_LOG="$REPO_ROOT/.scaffold/e2e/user-journey-logoscore-$(date -u +%Y-%m-%dT%H-%M-%SZ).log"
 ```
 
-Shell helpers used by later steps, one block per function:
+Shell helpers used by later steps:
 
 ```bash
 logoscore() { command logoscore -q "$@"; }
-```
-
-```bash
 journey_ok() { echo "Success: $*"; }
-```
-
-```bash
 journey_fail() { echo "Failed: $*" >&2; return 1; }
-```
-
-```bash
 journey_write_ok() {
   local label="$1" line="$2"
   if [[ -z "$line" ]] || echo "$line" | grep -q '"status":"error"'; then
@@ -97,9 +96,6 @@ journey_write_ok() {
   fi
   journey_ok "$label"
 }
-```
-
-```bash
 sync_to_chain() {
   local raw height
   raw=$(curl -sf -X POST "$SEQUENCER_URL" -H 'Content-Type: application/json' \
@@ -112,26 +108,29 @@ sync_to_chain() {
   logoscore call logos_execution_zone sync_to_block "$height" >/dev/null
   sleep 3
 }
-```
-
-```bash
 chain_balance() {
   curl -sf -X POST "$SEQUENCER_URL" -H 'Content-Type: application/json' \
     -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$1\"]}" \
     | sed -n 's/.*"balance":\([0-9][0-9]*\).*/\1/p' | head -1
 }
-```
-
-```bash
 journey_ok "Session variables and shell helpers ready"
 ```
 
 `logoscore()` wraps CLI calls with `-q`. `journey_ok` / `journey_fail` print step status;
-`journey_write_ok` checks the last line of a chain write for `"status":"error"`. `sync_to_chain`
-pulls the wallet mirror up to the sequencer tip (`getLastBlockId` → `sync_to_block`); see Step 8
-for when to call it. `chain_balance` reads a sequencer `getAccount` balance (no sync needed). Step 6
-redirects the background daemon to `$LOGOSCORE_DAEMON_LOG` (new filename each time you run Step 1,
-UTC ISO timestamp in the name).
+`journey_write_ok` checks the last line of a chain write for `"status":"error"`. `chain_balance`
+reads a sequencer `getAccount` balance (no sync needed). Step 6 redirects the background daemon to
+`$LOGOSCORE_DAEMON_LOG` (new filename each time you run Step 1, UTC ISO timestamp in the name).
+
+`sync_to_chain` pulls the wallet mirror up to the sequencer tip (`getLastBlockId` →
+`sync_to_block`). Call it on its own line after each `chainAction` write, before the
+`getVaultStatus` / `getStreamStatus` in the same step, and before a module status read that opens a
+step (Step 13). Do not run it on a timer while idle, and not for `chain_balance`. Pausing between
+steps is fine; the chain moving ahead does not break the walkthrough, the next `sync_to_chain`
+always catches up to the current tip. Status reads use the wallet mirror
+(`logos_execution_zone.get_account_public` on derived vault or stream accounts); if that account is
+not in the mirror yet, the module returns `account data missing` even when the write already
+returned a `tx_hash` — sync again and retry the read, or continue when the write succeeded.
+`sync_to_block` stdout is discarded so you do not see a bare `0`.
 
 ## Step 2 — Sequencer up
 
@@ -254,29 +253,7 @@ logoscore call logos_execution_zone save
 journey_ok "Payer and payee public accounts ready (payer=$PAYER payee=$PAYEE)"
 ```
 
-## Step 8 — Sync to chain
-
-`sync_to_chain` (defined in Step 1) pulls the wallet mirror up to the sequencer tip
-(`getLastBlockId` → `sync_to_block`). Call it when the doc shows it on its own line.
-
-When to call it:
-
-- After each `chainAction` write, before `getVaultStatus` / `getStreamStatus` in the same step.
-- Before a module status read that opens a step (Step 14).
-- Not on a timer while idle; not for `chain_balance` (sequencer `getAccount`).
-
-Pausing between steps is fine. The chain moving ahead does not break the walkthrough; the next
-`sync_to_chain` always catches up to the current tip.
-
-Status reads use the wallet mirror (`logos_execution_zone.get_account_public` on derived vault or
-stream accounts). If that account is not in the mirror yet, the module returns
-`account data missing` even when the write already returned a `tx_hash`. Sync again and retry the
-read, or continue when the write succeeded.
-
-`journey_write_ok` checks the last line of a chain write for `"status":"error"` and prints
-Success or Failed. `sync_to_block` stdout is discarded so you do not see a bare `0`.
-
-## Step 9 — Authenticated transfer registration
+## Step 8 — Authenticated transfer registration
 
 Uses the same path as module E2E (`wallet auth-transfer init` with logoscore wallet handoff, then
 `register_public_account` if needed). Requires `$PAYER` and `$PAYEE` from Step 7.
@@ -291,7 +268,7 @@ journey_ok "Authenticated transfer registered for payer and payee"
 On success the script exits 0 and appends phases to `.scaffold/e2e/user-journey-at.jsonl`. If it
 fails, inspect that file and confirm `$SCAFFOLD_WALLET` exists (Step 4).
 
-## Step 10 — Fund accounts (pinata)
+## Step 9 — Fund accounts (pinata)
 
 Close the in-process wallet before the standalone `wallet` binary claims pinata.
 
@@ -334,7 +311,7 @@ sync_to_chain
 journey_ok "Payer and payee funded on testnet (pinata)"
 ```
 
-## Step 11 — Initialize vault
+## Step 10 — Initialize vault
 
 Step 1 sets `VAULT_ID=0`. After Step 7 you have a new payer, so vault 0 is usually free. If
 `initializeVault` fails because that vault already exists for `$PAYER`, run
@@ -353,7 +330,7 @@ logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
 
-## Step 12 — Deposit
+## Step 11 — Deposit
 
 Deposit into the vault, then optionally read it back:
 
@@ -367,7 +344,7 @@ logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
 
-## Step 13 — Create stream
+## Step 12 — Create stream
 
 Create the stream, then optionally read it back:
 
@@ -381,7 +358,7 @@ logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-## Step 14 — Wait for accrual
+## Step 13 — Wait for accrual
 
 Wait approximately 30 seconds for funds to accrue, then:
 
@@ -392,7 +369,7 @@ logoscore call payment_streams_module chainAction getStreamStatus \
 journey_ok "Accrual window elapsed; check accrued_lo in JSON above (need ≥ $MIN_ACCRUED before close)"
 ```
 
-## Step 15 — Close stream (payer)
+## Step 14 — Close stream (payer)
 
 ```bash
 line=$(logoscore call payment_streams_module chainAction closeStream \
@@ -404,7 +381,7 @@ logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-## Step 16 — Claim (payee)
+## Step 15 — Claim (payee)
 
 ```bash
 line=$(logoscore call payment_streams_module chainAction claim \
@@ -414,7 +391,7 @@ journey_write_ok "Payee claimed accrued tokens" "$line"
 sync_to_chain
 ```
 
-## Step 17 — Confirm
+## Step 16 — Confirm
 
 Uses `chain_balance` from Step 1 (sequencer `getAccount`, no `sync_to_chain` needed).
 
@@ -427,7 +404,7 @@ echo "Payee on-chain balance: $payee_bal"
 journey_ok "Payment stream walkthrough complete (payee balance $payee_bal)"
 ```
 
-## Step 18 — Shut down
+## Step 17 — Shut down
 
 ```bash
 logoscore call logos_execution_zone close 2>/dev/null || true
@@ -440,24 +417,27 @@ exit
 
 ## If something fails
 
-| Symptom | Try |
-| --- | --- |
-| Verbose `[logos_execution_zone]` lines | Re-run Step 1 (`logoscore()` wrapper) and Step 6; or `command logoscore -v …` to debug |
-| `cannot open fixture manifest: fixtures/localnet.json` | `export FIXTURE_MANIFEST="$REPO_ROOT/fixtures/testnet-module.json"` and re-run Step 6; journey shell sets this automatically |
-| Module variant / `load-module` failed | `./scripts/user-journey-reset.sh`, re-enter `./scripts/user-journey-shell.sh`, Step 5 `./scripts/user-journey-install-modules.sh` |
-| `Run this from the journey toolchain shell` | `./scripts/user-journey-shell.sh` before Step 5 |
-| `missing wallet debug config in lez repo` | `./scripts/user-journey-lgs-setup.sh` (fallback copy built in) |
-| Stale reads / `account data missing` after a successful write | Wallet mirror lag; `sync_to_chain`, retry read, or continue if write returned success (Step 8) |
-| Paused between steps | Run the next step as written; first command is often `sync_to_chain` before a read |
-| `initializeVault` fails for vault 0 | Reuse of `$PAYER` from an earlier run: `export VAULT_ID=1` and retry Step 11, or `./scripts/user-journey-reset.sh` and new accounts in Step 7 |
-| Deposit rejected | Step 10 pinata for payer |
-| Stream not Closed | Run `sync_to_chain`; redo Step 15 |
-| Empty claim | Step 14 until `accrued_lo` ≥ `MIN_ACCRUED` |
-| AT errors | Step 9 `./scripts/user-journey-auth-transfer.sh`; check `.scaffold/e2e/user-journey-at.jsonl` |
-| Pinata no effect | `LEE_WALLET_HOME_DIR` = `$WALLET_HOME`; close wallet before claims (Step 10) |
+
+| Symptom                                                       | Try                                                                                                                                           |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Verbose `[logos_execution_zone]` lines                        | Re-run Step 1 (`logoscore()` wrapper) and Step 6; or `command logoscore -v …` to debug                                                        |
+| `cannot open fixture manifest: fixtures/localnet.json`        | `export FIXTURE_MANIFEST="$REPO_ROOT/fixtures/testnet-module.json"` and re-run Step 6; journey shell sets this automatically                  |
+| Module variant / `load-module` failed                         | `./scripts/user-journey-reset.sh`, re-enter `./scripts/user-journey-shell.sh`, Step 5 `./scripts/user-journey-install-modules.sh`             |
+| `Run this from the journey toolchain shell`                   | `./scripts/user-journey-shell.sh` before Step 5                                                                                               |
+| `missing wallet debug config in lez repo`                     | `./scripts/user-journey-lgs-setup.sh` (fallback copy built in)                                                                                |
+| Stale reads / `account data missing` after a successful write | Wallet mirror lag; `sync_to_chain`, retry read, or continue if write returned success (Step 1)                                                |
+| Paused between steps                                          | Run the next step as written; first command is often `sync_to_chain` before a read                                                            |
+| `initializeVault` fails for vault 0                           | Reuse of `$PAYER` from an earlier run: `export VAULT_ID=1` and retry Step 10, or `./scripts/user-journey-reset.sh` and new accounts in Step 7 |
+| Deposit rejected                                              | Step 9 pinata for payer                                                                                                                       |
+| Stream not Closed                                             | Run `sync_to_chain`; redo Step 14                                                                                                             |
+| Empty claim                                                   | Step 13 until `accrued_lo` ≥ `MIN_ACCRUED`                                                                                                    |
+| AT errors                                                     | Step 8 `./scripts/user-journey-auth-transfer.sh`; check `.scaffold/e2e/user-journey-at.jsonl`                                                 |
+| Pinata no effect                                              | `LEE_WALLET_HOME_DIR` = `$WALLET_HOME`; close wallet before claims (Step 9)                                                                   |
+
 
 ## Reference
 
 - [LIP-155](https://lip.logos.co/anoncomms/raw/payment-streams.html)
 - [Logos build-and-run](https://docs.logos.co/core/build-modules/build-and-run-a-logos-core-module)
 - [payment-streams-module chainAction catalogue](../payment-streams-module/README.md#chainaction-catalogue)
+
