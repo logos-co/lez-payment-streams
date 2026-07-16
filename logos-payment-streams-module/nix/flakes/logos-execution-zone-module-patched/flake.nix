@@ -86,6 +86,17 @@
         let
           baseLib = patchWalletInclude pkgsForSys.lib;
           wrapped = addSdkApiHeaders system baseLib;
+          # The lidl sidecar derivation is templated from the upstream eval-time
+          # name (lez_core.lidl). Downstream depends on logos_execution_zone, so
+          # republish the sidecar under the identity we preserve.
+          renameLidl = base:
+            let
+              pkgs = import nixpkgs { inherit system; };
+            in
+            pkgs.runCommand "${base.name}-as-logos_execution_zone" { } ''
+              mkdir -p $out
+              cp "${base}/lez_core.lidl" "$out/logos_execution_zone.lidl"
+            '';
         in
         builtins.mapAttrs (
           name: drv:
@@ -94,6 +105,11 @@
             && (builtins.hasAttr "overrideAttrs" drv)
             && ((name == "default") || (name == "lib"))
           then wrapped
+          else if
+            (builtins.typeOf drv == "set")
+            && (builtins.hasAttr "overrideAttrs" drv)
+            && ((name == "lidl") || (name == "lez_core-lidl"))
+          then renameLidl drv
           else drv
         ) pkgsForSys;
     in
