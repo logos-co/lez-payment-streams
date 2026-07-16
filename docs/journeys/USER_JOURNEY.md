@@ -70,13 +70,31 @@ export VAULT_ID=0
 export STREAM_ID=0
 export PAYER=""
 export PAYEE=""
+export LOGOSCORE_DAEMON_LOG="$REPO_ROOT/.scaffold/e2e/user-journey-logoscore-$(date -u +%Y-%m-%dT%H-%M-%SZ).log"
+logoscore() { command logoscore -q "$@"; }
+journey_ok() { echo "Success: $*"; }
+journey_fail() { echo "Failed: $*" >&2; return 1; }
+journey_write_ok() {
+  local label="$1" line="$2"
+  if [[ -z "$line" ]] || echo "$line" | grep -q '"status":"error"'; then
+    journey_fail "$label"
+    [[ -n "$line" ]] && echo "$line" >&2
+    return 1
+  fi
+  journey_ok "$label"
+}
+journey_ok "Session variables and quiet logoscore wrapper ready"
 ```
+
+Wraps CLI calls with `-q`. Step 6 redirects the background daemon to `$LOGOSCORE_DAEMON_LOG` (new
+filename each time you run Step 1, UTC ISO timestamp in the name).
 
 ## Step 2 — Sequencer up
 
 ```bash
 curl -sf -X POST "$SEQUENCER_URL" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}'
+journey_ok "Sequencer reachable"
 ```
 
 ## Step 3 — Build guest ELF and check ImageID
@@ -89,6 +107,7 @@ change program identity.
 cd "$REPO_ROOT"
 make build
 test -f "$PAYMENT_STREAMS_GUEST_BIN"
+journey_ok "Guest ELF built"
 ```
 
 ```bash
@@ -100,6 +119,7 @@ if [[ -z "$BUILT" ]]; then
   echo "Could not read ImageID from make program-id (run make build first)." >&2
 elif [[ "$BUILT" == "$EXPECTED" ]]; then
   echo "Program id matches testnet fixture."
+  journey_ok "Guest ELF built; program id matches testnet fixture"
 else
   echo "Guest ImageID mismatch." >&2
   echo "  built:    $BUILT" >&2
@@ -116,6 +136,7 @@ cd "$REPO_ROOT"
 ./scripts/user-journey-lgs-setup.sh
 export SCAFFOLD_WALLET="${SCAFFOLD_LEZ_CACHE}/target/release/wallet"
 test -x "$SCAFFOLD_WALLET"
+journey_ok "Scaffold and standalone wallet CLI ready"
 ```
 
 ## Step 5 — Wallet config and module install
@@ -125,6 +146,7 @@ cd "$REPO_ROOT"
 ./scripts/user-journey-install-modules.sh
 export WALLET_CONFIG="$WALLET_HOME/wallet_config.json"
 export LEE_WALLET_HOME_DIR="$WALLET_HOME"
+journey_ok "Testnet wallet config and Logos modules installed"
 ```
 
 ## Step 6 — Start logoscore and open wallet
@@ -134,8 +156,9 @@ starts. If you add or change it later, run this step again.
 
 ```bash
 cd "$REPO_ROOT"
+mkdir -p "$(dirname "$LOGOSCORE_DAEMON_LOG")"
 logoscore stop 2>/dev/null || true
-logoscore -D -m "$MODULES" &
+logoscore -D -m "$MODULES" >>"$LOGOSCORE_DAEMON_LOG" 2>&1 &
 sleep 3
 logoscore load-module logos_execution_zone
 logoscore load-module payment_streams_module
@@ -145,9 +168,11 @@ else
   logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE"
 fi
 logoscore call logos_execution_zone save
+journey_ok "logoscore daemon running; wallet open (log: $LOGOSCORE_DAEMON_LOG)"
 ```
 
-Use the last line of each `logoscore call` for JSON `status` / `result`.
+Use the last line of each `logoscore call` for JSON `status` / `result`. For daemon debug logs:
+`tail -f "$LOGOSCORE_DAEMON_LOG"`.
 
 ## Step 7 — Create payer and payee accounts
 
@@ -167,11 +192,31 @@ if [[ -z "$PAYEE" ]]; then
   export PAYEE
 fi
 logoscore call logos_execution_zone save
+journey_ok "Payer and payee public accounts ready (payer=$PAYER payee=$PAYEE)"
 ```
 
 ## Step 8 — Sync to chain
 
-Define the function once, then call `sync_to_chain` after each `chainAction` write before trusting a read.
+`sync_to_chain` pulls the wallet mirror up to the sequencer tip (`getLastBlockId` →
+`sync_to_block`). Define once; call it when the doc shows it on its own line.
+
+When to call it:
+
+- After each `chainAction` write, before `getVaultStatus` / `getStreamStatus` in the same step.
+- At the start of a step whose first command is a module status read (Step 14).
+- Not on a timer while idle; not for `chain_balance` (sequencer `getAccount`).
+
+Pausing between steps is fine. The chain moving ahead does not break the walkthrough; the next
+`sync_to_chain` always catches up to the current tip. After a long break, re-run Step 1 and this
+function if you opened a new shell.
+
+Status reads use the wallet mirror (`logos_execution_zone.get_account_public` on derived vault or
+stream accounts). If that account is not in the mirror yet, the module returns
+`account data missing` even when the write already returned a `tx_hash`. Sync again and retry the
+read, or continue when the write succeeded.
+
+`journey_write_ok` checks the last line of a chain write for `"status":"error"` and prints
+Success or Failed. `sync_to_block` stdout is discarded so you do not see a bare `0`.
 
 ```bash
 sync_to_chain() {
@@ -186,12 +231,13 @@ sync_to_chain() {
     echo "sync_to_chain: could not parse getLastBlockId from sequencer" >&2
     return 1
   fi
-  logoscore call logos_execution_zone sync_to_block "$height"
+  logoscore call logos_execution_zone sync_to_block "$height" >/dev/null
   sleep 3
 }
+journey_ok "sync_to_chain helper ready"
 ```
 
-Later steps show `sync_to_chain` on its own line in the same shell session (same meaning as running only `sync_to_chain`).
+Later steps show `sync_to_chain` on its own line in the same shell session.
 
 ## Step 9 — Authenticated transfer registration
 
@@ -202,6 +248,7 @@ Uses the same path as module E2E (`wallet auth-transfer init` with logoscore wal
 cd "$REPO_ROOT"
 ./scripts/user-journey-auth-transfer.sh
 sync_to_chain
+journey_ok "Authenticated transfer registered for payer and payee"
 ```
 
 On success the script exits 0 and appends phases to `.scaffold/e2e/user-journey-at.jsonl`. If it
@@ -253,6 +300,7 @@ pb=$(chain_balance "$PAYER"); pb=${pb:-0}
 pe=$(chain_balance "$PAYEE"); pe=${pe:-0}
 echo "Payer balance $pb (target $PAYER_TARGET); payee balance $pe (target $PAYEE_TARGET)"
 sync_to_chain
+journey_ok "Payer and payee funded on testnet (pinata)"
 ```
 
 ## Step 11 — Initialize vault
@@ -261,9 +309,14 @@ Step 1 sets `VAULT_ID=0`. After Step 7 you have a new payer, so vault 0 is usual
 `initializeVault` fails because that vault already exists for `$PAYER`, run
 `export VAULT_ID=1` (or the next free id) and repeat this step.
 
+Optional confirmation (may show `account data missing` until the mirror catches up; continue if
+`initializeVault` returned success):
+
 ```bash
-logoscore call payment_streams_module chainAction initializeVault \
-  "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
+line=$(logoscore call payment_streams_module chainAction initializeVault \
+  "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID}" | tail -1)
+echo "$line"
+journey_write_ok "Vault created (vault_id=$VAULT_ID)" "$line"
 sync_to_chain
 logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
@@ -271,9 +324,13 @@ logoscore call payment_streams_module chainAction getVaultStatus \
 
 ## Step 12 — Deposit
 
+Optional confirmation after a successful deposit:
+
 ```bash
-logoscore call payment_streams_module chainAction deposit \
-  "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}"
+line=$(logoscore call payment_streams_module chainAction deposit \
+  "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}" | tail -1)
+echo "$line"
+journey_write_ok "Vault funded ($DEPOSIT tokens, vault_id=$VAULT_ID)" "$line"
 sync_to_chain
 logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
@@ -281,9 +338,13 @@ logoscore call payment_streams_module chainAction getVaultStatus \
 
 ## Step 13 — Create stream
 
+Optional confirmation after a successful create:
+
 ```bash
-logoscore call payment_streams_module chainAction createStream \
-  "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PAYEE\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}"
+line=$(logoscore call payment_streams_module chainAction createStream \
+  "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PAYEE\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}" | tail -1)
+echo "$line"
+journey_write_ok "Payment stream created (stream_id=$STREAM_ID, payee=$PAYEE)" "$line"
 sync_to_chain
 logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
@@ -297,6 +358,7 @@ Wait at least `$MIN_ACCRUED` seconds, then:
 sync_to_chain
 logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
+journey_ok "Accrual window elapsed; check accrued_lo in JSON above (need ≥ $MIN_ACCRUED before close)"
 ```
 
 ## Step 15 — Close stream (payer)
@@ -304,8 +366,10 @@ logoscore call payment_streams_module chainAction getStreamStatus \
 Omit `authority` so the payer (`signer`) signs close.
 
 ```bash
-logoscore call payment_streams_module chainAction closeStream \
-  "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
+line=$(logoscore call payment_streams_module chainAction closeStream \
+  "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}" | tail -1)
+echo "$line"
+journey_write_ok "Stream closed by payer (vault_id=$VAULT_ID stream_id=$STREAM_ID)" "$line"
 sync_to_chain
 logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
@@ -314,17 +378,22 @@ logoscore call payment_streams_module chainAction getStreamStatus \
 ## Step 16 — Claim (payee)
 
 ```bash
-logoscore call payment_streams_module chainAction claim \
-  "{\"owner\":\"$PAYER\",\"provider\":\"$PAYEE\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
+line=$(logoscore call payment_streams_module chainAction claim \
+  "{\"owner\":\"$PAYER\",\"provider\":\"$PAYEE\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}" | tail -1)
+echo "$line"
+journey_write_ok "Payee claimed accrued tokens" "$line"
 sync_to_chain
 ```
 
 ## Step 17 — Confirm
 
 ```bash
+sync_to_chain
 logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
-chain_balance "$PAYEE"
+payee_bal=$(chain_balance "$PAYEE"); payee_bal=${payee_bal:-0}
+echo "Payee on-chain balance: $payee_bal"
+journey_ok "Payment stream walkthrough complete (payee balance $payee_bal)"
 ```
 
 ## Step 18 — Shut down
@@ -332,6 +401,7 @@ chain_balance "$PAYEE"
 ```bash
 logoscore call logos_execution_zone close 2>/dev/null || true
 logoscore stop
+journey_ok "logoscore stopped; exit the journey shell when ready"
 exit
 ```
 
@@ -341,11 +411,13 @@ exit
 
 | Symptom | Try |
 | --- | --- |
+| Verbose `[logos_execution_zone]` lines | Re-run Step 1 (`logoscore()` wrapper) and Step 6; or `command logoscore -v …` to debug |
 | `cannot open fixture manifest: fixtures/localnet.json` | `export FIXTURE_MANIFEST="$REPO_ROOT/fixtures/testnet-module.json"` and re-run Step 6; journey shell sets this automatically |
 | Module variant / `load-module` failed | `./scripts/user-journey-reset.sh`, re-enter `./scripts/user-journey-shell.sh`, Step 5 `./scripts/user-journey-install-modules.sh` |
 | `Run this from the journey toolchain shell` | `./scripts/user-journey-shell.sh` before Step 5 |
 | `missing wallet debug config in lez repo` | `./scripts/user-journey-lgs-setup.sh` (fallback copy built in) |
-| Stale reads | `sync_to_chain`, poll again |
+| Stale reads / `account data missing` after a successful write | Wallet mirror lag; `sync_to_chain`, retry read, or continue if write returned success (Step 8) |
+| Paused between steps | Run the next step as written; first command is often `sync_to_chain` before a read |
 | `initializeVault` fails for vault 0 | Reuse of `$PAYER` from an earlier run: `export VAULT_ID=1` and retry Step 11, or `./scripts/user-journey-reset.sh` and new accounts in Step 7 |
 | Deposit rejected | Step 10 pinata for payer |
 | Stream not Closed | Run `sync_to_chain`; Step 15 without `authority` |
