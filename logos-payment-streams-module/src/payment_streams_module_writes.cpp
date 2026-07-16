@@ -37,6 +37,10 @@ enum class VaultIxLayout : uint8_t {
     StreamAuthority6,
 };
 
+QString parseWalletSubmitJson(const QString& walletJson, QJsonObject* fieldsOut, QString* errorOut);
+
+QByteArray accountDataBytesFromHex(LogosExecutionZone& wallet, const QString& accountHex, QString* errorOut);
+
 QString makeErrorJson(const QString& message) {
     QJsonObject obj;
     obj.insert(QStringLiteral("status"), QStringLiteral("error"));
@@ -331,7 +335,7 @@ QJsonArray accountSlotsJsonForSubmit(VaultIxLayout layout,
                                      bool pseudonymousFunder,
                                      const QStringList& accountHexIds,
                                      const QList<bool>& signingFlags) {
-    QJsonArray slots;
+    QJsonArray slotList;
     for (int i = 0; i < accountHexIds.size(); ++i) {
         QJsonObject slot;
         slot.insert(QStringLiteral("account_id_hex"), accountHexIds.at(i));
@@ -341,9 +345,9 @@ QJsonArray accountSlotsJsonForSubmit(VaultIxLayout layout,
             slot.insert(QStringLiteral("resolution"),
                         signingFlags.at(i) ? QStringLiteral("public_sign") : QStringLiteral("public_no_sign"));
         }
-        slots.append(slot);
+        slotList.append(slot);
     }
-    return slots;
+    return slotList;
 }
 
 bool clockBytes(uint8_t out[32], QString* errorOut) {
@@ -551,10 +555,6 @@ QList<uint8_t> instructionBytesForWallet(const QByteArray& borshBytes, QString* 
     }
     return borshList;
 }
-
-QString parseWalletSubmitJson(const QString& walletJson, QJsonObject* fieldsOut, QString* errorOut);
-
-QByteArray accountDataBytesFromHex(LogosExecutionZone& wallet, const QString& accountHex, QString* errorOut);
 
 bool guestElfLoadedInWalletProcess() {
     return !qEnvironmentVariableIsEmpty("PAYMENT_STREAMS_GUEST_BIN");
