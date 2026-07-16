@@ -1,0 +1,199 @@
+diff --git a/src/lez_core_module.cpp b/src/lez_core_module.cpp
+index cc9ebc5..d4e5f6a 100644
+--- a/src/lez_core_module.cpp
++++ b/src/lez_core_module.cpp
+@@ -1101,6 +1101,127 @@ std::string LEZCoreModule::send_generic_public_transaction_json(
+     return send_generic_public_transaction(account_ids, signing_requirements, instruction, program_id_hex);
+ }
+ 
++namespace {
++
++std::string sendGenericPrivateTransactionResolved(
++        WalletHandle* walletHandle,
++        const std::vector<FfiAccountIdentity>& identities_resolved,
++        const std::vector<uint32_t>& instruction,
++        const std::vector<uint8_t>& program_elf,
++        const std::vector<std::vector<uint8_t>>& program_dependencies
++) {
++    const FfiAccountIdentity *account_identities = identities_resolved.data();
++    const uintptr_t account_identities_size = static_cast<uintptr_t>(identities_resolved.size());
++
++    const uint32_t* input_instruction_data = instruction.data();
++    const uintptr_t input_instruction_data_size = static_cast<uintptr_t>(instruction.size());
++
++    FfiProgram main_program {};
++    main_program.elf_data = program_elf.data();
++    main_program.elf_size = static_cast<uintptr_t>(program_elf.size());
++
++    std::vector<FfiProgram> ffi_program_dependencies;
++    ffi_program_dependencies.reserve(program_dependencies.size());
++    for (const auto& dep : program_dependencies) {
++        FfiProgram program{};
++        program.elf_data = dep.data();
++        program.elf_size = static_cast<uintptr_t>(dep.size());
++        ffi_program_dependencies.push_back(program);
++    }
++
++    FfiProgramWithDependencies program_with_dependencies {};
++    program_with_dependencies.program = main_program;
++    program_with_dependencies.deps = ffi_program_dependencies.empty() ? nullptr : ffi_program_dependencies.data();
++    program_with_dependencies.deps_size = static_cast<uintptr_t>(ffi_program_dependencies.size());
++
++    FfiTransactionResult result {};
++    const WalletFfiError error = wallet_ffi_send_generic_private_transaction(
++        walletHandle,
++        account_identities,
++        account_identities_size,
++        input_instruction_data,
++        input_instruction_data_size,
++        &program_with_dependencies,
++        &result
++    );
++
++    for (const FfiAccountIdentity& acc_identity : identities_resolved) {
++        wallet_ffi_free_account_identity(const_cast<FfiAccountIdentity*>(&acc_identity));
++    }
++
++    if (error != SUCCESS) {
++        fprintf(stderr, "send_generic_private_transaction: wallet FFI error %d\n", error);
++        return transferResultToJson(nullptr, std::string("send_generic_private_transaction: wallet FFI error ") + std::to_string(error));
++    }
++    std::string resultJson = genericTransactionResultToJson(&result, std::string());
++    wallet_ffi_free_transaction_result(&result);
++    return resultJson;
++}
++
++} // namespace
++
++std::string LEZCoreModule::send_generic_private_transaction_json(const std::string& payload_json) {
++    nlohmann::json doc = nlohmann::json::parse(payload_json, nullptr, false);
++    if (doc.is_discarded() || !doc.is_object()) {
++        return transferResultToJson(nullptr, "send_generic_private_transaction_json: invalid JSON payload");
++    }
++
++    if (!doc.contains("account_slots") || !doc["account_slots"].is_array()) {
++        return transferResultToJson(nullptr, "send_generic_private_transaction_json: missing account_slots");
++    }
++
++    std::vector<FfiAccountIdentity> identities_resolved;
++    identities_resolved.reserve(doc["account_slots"].size());
++
++    for (const auto& entry : doc["account_slots"]) {
++        if (!entry.is_object() || !entry.contains("account_id_hex") || !entry["account_id_hex"].is_string()) {
++            return transferResultToJson(nullptr, "send_generic_private_transaction_json: account_slots entries need account_id_hex");
++        }
++        if (!entry.contains("resolution") || !entry["resolution"].is_string()) {
++            return transferResultToJson(nullptr, "send_generic_private_transaction_json: account_slots entries need resolution");
++        }
++        FfiBytes32 id{};
++        if (!hexToBytes32(entry["account_id_hex"].get<std::string>(), &id)) {
++            return transferResultToJson(nullptr, "send_generic_private_transaction_json: invalid account_id_hex");
++        }
++        const std::string resolution = entry["resolution"].get<std::string>();
++        FfiAccountIdentity acc_identity{};
++        WalletFfiError resolve_error = WalletFfiError::InternalError;
++        if (resolution == "private") {
++            resolve_error = wallet_ffi_resolve_private_account(walletHandle, id, &acc_identity);
++        } else if (resolution == "public_no_sign") {
++            resolve_error = wallet_ffi_resolve_public_account(id, false, &acc_identity);
++        } else if (resolution == "public_sign") {
++            resolve_error = wallet_ffi_resolve_public_account(id, true, &acc_identity);
++        } else {
++            return transferResultToJson(nullptr, "send_generic_private_transaction_json: unknown resolution");
++        }
++        if (resolve_error != SUCCESS) {
++            for (FfiAccountIdentity& prior : identities_resolved) {
++                wallet_ffi_free_account_identity(&prior);
++            }
++            return transferResultToJson(nullptr, std::string("send_generic_private_transaction_json: resolve failed ") + std::to_string(static_cast<int>(resolve_error)));
++        }
++        identities_resolved.push_back(acc_identity);
++    }
++
++    if (!doc.contains("instruction_hex") || !doc["instruction_hex"].is_string()) {
++        for (FfiAccountIdentity& prior : identities_resolved) {
++            wallet_ffi_free_account_identity(&prior);
++        }
++        return transferResultToJson(nullptr, "send_generic_private_transaction_json: missing instruction_hex");
++    }
++    std::vector<uint8_t> instruction_bytes;
++    if (!hexToBytes(doc["instruction_hex"].get<std::string>(), instruction_bytes)) {
++        for (FfiAccountIdentity& prior : identities_resolved) {
++            wallet_ffi_free_account_identity(&prior);
++        }
++        return transferResultToJson(nullptr, "send_generic_private_transaction_json: invalid instruction_hex");
++    }
++    if (instruction_bytes.empty() || instruction_bytes.size() % 4 != 0) {
++        for (FfiAccountIdentity& prior : identities_resolved) {
++            wallet_ffi_free_account_identity(&prior);
++        }
++        return transferResultToJson(nullptr, "send_generic_private_transaction_json: instruction_hex length invalid");
++    }
++    std::vector<uint32_t> instruction;
++    instruction.reserve(instruction_bytes.size() / 4);
++    for (size_t i = 0; i < instruction_bytes.size(); i += 4) {
++        const uint32_t word = static_cast<uint32_t>(instruction_bytes[i])
++            | (static_cast<uint32_t>(instruction_bytes[i + 1]) << 8)
++            | (static_cast<uint32_t>(instruction_bytes[i + 2]) << 16)
++            | (static_cast<uint32_t>(instruction_bytes[i + 3]) << 24);
++        instruction.push_back(word);
++    }
++
++    if (!doc.contains("program_elf_hex") || !doc["program_elf_hex"].is_string()) {
++        for (FfiAccountIdentity& prior : identities_resolved) {
++            wallet_ffi_free_account_identity(&prior);
++        }
++        return transferResultToJson(nullptr, "send_generic_private_transaction_json: missing program_elf_hex");
++    }
++    std::vector<uint8_t> program_elf;
++    if (!hexToBytes(doc["program_elf_hex"].get<std::string>(), program_elf)) {
++        for (FfiAccountIdentity& prior : identities_resolved) {
++            wallet_ffi_free_account_identity(&prior);
++        }
++        return transferResultToJson(nullptr, "send_generic_private_transaction_json: invalid program_elf_hex");
++    }
++
++    std::vector<std::vector<uint8_t>> program_dependencies;
++    if (doc.contains("dependency_elf_hex_list") && doc["dependency_elf_hex_list"].is_array()) {
++        for (const auto& dep_entry : doc["dependency_elf_hex_list"]) {
++            if (!dep_entry.is_string()) {
++                for (FfiAccountIdentity& prior : identities_resolved) {
++                    wallet_ffi_free_account_identity(&prior);
++                }
++                return transferResultToJson(nullptr, "send_generic_private_transaction_json: dependency_elf_hex_list must be strings");
++            }
++            std::vector<uint8_t> dep_elf;
++            if (!hexToBytes(dep_entry.get<std::string>(), dep_elf)) {
++                for (FfiAccountIdentity& prior : identities_resolved) {
++                    wallet_ffi_free_account_identity(&prior);
++                }
++                return transferResultToJson(nullptr, "send_generic_private_transaction_json: invalid dependency elf hex");
++            }
++            program_dependencies.push_back(std::move(dep_elf));
++        }
++    }
++
++    return sendGenericPrivateTransactionResolved(
++        walletHandle,
++        identities_resolved,
++        instruction,
++        program_elf,
++        program_dependencies
++    );
++}
++
+ std::string LEZCoreModule::send_generic_private_transaction(
+         const std::vector<std::string>& account_ids,
+         const std::vector<uint32_t>& instruction,
+diff --git a/src/lez_core_module.h b/src/lez_core_module.h
+index ac6c205..c7d8e9f 100644
+--- a/src/lez_core_module.h
++++ b/src/lez_core_module.h
+@@ -79,6 +79,7 @@ public:
+ 
+     std::string send_generic_public_transaction(const std::vector<std::string>& account_ids, const std::vector<bool>& signing_requirements, const std::vector<uint32_t>& instruction, const std::string& program_id_hex);
+     std::string send_generic_public_transaction_json(const std::string& payload_json);
++    std::string send_generic_private_transaction_json(const std::string& payload_json);
+     std::string send_generic_private_transaction(const std::vector<std::string>& account_ids, const std::vector<uint32_t>& instruction, const std::vector<uint8_t>& program_elf, const std::vector<std::vector<uint8_t>>& program_dependencies);
+     std::string send_program_deployment_transaction(const std::vector<uint8_t>& program_elf);
+ 

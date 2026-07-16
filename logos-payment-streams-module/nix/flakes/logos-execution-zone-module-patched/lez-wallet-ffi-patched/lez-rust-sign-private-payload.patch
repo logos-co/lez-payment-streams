@@ -1,0 +1,70 @@
+--- a/lez/wallet-ffi/src/keys.rs
++++ b/lez/wallet-ffi/src/keys.rs
+@@ -2,7 +2,7 @@
+ 
+ use std::{ffi::CString, ptr};
+ 
+-use lee::{AccountId, PublicKey, Signature};
++use lee::{AccountId, PrivateKey, PublicKey, Signature};
+ use wallet::AccountIdentity;
+ 
+ use crate::{
+@@ -100,6 +100,58 @@ pub unsafe extern "C" fn wallet_ffi_sign_public_payload(
+     WalletFfiError::Success
+ }
+ 
++/// Sign a 32-byte canonical payload digest with the nullifier secret key of an owned private account.
++#[no_mangle]
++pub unsafe extern "C" fn wallet_ffi_sign_private_payload(
++    handle: *mut WalletHandle,
++    account_id: *const FfiBytes32,
++    canonical_payload_digest: *const FfiBytes32,
++    out_signature: *mut FfiSignature64,
++) -> WalletFfiError {
++    let wrapper = match get_wallet(handle) {
++        Ok(w) => w,
++        Err(e) => return e,
++    };
++
++    if account_id.is_null() || canonical_payload_digest.is_null() || out_signature.is_null() {
++        print_error("Null pointer argument");
++        return WalletFfiError::NullPointer;
++    }
++
++    let wallet = match wrapper.core.lock() {
++        Ok(w) => w,
++        Err(e) => {
++            print_error(format!("Failed to lock wallet: {e}"));
++            return WalletFfiError::InternalError;
++        }
++    };
++
++    let account_id = AccountId::new(unsafe { (*account_id).data });
++
++    let Some(found) = wallet.storage().key_chain().private_account(account_id) else {
++        print_error("Private account not found in wallet");
++        return WalletFfiError::KeyNotFound;
++    };
++
++    let nsk = found.key_chain.private_key_holder.nullifier_secret_key;
++    let private_key = match PrivateKey::try_new(nsk) {
++        Ok(key) => key,
++        Err(_) => {
++            print_error("Invalid nullifier secret key for private account");
++            return WalletFfiError::InternalError;
++        }
++    };
++
++    let digest = unsafe { (*canonical_payload_digest).data };
++    let signature = Signature::new(private_key, &digest);
++
++    unsafe {
++        (*out_signature).data = signature.value;
++    }
++
++    WalletFfiError::Success
++}
++
+ /// Get keys for a private account.
+ /// Returns the nullifier public key (NPK) and viewing public key (VPK)
+ /// for the specified private account. These keys are safe to share publicly.

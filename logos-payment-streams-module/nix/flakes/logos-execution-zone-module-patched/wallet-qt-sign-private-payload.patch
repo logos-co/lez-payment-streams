@@ -1,0 +1,55 @@
+diff --git a/src/lez_core_module.cpp b/src/lez_core_module.cpp
+index 2eafefc..a1b2c3d 100644
+--- a/src/lez_core_module.cpp
++++ b/src/lez_core_module.cpp
+@@ -441,6 +441,38 @@ std::string LEZCoreModule::sign_public_payload(const std::string& account_id_hex
+     return obj.dump();
+ }
+ 
++std::string LEZCoreModule::sign_private_payload(const std::string& account_id_hex, const std::string& digest_hex) {
++    FfiBytes32 id{};
++    if (!hexToBytes32(account_id_hex, &id)) {
++        fprintf(stderr, "sign_private_payload: invalid account_id_hex\n");
++        nlohmann::json err = nlohmann::json::object();
++        err["status"] = "error";
++        err["error"] = "invalid account_id_hex";
++        return err.dump();
++    }
++    FfiBytes32 digest{};
++    if (!hexToBytes32(digest_hex, &digest)) {
++        fprintf(stderr, "sign_private_payload: invalid digest_hex\n");
++        nlohmann::json err = nlohmann::json::object();
++        err["status"] = "error";
++        err["error"] = "invalid digest_hex";
++        return err.dump();
++    }
++    FfiSignature64 sig{};
++    const WalletFfiError error = wallet_ffi_sign_private_payload(walletHandle, &id, &digest, &sig);
++    if (error != SUCCESS) {
++        fprintf(stderr, "sign_private_payload: wallet FFI error %d\n", error);
++        nlohmann::json err = nlohmann::json::object();
++        err["status"] = "error";
++        err["error"] = std::string("wallet FFI error ") + std::to_string(static_cast<int>(error));
++        return err.dump();
++    }
++    nlohmann::json obj = nlohmann::json::object();
++    obj["status"] = "ok";
++    obj["result"] = bytesToHex(sig.data, 64);
++    return obj.dump();
++}
++
+ // === Account Encoding ===
+ 
+ std::string LEZCoreModule::account_id_to_base58(const std::string& account_id_hex) {
+diff --git a/src/lez_core_module.h b/src/lez_core_module.h
+index 0ddea97..b4c5d6e 100644
+--- a/src/lez_core_module.h
++++ b/src/lez_core_module.h
+@@ -48,6 +48,7 @@ public:
+     std::string get_public_account_key(const std::string& account_id_hex);
+     std::string get_private_account_keys(const std::string& account_id_hex);
+     std::string sign_public_payload(const std::string& account_id_hex, const std::string& digest_hex);
++    std::string sign_private_payload(const std::string& account_id_hex, const std::string& digest_hex);
+ 
+     // === Account Encoding ===
+     std::string account_id_to_base58(const std::string& account_id_hex);

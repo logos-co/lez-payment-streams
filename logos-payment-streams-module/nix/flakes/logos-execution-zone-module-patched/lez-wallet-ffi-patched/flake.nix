@@ -68,6 +68,7 @@
                     (old.postPatch or "")
                     + ''
                       patch -p1 --forward < ${./lez-rust-sign-public-payload.patch}
+                      patch -p1 --forward < ${./lez-rust-sign-private-payload.patch}
                     '';
                   postInstall = walletFfiHeaderPostInstall;
                   preBuild = (old.preBuild or "") + lbcPolExport;
