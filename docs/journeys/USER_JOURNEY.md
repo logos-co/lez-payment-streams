@@ -127,40 +127,37 @@ last_block() {
     -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}' \
   | python3 -c 'import json,sys;print(json.load(sys.stdin)["result"])'
 }
-account_nonce() {
-  curl -sf -X POST "$SEQUENCER_URL" -H 'Content-Type: application/json' \
-    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$1\"]}" \
-  | python3 -c 'import json,sys;print(json.load(sys.stdin)["result"]["nonce"])'
-}
 journey_ok "Session variables and shell helpers ready"
 ```
 
 `logoscore()` wraps CLI calls with `-q`. `journey_ok` / `journey_fail` print step status;
 `journey_write_ok` checks the last line of a chain write for `"status":"error"` — but that only means
 the wallet signed the transaction and the sequencer accepted it into its mempool, not that the
-transaction was included in a block. `chain_balance` reads a sequencer `getAccount` balance and
-`account_nonce` reads the same account's on-chain nonce; neither needs `sync_to_chain`. `last_block`
-reads the sequencer tip. Step 6 redirects the background daemon to `$LOGOSCORE_DAEMON_LOG` (new
-filename each time you run Step 1, UTC ISO timestamp in the name).
+transaction was included in a block. `chain_balance` reads a sequencer `getAccount` balance; it does
+not need `sync_to_chain`. `last_block` reads the sequencer tip. Step 6 redirects the background
+daemon to `$LOGOSCORE_DAEMON_LOG` (new filename each time you run Step 1, UTC ISO timestamp in the
+name).
 
 `sync_to_chain` pulls the wallet mirror up to the sequencer tip (`getLastBlockId` →
 `sync_to_block`). Call it on its own line after each `chainAction` write, before the
 `getVaultStatus` / `getStreamStatus` in the same step, and before a module status read that opens a
-step (Step 13). Do not run it on a timer while idle, and not for `chain_balance` or `account_nonce`.
-Pausing between steps is fine; the chain moving ahead does not break the walkthrough, the next
-`sync_to_chain` always catches up to the current tip.
+step (Step 13). Do not run it on a timer while idle, and not for `chain_balance`. Pausing between
+steps is fine; the chain moving ahead does not break the walkthrough, the next `sync_to_chain`
+always catches up to the current tip.
 
 A `chainAction` write is not confirmed when it returns `success` and a `tx_hash`. That is mempool
 acceptance only; the transaction is included later, in some future block (at least the next block
-produced after submission, possibly a later one, or never if the sequencer drops it). The on-chain
-signer nonce advances exactly when a transaction signed by that account is included, so the gate
-for proceeding is the nonce bump. Each write step below captures the submission tip `h0` and the
-signer nonce `n0` before submitting, then asks you to wait until `last_block` returns a height
-greater than `h0` and `account_nonce` for the signer returns a value greater than `n0`. Proceed to
-the next step only then. If the nonce does not change over several blocks, the transaction was
-dropped — stop and debug instead of continuing. The `getVaultStatus` / `getStreamStatus` read in
-the same step is the second check: it confirms the intended state change happened, not just
-inclusion. `sync_to_block` stdout is discarded so you do not see a bare `0`.
+produced after submission, possibly a later one, or never if the sequencer drops it). The signer
+nonce is not a reliable signal here: the `lez_payment_streams` guest does not advance the signer's
+nonce for these writes, so the nonce can stay unchanged even after a successful, included
+transaction. The gate for proceeding is the intended state change itself. Each write step below
+captures the submission tip `h0` before submitting and prints it at the end of the block, so you know
+which height to wait past. Wait until `last_block` returns a height greater than `$h0`, then re-run
+the `getVaultStatus` / `getStreamStatus` (or `chain_balance`) read for that step. Proceed to the
+next step only once the read shows the expected state instead of `account data missing` (or the
+expected balance). If the change has not appeared after about a minute (several blocks), the
+transaction was likely dropped by the sequencer — re-run the step. `sync_to_block` stdout is
+discarded so you do not see a bare `0`.
 
 ## Step 2 — Sequencer up
 
@@ -363,25 +360,29 @@ Step 1 sets `VAULT_ID=0`. After Step 7 you have a new payer, so vault 0 is usual
 `initializeVault` fails because that vault already exists for `$PAYER`, run
 `export VAULT_ID=1` (or the next free id) and repeat this step.
 
-Initialize the vault, then confirm the transaction was included before moving on. Capture the
-submission tip and the payer nonce, submit, and wait for inclusion:
+Initialize the vault, then confirm the transaction was included before moving on:
 
 ```bash
-h0=$(last_block); n0=$(account_nonce "$PAYER")
+h0=$(last_block)
 line=$(logoscore call payment_streams_module chainAction initializeVault \
   "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID}" | tail -1)
 echo "$line"
 journey_write_ok "Vault created (vault_id=$VAULT_ID)" "$line"
+echo "Submitted at chain height $h0"
+```
+
+The `tx_hash` only confirms the transaction entered the mempool. Wait until `last_block` returns a
+height greater than `$h0`, then confirm the state change:
+
+```bash
 sync_to_chain
 logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
 
-The transaction was submitted to the mempool at chain height `$h0` with the payer nonce `$n0`.
-Wait until `last_block` returns a height greater than `$h0`, then check `account_nonce "$PAYER"`.
-Proceed to Step 11 only once the nonce is greater than `$n0`; the `getVaultStatus` read should then
-show the vault instead of `account data missing`. If the nonce does not change over several
-blocks, the transaction was dropped — stop and debug instead of continuing.
+Proceed to Step 11 only once the read returns a real `vault_config` instead of
+`account data missing`. If the change has not appeared after about a minute (several blocks), the
+transaction was likely dropped by the sequencer — re-run this step.
 
 
 
@@ -390,19 +391,25 @@ blocks, the transaction was dropped — stop and debug instead of continuing.
 Deposit into the vault, then confirm inclusion before moving on:
 
 ```bash
-h0=$(last_block); n0=$(account_nonce "$PAYER")
+h0=$(last_block)
 line=$(logoscore call payment_streams_module chainAction deposit \
   "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}" | tail -1)
 echo "$line"
 journey_write_ok "Vault funded ($DEPOSIT tokens, vault_id=$VAULT_ID)" "$line"
+echo "Submitted at chain height $h0"
+```
+
+Wait until `last_block` is greater than `$h0`, then confirm the state change:
+
+```bash
 sync_to_chain
 logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
 
-Wait until `last_block` is greater than `$h0` and `account_nonce "$PAYER"` is greater than `$n0`
-before proceeding to Step 12. The `getVaultStatus` read should then reflect the funded balance; if
-the nonce does not change over several blocks, the deposit was dropped — stop and debug.
+Proceed to Step 12 only once the read reflects the funded `vault_holding_balance`; if the change
+has not appeared after about a minute (several blocks), the deposit was likely dropped — re-run
+this step.
 
 
 
@@ -411,20 +418,25 @@ the nonce does not change over several blocks, the deposit was dropped — stop 
 Create the stream, then confirm inclusion before moving on:
 
 ```bash
-h0=$(last_block); n0=$(account_nonce "$PAYER")
+h0=$(last_block)
 line=$(logoscore call payment_streams_module chainAction createStream \
   "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PAYEE\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}" | tail -1)
 echo "$line"
 journey_write_ok "Payment stream created (stream_id=$STREAM_ID, payee=$PAYEE)" "$line"
+echo "Submitted at chain height $h0"
+```
+
+Wait until `last_block` is greater than `$h0`, then confirm the state change:
+
+```bash
 sync_to_chain
 logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-Wait until `last_block` is greater than `$h0` and `account_nonce "$PAYER"` is greater than `$n0`
-before proceeding to Step 13. The `getStreamStatus` read should then show the stream instead of
-`account data missing`; if the nonce does not change over several blocks, the stream creation was
-dropped — stop and debug.
+Proceed to Step 13 only once the read shows the stream instead of `account data missing`; if the
+change has not appeared after about a minute (several blocks), the stream creation was likely
+dropped — re-run this step.
 
 
 
@@ -444,36 +456,49 @@ journey_ok "Accrual window elapsed; check accrued_lo in JSON above (need ≥ $MI
 ## Step 14 — Close stream (payer)
 
 ```bash
-h0=$(last_block); n0=$(account_nonce "$PAYER")
+h0=$(last_block)
 line=$(logoscore call payment_streams_module chainAction closeStream \
   "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}" | tail -1)
 echo "$line"
 journey_write_ok "Stream closed by payer (vault_id=$VAULT_ID stream_id=$STREAM_ID)" "$line"
+echo "Submitted at chain height $h0"
+```
+
+Wait until `last_block` is greater than `$h0`, then confirm the state change:
+
+```bash
 sync_to_chain
 logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
-Wait until `last_block` is greater than `$h0` and `account_nonce "$PAYER"` is greater than `$n0`
-before proceeding to Step 15. The `getStreamStatus` read should then show `stream_state` `2`
-(Closed); if the nonce does not change over several blocks, the close was dropped — stop and debug.
+Proceed to Step 15 only once the read shows `stream_state` `2` (Closed); if the change has not
+appeared after about a minute (several blocks), the close was likely dropped — re-run this step.
 
 
 
 ## Step 15 — Claim (payee)
 
 ```bash
-h0=$(last_block); n0=$(account_nonce "$PAYEE")
+h0=$(last_block)
 line=$(logoscore call payment_streams_module chainAction claim \
   "{\"owner\":\"$PAYER\",\"provider\":\"$PAYEE\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}" | tail -1)
 echo "$line"
 journey_write_ok "Payee claimed accrued tokens" "$line"
-sync_to_chain
+echo "Submitted at chain height $h0"
 ```
 
-`claim` is signed by the payee, so the inclusion gate is the payee nonce. Wait until `last_block` is
-greater than `$h0` and `account_nonce "$PAYEE"` is greater than `$n0` before proceeding to Step 16.
-If the nonce does not change over several blocks, the claim was dropped — stop and debug.
+`claim` is signed by the payee. Wait until `last_block` is greater than `$h0`, then confirm the
+state change (the payee balance increasing by the payout):
+
+```bash
+sync_to_chain
+payee_bal=$(chain_balance "$PAYEE"); payee_bal=${payee_bal:-0}
+echo "Payee on-chain balance: $payee_bal"
+```
+
+Proceed to Step 16 only once the payee balance reflects the claimed payout; if it has not changed
+after about a minute (several blocks), the claim was likely dropped — re-run this step.
 
 
 
@@ -550,7 +575,7 @@ Environment variables (set in Step 1): `FIXTURE_MANIFEST`, `PAYMENT_STREAMS_GUES
 | `Run this from the journey toolchain shell`                   | `./scripts/user-journey-shell.sh` before Step 5                                                                                               |
 | `missing wallet debug config in lez repo`                     | `./scripts/user-journey-lgs-setup.sh` (fallback copy built in)                                                                                |
 | `Call to logos_execution_zone.<method> failed` + empty `PAYER`/`PAYEE` | `logos_execution_zone` is not loaded in the daemon (only `capability_module` auto-loads). Run the second block of Step 6 (`load-module logos_execution_zone`, `load-module payment_streams_module`, open wallet), then re-run Step 7 |
-| `account data missing` after a successful write | The write was not included, not mirror lag. Check the signer nonce with `account_nonce` (Step 1); if it did not bump over several blocks, the tx was dropped — stop and debug. If the nonce bumped but the read still shows `account data missing`, the tx was included but reverted — also a stop-and-debug case |
+| `account data missing` after a successful write | The write was not included, not mirror lag. Wait until `last_block` is past the submission height `$h0` the step printed, then re-run the `getVaultStatus` / `getStreamStatus` read. If the expected state still does not appear after about a minute (several blocks), the tx was dropped by the sequencer — re-run the step. If the state appears but is wrong, the tx was included but reverted — stop and debug |
 | Paused between steps                                          | Run the next step as written; first command is often `sync_to_chain` before a read                                                            |
 | `initializeVault` fails for vault 0                           | Reuse of `$PAYER` from an earlier run: `export VAULT_ID=1` and retry Step 10, or `./scripts/user-journey-reset.sh` and new accounts in Step 7 |
 | Deposit rejected                                              | Step 9 pinata for payer                                                                                                                       |
