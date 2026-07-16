@@ -115,7 +115,7 @@ Field names:
 
 | Field | Meaning |
 | --- | --- |
-| `owner` | Vault owner account id (public base58 or hex). The vault itself stays public. |
+| `owner` | Vault owner account id (hex or base58). Resolution follows the vault tier: public for `Public`, private for `PseudonymousFunder`. The vault PDA itself is always public. |
 | `provider` | Provider private account id (hex or base58) that matches the `provider_id` stored in `StreamConfig`. |
 | `vault_id` | Vault id. |
 | `stream_id` | Stream id. |
@@ -123,7 +123,10 @@ Field names:
 
 The field shape reuses the Step 36 private account id convention (D36.3). The
 only claim-specific addition is the optional `provider_private_identifier` for
-consolidation.
+consolidation. The `claim` account list is mixed: public non-signing PDAs
+(vault_config, vault_holding, stream_config, clock) plus the private provider
+signer; if the vault is `PseudonymousFunder`, the owner is also a private
+non-signing account.
 
 ## Implementation plan
 
@@ -133,10 +136,10 @@ consolidation.
 
 2. Provider key publication. This mirrors the public-mode identity sharing
    pattern. Document the provider publishing an NPK/VPK pair via
-   `wallet account show-keys` (or equivalent) and the user creating the stream
-   with the NPK-derived `provider_id`. Confirm `registerProviderMapping` (N5)
-   carries NPK-derived `provider_id` values end to end; the mapping logic is
-   unchanged, only the account id type changes.
+   `logos_execution_zone get_private_account_keys` and the user creating the
+   stream with the NPK-derived `provider_id`. Confirm `registerProviderMapping`
+   (N5) carries NPK-derived `provider_id` values end to end; the mapping logic
+   is unchanged, only the account id type changes.
 
 3. PP claim path. Add a private-claim path to `chainAction` in
    `logos-payment-streams-module/src/payment_streams_module_writes.cpp`
@@ -174,7 +177,7 @@ consolidation.
 | Id | Topic | Outcome |
 | --- | --- | --- |
 | D37.1 | Shared helper with Step 36 | Step 36 adds `submitGenericPrivate` in `payment_streams_module_writes.cpp`. Step 37 reuses it. Do not duplicate the helper. |
-| D37.2 | Provider key publication | Mirrors the public-mode identity sharing pattern. Provider publishes NPK/VPK via wallet CLI (`wallet account show-keys` or equivalent). The user derives the NPK-derived account id and creates the stream with that `provider_id`. The module only routes `claim` through `submitGenericPrivate`. |
+| D37.2 | Provider key publication | Mirrors the public-mode identity sharing pattern. Provider publishes NPK/VPK via `logos_execution_zone get_private_account_keys`. The user derives the NPK-derived account id and creates the stream with that `provider_id`. The module only routes `claim` through `submitGenericPrivate`. |
 | D37.3 | `registerProviderMapping` encoding | N5 maps `PeerId` to the 32-byte stream payee `AccountId`. For a shielded provider this is the NPK-derived id. This is an encoding verification, not a design change. |
 | D37.4 | Identifier consolidation | Documented as hygiene. Reuse one `(npk, identifier)` for the claim chain to avoid linear spend cost. GMS shared custody is out of scope. |
 | D37.5 | Automatic-claim-on-closure | Documented as a timing-correlation trade-off: it forces the shielded payout to coincide with the close event. The destination stays shielded; the amount is already public. |
@@ -187,8 +190,9 @@ The decision is to keep provider key publication as a wallet-CLI prerequisite,
 not as a `payment_streams_module` method. This mirrors the public-mode flow
 where the provider shares a public account id (via the discovery layer or
 out-of-band) and the user creates the stream with that `provider_id`. In
-private mode, the shared value is the NPK-derived account id instead of a public
-account id.
+private mode, the provider publishes the NPK/VPK pair via
+`logos_execution_zone get_private_account_keys`, and the user derives the
+NPK-derived account id from it.
 
 Pros of wallet-CLI prerequisite:
 
@@ -211,7 +215,8 @@ Pros of a module method:
 Cons of a module method:
 
 - Turns the module into a key-management utility, which is outside its scope.
-- The wallet already exposes `create_private_accounts_key` and `account show-keys`.
+- The wallet already exposes `create_private_accounts_key` and
+  `get_private_account_keys` via `logos_execution_zone`.
 
 The lean is wallet-CLI because key publication is a generic wallet concern, not
 a payment-streams-specific operation. The same `registerProviderMapping`

@@ -83,12 +83,21 @@ shielding commitment. Amount and timing correlation across the shielding
 boundary can weaken this heuristically; it is a side channel, not a break of
 the nullifier scheme.
 
+The public leg of the pre-shield transfer is a one-time transparent touch that
+links the user's primary public key to the shielding commitment. It is outside
+the "one transparent touch" rule above, which applies to vault and stream
+operations, not to the initial funding step. Funder unlinkability assumes the
+shielding commitment is unlinkable to the downstream nullifiers used by the
+vault owner account.
+
 ## Prerequisites
 
-- [Step 32](../upcoming/step-32-auth-transfer-unify-store-claim.md)
-  close-then-claim lifecycle (signed off; D3 gate pending) or equivalent.
-- [Step 33](../completed/step-33-store-e2e-fresh-vault.md) fresh-vault
-  behavior only if the local E2E is exercised through the fresh-vault path.
+- The close-then-claim contract from
+  [Step 32](../upcoming/step-32-auth-transfer-unify-store-claim.md) (signed off;
+  D3 testnet gate pending). Step 36 can start in parallel with Step 32 as long as
+  the close-then-claim instruction shape and account layout do not change.
+- [Step 33](../completed/step-33-store-e2e-fresh-vault.md) fresh-vault behavior only
+  if the local E2E is exercised through the fresh-vault path.
 - `PAYMENT_STREAMS_GUEST_BIN` and the `logos_execution_zone` wallet module
   with the private-transaction surface (`send_generic_private_transaction`)
   available.
@@ -106,10 +115,14 @@ inside the privacy-preserving circuit.
 
 For `PseudonymousFunder` vaults, the `VaultConfig.owner` field is the NPK-derived
 account id of the vault owner.
-The funding private account used for the PP deposit must be derived from the same
-NPK as the vault owner.
-`payment_streams_module` does not enforce this equality; it is a wallet-side
-prerequisite that the User Journey must document.
+The PP `deposit` debits the vault owner account directly (the guest derives the
+`vault_config` PDA from the owner account id), so the funding private account must
+be the same account id as the vault owner. Pre-shielding therefore moves funds
+into the vault owner private account before the vault is initialized, not into a
+separate account under the same NPK.
+The User Journey must document this invariant. The module enforces it by checking
+that the `signer` account id passed to `deposit` matches the on-chain
+`VaultConfig.owner` before the transaction reaches the guest.
 
 ## Scope decisions (resolved)
 
@@ -119,13 +132,13 @@ prerequisite that the User Journey must document.
 | Shielded-only enforcement | Moves from the test harness into `payment_streams_module` (refuse public submit for `PseudonymousFunder` vaults). The guest stays unenforcing by design. |
 | Step 37 dependency | The shared PP submit wiring is a prerequisite for Step 37, which reuses the same private submit path. Step 36 does not depend on Step 37. |
 | Cross-relationship vault rotation | Documented as a hygiene recommendation, not enforced. |
-| Pre-shielding | Out of scope of `payment_streams_module`; documented as a wallet-CLI prerequisite. The module adds an NPK preflight check in the PP `deposit` path. |
+| Pre-shielding | Out of scope of `payment_streams_module`; documented as a wallet-CLI prerequisite. The module checks that the PP `deposit` signer equals `VaultConfig.owner`. |
 
 ## JSON schema for private `chainAction` operations
 
 For `PseudonymousFunder` vaults, operations that touch the vault route through
-`submitGenericPrivate` and use private account ids for the vault owner and the
-funding source.
+`submitGenericPrivate` and use the vault owner private account id as the signer
+(or as the non-signing owner slot for `closeStream` and `claim`).
 
 A private account id can be passed as 64-character hex or as base58.
 `payment_streams_module` resolves the account based on the vault privacy tier:
@@ -140,39 +153,92 @@ introduce a separate `private_signer` field. This is the simplest option and is
 consistent with the existing `chainAction` API where the user already passes an
 account id in `signer` and the module handles wallet resolution.
 
+`initializeVault` is the only operation that creates the vault, so it cannot
+read an existing `VaultConfig.privacy_tier`. It must accept a new
+`privacy_tier` JSON field (`0` for `Public`, `1` for `PseudonymousFunder`).
+When the tier is `PseudonymousFunder`, the module routes through
+`submitGenericPrivate` and sets the guest `VaultConfig.privacy_tier` to `1`.
+All subsequent operations read the stored tier from chain state and route
+accordingly.
+
 | Operation | `signer` / `owner` / `provider` value | Resolution |
 | --- | --- | --- |
 | `initializeVault` | vault owner account id | Private for `PseudonymousFunder`, public for `Public` |
-| `deposit` | funding account id | Private for `PseudonymousFunder`; must share the vault owner NPK |
-| `createStream`, `pauseStream`, `resumeStream`, `topUpStream`, `closeStream` | vault owner account id | Private for `PseudonymousFunder`, public for `Public` |
-| `claim` | `owner` = vault owner account id; `provider` = provider account id | `owner` private for `PseudonymousFunder`; `provider` public unless Step 37 private claim is used |
+| `deposit` | vault owner account id | Private for `PseudonymousFunder`; must equal `VaultConfig.owner` |
+| `createStream`, `pauseStream`, `resumeStream`, `topUpStream` | vault owner account id | Private for `PseudonymousFunder`, public for `Public` |
+| `closeStream` | `signer` = vault owner account id; `authority` = provider account id | `signer` private for `PseudonymousFunder`; `authority` can be public or private. The owner slot is non-signing. |
+| `claim` | `owner` = vault owner account id; `provider` = provider account id | `owner` private for `PseudonymousFunder`; `provider` can be public or private. The transaction is private because the vault owner is private, not because the provider is. |
+
+### Tier-based account resolution
+
+For `PseudonymousFunder` vaults, every account slot that must be private is
+resolved as private and hard-fails if it cannot be resolved as private. The
+module never falls back to public resolution for a slot that the vault tier says
+must be private. This is the enforcement of the "one transparent touch" rule at
+the module boundary.
+
+Resolution rule:
+
+1. Determine the expected identity type for each account slot from the operation
+   and the vault privacy tier (see the table below).
+2. For slots expected to be private, call
+   `wallet_ffi_resolve_private_account(account_id)`. If it fails, return an error
+   immediately; do not try public resolution.
+3. For slots expected to be public, call
+   `wallet_ffi_resolve_public_account(account_id, needs_sign)` with the correct
+   signing flag.
+4. For public read-only PDA slots, pass `needs_sign = false`.
+
+Foreign private accounts (e.g., a payer's private account seen by the provider)
+are not supported until Step 37.
+
+### Per-operation `FfiAccountIdentity` list
+
+The list order matches the guest instruction account layout in
+`lez-payment-streams-core/src/instruction_accounts.rs`. For `PseudonymousFunder`
+vaults, the owner and signer slots are private; for `Public` vaults, they are
+public. Public PDAs are always `PublicNoSign`.
+
+| Operation | Guest account order | Identity per slot (PseudonymousFunder) | Notes |
+| --- | --- | --- | --- |
+| `initializeVault` | vault_config, vault_holding, owner | PublicNoSign, PublicNoSign, PrivateOwned signer | `owner` is the vault owner private account. |
+| `deposit` | vault_config, vault_holding, owner | PublicNoSign, PublicNoSign, PrivateOwned signer | `owner` must equal `VaultConfig.owner`; the guest debits it. |
+| `withdraw` | vault_config, vault_holding, owner, recipient | PublicNoSign, PublicNoSign, PrivateOwned signer, PrivateOwned or PublicNoSign | `recipient` is private when withdrawing to a shielded address. |
+| `createStream`, `pauseStream`, `resumeStream`, `topUpStream` | vault_config, vault_holding, stream_config, owner, clock | PublicNoSign, PublicNoSign, PublicNoSign, PrivateOwned signer, PublicNoSign | `owner` is the vault owner private account. |
+| `closeStream` | vault_config, vault_holding, stream_config, owner, authority, clock | PublicNoSign, PublicNoSign, PublicNoSign, PrivateOwned non-signer, Public or PrivateOwned signer, PublicNoSign | `authority` is the provider; `owner` is not a signer for this instruction. |
+| `claim` | vault_config, vault_holding, stream_config, owner, provider, clock | PublicNoSign, PublicNoSign, PublicNoSign, PrivateOwned non-signer, Public or PrivateOwned signer, PublicNoSign | `provider` is the signer; `owner` is private non-signer for a `PseudonymousFunder` vault. |
+
+For `Public` vaults, replace `PrivateOwned` owner slots with `Public` signer or
+`PublicNoSign` non-signer as appropriate, and make the private recipient in
+`withdraw` a public account.
 
 ## Implementation plan
 
-1. Wallet module surface. Confirm
-   `send_generic_private_transaction` is callable from the PS module via
-   Qt dynamic dispatch. It is multi-arg (`account_ids`, `instruction`,
-   `program_elf`, `program_dependencies`) and takes ELF bytes plus
-   dependency ELFs, not a `program_id_hex`. Decide whether to add a
-   repo-local `send_generic_private_transaction_json` convenience patch
-   mirroring the N10 public JSON wrapper, or call the multi-arg method
-   directly. Resolved as D36.2.
+1. Wallet module surface. Call the multi-arg
+   `send_generic_private_transaction` directly via Qt dynamic dispatch.
+   The signature is
+   `send_generic_private_transaction(account_identities, instruction_words,
+   program_elf, program_dependencies)`. It needs an `FfiAccountIdentity`
+   list, not a JSON envelope, so the JSON-wrapper escape hatch is rejected.
+   Resolved as D36.2.
 
 2. PS module writes. Add `submitGenericPrivate` alongside
    `submitGenericPublic` in
    `logos-payment-streams-module/src/payment_streams_module_writes.cpp`,
    next to `submitGenericPublicViaFfi`.
-   Supply the guest ELF (`PAYMENT_STREAMS_GUEST_BIN`). For PP `deposit`, also
-   supply the `authenticated_transfer` dependency ELF; other PP operations do
-   not need it unless the guest requires additional dependencies. Resolve
-   private accounts via `wallet_ffi_resolve_private_account` (called inside
-   `logos_execution_zone`, not directly from the PS module).
+   Build the `FfiAccountIdentity` list per instruction (private owner +
+   public or private signer + public non-signing PDAs) and call
+   `send_generic_private_transaction` with the guest ELF
+   (`PAYMENT_STREAMS_GUEST_BIN`) and the instruction words.
+   For PP `deposit`, also supply the `authenticated_transfer` dependency
+   ELF; other PP operations do not need it (see dependency matrix below).
 
-3. Tier routing. Read `VaultConfig.privacy_tier` (already decoded in
-   `payment_streams_module_impl.cpp` where `VaultConfig` is decoded). For
-   `PseudonymousFunder`, route to `submitGenericPrivate` and refuse
-   `submitGenericPublic`. This is where the shielded-only rule leaves the
-   harness and enters the module.
+3. Tier routing. For `initializeVault`, read the `privacy_tier` field from the
+   `chainAction` JSON. For all other operations, read `VaultConfig.privacy_tier`
+   from the decoded vault config on chain (already decoded in
+   `payment_streams_module_writes.cpp`). For `PseudonymousFunder`, route to
+   `submitGenericPrivate` and refuse `submitGenericPublic`. This is where the
+   shielded-only rule leaves the harness and enters the module.
 
 4. `chainAction` signer fields. Overload the existing `signer` / `owner`
    fields with account ids (hex or base58). The module resolves them as
@@ -180,39 +246,72 @@ account id in `signer` and the module handles wallet resolution.
 
 5. Pre-shielding flow. Keep pre-shielding as a generic wallet-CLI
    public-to-private transfer, documented as a prerequisite in
-   `PRIVACY_ENHANCED_JOURNEY.md`. Add a module-level NPK preflight check in
-   the PP `deposit` path: resolve the vault owner private account and the
-   funding private account through `get_private_account_keys`, compare their
-   NPKs, and reject the deposit if they differ. This catches the most common
-   user error without wrapping the transfer inside the module.
+   `PRIVACY_ENHANCED_JOURNEY.md`. The E2E script pins
+   `logos_execution_zone transfer_shielded_owned`; the exact operator CLI syntax
+   stays in the journey doc with a "verify syntax" caveat. Add a module-level
+   deposit-signer check in the PP `deposit` path: the `signer` account id must
+   equal the on-chain `VaultConfig.owner`, because the guest derives the
+   `vault_config` PDA from that account id and debits it. This rejects the most
+   common user error (passing the wrong private account) without wrapping the
+   transfer inside the module.
 
 6. Eligibility signing. `VaultProof.owner_signature` must be signed by the
    private account's NSK. Implement the repo-local `sign_private_payload`
    patch (D36.4) on the wallet wrapper, mirroring the existing
-   `sign_public_payload` patch (N1).
+   `sign_public_payload` patch (N1). Inside Rust, retrieve the NSK from
+   `wallet.storage().key_chain().private_account(account_id).key_chain.private_key_holder.nullifier_secret_key`,
+   construct a `PrivateKey`, and call `Signature::new`. The signed digest is
+   exactly `vault_owner_auth_canonical_payload_digest` from
+   `lez-payment-streams-core/src/off_chain/canonical.rs`, and the verification
+   public key is the owner's NPK. The provider already verifies this with the
+   existing Rust helper `verify_stream_proposal_vault_signature`; no new
+   provider-side FFI is needed.
 
-7. Tests. Add PP `program_tests` for the full `PseudonymousFunder`
-   lifecycle (init, PP deposit, create_stream, pause, resume, top_up,
-   close, claim) at the module submit layer. Add a module-level test that
-   public submit is refused for `PseudonymousFunder` vaults. Add a module-level
-   test that the PP `deposit` preflight rejects a funding account whose NPK
-   does not match the vault owner NPK. Add unit tests for the new
-   privacy-enhanced journey flow in `logos-payment-streams-module/tests/` and
-   in `lez-payment-streams-core` as needed. Run PP tests with
-   `RISC0_DEV_MODE=1`.
+7. Tests. Add Rust `program_tests` in `lez-payment-streams-core` for the full
+   `PseudonymousFunder` lifecycle (init, PP deposit, create_stream, pause,
+   resume, top_up, close, claim). These tests model the module submit layer
+   by calling `execute_and_prove` directly with the correct account identity
+   mix. Add a harness-side test that a public transition touching a
+   `PseudonymousFunder` vault is rejected (extend
+   `src/program_tests/privacy_tier_policy.rs`). Add C++ module-level tests in
+   `logos-payment-streams-module/tests/` that public submit is refused and that
+   the PP `deposit` signer check rejects mismatched account ids. Add unit tests for
+   the privacy-enhanced journey flow. Run PP tests with `RISC0_DEV_MODE=1`.
 
 8. Journey doc. Add a payer-side shielding and PP lifecycle walkthrough to
    `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md`. Do not modify
    `USER_JOURNEY.md` or `DEVELOPER_JOURNEY.md`.
 
+9. E2E script. Add a privacy profile to `scripts/module-e2e.sh` (or a new
+   `scripts/module-e2e-privacy.sh`) that creates a private owner and a public
+   provider, pre-shields funds via `transfer_shielded_owned`, initializes a
+   `PseudonymousFunder` vault, and runs the full lifecycle. Keep the existing
+   public flow as the default.
+
+### Dependency ELF matrix
+
+The `FfiProgramWithDependencies` passed to `send_generic_private_transaction`
+contains the main payment-streams ELF and a map of dependency ELFs. Only the
+operations that chain into the `authenticated_transfer` program need that
+dependency ELF.
+
+| Operation | Needs `authenticated_transfer` ELF | Notes |
+| --- | --- | --- |
+| `initializeVault` | No | Creates the vault PDAs. |
+| `deposit` | Yes | Debits the owner via `authenticated_transfer`. |
+| `withdraw` | No | Credits the recipient via the guest without chaining. |
+| `createStream`, `pauseStream`, `resumeStream`, `topUpStream` | No | Only touches payment-streams accounts. |
+| `closeStream` | No | Releases allocation; no external transfer. |
+| `claim` | No | Credits the provider via the guest without chaining (post-Step-27 fixture shape). |
+
 ## Decision log
 
 | Id | Topic | Outcome |
 | --- | --- | --- |
-| D36.1 | Pre-shielding scope | Keep pre-shielding as a generic wallet public-to-private transfer, out of scope of `payment_streams_module`. Add a module-level NPK preflight check in the PP `deposit` path to catch mismatches. Document the prerequisite and the NPK-equality invariant in `PRIVACY_ENHANCED_JOURNEY.md`. |
-| D36.2 | Private submit IPC shape | Call the multi-arg `send_generic_private_transaction` directly via Qt dynamic dispatch. No `send_generic_private_transaction_json` repo-local patch unless investigation shows the private path requires a JSON envelope. |
+| D36.1 | Pre-shielding scope | Keep pre-shielding as a generic wallet public-to-private transfer, out of scope of `payment_streams_module`. Add a module-level check in the PP `deposit` path that the `signer` account id equals the on-chain `VaultConfig.owner`, because the guest debits the owner account directly. Document the prerequisite in `PRIVACY_ENHANCED_JOURNEY.md`. |
+| D36.2 | Private submit IPC shape | Call the multi-arg `send_generic_private_transaction` directly via Qt dynamic dispatch. No `send_generic_private_transaction_json` repo-local patch; the private path takes an `FfiAccountIdentity` list, not a JSON envelope. |
 | D36.3 | `chainAction` private account id encoding | Overload the existing `signer` / `owner` / `provider` fields. The module resolves the account as public or private based on the vault privacy tier. Step 37 reuses the same convention. |
-| D36.4 | Owner off-chain signing | Add a repo-local `sign_private_payload` on the patched wallet wrapper that retrieves the NSK for an owned private account and produces a Schnorr signature over the digest. This is the Step 36 schedule risk. |
+| D36.4 | Owner off-chain signing | Add a repo-local `sign_private_payload` wallet wrapper that calls a new Rust FFI `wallet_ffi_sign_private_payload`. Inside Rust, retrieve the owned private account's NSK from `wallet.storage().key_chain().private_account(account_id).key_chain.private_key_holder.nullifier_secret_key`, construct a `PrivateKey`, and call `Signature::new`. The NSK never crosses the FFI boundary. This is the Step 36 schedule risk. |
 | D36.5 | Cross-relationship vault rotation | Documented as hygiene, not implemented. |
 | D36.6 | Amount and timing correlation | Documented as known traffic-analysis limitations, not implemented. |
 
@@ -221,14 +320,17 @@ account id in `signer` and the module handles wallet resolution.
 The schedule risk is the `sign_private_payload` patch (D36.4).
 Upstream `wallet_ffi` exposes no raw signing primitive for private accounts.
 The existing `sign_public_payload` patch can only sign with public-account keys.
-Extending it to retrieve an owned private account's NSK and produce a Schnorr
-signature without exporting the NSK across the FFI boundary is feasible but
-non-trivial.
+The NSK for an owned private account is reachable inside Rust at
+`wallet.storage().key_chain().private_account(account_id).key_chain.private_key_holder.nullifier_secret_key`;
+from there we can construct a `PrivateKey` and call `Signature::new`. The NSK
+never crosses the FFI boundary, so the patch is a straightforward mirror of the
+public one but it must still be written, tested, and landed before the module
+routing changes can produce a verifiable `VaultProof.owner_signature`.
 
 Why it is the long pole: the patch touches both the Rust FFI layer
 (`wallet_ffi_sign_private_payload`) and the C++ wallet wrapper
-(`sign_private_payload`), and must be built, tested, and landed before the module
-routing changes can produce a verifiable `VaultProof.owner_signature`.
+(`sign_private_payload`), and must be built and landed before eligibility
+signing over a `PseudonymousFunder` vault can be verified.
 
 Other options considered and rejected:
 
@@ -250,7 +352,7 @@ If the patch proves large, land it as a separate PR before the module routing ch
 | --- | --- | --- |
 | PP program tests | `RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core` | Existing PP tests plus new `PseudonymousFunder` lifecycle tests pass. |
 | Module private submit | Unit test in `logos-payment-streams-module/tests/` (to be added) | Public submit rejected for `PseudonymousFunder` vaults; private submit accepted. |
-| User Journey local | `MODE=module CHAIN=local ./scripts/e2e.sh local run` | Full `PseudonymousFunder` lifecycle succeeds. |
+| User Journey local | `MODE=module CHAIN=local PRIVACY=1 ./scripts/e2e.sh local run` | Full `PseudonymousFunder` lifecycle succeeds (script creates a private owner, public provider, and uses `privacy_tier=1`). |
 | Public tier regression | `make verify-module-local` | `Public`-tier flows unchanged and green. |
 
 ## Deliverables
@@ -259,18 +361,22 @@ If the patch proves large, land it as a separate PR before the module routing ch
   and called for every `PseudonymousFunder` vault operation that touches the vault.
 - [ ] Public submit refused for `PseudonymousFunder` vaults at the module.
 - [ ] PP deposit from a pre-shielded private account succeeds on localnet.
-- [ ] PP `deposit` preflight rejects a funding account whose NPK does not match
-  the vault owner NPK.
+- [ ] PP `deposit` signer check rejects a funding account whose account id does
+  not match `VaultConfig.owner`.
 - [ ] Full `PseudonymousFunder` lifecycle executable via shielded submits.
 - [ ] `VaultProof.owner_signature` signed by the private owner NSK verifies
-  under the provider FFI.
+  with the existing provider-side Rust eligibility helper
+  `verify_stream_proposal_vault_signature`; no new provider-side FFI is needed.
 - [ ] PP `program_tests` pass with `RISC0_DEV_MODE=1`.
 - [ ] Module-level test that public submit is rejected for `PseudonymousFunder` vaults.
-- [ ] Localnet E2E `MODE=module CHAIN=local ./scripts/e2e.sh local run`
+- [ ] Localnet E2E `MODE=module CHAIN=local PRIVACY=1 ./scripts/e2e.sh local run`
   passes for a `PseudonymousFunder` vault.
+- [ ] `scripts/module-e2e.sh` (or a privacy variant) is updated to create a
+  private owner, a public provider, pre-shield funds, and run the
+  privacy-enhanced lifecycle.
 - [ ] No regression on the `Public` tier.
 - [ ] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` documents the pre-shielding
-  prerequisite, the NPK-equality invariant, cross-relationship vault rotation
+  prerequisite, the deposit signer invariant, cross-relationship vault rotation
   as hygiene, and the known traffic-analysis limitations.
 - [ ] [index.md](../index.md) upcoming table and program outcomes list
   Step 36.
@@ -282,20 +388,24 @@ If the patch proves large, land it as a separate PR before the module routing ch
 - [ ] Transparent submit of a `PseudonymousFunder` vault is rejected by the
   module.
 - [ ] PP deposit, create_stream, pause, resume, top_up, close, and claim
-  all succeed via shielded submits on localnet.
-- [ ] PP `deposit` preflight rejects a funding account whose NPK does not match
-  the vault owner NPK.
+  all succeed via shielded submits on localnet. `claim` may use a public or
+  private provider account; the transaction is shielded because the vault owner is
+  private.
+- [ ] PP `deposit` signer check rejects a funding account whose account id does
+  not match `VaultConfig.owner`.
 - [ ] Eligibility proof over a `PseudonymousFunder` vault verifies.
 - [ ] `Public`-tier flows unchanged and green.
 - [ ] Unit tests for the privacy-enhanced journey flow pass.
 - [ ] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` documents the payer-side
-  pre-shielding prerequisite, the NPK-equality invariant, and the known
+  pre-shielding prerequisite, the deposit signer invariant, and the known
   traffic-analysis limitations.
+- [ ] `scripts/module-e2e.sh` (or a privacy variant) creates a private owner and
+  public provider and runs the `PseudonymousFunder` lifecycle.
 - [ ] Step 36 listed in `index.md` and `AGENTS.md`.
 
 ## Known limitations
 
-- Deposit amounts are public because `vault_holding` is a public PDA.
+- Deposit and claim amounts are public because `vault_holding` is a public PDA.
 - Amount and timing correlation across the shielding boundary are side channels
   that can weaken unlinkability heuristically; they are not breaks of the
   nullifier scheme.
@@ -313,17 +423,10 @@ If the patch proves large, land it as a separate PR before the module routing ch
 ## Resolved
 
 All decisions are recorded in the [Decision log](#decision-log) above:
-D36.1 (wallet-CLI pre-shielding + module NPK preflight), D36.2 (multi-arg
+D36.1 (wallet-CLI pre-shielding + module deposit-signer check), D36.2 (multi-arg
 private submit), D36.3 (overload existing `chainAction` fields), D36.4
 (`sign_private_payload` patch), D36.5 (vault rotation as hygiene), and D36.6
 (amount/timing correlation documented as limitations).
-
-If E2E automation or UX proves painful in practice, revisit a thin
-`payment_streams_module` helper that wraps the wallet transfer. The helper would
-look like a new `chainAction` operation, e.g. `shieldAndDeposit`, taking
-`public_account_id`, `private_account_id`, `vault_id`, `amount_lo`,
-`amount_hi`, calling wallet `transfer_shielded_owned`, then submitting the PP
-deposit.
 
 ## Related
 
