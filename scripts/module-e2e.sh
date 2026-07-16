@@ -15,6 +15,7 @@
 #   CHAIN=testnet ./scripts/module-e2e.sh
 #   ./scripts/module-e2e.sh --verbosity quiet|normal|verbose
 # Driven by: MODE=module CHAIN=<chain> ./scripts/e2e.sh <chain> run
+# Privacy-enhanced (Step 36): PRIVACY=1 or scripts/module-e2e-privacy.sh
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -26,6 +27,10 @@ source "$REPO_ROOT/scripts/lib/chain_poll.sh"
 source "$REPO_ROOT/scripts/lib/auth_transfer.sh"
 # shellcheck source=scripts/lib/fund_testnet.sh
 source "$REPO_ROOT/scripts/lib/fund_testnet.sh"
+
+ps_is_privacy_e2e() {
+  [[ "${PRIVACY:-0}" == "1" ]]
+}
 
 # ---------------------------------------------------------------------------
 # Verbosity
@@ -65,7 +70,7 @@ narr_header() {
   local line="============================================"
   echo "" >&2
   echo "[$(_narr_ts)] $line" >&2
-  echo "[$(_narr_ts)] Payment Streams E2E: User Journey ($([ "$CHAIN" = "testnet" ] && echo TestNet || echo LocalNet))" >&2
+  echo "[$(_narr_ts)] Payment Streams E2E: User Journey ($([ "$CHAIN" = "testnet" ] && echo TestNet || echo LocalNet))$(ps_is_privacy_e2e && echo ' — PseudonymousFunder (PRIVACY=1)' || true)" >&2
   echo "[$(_narr_ts)] Scenario: Alice creates a stream to Bob, funds accrue," >&2
   echo "[$(_narr_ts)]          Alice closes stream, Bob claims residual accrued" >&2
   echo "[$(_narr_ts)] $line" >&2
@@ -314,6 +319,67 @@ to_base58() {
   [[ -n "$b58" ]] && echo "$b58" || echo "$hex_id"
 }
 
+account_id_to_hex() {
+  local id="$1" line hex
+  if [[ ${#id} -eq 64 && "$id" =~ ^[0-9a-fA-F]+$ ]]; then
+    echo "${id,,}"
+    return 0
+  fi
+  line="$(logoscore call logos_execution_zone account_id_from_base58 "$id" 2>/dev/null | tail -1)"
+  hex="$(python3 -c 'import json,sys; o=json.loads(sys.argv[1]); r=o.get("result",""); print(r if isinstance(r,str) else "")' "$line" 2>/dev/null || true)"
+  [[ -n "$hex" ]] && echo "${hex,,}"
+}
+
+amount_le16_hex() {
+  python3 -c 'import sys; print(int(sys.argv[1]).to_bytes(16, "little").hex())' "$1"
+}
+
+ps_pre_shield_to_private_owner() {
+  local from_hex="$1" to_hex="$2" amount="$3"
+  local amt_hex line tx_hash
+  amt_hex="$(amount_le16_hex "$amount")"
+  line="$(logoscore call logos_execution_zone transfer_shielded_owned "$from_hex" "$to_hex" "$amt_hex" 2>/dev/null | tail -1)"
+  tx_hash="$(python3 -c '
+import json,sys
+try:
+    outer=json.loads(sys.argv[1])
+    inner=outer.get("result", outer)
+    if isinstance(inner,str):
+        inner=json.loads(inner) if inner.strip().startswith("{") else {}
+    if not isinstance(inner,dict):
+        sys.exit(0)
+    ok = inner.get("status") == "ok" or inner.get("success") is True
+    if not ok:
+        sys.exit(0)
+    print(inner.get("tx_hash") or inner.get("txHash") or "")
+except Exception:
+    pass
+' "$line" 2>/dev/null || true)"
+  if [[ -n "$tx_hash" ]]; then
+    await_inclusion "$tx_hash" || true
+  fi
+  if python3 -c '
+import json,sys
+try:
+    outer=json.loads(sys.argv[1])
+    inner=outer.get("result", outer)
+    if isinstance(inner,str):
+        inner=json.loads(inner) if inner.strip().startswith("{") else {}
+    ok = isinstance(inner,dict) and (inner.get("status") == "ok" or inner.get("success") is True)
+    sys.exit(0 if ok else 1)
+except Exception:
+    sys.exit(1)
+' "$line" 2>/dev/null; then
+    emit_phase pre_shield true "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\"$( [[ -n "$tx_hash" ]] && echo ",\"tx_hash\":\"$tx_hash\"" )}"
+    narr_ok "Pre-shielded $amount tokens into vault owner private account"
+    sync_wallet
+    return 0
+  fi
+  emit_phase pre_shield false "{\"raw\":$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "${line:-}")}"
+  narr_fail "transfer_shielded_owned failed"
+  return 1
+}
+
 parse_new_account() {
   python3 -c '
 import json,sys
@@ -329,14 +395,30 @@ if s: print(s)
 }
 
 if ps_is_local; then
-  OWNER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
-  [[ -z "$OWNER" ]] && { narr_fail "Could not create owner account"; ps_fatal "could not create owner account"; }
-  [[ ${#OWNER} -eq 64 ]] && OWNER="$(to_base58 "$OWNER")"
+  if ps_is_privacy_e2e; then
+    narr_step "Creating public funder, private vault owner, and public provider (PRIVACY=1)"
+    PUBLIC_FUNDER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
+    [[ -z "$PUBLIC_FUNDER" ]] && ps_fatal "could not create public funder account"
+    [[ ${#PUBLIC_FUNDER} -eq 64 ]] && PUBLIC_FUNDER="$(to_base58 "$PUBLIC_FUNDER")"
 
-  PROVIDER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
-  [[ -z "$PROVIDER" ]] && { narr_fail "Could not create provider account"; ps_fatal "could not create provider account"; }
-  [[ ${#PROVIDER} -eq 64 ]] && PROVIDER="$(to_base58 "$PROVIDER")"
-  logoscore call logos_execution_zone save >/dev/null 2>&1 || true
+    OWNER_HEX="$(parse_new_account "$(logoscore call logos_execution_zone create_account_private 2>/dev/null | tail -1)")"
+    [[ -z "$OWNER_HEX" || ${#OWNER_HEX} -ne 64 ]] && ps_fatal "could not create private vault owner (expected 32-byte hex id)"
+    OWNER="$(to_base58 "$OWNER_HEX")"
+
+    PROVIDER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
+    [[ -z "$PROVIDER" ]] && ps_fatal "could not create provider account"
+    [[ ${#PROVIDER} -eq 64 ]] && PROVIDER="$(to_base58 "$PROVIDER")"
+    logoscore call logos_execution_zone save >/dev/null 2>&1 || true
+  else
+    OWNER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
+    [[ -z "$OWNER" ]] && { narr_fail "Could not create owner account"; ps_fatal "could not create owner account"; }
+    [[ ${#OWNER} -eq 64 ]] && OWNER="$(to_base58 "$OWNER")"
+
+    PROVIDER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
+    [[ -z "$PROVIDER" ]] && { narr_fail "Could not create provider account"; ps_fatal "could not create provider account"; }
+    [[ ${#PROVIDER} -eq 64 ]] && PROVIDER="$(to_base58 "$PROVIDER")"
+    logoscore call logos_execution_zone save >/dev/null 2>&1 || true
+  fi
 fi
 
 narr_value "owner=$OWNER provider=$PROVIDER vault=$VAULT_ID stream=$STREAM_ID chain=${CHAIN:-local}"
@@ -506,7 +588,15 @@ if ps_is_local || ps_is_testnet; then
   export WALLET_STORAGE="${WALLET_STORAGE:-$WALLET_HOME/storage.json}"
   export PS_AT_LOGOSCORE_WALLET_HANDOFF=1
   narr_step "Initializing accounts under authenticated_transfer program"
-  if ps_auth_transfer_ensure "$OWNER" "$PROVIDER"; then
+  if ps_is_privacy_e2e; then
+    if ps_auth_transfer_init_one "$PROVIDER" auth_init_provider; then
+      narr_ok "Provider verified under authenticated_transfer (private owner skips AT init)"
+    else
+      narr_fail "authenticated_transfer ensure failed for provider (see artifact auth_init_provider)"
+      narr_hint "register_public_account or wallet auth-transfer init did not settle"
+      FAILURES=$((FAILURES + 1))
+    fi
+  elif ps_auth_transfer_ensure "$OWNER" "$PROVIDER"; then
     narr_ok "Owner and provider verified under authenticated_transfer"
   else
     narr_fail "authenticated_transfer ensure failed (see artifact auth_init_* phases)"
@@ -517,32 +607,59 @@ if ps_is_local || ps_is_testnet; then
 fi
 
 if ps_is_local; then
-  narr_step "Funding owner and provider for gas"
   SCAFFOLD_WALLET="$(ps_lez_cache)/target/release/wallet"
   if [[ -x "$SCAFFOLD_WALLET" ]]; then
     export PATH="$(dirname "$SCAFFOLD_WALLET"):$PATH"
     export LEE_WALLET_HOME_DIR="$WALLET_HOME"
-    # The pinata faucet pays ~150 tokens per claim. The owner must hold at least
-    # DEPOSIT (+ buffer) so the deposit instruction can debit it; a single claim
-    # is not enough for the fixture's demo_deposit_amount, so claim repeatedly
-    # until the owner balance covers the deposit.
-    owner_target=$((DEPOSIT + 50))
-    owner_attempts=0
-    owner_max=$((owner_target / 150 + 3))
-    owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null || echo 0)"
-    while (( owner_bal < owner_target )); do
-      owner_attempts=$((owner_attempts + 1))
-      if (( owner_attempts > owner_max )); then
-        narr_fail "Owner not funded after $owner_max faucet claims (balance=$owner_bal, target=$owner_target)"
-        break
+    if ps_is_privacy_e2e; then
+      narr_step "Funding public funder and pre-shielding private vault owner"
+      owner_target=$((DEPOSIT + 50))
+      funder_bal=0
+      funder_attempts=0
+      funder_max=$((owner_target / 150 + 3))
+      while (( funder_bal < owner_target )); do
+        funder_attempts=$((funder_attempts + 1))
+        if (( funder_attempts > funder_max )); then
+          narr_fail "Public funder not funded after $funder_max faucet claims (balance=$funder_bal, target=$owner_target)"
+          FAILURES=$((FAILURES + 1))
+          break
+        fi
+        timeout 30 lgs wallet topup --address "Public/$PUBLIC_FUNDER" >/dev/null 2>&1 || true
+        sync_wallet
+        funder_bal="$(ps_account_balance "$PUBLIC_FUNDER" 2>/dev/null || echo 0)"
+      done
+      narr_verbose "Funder balance $funder_bal (target $owner_target) after $funder_attempts faucet claim(s)"
+      FUNDER_HEX="$(account_id_to_hex "$PUBLIC_FUNDER")"
+      OWNER_HEX="$(account_id_to_hex "$OWNER")"
+      [[ -z "$FUNDER_HEX" || -z "$OWNER_HEX" ]] && ps_fatal "could not resolve hex account ids for pre-shield"
+      if ! ps_pre_shield_to_private_owner "$FUNDER_HEX" "$OWNER_HEX" "$owner_target"; then
+        FAILURES=$((FAILURES + 1))
       fi
-      timeout 30 lgs wallet topup --address "Public/$OWNER" >/dev/null 2>&1 || true
-      sync_wallet
+      timeout 30 lgs wallet topup --address "Public/$PROVIDER" >/dev/null 2>&1 || true
+    else
+      narr_step "Funding owner and provider for gas"
+      # The pinata faucet pays ~150 tokens per claim. The owner must hold at least
+      # DEPOSIT (+ buffer) so the deposit instruction can debit it; a single claim
+      # is not enough for the fixture's demo_deposit_amount, so claim repeatedly
+      # until the owner balance covers the deposit.
+      owner_target=$((DEPOSIT + 50))
+      owner_attempts=0
+      owner_max=$((owner_target / 150 + 3))
       owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null || echo 0)"
-    done
-    narr_verbose "Owner balance $owner_bal (target $owner_target) after $owner_attempts faucet claim(s)"
-    # Provider only needs gas for the claim signature; one claim is plenty.
-    timeout 30 lgs wallet topup --address "Public/$PROVIDER" >/dev/null 2>&1 || true
+      while (( owner_bal < owner_target )); do
+        owner_attempts=$((owner_attempts + 1))
+        if (( owner_attempts > owner_max )); then
+          narr_fail "Owner not funded after $owner_max faucet claims (balance=$owner_bal, target=$owner_target)"
+          break
+        fi
+        timeout 30 lgs wallet topup --address "Public/$OWNER" >/dev/null 2>&1 || true
+        sync_wallet
+        owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null || echo 0)"
+      done
+      narr_verbose "Owner balance $owner_bal (target $owner_target) after $owner_attempts faucet claim(s)"
+      # Provider only needs gas for the claim signature; one claim is plenty.
+      timeout 30 lgs wallet topup --address "Public/$PROVIDER" >/dev/null 2>&1 || true
+    fi
   fi
   sync_wallet
 fi
@@ -731,7 +848,11 @@ if ps_is_testnet && [[ "$MODULE_E2E_FRESH_VAULT" != "0" ]] \
 fi
 
 narr_step "Alice creates vault $VAULT_ID"
-call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID}")" "" "Vault $VAULT_ID created on chain" verify_vault_init
+if ps_is_privacy_e2e; then
+  call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"privacy_tier\":1}")" "" "Vault $VAULT_ID created on chain (PseudonymousFunder)" verify_vault_init
+else
+  call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID}")" "" "Vault $VAULT_ID created on chain" verify_vault_init
+fi
 
 narr_step "Depositing $DEPOSIT tokens into vault"
 DEPOSIT_LINE="$(call_ps deposit 1 deposit "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}")" "" "Deposit transaction included on chain" verify_deposit)"
