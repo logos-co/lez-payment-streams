@@ -7,6 +7,7 @@ source "$REPO_ROOT/scripts/lib/user-journey-env.sh"
 
 user_journey_require_shell
 user_journey_require_tools
+user_journey_export_module_env
 
 MODULES="${MODULES:-$(user_journey_default_modules_dir)}"
 WALLET_HOME="${WALLET_HOME:-$(user_journey_default_wallet_home)}"

@@ -49,6 +49,8 @@ Inside the shell, run Steps 1–18 in [USER_JOURNEY.md](USER_JOURNEY.md). Re-exp
 
 ```bash
 export REPO_ROOT="$(pwd)"
+export REPO="$REPO_ROOT"
+export FIXTURE_MANIFEST="$REPO_ROOT/fixtures/testnet-module.json"
 export LEZ_PIN="$(grep -A2 '^\[repos.lez\]' "$REPO_ROOT/scaffold.toml" | sed -n 's/^pin = "\(.*\)"/\1/p')"
 export SCAFFOLD_LEZ_CACHE="${HOME}/.cache/logos-scaffold/repos/lez/${LEZ_PIN}"
 export SCAFFOLD_WALLET="${SCAFFOLD_LEZ_CACHE}/target/release/wallet"
@@ -126,6 +128,9 @@ export LEE_WALLET_HOME_DIR="$WALLET_HOME"
 ```
 
 ## Step 6 — Start logoscore and open wallet
+
+`payment_streams_module` needs `FIXTURE_MANIFEST` (Step 1) in the environment when the daemon
+starts. If you add or change it later, run this step again.
 
 ```bash
 cd "$REPO_ROOT"
@@ -336,6 +341,7 @@ exit
 
 | Symptom | Try |
 | --- | --- |
+| `cannot open fixture manifest: fixtures/localnet.json` | `export FIXTURE_MANIFEST="$REPO_ROOT/fixtures/testnet-module.json"` and re-run Step 6; journey shell sets this automatically |
 | Module variant / `load-module` failed | `./scripts/user-journey-reset.sh`, re-enter `./scripts/user-journey-shell.sh`, Step 5 `./scripts/user-journey-install-modules.sh` |
 | `Run this from the journey toolchain shell` | `./scripts/user-journey-shell.sh` before Step 5 |
 | `missing wallet debug config in lez repo` | `./scripts/user-journey-lgs-setup.sh` (fallback copy built in) |

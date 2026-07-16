@@ -44,3 +44,22 @@ user_journey_default_wallet_home() {
   root="$(user_journey_repo_root)"
   echo "${root}/.scaffold/e2e/testnet-wallet"
 }
+
+user_journey_default_fixture_manifest() {
+  local root
+  root="$(user_journey_repo_root)"
+  echo "${root}/fixtures/testnet-module.json"
+}
+
+# payment_streams_module chainAction reads program id from FIXTURE_MANIFEST (else localnet.json).
+user_journey_export_module_env() {
+  local root fixture
+  root="$(user_journey_repo_root)"
+  fixture="${FIXTURE_MANIFEST:-$(user_journey_default_fixture_manifest)}"
+  if [[ ! -f "$fixture" ]]; then
+    echo "Testnet fixture missing: $fixture" >&2
+    return 1
+  fi
+  export REPO="$root"
+  export FIXTURE_MANIFEST="$fixture"
+}

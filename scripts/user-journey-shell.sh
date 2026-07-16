@@ -62,8 +62,9 @@ ensure_lgs() {
 }
 
 ensure_lgs
+user_journey_export_module_env
 
 exec nix shell --accept-flake-config \
   "${USER_JOURNEY_LOGOSCORE_FLAKE}" \
   "${USER_JOURNEY_LGPM_FLAKE}" \
-  --command bash -c "export USER_JOURNEY_SHELL=1; export PATH=\"${CARGO_BIN}:\${PATH}\"; cd \"${REPO_ROOT}\" && echo 'USER_JOURNEY shell: logoscore + lgpm (dev module variants). Optional reset: ./scripts/user-journey-reset.sh' && exec bash"
+  --command bash -c "export USER_JOURNEY_SHELL=1; export REPO=\"${REPO_ROOT}\"; export FIXTURE_MANIFEST=\"${REPO_ROOT}/fixtures/testnet-module.json\"; export PATH=\"${CARGO_BIN}:\${PATH}\"; cd \"${REPO_ROOT}\" && echo 'USER_JOURNEY shell: logoscore + lgpm (dev module variants). Optional reset: ./scripts/user-journey-reset.sh' && exec bash"
