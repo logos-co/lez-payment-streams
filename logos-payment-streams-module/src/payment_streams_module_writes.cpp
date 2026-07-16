@@ -27,7 +27,15 @@ namespace {
 
 constexpr int kAccountIdHexLen = 64;
 constexpr uint8_t kPrivacyTierPublic = 0;
+constexpr uint8_t kPrivacyTierPseudonymousFunder = 1;
+constexpr uint8_t kPrivacyTierReadFromChain = 255;
 constexpr uint32_t kFfiSuccess = 0u;
+
+enum class VaultIxLayout : uint8_t {
+    InitOrDeposit3,
+    StreamOwner5,
+    StreamAuthority6,
+};
 
 QString makeErrorJson(const QString& message) {
     QJsonObject obj;
@@ -218,6 +226,126 @@ bool ownerBytesFromBase58(LogosExecutionZone& wallet, const QString& base58, uin
     return hex32FromQString(hex, out);
 }
 
+QString signerAccountIdHex(LogosExecutionZone& wallet, const QString& signerField, QString* errorOut) {
+    const QString trimmed = signerField.trimmed();
+    if (trimmed.size() == kAccountIdHexLen && trimmed.indexOf(QLatin1Char('{')) < 0) {
+        return trimmed.toLower();
+    }
+    const QString hex = walletAccountIdHexFromBase58(wallet, trimmed);
+    if (hex.size() != kAccountIdHexLen) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("invalid signer account id");
+        }
+        return {};
+    }
+    return hex.toLower();
+}
+
+bool ownerBytesFromSignerField(LogosExecutionZone& wallet, const QString& signerField, uint8_t out[32], QString* errorOut) {
+    const QString hex = signerAccountIdHex(wallet, signerField, errorOut);
+    if (hex.size() != kAccountIdHexLen) {
+        return false;
+    }
+    return hex32FromQString(hex, out);
+}
+
+bool loadVaultConfigOnChain(LogosExecutionZone& wallet,
+                            const uint8_t programId[32],
+                            const uint8_t vaultOwner[32],
+                            quint64 vaultId,
+                            PsFfiDecodedVaultConfig* decodedOut,
+                            QString* errorOut) {
+    uint8_t vaultCfgAccount[32]{};
+    uint8_t vaultHoldingAccount[32]{};
+    if (ps_ffi_derive_vault_account_ids(programId, vaultOwner, vaultId, vaultCfgAccount, vaultHoldingAccount) !=
+        kFfiSuccess) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("derive vault accounts failed");
+        }
+        return false;
+    }
+    const QByteArray vaultCfgData =
+        accountDataBytesFromHex(wallet, bytes32ToHexLower(vaultCfgAccount), errorOut);
+    if (vaultCfgData.isEmpty()) {
+        return false;
+    }
+    if (ps_ffi_decode_vault_config(reinterpret_cast<const uint8_t*>(vaultCfgData.constData()),
+                                   static_cast<size_t>(vaultCfgData.size()),
+                                   decodedOut) != 0u) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("vault config decode failed");
+        }
+        return false;
+    }
+    return true;
+}
+
+bool vaultPrivacyTierForSubmit(LogosExecutionZone& wallet,
+                               const uint8_t programId[32],
+                               const uint8_t vaultOwner[32],
+                               quint64 vaultId,
+                               uint8_t initPrivacyTier,
+                               uint8_t* tierOut,
+                               PsFfiDecodedVaultConfig* decodedOut,
+                               QString* errorOut) {
+    if (initPrivacyTier != kPrivacyTierReadFromChain) {
+        *tierOut = initPrivacyTier;
+        if (decodedOut != nullptr && initPrivacyTier == kPrivacyTierPseudonymousFunder) {
+            std::memset(decodedOut, 0, sizeof(PsFfiDecodedVaultConfig));
+            std::memcpy(decodedOut->owner, vaultOwner, 32);
+            decodedOut->privacy_tier = kPrivacyTierPseudonymousFunder;
+            decodedOut->vault_id = vaultId;
+        }
+        return true;
+    }
+    PsFfiDecodedVaultConfig decoded{};
+    if (!loadVaultConfigOnChain(wallet, programId, vaultOwner, vaultId, &decoded, errorOut)) {
+        return false;
+    }
+    *tierOut = decoded.privacy_tier;
+    if (decodedOut != nullptr) {
+        *decodedOut = decoded;
+    }
+    return true;
+}
+
+QString resolutionForPseudonymousSlot(VaultIxLayout layout, int index, const QString& signerHexLower, const QString& authorityHexLower) {
+    switch (layout) {
+    case VaultIxLayout::InitOrDeposit3:
+        return index == 2 ? QStringLiteral("private") : QStringLiteral("public_no_sign");
+    case VaultIxLayout::StreamOwner5:
+        return index == 3 ? QStringLiteral("private") : QStringLiteral("public_no_sign");
+    case VaultIxLayout::StreamAuthority6:
+        if (index == 3) {
+            return QStringLiteral("private");
+        }
+        if (index == 4) {
+            return QStringLiteral("public_sign");
+        }
+        return QStringLiteral("public_no_sign");
+    }
+    return QStringLiteral("public_no_sign");
+}
+
+QJsonArray accountSlotsJsonForSubmit(VaultIxLayout layout,
+                                     bool pseudonymousFunder,
+                                     const QStringList& accountHexIds,
+                                     const QList<bool>& signingFlags) {
+    QJsonArray slots;
+    for (int i = 0; i < accountHexIds.size(); ++i) {
+        QJsonObject slot;
+        slot.insert(QStringLiteral("account_id_hex"), accountHexIds.at(i));
+        if (pseudonymousFunder) {
+            slot.insert(QStringLiteral("resolution"), resolutionForPseudonymousSlot(layout, i, {}, {}));
+        } else {
+            slot.insert(QStringLiteral("resolution"),
+                        signingFlags.at(i) ? QStringLiteral("public_sign") : QStringLiteral("public_no_sign"));
+        }
+        slots.append(slot);
+    }
+    return slots;
+}
+
 bool clockBytes(uint8_t out[32], QString* errorOut) {
     const auto status = ps_ffi_fixed_clock_10_account_id(out);
     if (status != kFfiSuccess) {
@@ -286,9 +414,9 @@ QStringList decimalWordsFromInstructionBytes(const QByteArray& instructionBytes)
     return words;
 }
 
-bool ffiSerializeInitializeVault(uint64_t vaultId, QByteArray* out, QString* errorOut) {
+bool ffiSerializeInitializeVault(uint64_t vaultId, uint8_t privacyTier, QByteArray* out, QString* errorOut) {
     size_t required = 0;
-    if (ps_ffi_serialize_initialize_vault(vaultId, kPrivacyTierPublic, nullptr, 0, &required) != kFfiSuccess) {
+    if (ps_ffi_serialize_initialize_vault(vaultId, privacyTier, nullptr, 0, &required) != kFfiSuccess) {
         if (errorOut != nullptr) {
             *errorOut = QStringLiteral("initialize_vault serialize sizing failed");
         }
@@ -296,7 +424,7 @@ bool ffiSerializeInitializeVault(uint64_t vaultId, QByteArray* out, QString* err
     }
     out->resize(static_cast<int>(required));
     if (ps_ffi_serialize_initialize_vault(vaultId,
-                                          kPrivacyTierPublic,
+                                          privacyTier,
                                           reinterpret_cast<uint8_t*>(out->data()),
                                           required,
                                           &required) != kFfiSuccess) {
@@ -425,6 +553,8 @@ QList<uint8_t> instructionBytesForWallet(const QByteArray& borshBytes, QString* 
 }
 
 QString parseWalletSubmitJson(const QString& walletJson, QJsonObject* fieldsOut, QString* errorOut);
+
+QByteArray accountDataBytesFromHex(LogosExecutionZone& wallet, const QString& accountHex, QString* errorOut);
 
 bool guestElfLoadedInWalletProcess() {
     return !qEnvironmentVariableIsEmpty("PAYMENT_STREAMS_GUEST_BIN");
@@ -678,20 +808,47 @@ QString submitGenericPublic(LogosAPI* api,
     return submitGenericPublicViaFfi(api, payloadJson, errorOut);
 }
 
+QString submitGenericPrivateViaFfi(LogosAPI* api, const QJsonObject& payload, QString* errorOut) {
+    LogosAPIClient* qtClient = walletQtClientOrNull(api);
+    const QString walletJson = invokeWalletQtString(
+        qtClient,
+        "send_generic_private_transaction_json",
+        QJsonDocument(payload).toJson(QJsonDocument::Compact));
+    if (walletJson.isEmpty()) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("send_generic_private_transaction_json returned empty");
+        }
+        return makeErrorJson(QStringLiteral("send_generic_private_transaction_json returned empty"));
+    }
+    QJsonObject fields;
+    return parseWalletSubmitJson(walletJson, &fields, errorOut);
+}
+
+struct VaultSubmitContext {
+    uint8_t programId[32]{};
+    uint8_t vaultOwner[32]{};
+    quint64 vaultId = 0;
+    uint8_t initPrivacyTier = kPrivacyTierReadFromChain;
+    VaultIxLayout layout = VaultIxLayout::InitOrDeposit3;
+    bool requireAuthTransferDep = false;
+    bool enforceDepositSignerEqualsOwner = false;
+};
+
 QString buildAndSubmit(LogosExecutionZone& wallet,
                        LogosAPI* api,
                        const QString& signerBase58,
                        const QByteArray& instructionBytes,
                        const QByteArray& accountsHex,
-                       QString* errorOut) {
+                       QString* errorOut,
+                       const VaultSubmitContext* vaultCtx = nullptr) {
     QString loadErr;
     if (!ensureFixtureLoaded(&loadErr)) {
         return makeErrorJson(loadErr);
     }
 
-    const QString signerHex = walletAccountIdHexFromBase58(wallet, signerBase58.trimmed());
-    if (signerHex.size() != 64) {
-        return makeErrorJson(QStringLiteral("invalid signer account"));
+    const QString signerHex = signerAccountIdHex(wallet, signerBase58, &loadErr);
+    if (signerHex.size() != kAccountIdHexLen) {
+        return makeErrorJson(loadErr.isEmpty() ? QStringLiteral("invalid signer account") : loadErr);
     }
 
     const QStringList accountIds = splitAccountsHex(accountsHex);
@@ -706,14 +863,59 @@ QString buildAndSubmit(LogosExecutionZone& wallet,
         return makeErrorJson(loadErr.isEmpty() ? QStringLiteral("instruction encoding failed") : loadErr);
     }
 
-    const QString programIdHex = fixtureConfig().programIdHex;
+    uint8_t privacyTier = kPrivacyTierPublic;
+    PsFfiDecodedVaultConfig vaultCfg{};
+    if (vaultCtx != nullptr) {
+        if (!vaultPrivacyTierForSubmit(wallet,
+                                       vaultCtx->programId,
+                                       vaultCtx->vaultOwner,
+                                       vaultCtx->vaultId,
+                                       vaultCtx->initPrivacyTier,
+                                       &privacyTier,
+                                       &vaultCfg,
+                                       &loadErr)) {
+            return makeErrorJson(loadErr);
+        }
+        if (vaultCtx->enforceDepositSignerEqualsOwner) {
+            const QString ownerHex = bytes32ToHexLower(vaultCfg.owner);
+            if (signerHex != ownerHex) {
+                return makeErrorJson(QStringLiteral("deposit signer must equal VaultConfig.owner for PseudonymousFunder vaults"));
+            }
+        }
+    }
 
-    return submitGenericPublic(api,
-                               accountIds,
-                               signing,
-                               instructionList,
-                               programIdHex,
-                               errorOut);
+    if (privacyTier == kPrivacyTierPseudonymousFunder) {
+        QByteArray guestElf;
+        if (!loadGuestElfBytes(&guestElf, &loadErr)) {
+            return makeErrorJson(loadErr);
+        }
+        QJsonObject payload;
+        payload.insert(QStringLiteral("account_slots"),
+                       accountSlotsJsonForSubmit(vaultCtx != nullptr ? vaultCtx->layout : VaultIxLayout::InitOrDeposit3,
+                                                 true,
+                                                 accountIds,
+                                                 signing));
+        payload.insert(QStringLiteral("instruction_hex"), QString::fromLatin1(instructionBytes.toHex()));
+        payload.insert(QStringLiteral("program_elf_hex"), QString::fromLatin1(guestElf.toHex()));
+        if (vaultCtx != nullptr && vaultCtx->requireAuthTransferDep) {
+            const QList<uint8_t> authElf = walletAuthenticatedTransferElfBytes(api, &loadErr);
+            if (authElf.isEmpty()) {
+                return makeErrorJson(loadErr.isEmpty() ? QStringLiteral("authenticated_transfer_elf missing") : loadErr);
+            }
+            QByteArray authRaw;
+            authRaw.reserve(authElf.size());
+            for (uint8_t byte : authElf) {
+                authRaw.append(static_cast<char>(byte));
+            }
+            QJsonArray deps;
+            deps.append(QString::fromLatin1(authRaw.toHex()));
+            payload.insert(QStringLiteral("dependency_elf_hex_list"), deps);
+        }
+        return submitGenericPrivateViaFfi(api, payload, errorOut);
+    }
+
+    const QString programIdHex = fixtureConfig().programIdHex;
+    return submitGenericPublic(api, accountIds, signing, instructionList, programIdHex, errorOut);
 }
 
 quint64 variantToU64(const QVariant& value, bool* okOut) {
@@ -762,12 +964,23 @@ QByteArray accountDataBytesFromHex(LogosExecutionZone& wallet, const QString& ac
 
 }  // namespace
 
-QString PaymentStreamsModuleImpl::initializeVault(const QVariant& signerAccountIdBase58, const QVariant& vaultId) {
+QString PaymentStreamsModuleImpl::initializeVault(const QVariant& signerAccountIdBase58,
+                                                  const QVariant& vaultId,
+                                                  const QVariant& privacyTier) {
     LogosExecutionZone& wallet = modules().logos_execution_zone;
     bool ok = false;
     const quint64 vid = variantToU64(vaultId, &ok);
     if (!ok) {
         return makeErrorJson(QStringLiteral("vaultId must be unsigned integer"));
+    }
+
+    uint8_t tierByte = kPrivacyTierPublic;
+    if (privacyTier.isValid() && !privacyTier.isNull()) {
+        const quint64 tierVal = variantToU64(privacyTier, &ok);
+        if (!ok || (tierVal != kPrivacyTierPublic && tierVal != kPrivacyTierPseudonymousFunder)) {
+            return makeErrorJson(QStringLiteral("privacy_tier must be 0 (Public) or 1 (PseudonymousFunder)"));
+        }
+        tierByte = static_cast<uint8_t>(tierVal);
     }
 
     uint8_t programId[32]{};
@@ -776,12 +989,12 @@ QString PaymentStreamsModuleImpl::initializeVault(const QVariant& signerAccountI
     if (!programIdBytes(programId, &err)) {
         return makeErrorJson(err);
     }
-    if (!ownerBytesFromBase58(wallet, signerAccountIdBase58.toString(), owner, &err)) {
+    if (!ownerBytesFromSignerField(wallet, signerAccountIdBase58.toString(), owner, &err)) {
         return makeErrorJson(err);
     }
 
     QByteArray instruction;
-    if (!ffiSerializeInitializeVault(vid, &instruction, &err)) {
+    if (!ffiSerializeInitializeVault(vid, tierByte, &instruction, &err)) {
         return makeErrorJson(err);
     }
 
@@ -790,7 +1003,13 @@ QString PaymentStreamsModuleImpl::initializeVault(const QVariant& signerAccountI
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(wallet, modules().api, signerAccountIdBase58.toString(), instruction, accountsHex, &err);
+    VaultSubmitContext ctx{};
+    std::memcpy(ctx.programId, programId, 32);
+    std::memcpy(ctx.vaultOwner, owner, 32);
+    ctx.vaultId = vid;
+    ctx.initPrivacyTier = tierByte;
+    ctx.layout = VaultIxLayout::InitOrDeposit3;
+    return buildAndSubmit(wallet, modules().api, signerAccountIdBase58.toString(), instruction, accountsHex, &err, &ctx);
 }
 
 QString PaymentStreamsModuleImpl::deposit(const QVariant& signerAccountIdBase58,
@@ -813,7 +1032,7 @@ QString PaymentStreamsModuleImpl::deposit(const QVariant& signerAccountIdBase58,
     if (!programIdBytes(programId, &err)) {
         return makeErrorJson(err);
     }
-    if (!ownerBytesFromBase58(wallet, signerAccountIdBase58.toString(), owner, &err)) {
+    if (!ownerBytesFromSignerField(wallet, signerAccountIdBase58.toString(), owner, &err)) {
         return makeErrorJson(err);
     }
     if (ps_ffi_authenticated_transfer_program_id(transferPid) !=
@@ -841,7 +1060,14 @@ QString PaymentStreamsModuleImpl::deposit(const QVariant& signerAccountIdBase58,
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(wallet, modules().api, signerAccountIdBase58.toString(), instruction, accountsHex, &err);
+    VaultSubmitContext ctx{};
+    std::memcpy(ctx.programId, programId, 32);
+    std::memcpy(ctx.vaultOwner, owner, 32);
+    ctx.vaultId = vid;
+    ctx.layout = VaultIxLayout::InitOrDeposit3;
+    ctx.requireAuthTransferDep = true;
+    ctx.enforceDepositSignerEqualsOwner = true;
+    return buildAndSubmit(wallet, modules().api, signerAccountIdBase58.toString(), instruction, accountsHex, &err, &ctx);
 }
 
 QString PaymentStreamsModuleImpl::withdraw(const QVariant& signerAccountIdBase58,
@@ -925,7 +1151,7 @@ QString PaymentStreamsModuleImpl::createStream(const QVariant& signerAccountIdBa
     if (!programIdBytes(programId, &err)) {
         return makeErrorJson(err);
     }
-    if (!ownerBytesFromBase58(wallet, signerAccountIdBase58.toString(), owner, &err)) {
+    if (!ownerBytesFromSignerField(wallet, signerAccountIdBase58.toString(), owner, &err)) {
         return makeErrorJson(err);
     }
     if (!ownerBytesFromBase58(wallet, providerAccountIdBase58.toString(), provider, &err)) {
@@ -955,7 +1181,13 @@ QString PaymentStreamsModuleImpl::createStream(const QVariant& signerAccountIdBa
         return makeErrorJson(err);
     }
 
-    const QString submitResult = buildAndSubmit(wallet, modules().api, signerAccountIdBase58.toString(), instruction, accountsHex, &err);
+    VaultSubmitContext ctx{};
+    std::memcpy(ctx.programId, programId, 32);
+    std::memcpy(ctx.vaultOwner, owner, 32);
+    ctx.vaultId = vid;
+    ctx.layout = VaultIxLayout::StreamOwner5;
+    const QString submitResult =
+        buildAndSubmit(wallet, modules().api, signerAccountIdBase58.toString(), instruction, accountsHex, &err, &ctx);
     QJsonParseError submitParse{};
     const QJsonDocument submitDoc = QJsonDocument::fromJson(submitResult.toUtf8(), &submitParse);
     if (submitParse.error == QJsonParseError::NoError && submitDoc.isObject()) {
@@ -983,7 +1215,7 @@ QString PaymentStreamsModuleImpl::pauseStream(const QVariant& signerAccountIdBas
     uint8_t owner[32]{};
     uint8_t clock[32]{};
     QString err;
-    if (!programIdBytes(programId, &err) || !ownerBytesFromBase58(wallet, signerAccountIdBase58.toString(), owner, &err) ||
+    if (!programIdBytes(programId, &err) || !ownerBytesFromSignerField(wallet, signerAccountIdBase58.toString(), owner, &err) ||
         !clockBytes(clock, &err)) {
         return makeErrorJson(err);
     }
@@ -1007,7 +1239,12 @@ QString PaymentStreamsModuleImpl::pauseStream(const QVariant& signerAccountIdBas
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(wallet, modules().api, signerAccountIdBase58.toString(), instruction, accountsHex, &err);
+    VaultSubmitContext ctx{};
+    std::memcpy(ctx.programId, programId, 32);
+    std::memcpy(ctx.vaultOwner, owner, 32);
+    ctx.vaultId = vid;
+    ctx.layout = VaultIxLayout::StreamOwner5;
+    return buildAndSubmit(wallet, modules().api, signerAccountIdBase58.toString(), instruction, accountsHex, &err, &ctx);
 }
 
 QString PaymentStreamsModuleImpl::resumeStream(const QVariant& signerAccountIdBase58,
@@ -1025,7 +1262,7 @@ QString PaymentStreamsModuleImpl::resumeStream(const QVariant& signerAccountIdBa
     uint8_t owner[32]{};
     uint8_t clock[32]{};
     QString err;
-    if (!programIdBytes(programId, &err) || !ownerBytesFromBase58(wallet, signerAccountIdBase58.toString(), owner, &err) ||
+    if (!programIdBytes(programId, &err) || !ownerBytesFromSignerField(wallet, signerAccountIdBase58.toString(), owner, &err) ||
         !clockBytes(clock, &err)) {
         return makeErrorJson(err);
     }
@@ -1049,7 +1286,12 @@ QString PaymentStreamsModuleImpl::resumeStream(const QVariant& signerAccountIdBa
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(wallet, modules().api, signerAccountIdBase58.toString(), instruction, accountsHex, &err);
+    VaultSubmitContext ctx{};
+    std::memcpy(ctx.programId, programId, 32);
+    std::memcpy(ctx.vaultOwner, owner, 32);
+    ctx.vaultId = vid;
+    ctx.layout = VaultIxLayout::StreamOwner5;
+    return buildAndSubmit(wallet, modules().api, signerAccountIdBase58.toString(), instruction, accountsHex, &err, &ctx);
 }
 
 QString PaymentStreamsModuleImpl::topUpStream(const QVariant& signerAccountIdBase58,
@@ -1071,7 +1313,7 @@ QString PaymentStreamsModuleImpl::topUpStream(const QVariant& signerAccountIdBas
     uint8_t owner[32]{};
     uint8_t clock[32]{};
     QString err;
-    if (!programIdBytes(programId, &err) || !ownerBytesFromBase58(wallet, signerAccountIdBase58.toString(), owner, &err) ||
+    if (!programIdBytes(programId, &err) || !ownerBytesFromSignerField(wallet, signerAccountIdBase58.toString(), owner, &err) ||
         !clockBytes(clock, &err)) {
         return makeErrorJson(err);
     }
@@ -1095,7 +1337,12 @@ QString PaymentStreamsModuleImpl::topUpStream(const QVariant& signerAccountIdBas
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(wallet, modules().api, signerAccountIdBase58.toString(), instruction, accountsHex, &err);
+    VaultSubmitContext ctx{};
+    std::memcpy(ctx.programId, programId, 32);
+    std::memcpy(ctx.vaultOwner, owner, 32);
+    ctx.vaultId = vid;
+    ctx.layout = VaultIxLayout::StreamOwner5;
+    return buildAndSubmit(wallet, modules().api, signerAccountIdBase58.toString(), instruction, accountsHex, &err, &ctx);
 }
 
 QString PaymentStreamsModuleImpl::closeStream(const QVariant& signerAccountIdBase58,
@@ -1119,7 +1366,7 @@ QString PaymentStreamsModuleImpl::closeStream(const QVariant& signerAccountIdBas
     uint8_t authority[32]{};
     uint8_t clock[32]{};
     QString err;
-    if (!programIdBytes(programId, &err) || !ownerBytesFromBase58(wallet, signerAccountIdBase58.toString(), owner, &err) ||
+    if (!programIdBytes(programId, &err) || !ownerBytesFromSignerField(wallet, signerAccountIdBase58.toString(), owner, &err) ||
         !ownerBytesFromBase58(wallet, authorityBase58, authority, &err) || !clockBytes(clock, &err)) {
         return makeErrorJson(err);
     }
@@ -1143,7 +1390,12 @@ QString PaymentStreamsModuleImpl::closeStream(const QVariant& signerAccountIdBas
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(wallet, modules().api, authorityBase58, instruction, accountsHex, &err);
+    VaultSubmitContext ctx{};
+    std::memcpy(ctx.programId, programId, 32);
+    std::memcpy(ctx.vaultOwner, owner, 32);
+    ctx.vaultId = vid;
+    ctx.layout = VaultIxLayout::StreamAuthority6;
+    return buildAndSubmit(wallet, modules().api, authorityBase58, instruction, accountsHex, &err, &ctx);
 }
 
 QString PaymentStreamsModuleImpl::claim(const QVariant& ownerAccountIdBase58,
@@ -1174,7 +1426,7 @@ QString PaymentStreamsModuleImpl::claim(const QVariant& ownerAccountIdBase58,
     uint8_t owner[32]{};
     uint8_t provider[32]{};
     uint8_t clock[32]{};
-    if (!programIdBytes(programId, &err) || !ownerBytesFromBase58(wallet, ownerBase58, owner, &err) ||
+    if (!programIdBytes(programId, &err) || !ownerBytesFromSignerField(wallet, ownerBase58, owner, &err) ||
         !ownerBytesFromBase58(wallet, providerAccountIdBase58.toString(), provider, &err) ||
         !clockBytes(clock, &err)) {
         return makeErrorJson(err);
@@ -1199,7 +1451,12 @@ QString PaymentStreamsModuleImpl::claim(const QVariant& ownerAccountIdBase58,
         return makeErrorJson(err);
     }
 
-    return buildAndSubmit(wallet, modules().api, providerAccountIdBase58.toString(), instruction, accountsHex, &err);
+    VaultSubmitContext ctx{};
+    std::memcpy(ctx.programId, programId, 32);
+    std::memcpy(ctx.vaultOwner, owner, 32);
+    ctx.vaultId = vid;
+    ctx.layout = VaultIxLayout::StreamAuthority6;
+    return buildAndSubmit(wallet, modules().api, providerAccountIdBase58.toString(), instruction, accountsHex, &err, &ctx);
 }
 
 QString PaymentStreamsModuleImpl::getVaultStatus(const QVariant& ownerAccountIdBase58,
@@ -1350,7 +1607,7 @@ QString PaymentStreamsModuleImpl::chainAction(const QVariant& operation, const Q
     };
 
     if (op == QLatin1String("initializeVault")) {
-        return initializeVault(qv("signer"), qv("vault_id"));
+        return initializeVault(qv("signer"), qv("vault_id"), qv("privacy_tier"));
     }
     if (op == QLatin1String("deposit")) {
         return deposit(qv("signer"), qv("vault_id"), qv("amount_lo"), qv("amount_hi"));

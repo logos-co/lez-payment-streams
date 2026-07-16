@@ -784,20 +784,61 @@ bool ownerPublicKeyHex(LogosExecutionZone& wallet, const QString& ownerHex, QStr
     return true;
 }
 
+bool ownerVaultProofPublicKeyHex(LogosExecutionZone& wallet,
+                                 const QString& ownerHex,
+                                 uint8_t vaultPrivacyTier,
+                                 QString* outHex,
+                                 bool* usePrivateOwnerKeyOut,
+                                 QString* errorOut) {
+    if (usePrivateOwnerKeyOut != nullptr) {
+        *usePrivateOwnerKeyOut = vaultPrivacyTier == 1;
+    }
+    if (vaultPrivacyTier == 1) {
+        const QString keysJson = QString::fromStdString(wallet.get_private_account_keys(ownerHex.toStdString()));
+        if (keysJson.isEmpty()) {
+            if (errorOut != nullptr) {
+                *errorOut = QStringLiteral("get_private_account_keys failed");
+            }
+            return false;
+        }
+        QJsonParseError parseError{};
+        const QJsonDocument doc = QJsonDocument::fromJson(keysJson.toUtf8(), &parseError);
+        if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+            if (errorOut != nullptr) {
+                *errorOut = QStringLiteral("get_private_account_keys response invalid");
+            }
+            return false;
+        }
+        const QString npkHex =
+            doc.object().value(QStringLiteral("nullifier_public_key")).toString().trimmed().toLower();
+        if (npkHex.size() != 64) {
+            if (errorOut != nullptr) {
+                *errorOut = QStringLiteral("owner NPK hex invalid");
+            }
+            return false;
+        }
+        if (outHex != nullptr) {
+            *outHex = npkHex;
+        }
+        return true;
+    }
+    return ownerPublicKeyHex(wallet, ownerHex, outHex, errorOut);
+}
+
 bool signVaultOwnerDigest(LogosAPI* api,
                           const QString& ownerAccountHex,
                           const uint8_t digest[32],
                           uint8_t outSig[64],
+                          bool usePrivateOwnerKey,
                           QString* errorOut) {
     const QString digestHex =
         QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(digest), 32).toHex());
-    // sign_public_payload is a repo-local Qt-only patch (N1); not in the lp
-    // typed API, so dispatch dynamically through the Qt LogosAPIClient.
     LogosAPIClient* qtClient = walletQtClientOrNull(api);
-    const QString response = invokeWalletQtString(qtClient, "sign_public_payload", ownerAccountHex, digestHex);
+    const char* method = usePrivateOwnerKey ? "sign_private_payload" : "sign_public_payload";
+    const QString response = invokeWalletQtString(qtClient, method, ownerAccountHex, digestHex);
     if (response.isEmpty()) {
         if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("sign_public_payload IPC failed");
+            *errorOut = QStringLiteral("%1 IPC failed").arg(QString::fromUtf8(method));
         }
         return false;
     }
@@ -1061,7 +1102,8 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForSt
     }
 
     QString ownerPubHex;
-    if (!ownerPublicKeyHex(wallet, ownerHex, &ownerPubHex, &fixtureErr)) {
+    bool usePrivateOwnerKey = false;
+    if (!ownerVaultProofPublicKeyHex(wallet, ownerHex, vaultCfg.privacy_tier, &ownerPubHex, &usePrivateOwnerKey, &fixtureErr)) {
         return makeEligibilityError(QStringLiteral("WALLET_SIGNING_FAILED"), fixtureErr);
     }
 
@@ -1081,7 +1123,12 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForSt
     if (ps_ffi_vault_owner_auth_digest_from_decoded_proposal(&proposal, ownerDigest) != kFfiSuccess) {
         return makePlainError(QStringLiteral("vault owner digest FFI failed"));
     }
-    if (!signVaultOwnerDigest(modules().api, ownerHex, ownerDigest, proposal.vault_proof.owner_signature, &fixtureErr)) {
+    if (!signVaultOwnerDigest(modules().api,
+                              ownerHex,
+                              ownerDigest,
+                              proposal.vault_proof.owner_signature,
+                              usePrivateOwnerKey,
+                              &fixtureErr)) {
         return makeEligibilityError(QStringLiteral("WALLET_SIGNING_FAILED"), fixtureErr);
     }
 
