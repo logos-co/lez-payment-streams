@@ -334,11 +334,18 @@ amount_le16_hex() {
   python3 -c 'import sys; print(int(sys.argv[1]).to_bytes(16, "little").hex())' "$1"
 }
 
+logoscore_string_arg() {
+  python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"
+}
+
 ps_pre_shield_to_private_owner() {
   local from_hex="$1" to_hex="$2" amount="$3"
   local amt_hex line tx_hash
   amt_hex="$(amount_le16_hex "$amount")"
-  line="$(logoscore call logos_execution_zone transfer_shielded_owned "$from_hex" "$to_hex" "$amt_hex" 2>/dev/null | tail -1)"
+  line="$(logoscore call logos_execution_zone transfer_shielded_owned \
+    "$(logoscore_string_arg "$from_hex")" \
+    "$(logoscore_string_arg "$to_hex")" \
+    "$(logoscore_string_arg "$amt_hex")" 2>/dev/null | tail -1)"
   tx_hash="$(python3 -c '
 import json,sys
 try:
