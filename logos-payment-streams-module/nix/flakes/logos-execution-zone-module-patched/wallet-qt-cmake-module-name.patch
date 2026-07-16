@@ -1,0 +1,13 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 2e9bb2f..e76407f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -12,7 +12,7 @@ else()
+ endif()
+ 
+ logos_module(
+-    NAME lez_core
++    NAME logos_execution_zone
+     SOURCES
+         src/lez_core_module.h
+         src/lez_core_module.cpp

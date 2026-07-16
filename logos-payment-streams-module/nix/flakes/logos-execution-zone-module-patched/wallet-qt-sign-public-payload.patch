@@ -1,12 +1,12 @@
-diff --git a/src/logos_execution_zone_wallet_module.cpp b/src/logos_execution_zone_wallet_module.cpp
-index 0eadbc2..e201d04 100644
---- a/src/logos_execution_zone_wallet_module.cpp
-+++ b/src/logos_execution_zone_wallet_module.cpp
-@@ -407,6 +407,38 @@ std::string LogosExecutionZoneWalletModule::get_private_account_keys(const std::
+diff --git a/src/lez_core_module.cpp b/src/lez_core_module.cpp
+index dbd7290..2eafefc 100644
+--- a/src/lez_core_module.cpp
++++ b/src/lez_core_module.cpp
+@@ -407,6 +407,38 @@ std::string LEZCoreModule::get_private_account_keys(const std::string& account_i
      return result;
  }
  
-+std::string LogosExecutionZoneWalletModule::sign_public_payload(const std::string& account_id_hex, const std::string& digest_hex) {
++std::string LEZCoreModule::sign_public_payload(const std::string& account_id_hex, const std::string& digest_hex) {
 +    FfiBytes32 id{};
 +    if (!hexToBytes32(account_id_hex, &id)) {
 +        fprintf(stderr, "sign_public_payload: invalid account_id_hex\n");
@@ -40,11 +40,11 @@ index 0eadbc2..e201d04 100644
 +
  // === Account Encoding ===
  
- std::string LogosExecutionZoneWalletModule::account_id_to_base58(const std::string& account_id_hex) {
-diff --git a/src/logos_execution_zone_wallet_module.h b/src/logos_execution_zone_wallet_module.h
-index 0a05bd8..221af1b 100644
---- a/src/logos_execution_zone_wallet_module.h
-+++ b/src/logos_execution_zone_wallet_module.h
+ std::string LEZCoreModule::account_id_to_base58(const std::string& account_id_hex) {
+diff --git a/src/lez_core_module.h b/src/lez_core_module.h
+index 4a1059c..0ddea97 100644
+--- a/src/lez_core_module.h
++++ b/src/lez_core_module.h
 @@ -47,6 +47,7 @@ public:
      std::string get_account_private(const std::string& account_id_hex);
      std::string get_public_account_key(const std::string& account_id_hex);

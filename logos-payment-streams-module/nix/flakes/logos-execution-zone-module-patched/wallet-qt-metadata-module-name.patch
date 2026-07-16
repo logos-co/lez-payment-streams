@@ -1,0 +1,20 @@
+diff --git a/metadata.json b/metadata.json
+index 4bbc267..099fb2b 100644
+--- a/metadata.json
++++ b/metadata.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "lez_core",
++  "name": "logos_execution_zone",
+   "display_name": "LEZ Core Module",
+   "version": "0.2.0",
+   "description": "Logos Execution Zone Core Module for Logos Core",
+@@ -11,7 +11,7 @@
+     "impl_header": "src/lez_core_module.h",
+     "impl_class": "LEZCoreModule"
+   },
+-  "main": "lez_core_plugin",
++  "main": "logos_execution_zone_plugin",
+   "dependencies": [],
+   "capabilities": [],
+   "include": [],

@@ -5,7 +5,7 @@
     # pyo3-build-config in wallet-ffi-deps needs a Python interpreter in nativeBuildInputs.
     logos-execution-zone.url = "path:./lez-wallet-ffi-patched";
 
-    upstream.url = "github:logos-blockchain/logos-execution-zone-module";
+    upstream.url = "github:logos-blockchain/logos-execution-zone-module/92dd9e25bcc6be04f841671e8da7b94bd2449f39";
     upstream.inputs.logos-execution-zone.follows = "logos-execution-zone";
 
     nixpkgs.follows = "upstream/logos-module-builder/nixpkgs";
@@ -34,7 +34,25 @@
           + ''
             patch -p1 --forward < ${./wallet-qt-sign-public-payload.patch}
             patch -p1 --forward < ${./wallet-qt-send-generic-public-transaction-json.patch}
+            patch -p1 --forward < ${./wallet-qt-cmake-module-name.patch}
+            patch -p1 --forward < ${./wallet-qt-metadata-module-name.patch}
           '';
+        # The module-builder templates installPhase at eval time from the
+        # upstream metadata name (lez_core), so it looks for
+        # modules/lez_core_plugin.so. Our CMake NAME override builds
+        # logos_execution_zone_plugin.so instead. Bridge the two without
+        # forking the whole installPhase: let installPhase find a symlink,
+        # then rename the installed file to the identity we preserve.
+        preInstall = ''
+          if [ ! -e modules/lez_core_plugin.so ] && [ -e modules/logos_execution_zone_plugin.so ]; then
+            ln -s logos_execution_zone_plugin.so modules/lez_core_plugin.so
+          fi
+        '';
+        postInstall = ''
+          if [ -e "$out/lib/lez_core_plugin.so" ] && [ ! -e "$out/lib/logos_execution_zone_plugin.so" ]; then
+            mv "$out/lib/lez_core_plugin.so" "$out/lib/logos_execution_zone_plugin.so"
+          fi
+        '';
       });
 
       # Upstream PR 19 builds the Qt plugin with plain CMake (no mkLogosModule). Downstream modules expect

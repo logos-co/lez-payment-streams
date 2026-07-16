@@ -1,72 +1,92 @@
-diff --git a/src/logos_execution_zone_wallet_module.cpp b/src/logos_execution_zone_wallet_module.cpp
-index 0eadbc2..5930f57 100644
---- a/src/logos_execution_zone_wallet_module.cpp
-+++ b/src/logos_execution_zone_wallet_module.cpp
-@@ -1032,6 +1032,55 @@ std::string LogosExecutionZoneWalletModule::send_generic_public_transaction(
+diff --git a/src/lez_core_module.cpp b/src/lez_core_module.cpp
+index dbd7290..cc9ebc5 100644
+--- a/src/lez_core_module.cpp
++++ b/src/lez_core_module.cpp
+@@ -1032,6 +1032,75 @@ std::string LEZCoreModule::send_generic_public_transaction(
      return resultJson;
  }
  
-+std::string LogosExecutionZoneWalletModule::send_generic_public_transaction_json(const std::string& payload_json) {
-+    nlohmann::json doc;
-+    try {
-+        doc = nlohmann::json::parse(payload_json);
-+    } catch (const nlohmann::json::exception& e) {
-+        return transferResultToJson(nullptr, std::string("send_generic_public_transaction_json: invalid JSON: ") + e.what());
-+    }
-+    if (!doc.is_object()) {
-+        return transferResultToJson(nullptr, std::string("send_generic_public_transaction_json: payload is not an object"));
++// JSON-string entry point for send_generic_public_transaction. The codegen type
++// mapper does not support std::vector<uint32_t> (it degrades to an opaque "any"
++// that does not round-trip across the module boundary), so cross-module callers
++// pass a single JSON object here instead. instruction_hex is the little-endian
++// byte expansion of the risc0 instruction words (u32::to_le_bytes per word, the
++// same encoding produced by Program::serialize_instruction); it is regrouped
++// into u32 words before dispatch.
++std::string LEZCoreModule::send_generic_public_transaction_json(
++        const std::string& payload_json
++) {
++    nlohmann::json doc = nlohmann::json::parse(payload_json, nullptr, false);
++    if (doc.is_discarded() || !doc.is_object()) {
++        return genericTransactionResultToJson(nullptr, "send_generic_public_transaction_json: invalid JSON payload");
 +    }
 +
++    if (!doc.contains("account_ids") || !doc["account_ids"].is_array()) {
++        return genericTransactionResultToJson(nullptr, "send_generic_public_transaction_json: missing account_ids");
++    }
 +    std::vector<std::string> account_ids;
-+    for (const auto& v : doc.value("account_ids", nlohmann::json::array())) {
-+        account_ids.push_back(v.get<std::string>());
++    for (const auto& entry : doc["account_ids"]) {
++        if (!entry.is_string()) {
++            return genericTransactionResultToJson(nullptr, "send_generic_public_transaction_json: account_ids must be hex strings");
++        }
++        account_ids.push_back(entry.get<std::string>());
++    }
++
++    if (!doc.contains("signing_requirements") || !doc["signing_requirements"].is_array()) {
++        return genericTransactionResultToJson(nullptr, "send_generic_public_transaction_json: missing signing_requirements");
 +    }
 +    std::vector<bool> signing_requirements;
-+    for (const auto& v : doc.value("signing_requirements", nlohmann::json::array())) {
-+        signing_requirements.push_back(v.get<bool>());
++    for (const auto& entry : doc["signing_requirements"]) {
++        if (!entry.is_boolean()) {
++            return genericTransactionResultToJson(nullptr, "send_generic_public_transaction_json: signing_requirements must be booleans");
++        }
++        signing_requirements.push_back(entry.get<bool>());
 +    }
 +
-+    const std::string instruction_hex = doc.value("instruction_hex", std::string());
++    if (account_ids.size() != signing_requirements.size()) {
++        return genericTransactionResultToJson(nullptr, "send_generic_public_transaction_json: account_ids/signing_requirements length mismatch");
++    }
++
++    if (!doc.contains("instruction_hex") || !doc["instruction_hex"].is_string()) {
++        return genericTransactionResultToJson(nullptr, "send_generic_public_transaction_json: missing instruction_hex");
++    }
 +    std::vector<uint8_t> instruction_bytes;
-+    if (!hexToBytes(instruction_hex, instruction_bytes)) {
-+        return transferResultToJson(nullptr, std::string("send_generic_public_transaction_json: instruction_hex invalid"));
++    if (!hexToBytes(doc["instruction_hex"].get<std::string>(), instruction_bytes)) {
++        return genericTransactionResultToJson(nullptr, "send_generic_public_transaction_json: invalid instruction_hex");
 +    }
 +    if (instruction_bytes.empty() || instruction_bytes.size() % 4 != 0) {
-+        return transferResultToJson(nullptr, std::string("send_generic_public_transaction_json: instruction_hex length must be a positive multiple of 4 bytes"));
++        return genericTransactionResultToJson(nullptr, "send_generic_public_transaction_json: instruction_hex length must be a positive multiple of 4 bytes");
 +    }
-+
-+    // instruction_hex is the little-endian byte expansion of the risc0 instruction
-+    // words (Program::serialize_instruction then u32::to_le_bytes per word). Regroup
-+    // each 4-byte little-endian chunk back into a u32 word. Do NOT route this through
-+    // wallet_ffi_serialization_helper: that re-serializes the bytes as a seq (one word
-+    // per byte) and corrupts the instruction.
-+    std::vector<uint32_t> instruction_words;
-+    instruction_words.reserve(instruction_bytes.size() / 4);
++    std::vector<uint32_t> instruction;
++    instruction.reserve(instruction_bytes.size() / 4);
 +    for (size_t i = 0; i < instruction_bytes.size(); i += 4) {
 +        const uint32_t word = static_cast<uint32_t>(instruction_bytes[i])
 +            | (static_cast<uint32_t>(instruction_bytes[i + 1]) << 8)
 +            | (static_cast<uint32_t>(instruction_bytes[i + 2]) << 16)
 +            | (static_cast<uint32_t>(instruction_bytes[i + 3]) << 24);
-+        instruction_words.push_back(word);
++        instruction.push_back(word);
 +    }
 +
-+    const std::string program_id_hex = doc.value("program_id_hex", std::string());
++    if (!doc.contains("program_id_hex") || !doc["program_id_hex"].is_string()) {
++        return genericTransactionResultToJson(nullptr, "send_generic_public_transaction_json: missing program_id_hex");
++    }
++    const std::string program_id_hex = doc["program_id_hex"].get<std::string>();
 +
-+    return send_generic_public_transaction(account_ids, signing_requirements, instruction_words, program_id_hex);
++    return send_generic_public_transaction(account_ids, signing_requirements, instruction, program_id_hex);
 +}
 +
- std::string LogosExecutionZoneWalletModule::send_generic_private_transaction(
+ std::string LEZCoreModule::send_generic_private_transaction(
          const std::vector<std::string>& account_ids,
          const std::vector<uint32_t>& instruction,
-diff --git a/src/logos_execution_zone_wallet_module.h b/src/logos_execution_zone_wallet_module.h
-index 0a05bd8..e8df95f 100644
---- a/src/logos_execution_zone_wallet_module.h
-+++ b/src/logos_execution_zone_wallet_module.h
+diff --git a/src/lez_core_module.h b/src/lez_core_module.h
+index 4a1059c..ac6c205 100644
+--- a/src/lez_core_module.h
++++ b/src/lez_core_module.h
 @@ -78,6 +78,7 @@ public:
      std::vector<uint8_t> ata_elf();
  
      std::string send_generic_public_transaction(const std::vector<std::string>& account_ids, const std::vector<bool>& signing_requirements, const std::vector<uint32_t>& instruction, const std::string& program_id_hex);
 +    std::string send_generic_public_transaction_json(const std::string& payload_json);
-     std::string send_generic_private_transaction(
-         const std::vector<std::string>& account_ids,
-         const std::vector<uint32_t>& instruction,
+     std::string send_generic_private_transaction(const std::vector<std::string>& account_ids, const std::vector<uint32_t>& instruction, const std::vector<uint8_t>& program_elf, const std::vector<std::vector<uint8_t>>& program_dependencies);
+     std::string send_program_deployment_transaction(const std::vector<uint8_t>& program_elf);
+ 
