@@ -13,7 +13,7 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 24, 26-31, 33) |
-| [upcoming/](upcoming/) | Steps 20, 22, 32, 34, 35 (active); optional 21 (UI), 23 |
+| [upcoming/](upcoming/) | Steps 20, 22, 32, 34, 35, 36, 37 (active); optional 21 (UI), 23 |
 | [cancelled/](cancelled/) | Step 25 won't fix |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
@@ -65,6 +65,8 @@ paid Store mode on the provider.
 | Delivery fork rebase + wallet module bump | 31 (complete) |
 | AT-init unify + Store claim phase | 32 (active; D3 gate pending) |
 | Store E2E fresh vault + testnet sizing | 33 (complete) |
+| Payer funder unlinkability via LEZ private execution | 36 (active) |
+| Payee receiver privacy via LEZ private execution | 37 (active) |
 
 Step 25 (in-process demo coordinator module) is **won't fix**
 ([cancelled packet](cancelled/step-25-demo-coordination-module.md)).
@@ -104,6 +106,8 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | 32 | AT-init unify + Store claim phase | Active (signed off; D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
 | 34 | User Journey manual walkthrough (testnet CLI) | Active -- [step-34-user-journey-manual-walkthrough.md](upcoming/step-34-user-journey-manual-walkthrough.md) |
 | 35 | Developer Journey generalization (protocol-agnostic eligibility guide) | Active -- [step-35-developer-journey-generalization.md](upcoming/step-35-developer-journey-generalization.md) |
+| 36 | Payer funder unlinkability via LEZ private execution | Active -- [step-36-payer-funder-unlinkability.md](upcoming/step-36-payer-funder-unlinkability.md) |
+| 37 | Payee receiver privacy via LEZ private execution | Active -- [step-37-payee-receiver-privacy.md](upcoming/step-37-payee-receiver-privacy.md) |
 
 Ideas not yet steps: [raw-todos/](raw-todos/).
 
