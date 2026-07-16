@@ -41,7 +41,7 @@ chmod +x scripts/user-journey-*.sh
 ./scripts/user-journey-shell.sh
 ```
 
-Inside the shell, run Steps 1–18 in [USER_JOURNEY.md](USER_JOURNEY.md). Re-export Step 1 if you open a new terminal.
+Inside the shell, run Steps 1–18 in [USER_JOURNEY.md](USER_JOURNEY.md). If you open a new terminal, re-run Step 1 (exports and shell helper functions) before continuing.
 
 `user-journey-shell.sh` installs `lgs` when missing (with a LEZ v0.2 wallet-config patch if upstream scaffold needs it), then opens a Nix shell with pinned `logoscore` and `lgpm` that load `linux-amd64-dev` modules. Steps 4, 5, and 9 call `./scripts/user-journey-lgs-setup.sh`, `./scripts/user-journey-install-modules.sh`, and `./scripts/user-journey-auth-transfer.sh`.
 
@@ -71,9 +71,23 @@ export STREAM_ID=0
 export PAYER=""
 export PAYEE=""
 export LOGOSCORE_DAEMON_LOG="$REPO_ROOT/.scaffold/e2e/user-journey-logoscore-$(date -u +%Y-%m-%dT%H-%M-%SZ).log"
+```
+
+Shell helpers used by later steps, one block per function:
+
+```bash
 logoscore() { command logoscore -q "$@"; }
+```
+
+```bash
 journey_ok() { echo "Success: $*"; }
+```
+
+```bash
 journey_fail() { echo "Failed: $*" >&2; return 1; }
+```
+
+```bash
 journey_write_ok() {
   local label="$1" line="$2"
   if [[ -z "$line" ]] || echo "$line" | grep -q '"status":"error"'; then
@@ -83,11 +97,41 @@ journey_write_ok() {
   fi
   journey_ok "$label"
 }
-journey_ok "Session variables and quiet logoscore wrapper ready"
 ```
 
-Wraps CLI calls with `-q`. Step 6 redirects the background daemon to `$LOGOSCORE_DAEMON_LOG` (new
-filename each time you run Step 1, UTC ISO timestamp in the name).
+```bash
+sync_to_chain() {
+  local raw height
+  raw=$(curl -sf -X POST "$SEQUENCER_URL" -H 'Content-Type: application/json' \
+    -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}')
+  height=$(printf '%s' "$raw" | python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get("result"); print(r if isinstance(r,int) else (r or ""))' 2>/dev/null || true)
+  if [[ -z "$height" ]]; then
+    echo "sync_to_chain: could not parse getLastBlockId from sequencer" >&2
+    return 1
+  fi
+  logoscore call logos_execution_zone sync_to_block "$height" >/dev/null
+  sleep 3
+}
+```
+
+```bash
+chain_balance() {
+  curl -sf -X POST "$SEQUENCER_URL" -H 'Content-Type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$1\"]}" \
+    | sed -n 's/.*"balance":\([0-9][0-9]*\).*/\1/p' | head -1
+}
+```
+
+```bash
+journey_ok "Session variables and shell helpers ready"
+```
+
+`logoscore()` wraps CLI calls with `-q`. `journey_ok` / `journey_fail` print step status;
+`journey_write_ok` checks the last line of a chain write for `"status":"error"`. `sync_to_chain`
+pulls the wallet mirror up to the sequencer tip (`getLastBlockId` → `sync_to_block`); see Step 8
+for when to call it. `chain_balance` reads a sequencer `getAccount` balance (no sync needed). Step 6
+redirects the background daemon to `$LOGOSCORE_DAEMON_LOG` (new filename each time you run Step 1,
+UTC ISO timestamp in the name).
 
 ## Step 2 — Sequencer up
 
@@ -159,7 +203,22 @@ cd "$REPO_ROOT"
 mkdir -p "$(dirname "$LOGOSCORE_DAEMON_LOG")"
 logoscore stop 2>/dev/null || true
 logoscore -D -m "$MODULES" >>"$LOGOSCORE_DAEMON_LOG" 2>&1 &
-sleep 3
+ready=0
+for (( i = 0; i < 20; i++ )); do
+  if logoscore list-modules --loaded >/dev/null 2>&1; then ready=1; break; fi
+  sleep 0.5
+done
+if (( ready )); then
+  journey_ok "logoscore daemon started (log: $LOGOSCORE_DAEMON_LOG)"
+else
+  journey_fail "logoscore daemon not ready; check $LOGOSCORE_DAEMON_LOG"
+fi
+```
+
+If the line above says Failed, inspect `$LOGOSCORE_DAEMON_LOG` before continuing. When the daemon is
+ready, load modules and open the wallet:
+
+```bash
 logoscore load-module logos_execution_zone
 logoscore load-module payment_streams_module
 if [[ ! -f "$WALLET_STORAGE" ]]; then
@@ -168,7 +227,7 @@ else
   logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE"
 fi
 logoscore call logos_execution_zone save
-journey_ok "logoscore daemon running; wallet open (log: $LOGOSCORE_DAEMON_LOG)"
+journey_ok "Modules loaded; wallet open (log: $LOGOSCORE_DAEMON_LOG)"
 ```
 
 Use the last line of each `logoscore call` for JSON `status` / `result`. For daemon debug logs:
@@ -197,18 +256,17 @@ journey_ok "Payer and payee public accounts ready (payer=$PAYER payee=$PAYEE)"
 
 ## Step 8 — Sync to chain
 
-`sync_to_chain` pulls the wallet mirror up to the sequencer tip (`getLastBlockId` →
-`sync_to_block`). Define once; call it when the doc shows it on its own line.
+`sync_to_chain` (defined in Step 1) pulls the wallet mirror up to the sequencer tip
+(`getLastBlockId` → `sync_to_block`). Call it when the doc shows it on its own line.
 
 When to call it:
 
 - After each `chainAction` write, before `getVaultStatus` / `getStreamStatus` in the same step.
-- At the start of a step whose first command is a module status read (Step 14).
+- Before a module status read that opens a step (Step 14).
 - Not on a timer while idle; not for `chain_balance` (sequencer `getAccount`).
 
 Pausing between steps is fine. The chain moving ahead does not break the walkthrough; the next
-`sync_to_chain` always catches up to the current tip. After a long break, re-run Step 1 and this
-function if you opened a new shell.
+`sync_to_chain` always catches up to the current tip.
 
 Status reads use the wallet mirror (`logos_execution_zone.get_account_public` on derived vault or
 stream accounts). If that account is not in the mirror yet, the module returns
@@ -217,27 +275,6 @@ read, or continue when the write succeeded.
 
 `journey_write_ok` checks the last line of a chain write for `"status":"error"` and prints
 Success or Failed. `sync_to_block` stdout is discarded so you do not see a bare `0`.
-
-```bash
-sync_to_chain() {
-  local raw height
-  raw=$(curl -sf -X POST "$SEQUENCER_URL" -H 'Content-Type: application/json' \
-    -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}')
-  height=$(printf '%s' "$raw" | sed -n 's/.*"result":\([0-9][0-9]*\).*/\1/p')
-  if [[ -z "$height" ]]; then
-    height=$(printf '%s' "$raw" | sed -n 's/.*"result":"\([0-9][0-9]*\)".*/\1/p')
-  fi
-  if [[ -z "$height" ]]; then
-    echo "sync_to_chain: could not parse getLastBlockId from sequencer" >&2
-    return 1
-  fi
-  logoscore call logos_execution_zone sync_to_block "$height" >/dev/null
-  sleep 3
-}
-journey_ok "sync_to_chain helper ready"
-```
-
-Later steps show `sync_to_chain` on its own line in the same shell session.
 
 ## Step 9 — Authenticated transfer registration
 
@@ -259,12 +296,6 @@ fails, inspect that file and confirm `$SCAFFOLD_WALLET` exists (Step 4).
 Close the in-process wallet before the standalone `wallet` binary claims pinata.
 
 ```bash
-chain_balance() {
-  curl -sf -X POST "$SEQUENCER_URL" -H 'Content-Type: application/json' \
-    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$1\"]}" \
-    | sed -n 's/.*"balance":\([0-9][0-9]*\).*/\1/p' | head -1
-}
-
 export PATH="$(dirname "$SCAFFOLD_WALLET"):$PATH"
 PINATA_PER_CLAIM=150
 PAYER_TARGET=$((DEPOSIT + 50))
@@ -309,8 +340,8 @@ Step 1 sets `VAULT_ID=0`. After Step 7 you have a new payer, so vault 0 is usual
 `initializeVault` fails because that vault already exists for `$PAYER`, run
 `export VAULT_ID=1` (or the next free id) and repeat this step.
 
-Optional confirmation (may show `account data missing` until the mirror catches up; continue if
-`initializeVault` returned success):
+Initialize the vault, then optionally read it back. The read may show `account data missing`
+until the mirror catches up; continue if `initializeVault` returned success:
 
 ```bash
 line=$(logoscore call payment_streams_module chainAction initializeVault \
@@ -324,7 +355,7 @@ logoscore call payment_streams_module chainAction getVaultStatus \
 
 ## Step 12 — Deposit
 
-Optional confirmation after a successful deposit:
+Deposit into the vault, then optionally read it back:
 
 ```bash
 line=$(logoscore call payment_streams_module chainAction deposit \
@@ -338,7 +369,7 @@ logoscore call payment_streams_module chainAction getVaultStatus \
 
 ## Step 13 — Create stream
 
-Optional confirmation after a successful create:
+Create the stream, then optionally read it back:
 
 ```bash
 line=$(logoscore call payment_streams_module chainAction createStream \
@@ -352,7 +383,7 @@ logoscore call payment_streams_module chainAction getStreamStatus \
 
 ## Step 14 — Wait for accrual
 
-Wait at least `$MIN_ACCRUED` seconds, then:
+Wait approximately 30 seconds for funds to accrue, then:
 
 ```bash
 sync_to_chain
@@ -362,8 +393,6 @@ journey_ok "Accrual window elapsed; check accrued_lo in JSON above (need ≥ $MI
 ```
 
 ## Step 15 — Close stream (payer)
-
-Omit `authority` so the payer (`signer`) signs close.
 
 ```bash
 line=$(logoscore call payment_streams_module chainAction closeStream \
@@ -386,6 +415,8 @@ sync_to_chain
 ```
 
 ## Step 17 — Confirm
+
+Uses `chain_balance` from Step 1 (sequencer `getAccount`, no `sync_to_chain` needed).
 
 ```bash
 sync_to_chain
@@ -420,7 +451,7 @@ exit
 | Paused between steps | Run the next step as written; first command is often `sync_to_chain` before a read |
 | `initializeVault` fails for vault 0 | Reuse of `$PAYER` from an earlier run: `export VAULT_ID=1` and retry Step 11, or `./scripts/user-journey-reset.sh` and new accounts in Step 7 |
 | Deposit rejected | Step 10 pinata for payer |
-| Stream not Closed | Run `sync_to_chain`; Step 15 without `authority` |
+| Stream not Closed | Run `sync_to_chain`; redo Step 15 |
 | Empty claim | Step 14 until `accrued_lo` ≥ `MIN_ACCRUED` |
 | AT errors | Step 9 `./scripts/user-journey-auth-transfer.sh`; check `.scaffold/e2e/user-journey-at.jsonl` |
 | Pinata no effect | `LEE_WALLET_HOME_DIR` = `$WALLET_HOME`; close wallet before claims (Step 10) |
