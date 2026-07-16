@@ -250,8 +250,10 @@ else
 fi
 ```
 
-If the line above says Failed, inspect `$LOGOSCORE_DAEMON_LOG` before continuing. When the daemon is
-ready, load modules and open the wallet:
+If the line above says Failed, inspect `$LOGOSCORE_DAEMON_LOG` before continuing. The daemon being
+ready is not enough on its own: `logos_execution_zone` and `payment_streams_module` are not loaded
+automatically (only `capability_module` is), so run the next block to load them and open the wallet
+before Step 7:
 
 ```bash
 logoscore load-module logos_execution_zone
@@ -271,6 +273,9 @@ Use the last line of each `logoscore call` for JSON `status` / `result`. For dae
 ## Step 7 — Create payer and payee accounts
 
 ```bash
+if ! logoscore list-modules --loaded 2>/dev/null | grep -q logos_execution_zone; then
+  journey_fail "logos_execution_zone not loaded; run the second block of Step 6 (load-module logos_execution_zone, load-module payment_streams_module, open wallet) before Step 7"
+else
 if [[ -z "$PAYER" ]]; then
   PAYER_HEX=$(logoscore call logos_execution_zone create_account_public | tail -1 \
     | sed -n 's/.*"result":"\([^"]*\)".*/\1/p')
@@ -287,6 +292,7 @@ if [[ -z "$PAYEE" ]]; then
 fi
 logoscore call logos_execution_zone save
 journey_ok "Payer and payee public accounts ready (payer=$PAYER payee=$PAYEE)"
+fi
 ```
 
 
@@ -543,6 +549,7 @@ Environment variables (set in Step 1): `FIXTURE_MANIFEST`, `PAYMENT_STREAMS_GUES
 | Module variant / `load-module` failed                         | `./scripts/user-journey-reset.sh`, re-enter `./scripts/user-journey-shell.sh`, Step 5 `./scripts/user-journey-install-modules.sh`             |
 | `Run this from the journey toolchain shell`                   | `./scripts/user-journey-shell.sh` before Step 5                                                                                               |
 | `missing wallet debug config in lez repo`                     | `./scripts/user-journey-lgs-setup.sh` (fallback copy built in)                                                                                |
+| `Call to logos_execution_zone.<method> failed` + empty `PAYER`/`PAYEE` | `logos_execution_zone` is not loaded in the daemon (only `capability_module` auto-loads). Run the second block of Step 6 (`load-module logos_execution_zone`, `load-module payment_streams_module`, open wallet), then re-run Step 7 |
 | `account data missing` after a successful write | The write was not included, not mirror lag. Check the signer nonce with `account_nonce` (Step 1); if it did not bump over several blocks, the tx was dropped — stop and debug. If the nonce bumped but the read still shows `account data missing`, the tx was included but reverted — also a stop-and-debug case |
 | Paused between steps                                          | Run the next step as written; first command is often `sync_to_chain` before a read                                                            |
 | `initializeVault` fails for vault 0                           | Reuse of `$PAYER` from an earlier run: `export VAULT_ID=1` and retry Step 10, or `./scripts/user-journey-reset.sh` and new accounts in Step 7 |
