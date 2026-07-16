@@ -36,6 +36,7 @@
             patch -p1 --forward < ${./wallet-qt-sign-private-payload.patch}
             patch -p1 --forward < ${./wallet-qt-send-generic-public-transaction-json.patch}
             patch -p1 --forward < ${./wallet-qt-send-generic-private-transaction-json.patch}
+            patch -p1 --forward < ${./wallet-qt-transfer-shielded-amount-prefix.patch}
             patch -p1 --forward < ${./wallet-qt-cmake-module-name.patch}
             patch -p1 --forward < ${./wallet-qt-metadata-module-name.patch}
           '';

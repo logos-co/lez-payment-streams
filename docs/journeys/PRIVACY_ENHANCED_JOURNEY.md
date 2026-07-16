@@ -166,7 +166,7 @@ marked final.
 | --- | --- |
 | Create private account | `logoscore call logos_execution_zone create_account_private` |
 | Get private account keys (NPK/VPK) | `logoscore call logos_execution_zone get_private_account_keys <private_account_id>` |
-| Pre-shield funds | `logoscore call logos_execution_zone transfer_shielded_owned <public_account_id> <vault_owner_private_account_id> <amount_le16_hex>` |
+| Pre-shield funds | `logoscore call logos_execution_zone transfer_shielded_owned <public_account_id> <vault_owner_private_account_id> "s:<amount_le16_hex>"` (quote the amount so logoscore keeps it a string) |
 | Initialize vault | `logoscore call payment_streams_module chainAction initializeVault '{"signer":"<private>","vault_id":<id>,"privacy_tier":1}'` |
 | PP deposit | `logoscore call payment_streams_module chainAction deposit '{"signer":"<vault_owner_private>","vault_id":<id>,"amount_lo":<lo>}'` |
 | Create stream | `logoscore call payment_streams_module chainAction createStream '{"signer":"<private>","vault_id":<id>,"stream_id":<id>,"provider":"<provider>","rate":<rate>,"allocation_lo":<lo>}'` |

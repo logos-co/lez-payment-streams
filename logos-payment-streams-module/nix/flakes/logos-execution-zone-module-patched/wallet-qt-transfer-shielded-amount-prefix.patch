@@ -1,0 +1,19 @@
+diff --git a/src/lez_core_module.cpp b/src/lez_core_module.cpp
+index cc9ebc5..e1a2b3c 100644
+--- a/src/lez_core_module.cpp
++++ b/src/lez_core_module.cpp
+@@ -728,7 +728,12 @@ std::string LEZCoreModule::transfer_shielded_owned(
+         return transferResultToJson(nullptr, "transfer_shielded_owned: invalid account id hex");
+     }
+ 
++    std::string amount_hex = amount_le16_hex;
++    if (amount_hex.size() >= 2 && amount_hex.rfind("s:", 0) == 0) {
++        amount_hex = amount_hex.substr(2);
++    }
++
+     uint8_t amount[16];
+-    if (!hexToU128(amount_le16_hex, &amount)) {
++    if (!hexToU128(amount_hex, &amount)) {
+         fprintf(stderr, "transfer_shielded_owned: amount_le16_hex must be 32 hex characters (16 bytes)\n");
+         return transferResultToJson(nullptr, "transfer_shielded_owned: amount_le16_hex must be 32 hex characters (16 bytes)");
+     }
