@@ -1,32 +1,36 @@
 # User Journey — payment streams on TestNet v0.2
 
-Install `payment_streams_module` next to `logos_execution_zone`, then on public testnet run the
-LIP-155 flow as payer (vault, deposit, stream, close) and payee (claim). One `logoscore` daemon
-and one wallet file hold two public accounts on a single host.
+## What the user achieves
 
-Pause, resume, and top-up are out of scope ([chainAction catalogue](../payment-streams-module/README.md#chainaction-catalogue)).
+The user opens a payment stream that pays a service provider continuously over time, then closes
+the stream and lets the provider claim what it accrued. Concretely, the user funds a vault,
+allocates part of it to a stream at a fixed rate, waits for value to accrue, closes the stream,
+and the provider claims the accrued tokens. The walkthrough runs both roles on a single host with
+one `logoscore` daemon and one wallet file holding two public accounts. Pause, resume, and
+top-up are out of scope ([chainAction catalogue](../payment-streams-module/README.md#chainaction-catalogue)).
 
-## Glossary
+## Why it matters
 
-| Term (prose)                | JSON / wire                                             | Meaning                                                                                     |
-| --------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Payer                       | `signer` on writes; `owner` on reads and `claim`        | Vault owner; closes the stream in this flow                                                 |
-| Payee                       | `provider` on `createStream` and `claim`                | Recipient; claims after close                                                               |
-| Vault                       | `vault_id`                                              | Holds deposits and allocations                                                              |
-| Stream                      | `stream_id`                                             | Pays payee at `rate` up to `allocation`                                                     |
-| `*_lo` / `*_hi`             | writes and `getStreamStatus`                            | 128-bit amount as two uint64s: `lo + (hi << 64)`. Values here fit in `*_lo` with `*_hi` = 0 |
-| `accrued_*`, `unaccrued_*`  | `getStreamStatus`                                       | Claimable vs not-yet-time-accrued allocation                                                |
-| `stream_state`              | 0 Active, 1 Paused, 2 Closed                            |                                                                                             |
-| `MIN_ACCRUED`               | (shell only)                                            | Minimum `accrued_lo` before close in this walkthrough; token units, not seconds             |
-| Authenticated transfer (AT) | `wallet auth-transfer init` / `register_public_account` | Lets public accounts spend tokens; required before deposit and stream writes                |
+Payment streams replace discrete invoices with continuous value flow, enabling real-time
+compensation for ongoing services with per-second granularity. This journey demonstrates direct
+operation of the LIP-155 protocol through the Logos Core module interface on a single host.
+
+## Key components
+
+- `payment_streams_module` — Universal Logos Core module exposing LIP-155 vault and stream lifecycle
+- `logos_execution_zone` — Wallet module for chain interaction and transaction signing
+- `lez-payment-streams` — On-chain SPEL guest program implementing LIP-155 semantics
+- `logoscore` — Logos Core CLI for module loading and method invocation
 
 
-Default sizing: sequencer `https://testnet.lez.logos.co/`, program id
-`de17c0db368abf9f6476f4d67a56ad24e89ddb23bc49b58f7effb566146c1677` (release guest ELF
-361716 bytes), deposit 500 (must cover
-`allocation` 80; leftover deposit stays in the vault after close), rate 1 token per second of chain
-clock time, `MIN_ACCRUED` 1, vault/stream ids start at 0. Testnet program id is org-deployed;
-your built guest must match `fixtures/testnet-module.json` (Step 3).
+
+## Repository
+
+[https://github.com/logos-co/lez-payment-streams](https://github.com/logos-co/lez-payment-streams)
+
+## Runtime target
+
+Public TestNet v0.2. The walkthrough runs the LIP-155 flow on a single host against the public sequencer `https://testnet.lez.logos.co/`.
 
 ## Prerequisites
 
@@ -52,6 +56,11 @@ chmod +x scripts/user-journey-*.sh
 Inside the shell, run Steps 1–17 in [USER_JOURNEY.md](USER_JOURNEY.md). If you open a new terminal, re-run Step 1 (exports and shell helper functions) before continuing.
 
 `user-journey-shell.sh` installs `lgs` when missing (with a LEZ v0.2 wallet-config patch if upstream scaffold needs it), then opens a Nix shell with pinned `logoscore` and `lgpm` that load `linux-amd64-dev` modules. Steps 4, 5, and 8 call `./scripts/user-journey-lgs-setup.sh`, `./scripts/user-journey-install-modules.sh`, and `./scripts/user-journey-auth-transfer.sh`.
+
+## Commands and expected outputs
+
+The walkthrough runs as Steps 1–17 in order. Lifecycle: vault init, deposit, create stream,
+accrual, close stream, claim, confirm.
 
 ## Step 1 — Session variables
 
@@ -140,6 +149,8 @@ curl -sf -X POST "$SEQUENCER_URL" -H 'Content-Type: application/json' \
 journey_ok "Sequencer reachable"
 ```
 
+
+
 ## Step 3 — Build guest ELF and check ImageID
 
 `make build` uses Docker guest-builder `risczero/risc0-guest-builder:r0.1.88.0` and the pinned
@@ -182,6 +193,8 @@ test -x "$SCAFFOLD_WALLET"
 journey_ok "Scaffold and standalone wallet CLI ready"
 ```
 
+
+
 ## Step 5 — Wallet config and module install
 
 ```bash
@@ -191,6 +204,8 @@ export WALLET_CONFIG="$WALLET_HOME/wallet_config.json"
 export LEE_WALLET_HOME_DIR="$WALLET_HOME"
 journey_ok "Testnet wallet config and Logos modules installed"
 ```
+
+
 
 ## Step 6 — Start logoscore and open wallet
 
@@ -253,6 +268,8 @@ logoscore call logos_execution_zone save
 journey_ok "Payer and payee public accounts ready (payer=$PAYER payee=$PAYEE)"
 ```
 
+
+
 ## Step 8 — Authenticated transfer registration
 
 Uses the same path as module E2E (`wallet auth-transfer init` with logoscore wallet handoff, then
@@ -311,6 +328,8 @@ sync_to_chain
 journey_ok "Payer and payee funded on testnet (pinata)"
 ```
 
+
+
 ## Step 10 — Initialize vault
 
 Step 1 sets `VAULT_ID=0`. After Step 7 you have a new payer, so vault 0 is usually free. If
@@ -330,6 +349,8 @@ logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
 
+
+
 ## Step 11 — Deposit
 
 Deposit into the vault, then optionally read it back:
@@ -343,6 +364,8 @@ sync_to_chain
 logoscore call payment_streams_module chainAction getVaultStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
 ```
+
+
 
 ## Step 12 — Create stream
 
@@ -358,6 +381,8 @@ logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
+
+
 ## Step 13 — Wait for accrual
 
 Wait approximately 30 seconds for funds to accrue, then:
@@ -368,6 +393,8 @@ logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 journey_ok "Accrual window elapsed; check accrued_lo in JSON above (need ≥ $MIN_ACCRUED before close)"
 ```
+
+
 
 ## Step 14 — Close stream (payer)
 
@@ -381,6 +408,8 @@ logoscore call payment_streams_module chainAction getStreamStatus \
   "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
+
+
 ## Step 15 — Claim (payee)
 
 ```bash
@@ -390,6 +419,8 @@ echo "$line"
 journey_write_ok "Payee claimed accrued tokens" "$line"
 sync_to_chain
 ```
+
+
 
 ## Step 16 — Confirm
 
@@ -404,6 +435,8 @@ echo "Payee on-chain balance: $payee_bal"
 journey_ok "Payment stream walkthrough complete (payee balance $payee_bal)"
 ```
 
+
+
 ## Step 17 — Shut down
 
 ```bash
@@ -415,7 +448,43 @@ exit
 
 `logoscore stop` stops the daemon started in Step 6. `exit` leaves the Nix journey shell. Wallet files remain under `$WALLET_HOME` unless you run `./scripts/user-journey-reset.sh` before the next walkthrough.
 
-## If something fails
+## Expected result
+
+Each step prints a `Success: ...` line on success. After Step 14 (Close) the stream `stream_state`
+is `2` (Closed). After Step 15 (Claim) the accrued tokens move to the payee. Step 16 (Confirm)
+prints the payee on-chain balance and `Success: Payment stream walkthrough complete (payee balance <n>)`.
+
+## Configuration details
+
+Default sizing: sequencer `https://testnet.lez.logos.co/`, program id
+`de17c0db368abf9f6476f4d67a56ad24e89ddb23bc49b58f7effb566146c1677` (release guest ELF
+361716 bytes), deposit 500 (must cover `allocation` 80; leftover deposit stays in the vault after
+close), rate 1 token per second of chain clock time, `MIN_ACCRUED` 1, vault/stream ids start at 0.
+Testnet program id is org-deployed; your built guest must match `fixtures/testnet-module.json`
+(Step 3).
+
+Environment variables (set in Step 1): `FIXTURE_MANIFEST`, `PAYMENT_STREAMS_GUEST_BIN`,
+`SEQUENCER_URL`, `DEPOSIT`, `ALLOCATION`, `RATE`, `MIN_ACCRUED`, `VAULT_ID`, `STREAM_ID`.
+
+### Glossary
+
+
+| Term (prose)                | JSON / wire                                             | Meaning                                                                                     |
+| --------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Payer                       | `signer` on writes; `owner` on reads and `claim`        | Vault owner; closes the stream in this flow                                                 |
+| Payee                       | `provider` on `createStream` and `claim`                | Recipient; claims after close                                                               |
+| Vault                       | `vault_id`                                              | Holds deposits and allocations                                                              |
+| Stream                      | `stream_id`                                             | Pays payee at `rate` up to `allocation`                                                     |
+| `*_lo` / `*_hi`             | writes and `getStreamStatus`                            | 128-bit amount as two uint64s: `lo + (hi << 64)`. Values here fit in `*_lo` with `*_hi` = 0 |
+| `accrued_*`, `unaccrued_*`  | `getStreamStatus`                                       | Claimable vs not-yet-time-accrued allocation                                                |
+| `stream_state`              | 0 Active, 1 Paused, 2 Closed                            |                                                                                             |
+| `MIN_ACCRUED`               | (shell only)                                            | Minimum `accrued_lo` before close in this walkthrough; token units, not seconds             |
+| Authenticated transfer (AT) | `wallet auth-transfer init` / `register_public_account` | Lets public accounts spend tokens; required before deposit and stream writes                |
+
+
+
+
+## Failure modes and limits
 
 
 | Symptom                                                       | Try                                                                                                                                           |
@@ -435,9 +504,20 @@ exit
 | Pinata no effect                                              | `LEE_WALLET_HOME_DIR` = `$WALLET_HOME`; close wallet before claims (Step 9)                                                                   |
 
 
-## Reference
 
-- [LIP-155](https://lip.logos.co/anoncomms/raw/payment-streams.html)
+
+## GitHub handle
+
+@s-tikhomirov
+
+## Discord handle
+
+sergei.tikhomirov
+
+## Existing docs or specs
+
+- [LIP-155 (Payment Streams)](https://lip.logos.co/anoncomms/raw/payment-streams.html)
+- [RFC 73 (Store Eligibility)](https://rfc.vac.dev/spec/73/)
 - [Logos build-and-run](https://docs.logos.co/core/build-modules/build-and-run-a-logos-core-module)
 - [payment-streams-module chainAction catalogue](../payment-streams-module/README.md#chainaction-catalogue)
 
