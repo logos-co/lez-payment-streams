@@ -2,7 +2,7 @@ diff --git a/src/lez_core_module.cpp b/src/lez_core_module.cpp
 index cc9ebc5..d4e5f6a 100644
 --- a/src/lez_core_module.cpp
 +++ b/src/lez_core_module.cpp
-@@ -1101,6 +1101,127 @@ std::string LEZCoreModule::send_generic_public_transaction_json(
+@@ -1101,6 +1101,182 @@
      return send_generic_public_transaction(account_ids, signing_requirements, instruction, program_id_hex);
  }
  
@@ -91,7 +91,7 @@ index cc9ebc5..d4e5f6a 100644
 +        }
 +        const std::string resolution = entry["resolution"].get<std::string>();
 +        FfiAccountIdentity acc_identity{};
-+        WalletFfiError resolve_error = WalletFfiError::InternalError;
++        WalletFfiError resolve_error = INTERNAL_ERROR;
 +        if (resolution == "private") {
 +            resolve_error = wallet_ffi_resolve_private_account(walletHandle, id, &acc_identity);
 +        } else if (resolution == "public_no_sign") {
@@ -123,7 +123,7 @@ index cc9ebc5..d4e5f6a 100644
 +        }
 +        return transferResultToJson(nullptr, "send_generic_private_transaction_json: invalid instruction_hex");
 +    }
-+    if (instruction_bytes.empty() || instruction_bytes.size() % 4 != 0) {
++    if (instruction_bytes.empty() || (instruction_bytes.size() & 3) != 0) {
 +        for (FfiAccountIdentity& prior : identities_resolved) {
 +            wallet_ffi_free_account_identity(&prior);
 +        }

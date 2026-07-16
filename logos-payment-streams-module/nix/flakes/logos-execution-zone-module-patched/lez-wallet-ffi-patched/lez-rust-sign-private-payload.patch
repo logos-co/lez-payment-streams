@@ -56,7 +56,7 @@
 +    };
 +
 +    let digest = unsafe { (*canonical_payload_digest).data };
-+    let signature = Signature::new(private_key, &digest);
++    let signature = Signature::new(&private_key, &digest);
 +
 +    unsafe {
 +        (*out_signature).data = signature.value;
