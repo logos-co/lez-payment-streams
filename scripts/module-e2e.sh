@@ -343,8 +343,7 @@ ps_pre_shield_to_private_owner() {
   local amt_hex line tx_hash
   amt_hex="$(amount_le16_hex "$amount")"
   line="$(logoscore call logos_execution_zone transfer_shielded_owned \
-    "$(logoscore_string_arg "$from_hex")" \
-    "$(logoscore_string_arg "$to_hex")" \
+    "$from_hex" "$to_hex" \
     "$(logoscore_string_arg "$amt_hex")" 2>/dev/null | tail -1)"
   tx_hash="$(python3 -c '
 import json,sys
