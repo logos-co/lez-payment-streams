@@ -348,60 +348,77 @@ If the patch proves large, land it as a separate PR before the module routing ch
 
 ## Verification
 
-| Gate | Command | Pass criteria |
-| --- | --- | --- |
-| PP program tests | `RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core` | Existing PP tests plus new `PseudonymousFunder` lifecycle tests pass. |
-| Module private submit | Unit test in `logos-payment-streams-module/tests/` (to be added) | Public submit rejected for `PseudonymousFunder` vaults; private submit accepted. |
-| User Journey local | `MODE=module CHAIN=local PRIVACY=1 ./scripts/e2e.sh local run` | Full `PseudonymousFunder` lifecycle succeeds (script creates a private owner, public provider, and uses `privacy_tier=1`). |
-| Public tier regression | `make verify-module-local` | `Public`-tier flows unchanged and green. |
+| Gate | Command | Pass criteria | Status |
+| --- | --- | --- | --- |
+| PP program tests | `RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --features pp-program-tests` | Existing PP tests plus `PseudonymousFunder` lifecycle tests pass. | Pass |
+| Public tier regression | `make verify-module-local` | `Public`-tier flows unchanged and green. | Pass (re-run after guest ImageID + privacy E2E script) |
+| User Journey local | `MODE=module CHAIN=local PRIVACY=1 ./scripts/e2e.sh local run` | Full `PseudonymousFunder` lifecycle succeeds, including pause/resume/top_up. | Pass (guest fold-seconds + localnet redeploy) |
+| Module private submit | `nix build .#unit-tests` in `logos-payment-streams-module/` | Public submit rejected for `PseudonymousFunder` vaults; deposit signer mismatch rejected. | Pass (`payment_streams_privacy_policy` + 6 LogosTest cases) |
+| Eligibility (private owner) | Rust unit test + `sign_private_payload` module wiring | `VaultProof.owner_signature` over a `PseudonymousFunder` vault verifies via `verify_stream_proposal_vault_signature`. | Pass (`pseudonymous_funder_vault_proof_signature_verifies_with_nsk`; wallet NSK sign patch wired) |
 
 ## Deliverables
 
-- [ ] `submitGenericPrivate` implemented in `payment_streams_module_writes`
+Done:
+
+- [x] `submitGenericPrivate` implemented in `payment_streams_module_writes`
   and called for every `PseudonymousFunder` vault operation that touches the vault.
-- [ ] Public submit refused for `PseudonymousFunder` vaults at the module.
-- [ ] PP deposit from a pre-shielded private account succeeds on localnet.
-- [ ] PP `deposit` signer check rejects a funding account whose account id does
+- [x] Public submit refused for `PseudonymousFunder` vaults at the module
+  (tier routing always uses the private path).
+- [x] PP deposit from a pre-shielded private account succeeds on localnet.
+- [x] PP `deposit` signer check rejects a funding account whose account id does
   not match `VaultConfig.owner`.
-- [ ] Full `PseudonymousFunder` lifecycle executable via shielded submits.
-- [ ] `VaultProof.owner_signature` signed by the private owner NSK verifies
-  with the existing provider-side Rust eligibility helper
-  `verify_stream_proposal_vault_signature`; no new provider-side FFI is needed.
-- [ ] PP `program_tests` pass with `RISC0_DEV_MODE=1`.
-- [ ] Module-level test that public submit is rejected for `PseudonymousFunder` vaults.
-- [ ] Localnet E2E `MODE=module CHAIN=local PRIVACY=1 ./scripts/e2e.sh local run`
-  passes for a `PseudonymousFunder` vault.
-- [ ] `scripts/module-e2e.sh` (or a privacy variant) is updated to create a
-  private owner, a public provider, pre-shield funds, and run the
-  privacy-enhanced lifecycle.
-- [ ] No regression on the `Public` tier.
-- [ ] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` documents the pre-shielding
+- [x] Shielded submit path covers the full `PseudonymousFunder` lifecycle
+  (init, deposit, create, pause, resume, top_up, close, claim) in module routing
+  and PP `program_tests`.
+- [x] PP `program_tests` pass with `RISC0_DEV_MODE=1`.
+- [x] `scripts/module-e2e.sh` privacy profile (`PRIVACY=1`) creates a private
+  owner, a public provider, pre-shields funds, and runs the privacy-enhanced
+  lifecycle.
+- [x] No regression on the `Public` tier (`make verify-module-local`).
+- [x] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` documents the pre-shielding
   prerequisite, the deposit signer invariant, cross-relationship vault rotation
   as hygiene, and the known traffic-analysis limitations.
-- [ ] [index.md](../index.md) upcoming table and program outcomes list
+- [x] [index.md](../index.md) upcoming table and program outcomes list
   Step 36.
-- [ ] [AGENTS.md](../../AGENTS.md) active-work pointer lists Step 36.
+- [x] [AGENTS.md](../../AGENTS.md) active-work pointer lists Step 36.
+- [x] Localnet E2E green:
+  `MODE=module CHAIN=local PRIVACY=1 ./scripts/e2e.sh local run`
+  including pause, resume, and top_up
+  (guest `chain_timestamp_to_fold_seconds`; ImageID `072a26cc…`).
+- [x] Eligibility proof over a `PseudonymousFunder` vault verifies with
+  `sign_private_payload` and `verify_stream_proposal_vault_signature`
+  (`pseudonymous_funder_vault_proof_signature_verifies_with_nsk`).
+- [x] Module-level C++ tests in `logos-payment-streams-module/tests/`:
+  public submit refused; PP deposit signer mismatch rejected
+  (`nix build .#unit-tests`; `decideVaultSubmitPath`).
+- [x] Plan housekeeping: packet moved under `docs/plan/completed/`.
 
 ## Definition of done
 
-- [ ] `submitGenericPrivate` ships and is routed for `PseudonymousFunder`.
-- [ ] Transparent submit of a `PseudonymousFunder` vault is rejected by the
-  module.
-- [ ] PP deposit, create_stream, pause, resume, top_up, close, and claim
-  all succeed via shielded submits on localnet. `claim` may use a public or
-  private provider account; the transaction is shielded because the vault owner is
-  private.
-- [ ] PP `deposit` signer check rejects a funding account whose account id does
+Done:
+
+- [x] `submitGenericPrivate` ships and is routed for `PseudonymousFunder`.
+- [x] Transparent submit of a `PseudonymousFunder` vault is rejected by the
+  module (private-path routing).
+- [x] PP `deposit` signer check rejects a funding account whose account id does
   not match `VaultConfig.owner`.
-- [ ] Eligibility proof over a `PseudonymousFunder` vault verifies.
-- [ ] `Public`-tier flows unchanged and green.
-- [ ] Unit tests for the privacy-enhanced journey flow pass.
-- [ ] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` documents the payer-side
+- [x] `Public`-tier flows unchanged and green.
+- [x] PP lifecycle / privacy-tier unit tests pass
+  (`pp-program-tests`, `privacy_tier_policy`).
+- [x] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` documents the payer-side
   pre-shielding prerequisite, the deposit signer invariant, and the known
   traffic-analysis limitations.
-- [ ] `scripts/module-e2e.sh` (or a privacy variant) creates a private owner and
-  public provider and runs the `PseudonymousFunder` lifecycle.
-- [ ] Step 36 listed in `index.md` and `AGENTS.md`.
+- [x] `scripts/module-e2e.sh` (`PRIVACY=1`) creates a private owner and
+  public provider and drives the `PseudonymousFunder` lifecycle.
+- [x] Step 36 listed in `index.md` and `AGENTS.md`.
+- [x] PP deposit, create_stream, pause, resume, top_up, close, and claim
+  all succeed via shielded submits on localnet.
+  `claim` may use a public or private provider account; the transaction is
+  shielded because the vault owner is private.
+- [x] Eligibility proof over a `PseudonymousFunder` vault verifies.
+- [x] Module-level C++ tests for public-submit refusal and deposit signer
+  mismatch.
+- [x] Step packet moved to `docs/plan/completed/`.
 
 ## Known limitations
 

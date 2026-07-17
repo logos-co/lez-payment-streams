@@ -65,7 +65,7 @@ paid Store mode on the provider.
 | Delivery fork rebase + wallet module bump | 31 (complete) |
 | AT-init unify + Store claim phase | 32 (active; D3 gate pending) |
 | Store E2E fresh vault + testnet sizing | 33 (complete) |
-| Payer funder unlinkability via LEZ private execution | 36 (active) |
+| Payer funder unlinkability via LEZ private execution | 36 (complete) |
 | Payee receiver privacy via LEZ private execution | 37 (active) |
 
 Step 25 (in-process demo coordinator module) is **won't fix**
@@ -91,6 +91,7 @@ Dual-host demo coordination stays in host scripts
 | 30 | Static dependency migration | [step-30-static-dependency-migration.md](completed/step-30-static-dependency-migration.md) |
 | 31 | Delivery fork rebase + wallet bump | [step-31-dependencies-upgrade.md](completed/step-31-dependencies-upgrade.md) |
 | 33 | Store E2E fresh vault + testnet sizing | [step-33-store-e2e-fresh-vault.md](completed/step-33-store-e2e-fresh-vault.md) |
+| 36 | Payer funder unlinkability via LEZ private execution | [step-36-payer-funder-unlinkability.md](completed/step-36-payer-funder-unlinkability.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
 [step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33).
@@ -106,7 +107,6 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | 32 | AT-init unify + Store claim phase | Active (signed off; D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
 | 34 | User Journey manual walkthrough (testnet CLI) | Active -- [step-34-user-journey-manual-walkthrough.md](upcoming/step-34-user-journey-manual-walkthrough.md) |
 | 35 | Developer Journey generalization (protocol-agnostic eligibility guide) | Active -- [step-35-developer-journey-generalization.md](upcoming/step-35-developer-journey-generalization.md) |
-| 36 | Payer funder unlinkability via LEZ private execution | Active -- [step-36-payer-funder-unlinkability.md](upcoming/step-36-payer-funder-unlinkability.md) |
 | 37 | Payee receiver privacy via LEZ private execution | Active -- [step-37-payee-receiver-privacy.md](upcoming/step-37-payee-receiver-privacy.md) |
 
 Ideas not yet steps: [raw-todos/](raw-todos/).

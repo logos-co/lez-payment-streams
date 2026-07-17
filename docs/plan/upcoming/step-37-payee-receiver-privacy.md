@@ -304,7 +304,7 @@ Step 36 convention), and D37.7 (no provider-side signing patch).
 
 ## Related
 
-- [step-36-payer-funder-unlinkability.md](step-36-payer-funder-unlinkability.md) —
+- [step-36-payer-funder-unlinkability.md](../completed/step-36-payer-funder-unlinkability.md) —
   payer side, supplies the shared PP submit wiring.
 - [integration-decisions.md](../../reference/integration-decisions.md) —
   N5 (provider identity mapping), N10 (module writes).

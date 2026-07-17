@@ -54,12 +54,14 @@ Cancelled: [step-25-demo-coordination-module.md](docs/plan/cancelled/step-25-dem
 
 ### Privacy-preserving payment streams (Steps 36-37)
 
+Step 36 complete:
+[step-36-payer-funder-unlinkability.md](docs/plan/completed/step-36-payer-funder-unlinkability.md).
+
 Active engineering packet:
 
 | Step | Focus | Can Start |
 |------|-------|-----------|
-| [36](docs/plan/upcoming/step-36-payer-funder-unlinkability.md) | Payer funder unlinkability via LEZ private execution | After Step 32 lands or in parallel if the close-then-claim contract is preserved |
-| [37](docs/plan/upcoming/step-37-payee-receiver-privacy.md) | Payee receiver privacy via LEZ private execution | After Step 36 or in the same PR, so it reuses the shared `submitGenericPrivate` helper |
+| [37](docs/plan/upcoming/step-37-payee-receiver-privacy.md) | Payee receiver privacy via LEZ private execution | Now — reuses Step 36 `submitGenericPrivate` |
 
 ## Verification
 
