@@ -110,9 +110,12 @@ exposes it through the `chainAction claim` JSON schema.
 | Guest transition logic | No change. `test_pp_claim_private_provider_succeeds` in `lez-payment-streams-core/src/program_tests/claim.rs` already runs the standard `Instruction::Claim` with the provider as a private authorized account (visibility-1 slot). The existing slot suffices. |
 | Step 36 dependency | Step 37 does not need a `PseudonymousFunder` vault and is not blocked by Step 36. It reuses the `submitGenericPrivate` helper added in Step 36, so it should land after Step 36 or in the same PR. |
 | E2E flag | Drive the payee path with `PROVIDER_PRIVACY=1` on `MODE=module` (independent of `OWNER_PRIVACY`). Primary gate is `OWNER_PRIVACY=0 PROVIDER_PRIVACY=1`; also keep one combo run with both flags set. |
+| Submit-path selection | Explicit account-slot resolutions, then explicit submit API (D37.9). Do not infer submit mode from vault tier alone, and do not try-public-then-private. |
 | Provider-side signing | No patch needed. Claim authorization happens inside the PP circuit; the wallet signs with the NSK during proving. |
-| Identifier consolidation | Documented as hygiene, not implemented. |
+| Identifier consolidation | Documented as hygiene, not implemented in-module. Reuse one private provider account id; no claim-time identifier field (D37.10). |
 | Automatic-claim-on-closure | Documented as a timing-correlation trade-off, not a hard incompatibility. |
+| E2E AT-init / funding | Mirror owner-privacy asymmetry (D37.11): AT-init public accounts only; private provider is `create_account_private` only (no AT, no `Public/$PROVIDER` pinata). |
+| `registerProviderMapping` verify | Encoding smoke in this step (D37.12); Store E2E and Store integration owned by [Step 38](step-38-store-privacy-e2e.md). |
 
 ## JSON schema for private `chainAction claim`
 
@@ -127,54 +130,96 @@ Field names:
 | `provider` | Provider private account id (hex or base58) that matches the `provider_id` stored in `StreamConfig`. |
 | `vault_id` | Vault id. |
 | `stream_id` | Stream id. |
-| `provider_private_identifier` | Optional identifier (hex, 16 bytes) to reuse the same `(npk, identifier)` chain for consolidation. If omitted, the wallet chooses one. |
 
-The field shape reuses the Step 36 private account id convention (D36.3). The
-only claim-specific addition is the optional `provider_private_identifier` for
-consolidation. The `claim` account list is mixed: public non-signing PDAs
+The field shape reuses the Step 36 private account id convention (D36.3).
+There is no `provider_private_identifier` on `claim` (D37.10). Consolidation
+hygiene is: create one private provider account and pass that same account id
+as `provider` on `createStream` and `claim`. Guest `claim` already requires
+`provider.account_id == StreamConfig.provider`, so the payee account is fixed
+at stream creation. Richer identifier tooling is tracked in
+[private-account-identifier-management.md](../raw-todos/private-account-identifier-management.md).
+
+The `claim` account list is mixed: public non-signing PDAs
 (vault_config, vault_holding, stream_config, clock) plus the private provider
 signer; if the vault is `PseudonymousFunder`, the owner is also a private
 non-signing account.
 
+## Submit-path rule (D37.9)
+
+Do not choose public vs private submit from vault `privacy_tier` alone, and do
+not guess with fallbacks (no try-public-then-private).
+
+For every vault-touching `chainAction` prepare path:
+
+1. Build the planned account list with an explicit per-slot resolution
+   (`private`, `public_sign`, or `public_no_sign`) from known facts for that
+   op (which accounts are private identities, who must sign).
+2. Choose the wallet API by a hard rule on those slots:
+   - if any slot resolution is `private` → call only `submitGenericPrivate`
+   - otherwise → call only `submitGenericPublic`
+3. Keep vault-tier policy as a separate invariant where needed (for example
+   refuse a public submit that touches a `PseudonymousFunder` vault). That is
+   not a substitute for step 1–2.
+
+Consequences locked by this rule:
+
+- `createStream` — `provider_id` is instruction data only; it is not an
+  account slot. On a `Public` vault with a public owner signer, create stays
+  `submitGenericPublic` even when `provider_id` is a private account id.
+- `claim` — provider is a signer slot. When that provider is a private
+  account, mark the slot `private` and call only `submitGenericPrivate`,
+  including on a `Public` vault (`OWNER_PRIVACY=0 PROVIDER_PRIVACY=1`).
+- `closeStream` — if `authority` is present and is a private account, mark
+  that slot `private` and call only `submitGenericPrivate`. Payer-only close
+  (omit authority) on a public vault with a public owner stays public submit.
+
+Classify private vs public account identity using the wallet’s private-account
+surface (resolve / keychain) for the account ids the caller already passed.
+Do not silently upgrade a public submit after failure.
+
 ## Implementation plan
 
 1. Shared dependency. Reuse the `submitGenericPrivate` helper added in
-   Step 36. Step 37 only adds the `chainAction claim` private path that calls
-   the helper; it does not duplicate the helper. See D37.1.
+   Step 36. Step 37 does not duplicate the helper. See D37.1.
 
 2. Provider key publication. This mirrors the public-mode identity sharing
    pattern. Document the provider publishing an NPK/VPK pair via
    `logos_execution_zone get_private_account_keys` and the user creating the
-   stream with the NPK-derived `provider_id`. Confirm `registerProviderMapping`
-   (N5) carries NPK-derived `provider_id` values end to end; the mapping logic
-   is unchanged, only the account id type changes.
+   stream with the NPK-derived `provider_id`. Mapping logic is unchanged
+   (N5); only the account id type changes. Store dual-host use of the
+   mapping is Step 38 (D37.12).
 
-3. PP claim path. Add a private-claim path to `chainAction` in
-   `logos-payment-streams-module/src/payment_streams_module_writes.cpp`
-   that routes `claim` through `submitGenericPrivate` with the provider as a
-   private signer slot. Resolve the provider private account via
-   `wallet_ffi_resolve_private_account` (called inside `logos_execution_zone`).
-   The field shape reuses the Step 36 convention (D36.3); only the optional
-   `provider_private_identifier` is claim-specific.
+3. Submit-path refactor (D37.9). In
+   `payment_streams_module_writes.cpp`, replace vault-tier-only submit
+   selection with explicit slot resolutions then explicit
+   `submitGenericPrivate` / `submitGenericPublic`. Update claim (and close
+   when authority is private) so a private provider on a public vault takes
+   the private path. Preserve the PF vault “no public submit” invariant as a
+   separate check. Reuse Step 36 account-id conventions (D36.3).
 
-4. Provider mapping. Confirm `registerProviderMapping` maps the
-   provider libp2p `PeerId` to the NPK-derived `provider_id`, not to a
-   public account. The `PeerId` stays Store-routing only (N5).
+4. Provider mapping encoding (D37.12). Add a module unit / LogosTest that
+   `registerProviderMapping(peerId, privateProviderB58)` succeeds and that
+   prepare / map lookup yields the same 32-byte `provider_id` as
+   `StreamConfig.provider` (base58 → bytes, no dual-host Store). Module
+   lifecycle E2E does not require Store mapping. Paid Store query and
+   Store integration with that mapping are [Step 38](step-38-store-privacy-e2e.md).
 
-5. Identifier hygiene. Document that reusing one `(npk, identifier)` for the
-   claim chain keeps consolidation in a single private account chain. GMS
-   shared private accounts are out of scope.
+5. Identifier hygiene. Document that reusing one private provider account id
+   (one `(npk, identifier)` chosen at account creation) for create and claim
+   keeps consolidation in a single private account chain. Do not add a claim
+   JSON identifier field (D37.10). GMS shared private accounts are out of
+   scope. Future identifier-management ideas:
+   [private-account-identifier-management.md](../raw-todos/private-account-identifier-management.md).
 
 6. Timing. Document that automatic-claim-on-closure is a
    timing-correlation trade-off when used with receiver privacy; recommend
    claim batching or delay as alternatives.
 
 7. Tests. Extend the PP `program_tests` claim coverage to a private
-   recipient at the module submit layer. Add a module-level test that
-   claim routes to a private recipient and that the public `vault_holding`
-   drop is visible while the destination is hidden. Add unit tests for the
-   new privacy-enhanced journey flow in `logos-payment-streams-module/tests/`
-   and in `lez-payment-streams-core` as needed. Run with `RISC0_DEV_MODE=1`.
+   recipient at the module submit layer. Add module-level tests that claim
+   (and close-with-private-authority if exercised) select private submit from
+   slot resolutions, not from vault tier alone, and that `vault_holding` drop
+   is visible while the destination is hidden. Run with `RISC0_DEV_MODE=1`.
 
 8. Journey doc. Extend `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` with the
    payee-side claiming walkthrough. Do not modify `USER_JOURNEY.md` or
@@ -182,11 +227,12 @@ non-signing account.
 
 9. E2E profile. Wire `PROVIDER_PRIVACY=1` in `scripts/module-e2e.sh` (create
    private provider, stream `provider_id` = that account, claim via private
-   submit). Keep `OWNER_PRIVACY` behavior from Step 36 unchanged and
-   combinable. Update [E2E.md](../../journeys/E2E.md) and
-   [verification-matrix.md](../../reference/verification-matrix.md) for the
-   provider-privacy module cell. Store × privacy remains out of scope
-   (planned Step 38).
+   submit). AT-init and funding follow D37.11 (public parties only for AT /
+   pinata; private provider create-only). Keep `OWNER_PRIVACY` behavior from
+   Step 36 unchanged and combinable. Update [E2E.md](../../journeys/E2E.md)
+   and [verification-matrix.md](../../reference/verification-matrix.md) for
+   the provider-privacy module cell. Store × privacy remains out of scope
+   ([Step 38](step-38-store-privacy-e2e.md)).
 
 ## Decision log
 
@@ -194,12 +240,45 @@ non-signing account.
 | --- | --- | --- |
 | D37.1 | Shared helper with Step 36 | Step 36 adds `submitGenericPrivate` in `payment_streams_module_writes.cpp`. Step 37 reuses it. Do not duplicate the helper. |
 | D37.2 | Provider key publication | Mirrors the public-mode identity sharing pattern. Provider publishes NPK/VPK via `logos_execution_zone get_private_account_keys`. The user derives the NPK-derived account id and creates the stream with that `provider_id`. The module only routes `claim` through `submitGenericPrivate`. |
-| D37.3 | `registerProviderMapping` encoding | N5 maps `PeerId` to the 32-byte stream payee `AccountId`. For a shielded provider this is the NPK-derived id. This is an encoding verification, not a design change. |
-| D37.4 | Identifier consolidation | Documented as hygiene. Reuse one `(npk, identifier)` for the claim chain to avoid linear spend cost. GMS shared custody is out of scope. |
+| D37.3 | `registerProviderMapping` encoding | N5 maps `PeerId` to the 32-byte stream payee `AccountId`. For a shielded provider this is the NPK-derived id. No design change to the mapping API. Verification depth is D37.12. |
+| D37.4 | Identifier consolidation | Documented as hygiene. Reuse one private provider account id for the claim chain to avoid linear spend cost. GMS shared custody is out of scope. |
 | D37.5 | Automatic-claim-on-closure | Documented as a timing-correlation trade-off: it forces the shielded payout to coincide with the close event. The destination stays shielded; the amount is already public. |
-| D37.6 | `chainAction claim` field shape | Reuse the same private account id convention as Step 36 (D36.3). The only claim-specific addition is an optional `provider_private_identifier` for consolidation. |
+| D37.6 | `chainAction claim` field shape | Same private account id convention as Step 36 (D36.3): `owner`, `provider`, `vault_id`, `stream_id` only. |
 | D37.7 | Provider-side signing patch | None needed. Claim authorization happens inside the PP circuit; the wallet signs with the NSK during proving. |
 | D37.8 | E2E flags | Use `PROVIDER_PRIVACY=1` for this step. Do not overload `PRIVACY` / `OWNER_PRIVACY`. Owner and provider privacy remain independently toggleable. |
+| D37.9 | Submit-path selection | Explicit per-slot resolutions, then hard rule: any `private` slot → only `submitGenericPrivate`; else only `submitGenericPublic`. No vault-tier-only inference and no public/private fallback. Vault-tier “PF forbids public submit” stays a separate invariant. |
+| D37.10 | No claim-time identifier field | Do not add `provider_private_identifier` on `claim`. Guest binds payee to `StreamConfig.provider`; Step 36 already uses account ids only. Future identifier tooling: [raw-todos/private-account-identifier-management.md](../raw-todos/private-account-identifier-management.md). |
+| D37.11 | E2E AT-init / funding for private provider | Mirror Step 36 owner-privacy asymmetry. AT-init only public accounts (`wallet auth-transfer init` / `register_public_account` on `Public/$acct`). Never AT-init a private provider. Public owner (when `OWNER_PRIVACY=0`) keeps pinata as today. Private provider is `create_account_private` only — no `Public/$PROVIDER` pinata and no dust pre-shield unless implementation proves first claim needs a prior private note. Combo `OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`: AT neither private party; keep funder → pre-shield owner; private provider create-only. |
+| D37.12 | `registerProviderMapping` verify depth | Step 37 owns encoding smoke only: register with NPK-derived base58 and assert prepare / map lookup uses the correct 32-byte `provider_id` (no dual-host Store). Step 38 owns Store E2E and Store integration (`registerProviderMapping` before paid `storeQuery`, settlement). Do not build a Store-shaped harness in this step. |
+
+### D37.9 rationale: explicit slots then explicit submit API
+
+Step 36 routed private submit from vault `PseudonymousFunder` tier. That is
+insufficient for Step 37’s primary gate (public vault, private provider
+claim): tier alone would keep claim on `submitGenericPublic`.
+
+Guessing (for example “if `resolve_private` succeeds, upgrade to private”) or
+try-public-then-private invites silent wrong paths. The chosen rule matches
+how the private wallet API already consumes `account_slots`: the module states
+resolutions, then calls the required prepare/submit function. The wallet
+executes that path; it does not invent mode behind the module.
+
+### D37.11 rationale: AT-init and funding asymmetry
+
+AT-init sets public-account `program_owner` to `authenticated_transfer` so
+deposit can chain an AT debit. That API is `Public/$acct` only; private
+accounts do not use it. Non-zero pinata balance is a public fee/spendable-funds
+concern, not a private-account create prerequisite. Mirroring Step 36 keeps
+script branching small and avoids inventing dust pre-shield or fake
+`Public/$PROVIDER` topups until a concrete failure requires them.
+
+### D37.12 rationale: encoding smoke vs Store E2E
+
+`registerProviderMapping` is host-local N5 glue (`PeerId` → payee `AccountId`).
+Module lifecycle E2E never needs Store routing. Encoding bugs (base58 decode,
+wrong field wiring into prepare) are cheap to catch in a LogosTest and stay
+durable when Step 38 adds dual-host Store. Building a temporary Store path in
+Step 37 would be throwaway against Step 38’s real orchestrator work.
 
 ### D37.2 rationale: provider key publication
 
@@ -255,6 +334,7 @@ helper is shared from the start.
 | --- | --- | --- |
 | PP program tests | `RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core` | `test_pp_claim_private_provider_succeeds` and new module-layer private-claim tests pass. |
 | Module private claim | Unit test in `logos-payment-streams-module/tests/` (to be added) | `claim` routes to `submitGenericPrivate` when `provider` resolves to a private account; destination is hidden, `vault_holding` drop is visible. |
+| Mapping encoding (D37.12) | Module unit / LogosTest (to be added) | `registerProviderMapping` with NPK-derived provider base58 succeeds; prepare / map lookup yields the same 32-byte `provider_id`. No Store query. |
 | Payee Journey local | `MODE=module CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run` | Payee claim to a private receiving account succeeds (`OWNER_PRIVACY=0`). |
 | Combo local | `MODE=module CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run` | Both profiles together succeed. |
 | Owner-privacy regression | `make verify-module-local-privacy` | Step 36 `OWNER_PRIVACY=1` path unchanged and green. |
@@ -266,7 +346,9 @@ helper is shared from the start.
   `submitGenericPrivate` with a private provider signer slot.
 - [ ] `claim` credits the provider's private receiving account; the
   `vault_holding` public drop is visible and the destination is hidden.
-- [ ] `registerProviderMapping` carries NPK-derived `provider_id`.
+- [ ] `registerProviderMapping` encoding smoke (D37.12): NPK-derived id
+  registers and prepare / map lookup yields matching 32-byte `provider_id`.
+  Store E2E for mapping is Step 38.
 - [ ] PP claim `program_tests` pass with `RISC0_DEV_MODE=1`.
 - [ ] Module-level test that `claim` routes to a private recipient and that the
   destination is hidden.
@@ -286,7 +368,8 @@ helper is shared from the start.
   tied to its primary identity.
 - [ ] Shielded claim succeeds via `submitGenericPrivate`; destination
   hidden, amount visible.
-- [ ] `registerProviderMapping` carries NPK-derived `provider_id`.
+- [ ] `registerProviderMapping` encoding smoke green (D37.12); Store mapping
+  E2E deferred to Step 38.
 - [ ] Transparent claim path unchanged and green.
 - [ ] Unit tests for the privacy-enhanced journey flow pass.
 - [ ] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` extended with the payee-side
@@ -312,10 +395,10 @@ helper is shared from the start.
 - GMS shared private account implementation.
 - Forcing cross-relationship provider NPK rotation.
 - logos-docs publication.
-- Store integration and eligibility hooks (Developer Journey track; no wire or
-  `delivery_module` changes). Store × privacy verification is
+- Store integration, Store E2E, and dual-host use of `registerProviderMapping`
+  (Developer Journey track; no wire or `delivery_module` changes). Owned by
   [Step 38](step-38-store-privacy-e2e.md), reusing `OWNER_PRIVACY` /
-  `PROVIDER_PRIVACY`.
+  `PROVIDER_PRIVACY` (D37.12).
 
 ## Resolved
 
@@ -323,8 +406,34 @@ All decisions are recorded in the [Decision log](#decision-log) above:
 D37.1 (shared helper), D37.2 (provider key publication), D37.3
 (`registerProviderMapping` encoding), D37.4 (identifier consolidation),
 D37.5 (automatic-claim-on-closure trade-off), D37.6 (claim field shape reuses
-Step 36 convention), D37.7 (no provider-side signing patch), and D37.8
-(independent `PROVIDER_PRIVACY` E2E flag).
+Step 36 convention), D37.7 (no provider-side signing patch), D37.8
+(independent `PROVIDER_PRIVACY` E2E flag), D37.9 (explicit slots then
+explicit submit API), D37.10 (no claim-time identifier field), D37.11
+(E2E AT-init / funding mirrors owner-privacy asymmetry), and D37.12
+(`registerProviderMapping` encoding smoke here; Store E2E in Step 38).
+
+D37.9 also locks:
+
+- create on a public vault with a private `provider_id` stays public submit
+  (`provider` is not an account slot).
+- claim with a private provider uses private submit even on a public vault.
+- close with a private `authority` uses private submit; payer-only close on a
+  public vault stays public submit.
+
+D37.11 also locks:
+
+- AT-init is for public AT program ownership (deposit debit path), not for
+  private accounts; skip AT for private provider the same way Step 36 skips
+  AT for private owner.
+- Do not pinata-topup a private provider as `Public/$PROVIDER`.
+- Prefer create-only private provider first; add dust pre-shield only if a
+  concrete claim/private-submit failure requires a prior private note.
+
+D37.12 also locks:
+
+- Step 37: encoding smoke only (register + prepare / map lookup bytes).
+- Step 38: Store E2E and Store integration with that mapping.
+- No Store-shaped harness or paid `storeQuery` gate in this step.
 
 ## Related
 
@@ -336,6 +445,8 @@ Step 36 convention), D37.7 (no provider-side signing patch), and D37.8
   N5 (provider identity mapping), N10 (module writes).
 - [PRIVACY_ENHANCED_JOURNEY.md](../../journeys/PRIVACY_ENHANCED_JOURNEY.md) —
   payee-side private-claim walkthrough.
+- [private-account-identifier-management.md](../raw-todos/private-account-identifier-management.md) —
+  deferred identifier-management ideas.
 - [USER_JOURNEY.md](../../journeys/USER_JOURNEY.md) and
   [DEVELOPER_JOURNEY.md](../../journeys/DEVELOPER_JOURNEY.md) — unchanged by
   this step.

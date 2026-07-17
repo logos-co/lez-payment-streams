@@ -82,9 +82,9 @@ only when stable.
   (`submitGenericPrivate`, PF vault, `sign_private_payload`, module
   `OWNER_PRIVACY=1`).
 - [Step 37](step-37-payee-receiver-privacy.md) complete for phases that need
-  `PROVIDER_PRIVACY` (private provider claim routing and module E2E).
-  Phase A (owner-only Store privacy) can start after Step 36 even if Step 37
-  is still open.
+  `PROVIDER_PRIVACY` (private provider claim routing, module E2E, and
+  `registerProviderMapping` encoding smoke per D37.12). Phase A (owner-only
+  Store privacy) can start after Step 36 even if Step 37 is still open.
 - Public Store local green (`make verify-store-local`) as the baseline this
   step must not regress.
 - Shared E2E flags already defined in `scripts/lib/common.sh` and documented
@@ -97,6 +97,11 @@ In scope:
 - Store orchestrator honor `OWNER_PRIVACY` and `PROVIDER_PRIVACY` the same way
   module E2E does (create private accounts, pre-shield, `privacy_tier=1`,
   private provider where flagged).
+- Store E2E and Store integration for `registerProviderMapping` with privacy
+  profiles (D38.7 / D37.12): real provider peer ad, map `PeerId` → private
+  (or public) payee account id, prepare eligibility, paid `storeQuery`,
+  settlement. Step 37 only proved encoding smoke; this step owns the Store
+  path.
 - Prefer `payment_streams_module` `chainAction` for vault and stream lifecycle
   under privacy profiles; do not use public-only seed paths for PF vaults.
 - Set `RISC0_DEV_MODE` and `PAYMENT_STREAMS_GUEST_BIN` on hosts that prove
@@ -112,7 +117,7 @@ Out of scope:
 - Changes to logos-delivery Store wire, RFC 73 tags, or `delivery_module`
   eligibility hook shapes (unless a real bug appears).
 - Guest transition-logic changes.
-- Reopening Steps 36 or 37 DoD.
+- Reopening Steps 36 or 37 DoD (including redoing mapping encoding smoke).
 - Forcing every matrix cell (including testnet) to required on first land.
 - Traffic-analysis mitigations beyond documentation already in the privacy
   journey.
@@ -136,11 +141,15 @@ Out of scope:
 ### Phase B — Store × provider privacy and full privacy (depends on Step 37)
 
 1. When `PROVIDER_PRIVACY=1`, create private provider, set stream `provider_id`
-   and `registerProviderMapping` to that account id, claim via private submit.
-2. Gate `OWNER_PRIVACY=0 PROVIDER_PRIVACY=1` on Store local.
-3. Gate full privacy `OWNER_PRIVACY=1 PROVIDER_PRIVACY=1` on Store local
+   to that account id, and on the user host call `registerProviderMapping`
+   with the real Store provider peer id and that private account id (reuse
+   Step 37 encoding smoke; do not reimplement it).
+2. Run prepare eligibility + paid `storeQuery` + settlement with that mapping;
+   claim via private submit on teardown.
+3. Gate `OWNER_PRIVACY=0 PROVIDER_PRIVACY=1` on Store local.
+4. Gate full privacy `OWNER_PRIVACY=1 PROVIDER_PRIVACY=1` on Store local
    (end-to-end goal of this step).
-4. Extend E2E.md / verification-matrix / scripts README; optional Make aliases
+5. Extend E2E.md / verification-matrix / scripts README; optional Make aliases
    for provider-only and full privacy.
 
 ### Phase C — Optional matrix completion
@@ -160,6 +169,7 @@ Out of scope:
 | D38.4 | Rollout | Local Store profiles first; full privacy (both flags) is the step end goal; testnet and required-tier promotion are phased. |
 | D38.5 | Seed path | Public seed fixtures must not initialize or fund `PseudonymousFunder` vaults; privacy Store runs use module `chainAction` (or an extended private-aware seed). |
 | D38.6 | Phase A vs B | Owner-only Store privacy can land before Step 37 closes; provider and full privacy wait on Step 37. |
+| D38.7 | `registerProviderMapping` Store E2E | This step owns Store integration and dual-host E2E for provider mapping under privacy profiles. Step 37 owns encoding smoke only (D37.12). Inherit that unit coverage; wire mapping into `run_local_e2e.py` before paid Store query when `PROVIDER_PRIVACY=1`. |
 
 ## Risk
 
@@ -179,8 +189,8 @@ privacy Store as optional until green and boring.
 | --- | --- | --- |
 | Public Store regression | `make verify-store-local` | Unchanged green. |
 | Store owner privacy | `MODE=store CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run` | Paid Store query + settlement over PF vault; public provider. |
-| Store provider privacy | `MODE=store CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run` | Paid Store query + shielded provider claim. |
-| Store full privacy | `MODE=store CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run` | Both profiles together; end goal of this step. |
+| Store provider privacy | `MODE=store CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run` | `registerProviderMapping` to private provider id; paid Store query + shielded provider claim. |
+| Store full privacy | `MODE=store CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run` | Both profiles together; mapping + query + settlement; end goal of this step. |
 | Module privacy regression | `make verify-module-local-privacy` and Step 37 provider module gates | No User Journey privacy regression. |
 
 Exact Make alias names may follow the module naming pattern
@@ -191,7 +201,8 @@ Exact Make alias names may follow the module naming pattern
 - [ ] Store orchestrator respects `OWNER_PRIVACY` and `PROVIDER_PRIVACY`.
 - [ ] Phase A: Store local × `OWNER_PRIVACY=1` green.
 - [ ] Phase B: Store local × `PROVIDER_PRIVACY=1` and both flags green (full
-  privacy mode).
+  privacy mode), including `registerProviderMapping` → prepare → paid
+  `storeQuery` → settlement with private provider id (D38.7).
 - [ ] Public Store local remains green.
 - [ ] [E2E.md](../../journeys/E2E.md) documents Store privacy profile recipes.
 - [ ] [verification-matrix.md](../../reference/verification-matrix.md) lists
@@ -207,12 +218,13 @@ Exact Make alias names may follow the module naming pattern
 - [ ] Paid Store queries succeed for a `PseudonymousFunder` vault owner on
   localnet (Phase A).
 - [ ] Paid Store queries succeed with private provider claim on localnet
-  (Phase B).
+  (Phase B), with `registerProviderMapping` wired to the private payee id.
 - [ ] Full privacy mode Store local green:
   `OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`.
 - [ ] No Delivery wire or hook shape change required for the above (or any
   unexpected change is documented as a decision).
-- [ ] Public Store and module privacy regressions green.
+- [ ] Public Store and module privacy regressions green (including Step 37
+  mapping encoding smoke).
 - [ ] Docs and plan index updated; packet moved to `docs/plan/completed/` when
   phases A and B pass.
 
@@ -225,7 +237,8 @@ Exact Make alias names may follow the module naming pattern
 
 ## Not in scope
 
-- User Journey product work (Steps 36 and 37).
+- User Journey product work (Steps 36 and 37), including redoing
+  `registerProviderMapping` encoding smoke (D37.12).
 - logos-docs publication.
 - Expanding privacy into a third required matrix axis on first land.
 
@@ -234,7 +247,8 @@ Exact Make alias names may follow the module naming pattern
 - [step-36-payer-funder-unlinkability.md](../completed/step-36-payer-funder-unlinkability.md) —
   owner privacy product; module `OWNER_PRIVACY`.
 - [step-37-payee-receiver-privacy.md](step-37-payee-receiver-privacy.md) —
-  provider privacy product; module `PROVIDER_PRIVACY`.
+  provider privacy product; module `PROVIDER_PRIVACY`; mapping encoding smoke
+  (D37.12). This step owns Store mapping E2E (D38.7).
 - [step-33-store-e2e-fresh-vault.md](../completed/step-33-store-e2e-fresh-vault.md) —
   Store fresh vault and sizing baseline.
 - [E2E.md](../../journeys/E2E.md) — recipe SSOT; privacy as profile overlays.
