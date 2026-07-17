@@ -77,8 +77,8 @@ Expected: exit code 0; same lifecycle phases as the public module cell, plus
 top-up on. Artifact: `.scaffold/e2e/artifacts/module-e2e-*.log`.
 
 `PROVIDER_PRIVACY=1` (private provider / shielded claim) is Step 37 and is not
-wired in the module orchestrator yet. Store × privacy profiles are a later
-Developer Journey gate (planned Step 38).
+wired in the module orchestrator yet. Store × privacy profiles are
+[Step 38](../plan/upcoming/step-38-store-privacy-e2e.md).
 
 Narrative walkthrough: [PRIVACY_ENHANCED_JOURNEY.md](PRIVACY_ENHANCED_JOURNEY.md).
 

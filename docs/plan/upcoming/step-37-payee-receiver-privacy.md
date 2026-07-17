@@ -313,8 +313,9 @@ helper is shared from the start.
 - Forcing cross-relationship provider NPK rotation.
 - logos-docs publication.
 - Store integration and eligibility hooks (Developer Journey track; no wire or
-  `delivery_module` changes). Planned verification of Store × privacy profiles
-  is Step 38, reusing `OWNER_PRIVACY` / `PROVIDER_PRIVACY`.
+  `delivery_module` changes). Store × privacy verification is
+  [Step 38](step-38-store-privacy-e2e.md), reusing `OWNER_PRIVACY` /
+  `PROVIDER_PRIVACY`.
 
 ## Resolved
 
@@ -329,6 +330,8 @@ Step 36 convention), D37.7 (no provider-side signing patch), and D37.8
 
 - [step-36-payer-funder-unlinkability.md](../completed/step-36-payer-funder-unlinkability.md) —
   payer side, supplies the shared PP submit wiring.
+- [step-38-store-privacy-e2e.md](step-38-store-privacy-e2e.md) —
+  Store E2E privacy profiles (depends on this step for provider/full privacy).
 - [integration-decisions.md](../../reference/integration-decisions.md) —
   N5 (provider identity mapping), N10 (module writes).
 - [PRIVACY_ENHANCED_JOURNEY.md](../../journeys/PRIVACY_ENHANCED_JOURNEY.md) —

@@ -67,6 +67,7 @@ paid Store mode on the provider.
 | Store E2E fresh vault + testnet sizing | 33 (complete) |
 | Payer funder unlinkability via LEZ private execution | 36 (complete) |
 | Payee receiver privacy via LEZ private execution | 37 (active) |
+| Store E2E privacy profiles (full privacy mode) | 38 (active) |
 
 Step 25 (in-process demo coordinator module) is **won't fix**
 ([cancelled packet](cancelled/step-25-demo-coordination-module.md)).
@@ -108,6 +109,7 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | 34 | User Journey manual walkthrough (testnet CLI) | Active -- [step-34-user-journey-manual-walkthrough.md](upcoming/step-34-user-journey-manual-walkthrough.md) |
 | 35 | Developer Journey generalization (protocol-agnostic eligibility guide) | Active -- [step-35-developer-journey-generalization.md](upcoming/step-35-developer-journey-generalization.md) |
 | 37 | Payee receiver privacy via LEZ private execution | Active -- [step-37-payee-receiver-privacy.md](upcoming/step-37-payee-receiver-privacy.md) |
+| 38 | Store E2E privacy profiles (full privacy mode) | Active (after 36; Phase B after 37) -- [step-38-store-privacy-e2e.md](upcoming/step-38-store-privacy-e2e.md) |
 
 Ideas not yet steps: [raw-todos/](raw-todos/).
 
