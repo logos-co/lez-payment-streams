@@ -245,4 +245,41 @@ mod tests {
 
         verify_stream_proposal_vault_proof(&decoded, &owner_account).expect("still verifies");
     }
+
+    /// Step 36 / D36.4: PseudonymousFunder eligibility uses the vault owner NSK as an
+    /// NSSA `PrivateKey` and puts the NPK in `VaultProof.owner_public_key`. Provider-side
+    /// verification is `verify_stream_proposal_vault_signature` (same helper as public vaults).
+    /// On-chain vault owner binding uses the NPK-derived private account id, not
+    /// `AccountId::from(NPK)`, so this test checks the signature path only.
+    #[test]
+    fn pseudonymous_funder_vault_proof_signature_verifies_with_nsk() {
+        let nullifier_secret_key = PrivateKey::new_os_random();
+        let nullifier_public_key =
+            *PublicKey::new_from_private_key(&nullifier_secret_key).value();
+
+        let params = StreamParams::new(10, 400, 1200, b"/vac/waku/store-query/3.0.0".to_vec());
+        let proposal = StreamProposalWire {
+            vault: VaultProofWire {
+                vault_id: 0,
+                provider_id: [5_u8; 32],
+                owner_public_key: [0_u8; 32],
+                owner_signature: [0_u8; 64],
+            },
+            params,
+            session_public_key: [4_u8; 32],
+        };
+
+        let signed =
+            sign_stream_proposal_vault_proof(proposal, &nullifier_secret_key).expect("signs");
+        assert_eq!(signed.vault.owner_public_key, nullifier_public_key);
+        verify_stream_proposal_vault_signature(&signed)
+            .expect("NPK/NSK vault proof signature verifies");
+
+        let mut tampered = signed.clone();
+        tampered.params.rate = signed.params.rate.saturating_add(1);
+        assert!(matches!(
+            verify_stream_proposal_vault_signature(&tampered),
+            Err(OffChainError::BadSignature)
+        ));
+    }
 }
