@@ -39,7 +39,7 @@ porting them into `run_local_e2e.py` under dual-host constraints.
 | Topic | Module fact to reuse | Store implication |
 | --- | --- | --- |
 | Flags | `OWNER_PRIVACY` / `PROVIDER_PRIVACY` in `scripts/lib/common.sh`; `PRIVACY=1` aliases owner only | Read the same env in Store orchestrator; no `MODE=privacy` |
-| Submit path | D37.9: any private account slot → `submitGenericPrivate` only; PF never public | Prefer `chainAction` for vault/stream lifecycle; public seed must not touch PF vaults |
+| Submit path | D37.9: any private account slot → `submitGenericPrivate` only; PF never public | Store lifecycle uses module `chainAction` for public and privacy (D38.5); seed is coordination-only |
 | AT-init | Public accounts only (D37.11) | Never AT-init private owner or private provider |
 | Owner funding | Public funder → `transfer_shielded_owned` into private owner | Run on the user host (holds private owner keys) |
 | Provider funding | No `Public/$PROVIDER` pinata; dust `transfer_shielded_owned` into private provider (create-only fails private claim with wallet FFI error 99) | Dust-fund on the host that holds private provider keys (today: provider host — claim uses `cfg_provider`) |
@@ -139,10 +139,11 @@ Out of scope:
 | D38.2 | Delivery impact | No intentional Delivery or wire changes; opaque eligibility stays. |
 | D38.3 | Flags | Reuse `OWNER_PRIVACY` / `PROVIDER_PRIVACY`; do not introduce `MODE=privacy`. |
 | D38.4 | Rollout | Local Store profiles first; full privacy (both flags) is the step end goal; testnet and required-tier promotion are phased. |
-| D38.5 | Seed path | Public seed fixtures must not initialize or fund `PseudonymousFunder` vaults; privacy Store runs use module `chainAction` (or an extended private-aware seed). |
+| D38.5 | Lifecycle submit path | Store E2E user-callable LIP-155 ops (vault init/deposit, create, close, claim) use `payment_streams_module` `chainAction` for both public and privacy profiles (`E2E_LIFECYCLE_VIA=chainaction` default). `seed_localnet_fixture` remains for coordination only (manifest write, clock sync, pinata funding). Do not keep a public-seed vs privacy-chainAction split. |
 | D38.6 | Phase A vs B | Phase A (owner-only) can start now that Step 36 is complete. Phase B (provider / full) requires Step 37 (complete). |
 | D38.7 | `registerProviderMapping` Store E2E | This step owns dual-host Store mapping under privacy profiles. Step 37 owns encoding smoke only (D37.12). Wire mapping in `run_local_e2e.py` before paid Store query when `PROVIDER_PRIVACY=1`. |
 | D38.8 | Dual-host + funding inherit | Private owner keys and owner pre-shield on user host. Private provider keys, dust pre-shield, and claim on provider host (`cfg_provider`). AT-init public only. Private-provider claim_balance uses vault_holding drop. |
+| D38.9 | On-chain confirmation principle | Every `chainAction` op whose next step reads the state it writes is verified on-chain, not by the wallet submit acknowledgement. `await_chain_action_inclusion` always polls the sequencer on localnet; `E2E_ALLOW_FIRE_AND_FORGET=1` restores the legacy skip only for non-local chains where `getTransaction` lags. Close polls `stream_closed_on_chain`; claim polls provider balance; vault init polls `vault_config_present`; deposit waits on the init tx. See [E2E.md](../../journeys/E2E.md#on-chain-confirmation-principle). |
 
 ## Risk
 

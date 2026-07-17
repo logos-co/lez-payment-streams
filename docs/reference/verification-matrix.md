@@ -98,6 +98,11 @@ Maintainer-only (not integrator gates): `make verify-store-local-lifecycle` or
   The orchestrator scans for a fresh vault id and ensures it (init + deposit)
   before stream creation. Set `E2E_REUSE_BASELINE_VAULT=1` to use the legacy
   vault-0 reuse path (used by `verify-store-local-lifecycle`).
+- On-chain confirmation principle: every `chainAction` op whose next step reads
+  the state it writes is verified on-chain (sequencer inclusion + state poll),
+  not by the wallet submit acknowledgement. See
+  [journeys/E2E.md#on-chain-confirmation-principle](../journeys/E2E.md#on-chain-confirmation-principle).
+  This applies to both `MODE=module` and `MODE=store` orchestrators.
 - Module flow only ensures localnet is up and skips `delivery_module` build.
 - Testnet gate: two consecutive green passes (Store + Module) on the public
   sequencer are recorded in

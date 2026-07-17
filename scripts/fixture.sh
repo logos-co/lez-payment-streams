@@ -75,6 +75,15 @@ fund_owner_account() {
   local owner="$1" target="${2:-$SEED_DEPOSIT_AMOUNT}" bal
   [[ -z "$owner" ]] && ps_fatal "fund_owner_account: owner is empty"
 
+  # The wallet CLI reads its config/storage from LEE_WALLET_HOME_DIR (default
+  # ~/.lee/wallet), and the cargo-installed wallet (0.1.0) cannot parse the
+  # v0.2.0 storage format. Point the CLI at the chain wallet home used by the
+  # logoscore daemons and put the LEZ-built wallet first on PATH so faucet /
+  # deploy calls hit the same wallet the run uses.
+  : "${LEE_WALLET_HOME_DIR:=$(ps_chain_wallet_home)}"
+  export LEE_WALLET_HOME_DIR
+  ps_prepend_lez_wallet_path
+
   bal="$(ps_account_balance "$owner" 2>/dev/null || echo 0)"
   if (( bal >= target )); then
     ps_log_info "Owner $owner already funded (balance=$bal >= $target); skipping faucet"
@@ -105,6 +114,20 @@ fund_owner_account() {
     ps_log_info "pinata claim $attempts done; owner balance=$bal (target=$target)"
   done
   ps_log_info "Owner $owner funded: balance=$bal"
+}
+
+# ============================================================================
+# Account funding (harness machinery; pinata faucet)
+# ============================================================================
+
+cmd_account_fund_owner() {
+  local owner="${1:-}"
+  local target="${2:-$SEED_DEPOSIT_AMOUNT}"
+  if [[ -z "$owner" ]]; then
+    owner="$(resolve_owner)"
+  fi
+  [[ -z "$owner" ]] && ps_fatal "account fund-owner: no owner account"
+  fund_owner_account "$owner" "$target"
 }
 
 # ============================================================================
@@ -473,6 +496,8 @@ Usage: $0 <command> [args]
 
 Commands:
   prefund                      — Fund owner and provider accounts
+  account fund-owner [owner] [amount]
+                               — Pinata-fund owner (harness; default owner from manifest)
   vault ensure [vault-id]      — Initialize vault and deposit if under-funded (default: 0)
   vault is-funded [vault-id]   — Exit 0 if the vault is initialized and funded
   vault config-is-empty [id]   — Exit 0 if vault config account is missing or empty
@@ -499,6 +524,14 @@ main() {
   
   case "$cmd" in
     prefund)              cmd_prefund "$@" ;;
+    account)
+      [[ $# -lt 1 ]] && { usage; exit 1; }
+      local subcmd="$1"; shift
+      case "$subcmd" in
+        fund-owner)       cmd_account_fund_owner "$@" ;;
+        *)                usage; exit 1 ;;
+      esac
+      ;;
     vault)                
       [[ $# -lt 1 ]] && { usage; exit 1; }
       local subcmd="$1"; shift

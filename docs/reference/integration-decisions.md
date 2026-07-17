@@ -647,10 +647,14 @@ Wallet submit and module shape
   public `chainAction(operation, paramsJson)` router exposes them on the LogosAPI surface
   (see [N11](#n11-universal-module-public-api)). `signing_requirements` are derived
   from the signer vs the FFI-planned account list.
-- Submit-level JSON only (`success`, `tx_hash`, `error`) from writes. Callers and
-  `./scripts/archive/verify-step11b-dod.sh` use wallet `sync_to_block` when sequencer height is
-  available, retries on status `chainAction`, and may SKIP status when derived PDAs are not yet
-  readable after successful submits.
+- Submit-level JSON only (`success`, `tx_hash`, `error`) from writes. `success`
+  means the wallet accepted the submit, not that the sequencer included the tx or
+  that derived PDAs are readable. Callers that depend on the just-written state
+  must verify on-chain status directly (sequencer `getTransaction` plus a state
+  poll of the affected account); they must not skip on `success`. See the
+  on-chain confirmation principle in [E2E.md](../journeys/E2E.md#on-chain-confirmation-principle).
+  `./scripts/archive/verify-step11b-dod.sh` uses wallet `sync_to_block` when
+  sequencer height is available and retries on status `chainAction`.
 
 E2E signer and wallet (G)
 

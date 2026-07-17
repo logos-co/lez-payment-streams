@@ -22,6 +22,40 @@ Hands-on testnet commands for learning LIP-155 without scripts:
 | [DEVELOPER_JOURNEY.md](DEVELOPER_JOURNEY.md) | Protocol-agnostic eligibility integration guide (Store as worked example) |
 | [PRIVACY_ENHANCED_JOURNEY.md](PRIVACY_ENHANCED_JOURNEY.md) | Hands-on owner and provider privacy narrative |
 
+## On-chain confirmation principle
+
+The Store E2E exercises user-callable LIP-155 ops through
+`payment_streams_module chainAction` (see `E2E_LIFECYCLE_VIA`). Every
+`chainAction` submit is asynchronous: the wallet accepting the submit
+(`wallet.success == True`) only means the transaction was accepted locally, not
+that the sequencer included it or that the account mirror is readable.
+
+Rule: when a later step depends on a previous `chainAction` tx being confirmed
+on-chain (for example, `deposit` reads the `vault_config` account that
+`initializeVault` writes; `claim` verification reads the provider balance that
+`claim` mutates), the harness MUST verify on-chain status directly. It must not
+treat the submit acknowledgement as confirmation.
+
+The orchestrator enforces this with two complementary checks:
+
+- `wait_for_sequencer_tx` polls the sequencer `getTransaction` RPC until the tx
+  appears (sequencer inclusion).
+- A state poll then reads the actual account the next step depends on (for
+  example `vault_config_present` via `getVaultStatus`, `stream_closed_on_chain`
+  via `readStreamConfigDecoded`, or the provider balance via `getAccount`) until
+  the expected state is visible, because the wallet mirror can lag sequencer
+  inclusion.
+
+`await_chain_action_inclusion` follows this rule on localnet: it always polls
+the sequencer. Non-local chains where `getTransaction` lags may opt back into the
+legacy fire-and-forget skip with `E2E_ALLOW_FIRE_AND_FORGET=1`; in that mode the
+downstream state poll remains the real gate. `E2E_STRICT_SEQUENCER_TX_WAIT` is
+obsolete (the strict wait is now the localnet default).
+
+Symptom when the rule is violated: `deposit` fails with
+`{"message":"account data missing","status":"error"}` because it reads the
+vault config account before the `initializeVault` tx is readable.
+
 ## Shared prepare
 
 Build guest ELF and module `.lgx` artifacts (first run is slow):
@@ -196,7 +230,18 @@ Gate history: [step-33-testnet-gate-log.md](../plan/completed/step-33-testnet-ga
 - `SKIP_BUILD=1`: Skip `.lgx` rebuilds on subsequent runs.
 - `E2E_CLAIM_OPTIONAL`: Testnet claim strictness (default `1`; use `0` for strict).
 - `FIXTURE_MANIFEST`: Override fixture path.
-- `E2E_CLOSE_VIA`: `seed` (default) or `chainaction` for close/claim submit path.
+- `E2E_LIFECYCLE_VIA`: `chainaction` (default) or `seed` for user-callable LIP-155
+  lifecycle ops in Store E2E (vault init/deposit, create, close, claim). Prefer
+  `chainaction` so the harness exercises `payment_streams_module` like a real user.
+  `seed` remains an escape hatch; seed binaries stay for fixture/coordination only.
+  All `chainaction` ops follow the on-chain confirmation principle above.
+- `E2E_CREATE_VIA` / `E2E_CLOSE_VIA` / `E2E_VAULT_ENSURE_VIA` /
+  `E2E_CONTINUATION_DEPOSIT_VIA`: per-op overrides; default to `E2E_LIFECYCLE_VIA`.
+- `E2E_ALLOW_FIRE_AND_FORGET=1`: opt back into the legacy submit-acknowledgement
+  skip for non-local chains where `getTransaction` lags. Localnet always polls the
+  sequencer regardless. See the on-chain confirmation principle above.
+- `E2E_CLOSE_STATE_POLL_ATTEMPTS` / `E2E_CLAIM_STATE_POLL_ATTEMPTS`: state-poll
+  retry counts for the close and claim on-chain verification (defaults `10`).
 - `VAULT_ID`: Pin vault id (default: scan for first empty config).
 - `E2E_REUSE_BASELINE_VAULT=1`: Vault-0 reuse path (lifecycle regression).
 - `SEED_ALLOCATION`: `createStream` allocation in lo (testnet Store default: 400).

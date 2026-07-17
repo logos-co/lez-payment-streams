@@ -57,6 +57,17 @@ MODE=module CHAIN=testnet ./scripts/e2e.sh testnet run
 
 Each `run` performs prepare, orchestration, and teardown unless `SKIP_TEARDOWN=1`.
 
+## On-chain confirmation principle
+
+`chainAction` ops are asynchronous: a successful wallet submit is not on-chain
+confirmation. When a later step reads the state a `chainAction` tx writes, the
+orchestrator must verify on-chain status directly (sequencer inclusion via
+`wait_for_sequencer_tx`, then a state poll of the affected account). It must not
+rely on the submit acknowledgement. This applies to `MODE=store`
+([e2e/run_local_e2e.py](e2e/run_local_e2e.py)) and `MODE=module`
+([module-e2e.sh](module-e2e.sh)). See
+[docs/journeys/E2E.md#on-chain-confirmation-principle](../docs/journeys/E2E.md#on-chain-confirmation-principle).
+
 ## Entry point
 
 ```bash

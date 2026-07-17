@@ -75,11 +75,47 @@ def scan_first_empty_vault_id(
     raise E2EError(f"no empty vault id found in scan range [{start}, {start + limit})")
 
 
+def e2e_lifecycle_via() -> str:
+    """Default path for user-callable LIP-155 lifecycle ops.
+
+    Real users call payment_streams_module chainAction; Store E2E must exercise
+    that surface. seed_localnet_fixture remains for fixture/coordination only
+    (manifest write, clock sync, pinata funding). Override with E2E_LIFECYCLE_VIA
+    or per-op env (E2E_CREATE_VIA, E2E_CLOSE_VIA, E2E_VAULT_ENSURE_VIA,
+    E2E_CONTINUATION_DEPOSIT_VIA).
+    """
+    explicit = os.environ.get("E2E_LIFECYCLE_VIA", "").strip().lower()
+    if explicit:
+        return explicit
+    return "chainaction"
+
+
 def testnet_e2e_create_via() -> str:
     explicit = os.environ.get("E2E_CREATE_VIA", "").strip().lower()
     if explicit:
         return explicit
-    return "chainaction"
+    return e2e_lifecycle_via()
+
+
+def e2e_close_via() -> str:
+    explicit = os.environ.get("E2E_CLOSE_VIA", "").strip().lower()
+    if explicit:
+        return explicit
+    return e2e_lifecycle_via()
+
+
+def e2e_vault_ensure_via() -> str:
+    explicit = os.environ.get("E2E_VAULT_ENSURE_VIA", "").strip().lower()
+    if explicit:
+        return explicit
+    return e2e_lifecycle_via()
+
+
+def e2e_continuation_deposit_via() -> str:
+    explicit = os.environ.get("E2E_CONTINUATION_DEPOSIT_VIA", "").strip().lower()
+    if explicit:
+        return explicit
+    return e2e_lifecycle_via()
 
 
 def stream_fundable_wait_s() -> int:
@@ -1042,20 +1078,35 @@ def await_chain_action_inclusion(
     *,
     label: str,
 ) -> None:
-    inner = chain_action_result_inner(parsed)
-    wallet_obj = inner.get("wallet") if isinstance(inner.get("wallet"), dict) else {}
-    if wallet_obj.get("success") is True and os.environ.get("E2E_STRICT_SEQUENCER_TX_WAIT", "").strip() != "1":
-        log_artifact(
-            artifact,
-            "wait_tx_on_chain",
-            True,
-            label=label,
-            skipped=True,
-            reason="wallet_submit_success",
-            tx_hash=chain_action_tx_hash(parsed),
-        )
-        narrator.txid(chain_action_tx_hash(parsed), label)
-        return
+    # On-chain confirmation principle: when a later step depends on this tx
+    # being confirmed on-chain (e.g. a read of the account it writes), the
+    # harness MUST verify inclusion directly against the sequencer instead of
+    # trusting the wallet's submit-acknowledgement. "wallet.success == True"
+    # only means the wallet accepted the submit, not that the tx is included
+    # or that the account mirror is readable. See docs/journeys/E2E.md
+    # ("On-chain confirmation principle").
+    #
+    # Localnet: always poll the sequencer (getTransaction is reliable here).
+    # Non-local chains where getTransaction lags may opt back into the legacy
+    # fire-and-forget skip with E2E_ALLOW_FIRE_AND_FORGET=1; downstream state
+    # polls remain the real gate in that mode.
+    chain = os.environ.get("CHAIN", "local").strip().lower()
+    allow_skip = os.environ.get("E2E_ALLOW_FIRE_AND_FORGET", "").strip() == "1"
+    if chain != "local" and allow_skip:
+        inner = chain_action_result_inner(parsed)
+        wallet_obj = inner.get("wallet") if isinstance(inner.get("wallet"), dict) else {}
+        if wallet_obj.get("success") is True:
+            log_artifact(
+                artifact,
+                "wait_tx_on_chain",
+                True,
+                label=label,
+                skipped=True,
+                reason="wallet_submit_success_fire_and_forget",
+                tx_hash=chain_action_tx_hash(parsed),
+            )
+            narrator.txid(chain_action_tx_hash(parsed), label)
+            return
     tx_hash = chain_action_tx_hash(parsed)
     if not tx_hash:
         return
@@ -1169,14 +1220,6 @@ def bump_allocation_on_chain(
     *,
     repo: Path | None = None,
 ) -> None:
-    if continuation_e2e_run() and repo is not None:
-        try:
-            seed_top_up_stream_onchain(repo, manifest, vault_id, stream_id, increase_lo, cfg)
-            sync_wallet(cfg, seq_url)
-            logoscore_cmd(cfg, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
-            return
-        except E2EError:
-            sync_wallet(cfg, seq_url)
     topup = {
         "signer": manifest["owner_account_id"],
         "vault_id": vault_id,
@@ -1184,15 +1227,21 @@ def bump_allocation_on_chain(
         "increase_lo": increase_lo,
         "increase_hi": 0,
     }
-    logoscore_cmd(
-        cfg,
-        "call",
-        "payment_streams_module",
-        "chainAction",
-        "topUpStream",
-        json.dumps(topup),
-        timeout=testnet_chain_action_timeout_s(),
-    )
+    try:
+        logoscore_cmd(
+            cfg,
+            "call",
+            "payment_streams_module",
+            "chainAction",
+            "topUpStream",
+            json.dumps(topup),
+            timeout=testnet_chain_action_timeout_s(),
+        )
+    except E2EError:
+        if e2e_lifecycle_via() == "seed" and continuation_e2e_run() and repo is not None:
+            seed_top_up_stream_onchain(repo, manifest, vault_id, stream_id, increase_lo, cfg)
+        else:
+            raise
     sync_wallet(cfg, seq_url)
     logoscore_cmd(cfg, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
 
@@ -1212,11 +1261,7 @@ def local_e2e_create_via() -> str:
     explicit = os.environ.get("E2E_CREATE_VIA", "").strip().lower()
     if explicit:
         return explicit
-    # Continuation legs use seed + logoscore wallet home (nonces match module chainActions).
-    # chainAction-only create often returns tx_hash while getTransaction stays null on leg 2.
-    if continuation_e2e_run():
-        return "seed"
-    return "seed"
+    return e2e_lifecycle_via()
 
 
 def sequencer_json_rpc(seq_url: str, method: str, params: list[Any]) -> Any:
@@ -1435,7 +1480,7 @@ def ensure_continuation_vault_funded(
             )
             return
     shortfall = needed_unallocated_lo - unalloc + int(os.environ.get("E2E_VAULT_UNALLOC_BUFFER_LO", "50"))
-    deposit_via = os.environ.get("E2E_CONTINUATION_DEPOSIT_VIA", "seed").strip().lower()
+    deposit_via = e2e_continuation_deposit_via()
     if deposit_via == "chainaction":
         deposit_body = {
             "signer": manifest["owner_account_id"],
@@ -1804,12 +1849,13 @@ def resolve_store_vault_id_subprocess(repo: Path) -> int:
     return int(raw)
 
 
-def ensure_fresh_vault_for_store_run(
+def plan_fresh_vault_for_store_run(
     repo: Path,
     manifest_path: Path,
     manifest: dict,
     artifact: Path,
 ) -> int:
+    """Resolve vault id and refresh manifest PDAs. No user lifecycle submit here."""
     chain = os.environ.get("CHAIN", "local").strip().lower()
     strip_snapshot_stream_fields(manifest, manifest_path)
     vault_id = resolve_store_vault_id_subprocess(repo)
@@ -1822,8 +1868,10 @@ def ensure_fresh_vault_for_store_run(
         deposit_lo=deposit_lo,
         chain=chain,
         source="resolve_store_vault_id",
+        lifecycle_via=e2e_lifecycle_via(),
     )
-    if chain == "testnet":
+    if chain == "testnet" and e2e_vault_ensure_via() != "chainaction":
+        # Legacy testnet helper until testnet Store also uses module chainAction.
         ensure_script = repo / "scripts" / "e2e" / "ensure-testnet-vault.sh"
         wc = os.environ.get("WALLET_CONFIG", "")
         ws = os.environ.get("WALLET_STORAGE", "")
@@ -1868,7 +1916,7 @@ def ensure_fresh_vault_for_store_run(
             raise E2EError(f"ensure-testnet-vault failed: {proc.stderr or proc.stdout}")
         manifest.clear()
         manifest.update(json.loads(manifest_path.read_text()))
-    else:
+    elif chain == "local" and e2e_vault_ensure_via() != "chainaction":
         env = os.environ.copy()
         env["FIXTURE_MANIFEST"] = str(manifest_path)
         env["VAULT_ID"] = str(vault_id)
@@ -1893,9 +1941,198 @@ def ensure_fresh_vault_for_store_run(
         if not ok:
             raise E2EError(f"fixture vault ensure failed: {proc.stderr or proc.stdout}")
         refresh_manifest_vault_baseline(repo, manifest_path, manifest, vault_id)
+    else:
+        refresh_manifest_vault_baseline(repo, manifest_path, manifest, vault_id)
     manifest["vault_id"] = vault_id
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     return vault_id
+
+
+def fund_owner_via_fixture(
+    repo: Path,
+    cfg_user: Path,
+    cfg_provider: Path,
+    manifest: dict,
+    deposit_lo: int,
+) -> None:
+    """Pinata-fund the vault owner (harness machinery; not a module user API)."""
+    seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
+    release_logoscore_wallet(cfg_user)
+    release_logoscore_wallet(cfg_provider)
+    try:
+        env = os.environ.copy()
+        env["FIXTURE_MANIFEST"] = os.environ.get("FIXTURE_MANIFEST", str(repo / "fixtures" / "localnet.json"))
+        env["SEED_DEPOSIT_AMOUNT"] = str(deposit_lo)
+        proc = run(
+            [
+                "bash",
+                str(repo / "scripts" / "fixture.sh"),
+                "account",
+                "fund-owner",
+                str(manifest["owner_account_id"]),
+                str(deposit_lo),
+            ],
+            cwd=repo,
+            env=env,
+            timeout=e2e_subprocess_timeout_s(),
+        )
+        if proc.returncode != 0:
+            raise E2EError(f"fixture account fund-owner failed: {proc.stderr or proc.stdout}")
+    finally:
+        reopen_logoscore_wallet(cfg_user, seq_url)
+        reopen_logoscore_wallet(cfg_provider, seq_url)
+        reload_payment_streams_wallet(cfg_user, seq_url)
+        reload_payment_streams_wallet(cfg_provider, seq_url)
+
+
+def vault_config_present(cfg: Path, manifest: dict) -> bool:
+    try:
+        inner = vault_status_json(cfg, manifest)
+    except E2EError:
+        return False
+    if inner.get("status") == "error":
+        return False
+    vault_cfg = inner.get("vault_config")
+    # getVaultStatus exposes vault_id / next_stream_id / total_allocated_*; no owner field.
+    return isinstance(vault_cfg, dict) and "vault_id" in vault_cfg
+
+
+def ensure_vault_funded_via_chainaction(
+    cfg_user: Path,
+    cfg_provider: Path,
+    repo: Path,
+    manifest_path: Path,
+    manifest: dict,
+    artifact: Path,
+) -> None:
+    """initializeVault + deposit through payment_streams_module (user-callable path)."""
+    chain = os.environ.get("CHAIN", "local").strip().lower()
+    if chain != "local":
+        log_artifact(
+            artifact,
+            "vault_ensure",
+            True,
+            skipped=True,
+            reason="chainaction_vault_ensure_local_only",
+            chain=chain,
+        )
+        return
+    if e2e_vault_ensure_via() != "chainaction":
+        return
+
+    vault_id = int(manifest.get("vault_id", 0))
+    deposit_lo = seed_deposit_amount_lo(manifest)
+    seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
+    owner = manifest["owner_account_id"]
+    subproc_timeout = e2e_subprocess_timeout_s()
+
+    sync_wallet(cfg_user, seq_url)
+    if vault_config_present(cfg_user, manifest):
+        try:
+            unalloc = vault_unallocated_lo(cfg_user, manifest)
+        except E2EError:
+            unalloc = 0
+        if unalloc >= deposit_lo:
+            log_artifact(
+                artifact,
+                "vault_ensure",
+                True,
+                vault_id=vault_id,
+                via="chainAction_skipped_already_funded",
+                unallocated_lo=unalloc,
+                deposit_lo=deposit_lo,
+            )
+            return
+
+    fund_owner_via_fixture(repo, cfg_user, cfg_provider, manifest, deposit_lo)
+    sync_wallet(cfg_user, seq_url)
+
+    if not vault_config_present(cfg_user, manifest):
+        init_body = {
+            "signer": owner,
+            "vault_id": vault_id,
+            "privacy_tier": 0,
+        }
+        r = logoscore_cmd(
+            cfg_user,
+            "call",
+            "payment_streams_module",
+            "chainAction",
+            "initializeVault",
+            json.dumps(init_body),
+            timeout=subproc_timeout,
+        )
+        parsed = call_result(r)
+        ok_init = chain_action_success(parsed)
+        tx_init = chain_action_tx_hash(parsed)
+        log_artifact(
+            artifact,
+            "vault_init",
+            ok_init,
+            vault_id=vault_id,
+            via="chainAction_initializeVault",
+            tx_hash=tx_init,
+            raw=parsed if not ok_init else None,
+        )
+        if not ok_init:
+            raise E2EError(f"initializeVault failed: {parsed}")
+        # Do not skip sequencer wait: deposit reads vault config account data.
+        if tx_init:
+            wait_for_sequencer_tx(seq_url, tx_init, artifact, label="vault_init")
+        present = False
+        for poll_idx in range(30):
+            sync_wallet(cfg_user, seq_url)
+            if vault_config_present(cfg_user, manifest):
+                present = True
+                log_artifact(
+                    artifact,
+                    "vault_init_visible",
+                    True,
+                    vault_id=vault_id,
+                    attempts=poll_idx + 1,
+                )
+                break
+            time.sleep(1)
+        if not present:
+            raise E2EError(f"initializeVault tx landed but vault {vault_id} config not visible")
+
+    deposit_body = {
+        "signer": owner,
+        "vault_id": vault_id,
+        "amount_lo": deposit_lo,
+        "amount_hi": 0,
+    }
+    r = logoscore_cmd(
+        cfg_user,
+        "call",
+        "payment_streams_module",
+        "chainAction",
+        "deposit",
+        json.dumps(deposit_body),
+        timeout=subproc_timeout,
+    )
+    parsed = call_result(r)
+    ok_dep = chain_action_success(parsed)
+    tx_dep = chain_action_tx_hash(parsed)
+    log_artifact(
+        artifact,
+        "vault_ensure",
+        ok_dep,
+        vault_id=vault_id,
+        via="chainAction_deposit",
+        deposit_lo=deposit_lo,
+        tx_hash=tx_dep,
+        raw=parsed if not ok_dep else None,
+    )
+    if not ok_dep:
+        raise E2EError(f"vault deposit failed: {parsed}")
+    if tx_dep:
+        wait_for_sequencer_tx(seq_url, tx_dep, artifact, label="vault_deposit")
+    sync_wallet(cfg_user, seq_url)
+    logoscore_cmd(cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
+    refresh_manifest_vault_baseline(repo, manifest_path, manifest, vault_id)
+    manifest["vault_id"] = vault_id
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
 
 
 def create_demo_stream_for_run(
@@ -2497,7 +2734,7 @@ def demo_teardown(
     close_applied = False
     narrator.phase("Close")
     narrator.step(f"Closing stream {stream_id} on chain")
-    if os.environ.get("E2E_CLOSE_VIA", "seed").strip().lower() != "chainaction":
+    if e2e_close_via() != "chainaction":
         try:
             release_logoscore_wallet(cfg_user)
             release_logoscore_wallet(cfg_provider)
@@ -2589,12 +2826,23 @@ def demo_teardown(
                 continue
             if tx_close:
                 await_chain_action_inclusion(seq_url, parsed, artifact, label="demo_close_stream")
-            sync_wallet(cfg_user, seq_url)
-            sync_wallet(cfg_provider, seq_url)
-            logoscore_cmd(cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
-            inner = vault_status_json(cfg_user, manifest)
-            total_lo = int((inner.get("vault_config") or {}).get("total_allocated_lo", stream_alloc))
-            closed = stream_closed_on_chain(cfg_user, manifest)
+            # On-chain confirmation principle: the close is only "applied" once
+            # the stream_config account mirror shows stream_state == Closed.
+            # Sequencer inclusion alone is not enough (mirror lag), so poll the
+            # on-chain state directly before re-submitting closeStream.
+            close_poll_attempts = int(os.environ.get("E2E_CLOSE_STATE_POLL_ATTEMPTS", "10"))
+            closed = False
+            total_lo = stream_alloc
+            for poll_idx in range(close_poll_attempts):
+                sync_wallet(cfg_user, seq_url)
+                sync_wallet(cfg_provider, seq_url)
+                logoscore_cmd(cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
+                inner = vault_status_json(cfg_user, manifest)
+                total_lo = int((inner.get("vault_config") or {}).get("total_allocated_lo", stream_alloc))
+                closed = stream_closed_on_chain(cfg_user, manifest)
+                if closed:
+                    break
+                time.sleep(1)
             if closed:
                 close_applied = True
                 emit_module_phase(
@@ -2646,10 +2894,9 @@ def demo_teardown(
         return
 
     narrator.step(f"Claiming residual accrued ({accrued}) on closed stream {stream_id}")
-    # Prefer the direct-submit claim path (same rationale as close: testnet chainAction is
     pre_provider = account_balance_seq(seq_url, manifest["provider_account_id"])
     pre_vault, _ = vault_status_balances(cfg_user, manifest)
-    if os.environ.get("E2E_CLOSE_VIA", "seed").strip().lower() != "chainaction":
+    if e2e_close_via() != "chainaction":
         try:
             release_logoscore_wallet(cfg_user)
             release_logoscore_wallet(cfg_provider)
@@ -2784,12 +3031,25 @@ def demo_teardown(
         raise E2EError(f"demo_claim failed: {parsed}")
     if tx_claim:
         await_chain_action_inclusion(seq_url, parsed, artifact, label="demo_claim")
-    sync_wallet(cfg_user, seq_url)
-    sync_wallet(cfg_provider, seq_url)
-    logoscore_cmd(cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
-    post_provider = account_balance_seq(seq_url, manifest["provider_account_id"])
-    post_vault, _ = vault_status_balances(cfg_user, manifest)
-    received = max(0, post_provider - pre_provider)
+    # On-chain confirmation principle: the claim is only "applied" once the
+    # provider balance actually increases (and the stream's accrued drops) on
+    # chain. Sequencer inclusion alone is not enough (mirror lag), so poll the
+    # on-chain balances directly instead of trusting the submit acknowledgement.
+    claim_poll_attempts = int(os.environ.get("E2E_CLAIM_STATE_POLL_ATTEMPTS", "10"))
+    received = 0
+    vault_drop = 0
+    post_provider = pre_provider
+    post_vault = pre_vault
+    for poll_idx in range(claim_poll_attempts):
+        sync_wallet(cfg_user, seq_url)
+        sync_wallet(cfg_provider, seq_url)
+        logoscore_cmd(cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
+        post_provider = account_balance_seq(seq_url, manifest["provider_account_id"])
+        post_vault, _ = vault_status_balances(cfg_user, manifest)
+        received = max(0, post_provider - pre_provider)
+        if received > 0:
+            break
+        time.sleep(1)
     vault_drop = pre_vault - post_vault
     bal_extra = {
         "received": received,
@@ -2797,12 +3057,36 @@ def demo_teardown(
         "provider_post": post_provider,
         "vault_pre": pre_vault,
         "vault_post": post_vault,
-        "attempts": 1,
+        "attempts": claim_poll_attempts,
     }
     if received > 0 and vault_drop != received:
         bal_extra["hint"] = "vault_drop_mismatch"
     emit_module_phase(artifact, "claim_balance", received > 0, bal_extra)
     log_vault_liquidity(cfg_user, manifest, artifact, phase="vault_liquidity_after_claim")
+    if received == 0:
+        is_testnet = os.environ.get("CHAIN", "local").strip().lower() == "testnet"
+        claim_optional = os.environ.get(
+            "E2E_CLAIM_OPTIONAL", "1" if is_testnet else "0"
+        ).strip().lower() not in ("0", "false", "no")
+        if claim_optional:
+            emit_claim_with_demo_alias(
+                artifact,
+                True,
+                {
+                    "skipped": True,
+                    "optional": True,
+                    "claimed": False,
+                    "reason": "claim_optional_unconfirmed",
+                    "accrued_lo": accrued,
+                    "stream_id": stream_id,
+                },
+            )
+            return
+        raise E2EError(
+            f"demo_claim tx accepted but provider balance did not increase on chain "
+            f"after {claim_poll_attempts} polls (pre={pre_provider} post={post_provider} "
+            f"tx={tx_claim})"
+        )
 
 
 def user_prepare_proof(
@@ -2847,7 +3131,7 @@ def user_prepare_proof(
                 "increase_lo": default_topup_increase_lo(manifest) + attempt * 200,
                 "increase_hi": 0,
             }
-            logoscore_cmd(
+            r_topup = logoscore_cmd(
                 cfg,
                 "call",
                 "payment_streams_module",
@@ -2856,6 +3140,12 @@ def user_prepare_proof(
                 json.dumps(topup),
                 timeout=testnet_chain_action_timeout_s(),
             )
+            parsed_topup = call_result(r_topup)
+            tx_topup = chain_action_tx_hash(parsed_topup)
+            if tx_topup:
+                # On-chain confirmation principle: wait for inclusion before
+                # re-checking allocation so we do not stack duplicate top-ups.
+                wait_for_sequencer_tx(seq_url, tx_topup, artifact, label="chainAction_topUpStream")
             continue
 
         r = logoscore_cmd(
@@ -3139,14 +3429,17 @@ def main() -> int:
 
     manifest = json.loads(manifest_path.read_text())
     if not store_reuse_baseline_vault():
-        narrator.phase("Vault Ensure")
+        narrator.phase("Vault Plan")
         deposit_lo = seed_deposit_amount_lo(manifest)
-        narrator.step("Ensuring fresh vault for this run (init + deposit)")
+        narrator.step("Resolving fresh vault id for this run")
         narrator.value(f"target deposit={deposit_lo} lo (allocation + buffer)")
-        ensure_fresh_vault_for_store_run(repo, manifest_path, manifest, artifact)
+        plan_fresh_vault_for_store_run(repo, manifest_path, manifest, artifact)
         manifest.clear()
         manifest.update(json.loads(manifest_path.read_text()))
-        narrator.ok(f"Vault {manifest.get('vault_id')} ready on chain")
+        if e2e_vault_ensure_via() == "chainaction":
+            narrator.ok(f"Vault {manifest.get('vault_id')} planned; on-chain init deferred to module chainAction")
+        else:
+            narrator.ok(f"Vault {manifest.get('vault_id')} ready on chain")
     log_artifact(
         artifact,
         "run_config",
@@ -3154,7 +3447,10 @@ def main() -> int:
         e2e_subproc_timeout_s=e2e_subprocess_timeout_s(),
         stream_fundable_wait_s=stream_fundable_wait_s(),
         publish_wait_s=PUBLISH_WAIT_S,
+        lifecycle_via=e2e_lifecycle_via(),
         create_via=local_e2e_create_via() if os.environ.get("CHAIN", "local").strip().lower() == "local" else testnet_e2e_create_via(),
+        close_via=e2e_close_via(),
+        vault_ensure_via=e2e_vault_ensure_via(),
         skip_build=os.environ.get("SKIP_BUILD", ""),
         **wallet_tx_poll_budget_s(wallet_config),
     )
@@ -3257,6 +3553,21 @@ def main() -> int:
                 repo, cfg_user, cfg_provider, manifest, artifact, wallet_home
             )
             narrator.ok("authenticated_transfer ensure complete (see auth_init_* in artifact)")
+
+            if not store_reuse_baseline_vault() and e2e_vault_ensure_via() == "chainaction":
+                narrator.phase("Vault Ensure")
+                narrator.step("Initializing vault and depositing via payment_streams_module chainAction")
+                ensure_vault_funded_via_chainaction(
+                    cfg_user,
+                    cfg_provider,
+                    repo,
+                    manifest_path,
+                    manifest,
+                    artifact,
+                )
+                manifest.clear()
+                manifest.update(json.loads(manifest_path.read_text()))
+                narrator.ok(f"Vault {manifest.get('vault_id')} ready on chain (module chainAction)")
 
             if (
                 os.environ.get("CHAIN", "local").strip().lower() == "local"

@@ -15,8 +15,14 @@ source "$REPO_ROOT/scripts/lib/common.sh"
 cmd_localnet_start() {
   ps_log_info "Starting localnet..."
   ps_require_command lgs
-  lgs localnet start
-  ps_log_info "Localnet started"
+  # Default lgs timeout (~20s) is too short after snapshot restore when the
+  # sequencer rebuilds a large RocksDB block cache; it then kills the child.
+  local timeout_sec="${LGS_LOCALNET_START_TIMEOUT_SEC:-120}"
+  if lgs localnet start --timeout-sec "$timeout_sec"; then
+    ps_log_info "Localnet started"
+    return 0
+  fi
+  ps_fatal "Localnet failed to start (lgs timeout-sec=$timeout_sec)"
 }
 
 cmd_localnet_stop() {

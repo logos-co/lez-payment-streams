@@ -189,6 +189,9 @@ cmd_prepare_local() {
   if [[ "$($REPO_ROOT/scripts/lifecycle.sh localnet status)" != "running" ]]; then
     "$REPO_ROOT/scripts/lifecycle.sh" localnet start
   fi
+  if [[ "$($REPO_ROOT/scripts/lifecycle.sh localnet status)" != "running" ]]; then
+    ps_fatal "Localnet not running after prepare (refusing to continue)"
+  fi
 
   if [[ "${E2E_REUSE_BASELINE_VAULT:-0}" == "1" ]]; then
     "$REPO_ROOT/scripts/fixture.sh" vault ensure 0
