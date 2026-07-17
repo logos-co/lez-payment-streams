@@ -270,7 +270,8 @@ mod pp_program_tests {
 
     use crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP;
     use crate::program_tests::pp_common::{
-        account_meta, pp_claim_close_setup, recipient_npk, recipient_vpk, PpClaimCloseSetup,
+        account_meta, decrypt_account, encapsulate, identity_authorized_update, identity_public,
+        pp_claim_close_setup, private_account_id, recipient_npk, recipient_vpk, PpClaimCloseSetup,
         EPK_SCALAR, PP_STREAM_ALLOCATION, PP_STREAM_RATE, PP_T0, PP_T1, PP_WITHDRAW_AMOUNT,
         RECIPIENT_NSK,
     };
@@ -284,9 +285,8 @@ mod pp_program_tests {
         program::Program,
     };
     use lee_core::{
-        account::{AccountId, AccountWithMetadata},
-        encryption::EphemeralPublicKey,
-        Commitment, EncryptionScheme, SharedSecretKey,
+        account::AccountWithMetadata,
+        Commitment,
     };
 
     #[test]
@@ -307,8 +307,8 @@ mod pp_program_tests {
         assert_eq!(guest_program.id(), fx.program_id);
 
         let authority_npk = recipient_npk();
-        let authority_id = AccountId::from(&authority_npk);
-        let authority_commitment = Commitment::new(&authority_npk, &provider_committed_account);
+        let authority_id = private_account_id(&authority_npk);
+        let authority_commitment = Commitment::new(&authority_id, &provider_committed_account);
         let membership_proof = fx
             .state
             .get_proof_for_commitment(&authority_commitment)
@@ -327,8 +327,7 @@ mod pp_program_tests {
             account_meta(&fx.state, clock_id, false),
         ];
 
-        let authority_shared_secret = SharedSecretKey::new(&EPK_SCALAR, &recipient_vpk());
-        let authority_epk = EphemeralPublicKey::from_scalar(EPK_SCALAR);
+        let (authority_shared_secret, authority_epk) = encapsulate(&recipient_vpk(), &EPK_SCALAR, 0);
 
         let vault_total_allocated_before = borsh::from_slice::<VaultConfig>(
             &fx.state.get_account_by_id(fx.vault_config_account_id).data,
@@ -343,10 +342,20 @@ mod pp_program_tests {
                 stream_id,
             })
             .expect("close_stream instruction serializes"),
-            vec![0u8, 0, 0, 0, 1, 0],
-            vec![(authority_npk, authority_shared_secret)],
-            vec![RECIPIENT_NSK],
-            vec![Some(membership_proof)],
+            vec![
+                identity_public(),
+                identity_public(),
+                identity_public(),
+                identity_public(),
+                identity_authorized_update(
+                    RECIPIENT_NSK,
+                    &recipient_vpk(),
+                    authority_shared_secret.clone(),
+                    authority_epk,
+                    membership_proof,
+                ),
+                identity_public(),
+            ],
             &ProgramWithDependencies::from(guest_program),
         )
         .expect("execute_and_prove close_stream");
@@ -360,7 +369,6 @@ mod pp_program_tests {
                 clock_id,
             ],
             vec![],
-            vec![(authority_npk, recipient_vpk(), authority_epk)],
             output,
         )
         .expect("try_from_circuit_output for close_stream");
@@ -397,13 +405,12 @@ mod pp_program_tests {
         assert_eq!(tx.message().new_commitments.len(), 1);
         assert_eq!(tx.message().encrypted_private_post_states.len(), 1);
         let new_commitment = &tx.message().new_commitments[0];
-        let decrypted = EncryptionScheme::decrypt(
+        let decrypted = decrypt_account(
             &tx.message().encrypted_private_post_states[0].ciphertext,
             &authority_shared_secret,
             new_commitment,
             0,
-        )
-        .expect("decrypt authority post-state after close_stream");
+        );
         assert_eq!(decrypted.balance, PP_WITHDRAW_AMOUNT);
     }
 }

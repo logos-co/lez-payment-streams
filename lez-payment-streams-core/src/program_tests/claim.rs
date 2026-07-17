@@ -372,7 +372,8 @@ mod pp_program_tests {
 
     use crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP;
     use crate::program_tests::pp_common::{
-        account_meta, pp_claim_close_setup, recipient_npk, recipient_vpk, PpClaimCloseSetup,
+        account_meta, decrypt_account, encapsulate, identity_authorized_update, identity_public,
+        pp_claim_close_setup, private_account_id, recipient_npk, recipient_vpk, PpClaimCloseSetup,
         EPK_SCALAR, PP_CLAIM_PAYOUT, PP_STREAM_ALLOCATION, PP_T1, PP_WITHDRAW_AMOUNT,
         RECIPIENT_NSK,
     };
@@ -386,9 +387,8 @@ mod pp_program_tests {
         program::Program,
     };
     use lee_core::{
-        account::{AccountId, AccountWithMetadata},
-        encryption::EphemeralPublicKey,
-        Commitment, EncryptionScheme, SharedSecretKey,
+        account::AccountWithMetadata,
+        Commitment,
     };
 
     #[test]
@@ -409,8 +409,8 @@ mod pp_program_tests {
         assert_eq!(guest_program.id(), fx.program_id);
 
         let provider_npk = recipient_npk();
-        let provider_id = AccountId::from(&provider_npk);
-        let provider_commitment = Commitment::new(&provider_npk, &provider_committed_account);
+        let provider_id = private_account_id(&provider_npk);
+        let provider_commitment = Commitment::new(&provider_id, &provider_committed_account);
         let membership_proof = fx
             .state
             .get_proof_for_commitment(&provider_commitment)
@@ -429,8 +429,7 @@ mod pp_program_tests {
             account_meta(&fx.state, clock_id, false),
         ];
 
-        let provider_shared_secret = SharedSecretKey::new(&EPK_SCALAR, &recipient_vpk());
-        let provider_epk = EphemeralPublicKey::from_scalar(EPK_SCALAR);
+        let (provider_shared_secret, provider_epk) = encapsulate(&recipient_vpk(), &EPK_SCALAR, 0);
 
         let (output, proof) = execute_and_prove(
             pre_states,
@@ -439,10 +438,20 @@ mod pp_program_tests {
                 stream_id,
             })
             .expect("claim instruction serializes"),
-            vec![0u8, 0, 0, 0, 1, 0],
-            vec![(provider_npk, provider_shared_secret)],
-            vec![RECIPIENT_NSK],
-            vec![Some(membership_proof)],
+            vec![
+                identity_public(),
+                identity_public(),
+                identity_public(),
+                identity_public(),
+                identity_authorized_update(
+                    RECIPIENT_NSK,
+                    &recipient_vpk(),
+                    provider_shared_secret.clone(),
+                    provider_epk,
+                    membership_proof,
+                ),
+                identity_public(),
+            ],
             &ProgramWithDependencies::from(guest_program),
         )
         .expect("execute_and_prove claim");
@@ -461,7 +470,6 @@ mod pp_program_tests {
                 clock_id,
             ],
             vec![],
-            vec![(provider_npk, recipient_vpk(), provider_epk)],
             output,
         )
         .expect("try_from_circuit_output for claim");
@@ -506,13 +514,12 @@ mod pp_program_tests {
         assert_eq!(tx.message().new_commitments.len(), 1);
         assert_eq!(tx.message().encrypted_private_post_states.len(), 1);
         let new_commitment = &tx.message().new_commitments[0];
-        let decrypted = EncryptionScheme::decrypt(
+        let decrypted = decrypt_account(
             &tx.message().encrypted_private_post_states[0].ciphertext,
             &provider_shared_secret,
             new_commitment,
             0,
-        )
-        .expect("decrypt provider post-state after claim");
+        );
         assert_eq!(decrypted.balance, PP_WITHDRAW_AMOUNT + PP_CLAIM_PAYOUT);
     }
 }

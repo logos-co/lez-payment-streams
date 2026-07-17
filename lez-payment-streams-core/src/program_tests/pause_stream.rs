@@ -471,7 +471,8 @@ mod pp_program_tests {
 
     use crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP;
     use crate::program_tests::pp_common::{
-        account_meta, owner_vpk, pp_owner_setup, recipient_npk, PpOwnerSetup, OWNER_NSK,
+        account_meta, decrypt_account, encapsulate, identity_authorized_update, identity_public,
+        owner_vpk, pp_owner_setup, private_account_id, recipient_npk, PpOwnerSetup, OWNER_NSK,
         PP3_OWNER_FUND_AMOUNT, PP3_SIGNER_EPK_SCALAR, PP3_STREAM_ALLOCATION, PP3_STREAM_RATE,
         PP3_T0, PP3_T1,
     };
@@ -485,9 +486,8 @@ mod pp_program_tests {
         },
     };
     use lee_core::{
-        account::{Account, AccountId, AccountWithMetadata, Data},
-        encryption::EphemeralPublicKey,
-        Commitment, EncryptionScheme, SharedSecretKey,
+        account::{Account, AccountWithMetadata, Data},
+        Commitment,
     };
 
     #[test]
@@ -506,7 +506,7 @@ mod pp_program_tests {
         let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
         let stream_id = 0u64;
         let stream_pda = derive_stream_pda(fx.program_id, vault_config_b_id, stream_id);
-        let provider_id = AccountId::from(&recipient_npk());
+        let provider_id = private_account_id(&recipient_npk());
 
         let stream_config = StreamConfig::new(
             stream_id,
@@ -532,14 +532,15 @@ mod pp_program_tests {
 
         force_clock_account_monotonic(&mut fx.state, clock_id, 5, PP3_T1);
 
-        let owner_commitment_obj = Commitment::new(&owner_npk, &owner_committed_account);
+        let owner_commitment_obj =
+            Commitment::new(&private_account_id(&owner_npk), &owner_committed_account);
         let membership_proof = fx
             .state
             .get_proof_for_commitment(&owner_commitment_obj)
             .expect("owner commitment in state after PP withdraw");
 
-        let owner_shared_secret = SharedSecretKey::new(&PP3_SIGNER_EPK_SCALAR, &owner_vpk());
-        let owner_epk = EphemeralPublicKey::from_scalar(PP3_SIGNER_EPK_SCALAR);
+        let (owner_shared_secret, owner_epk) =
+            encapsulate(&owner_vpk(), &PP3_SIGNER_EPK_SCALAR, 0);
 
         let pre_states = vec![
             account_meta(&fx.state, vault_config_b_id, false),
@@ -548,7 +549,7 @@ mod pp_program_tests {
             AccountWithMetadata {
                 account: owner_committed_account.clone(),
                 is_authorized: true,
-                account_id: AccountId::from(&owner_npk),
+                account_id: private_account_id(&owner_npk),
             },
             account_meta(&fx.state, clock_id, false),
         ];
@@ -560,10 +561,19 @@ mod pp_program_tests {
                 stream_id,
             })
             .expect("pause_stream instruction serializes"),
-            vec![0u8, 0, 0, 1, 0],
-            vec![(owner_npk, owner_shared_secret)],
-            vec![OWNER_NSK],
-            vec![Some(membership_proof)],
+            vec![
+                identity_public(),
+                identity_public(),
+                identity_public(),
+                identity_authorized_update(
+                    OWNER_NSK,
+                    &owner_vpk(),
+                    owner_shared_secret.clone(),
+                    owner_epk,
+                    membership_proof,
+                ),
+                identity_public(),
+            ],
             &ProgramWithDependencies::from(load_guest_program()),
         )
         .expect("execute_and_prove: PP pause_stream");
@@ -571,7 +581,6 @@ mod pp_program_tests {
         let message = Message::try_from_circuit_output(
             vec![vault_config_b_id, vault_holding_b_id, stream_pda, clock_id],
             vec![],
-            vec![(owner_npk, owner_vpk(), owner_epk)],
             output,
         )
         .expect("try_from_circuit_output: pause_stream");
@@ -596,13 +605,12 @@ mod pp_program_tests {
         assert_eq!(stream.allocation, PP3_STREAM_ALLOCATION);
 
         assert_eq!(tx.message().new_commitments.len(), 1);
-        let decrypted = EncryptionScheme::decrypt(
+        let decrypted = decrypt_account(
             &tx.message().encrypted_private_post_states[0].ciphertext,
             &owner_shared_secret,
             &tx.message().new_commitments[0],
             0,
-        )
-        .expect("decrypt owner post-state after pause_stream");
+        );
         assert_eq!(decrypted.balance, PP3_OWNER_FUND_AMOUNT);
     }
 }

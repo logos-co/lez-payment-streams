@@ -12,14 +12,14 @@ use lee::{
     program::Program,
     V03State,
 };
-use programs::authenticated_transfer;
 use lee_core::{
     account::{Account, AccountId, AccountWithMetadata, Balance, Data, Nonce},
     encryption::{EphemeralPublicKey, Scalar, ViewingPublicKey},
     program::InstructionData,
-    BlockId, EncryptionScheme, MembershipProof, NullifierPublicKey, NullifierSecretKey,
-    SharedSecretKey,
+    BlockId, Commitment, EncryptedAccountData, EncryptionScheme, InputAccountIdentity,
+    MembershipProof, NullifierPublicKey, NullifierSecretKey, SharedSecretKey,
 };
+use programs::authenticated_transfer;
 
 use crate::Instruction;
 use crate::{
@@ -52,6 +52,72 @@ pub(crate) fn guard_pp_tests_run_in_risc0_dev_mode_only() {
     }
 }
 
+// ---- Key / identity helpers (LEE ML-KEM + InputAccountIdentity API) ---- //
+
+pub(crate) fn vpk_from_seed(seed: Scalar) -> ViewingPublicKey {
+    ViewingPublicKey::from_seed(&seed, &seed)
+}
+
+pub(crate) fn private_account_id(npk: &NullifierPublicKey) -> AccountId {
+    AccountId::for_regular_private_account(npk, 0)
+}
+
+pub(crate) fn encapsulate(
+    vpk: &ViewingPublicKey,
+    message_hash: &Scalar,
+    output_index: u32,
+) -> (SharedSecretKey, EphemeralPublicKey) {
+    SharedSecretKey::encapsulate_deterministic(vpk, message_hash, output_index)
+}
+
+pub(crate) fn identity_public() -> InputAccountIdentity {
+    InputAccountIdentity::Public
+}
+
+pub(crate) fn identity_unauthorized(
+    npk: &NullifierPublicKey,
+    vpk: &ViewingPublicKey,
+    ssk: SharedSecretKey,
+    epk: EphemeralPublicKey,
+) -> InputAccountIdentity {
+    InputAccountIdentity::PrivateUnauthorized {
+        epk,
+        view_tag: EncryptedAccountData::compute_view_tag(npk, vpk),
+        npk: *npk,
+        ssk,
+        identifier: 0,
+    }
+}
+
+pub(crate) fn identity_authorized_update(
+    nsk: NullifierSecretKey,
+    vpk: &ViewingPublicKey,
+    ssk: SharedSecretKey,
+    epk: EphemeralPublicKey,
+    membership_proof: MembershipProof,
+) -> InputAccountIdentity {
+    let npk = NullifierPublicKey::from(&nsk);
+    InputAccountIdentity::PrivateAuthorizedUpdate {
+        epk,
+        view_tag: EncryptedAccountData::compute_view_tag(&npk, vpk),
+        ssk,
+        nsk,
+        membership_proof,
+        identifier: 0,
+    }
+}
+
+pub(crate) fn decrypt_account(
+    ciphertext: &lee_core::encryption::Ciphertext,
+    shared_secret: &SharedSecretKey,
+    commitment: &Commitment,
+    output_index: u32,
+) -> Account {
+    EncryptionScheme::decrypt(ciphertext, shared_secret, commitment, output_index)
+        .expect("decrypt private account")
+        .1
+}
+
 // ---- Shared recipient identity (Phase 1 and withdraw tests) ---- //
 
 pub(crate) const RECIPIENT_NSK: NullifierSecretKey = [0x5a; 32];
@@ -63,7 +129,7 @@ pub(crate) fn recipient_npk() -> NullifierPublicKey {
 }
 
 pub(crate) fn recipient_vpk() -> ViewingPublicKey {
-    ViewingPublicKey::from_scalar(RECIPIENT_VSK)
+    vpk_from_seed(RECIPIENT_VSK)
 }
 
 fn withdraw_instruction_data(vault_id: u64, amount: Balance) -> InstructionData {
@@ -135,7 +201,7 @@ pub(crate) struct PpWithdrawReceipt {
     pub(crate) shared_secret: SharedSecretKey,
 }
 
-/// Build and submit a PP `withdraw` from `fx` to an arbitrary private recipient (vis-2 slot).
+/// Build and submit a PP `withdraw` from `fx` to an arbitrary private recipient.
 pub(crate) fn fund_private_account_via_pp_withdraw(
     fx: &mut VaultFixture,
     recipient_npk: &NullifierPublicKey,
@@ -149,7 +215,7 @@ pub(crate) fn fund_private_account_via_pp_withdraw(
     let guest_program = load_guest_program();
     assert_eq!(guest_program.id(), fx.program_id);
 
-    let withdraw_to_id = AccountId::from(recipient_npk);
+    let withdraw_to_id = private_account_id(recipient_npk);
     let owner_before = fx.state.get_account_by_id(fx.owner_account_id);
 
     let pre_states = vec![
@@ -163,19 +229,20 @@ pub(crate) fn fund_private_account_via_pp_withdraw(
         },
     ];
 
-    let shared_secret = SharedSecretKey::new(&epk_scalar, &recipient_vpk);
+    let (shared_secret, epk) = encapsulate(&recipient_vpk, &epk_scalar, 0);
     let (output, proof) = execute_and_prove(
         pre_states,
         withdraw_instruction_data(fx.vault_id, withdraw_amount),
-        vec![0u8, 0, 0, 2],
-        vec![(*recipient_npk, shared_secret)],
-        vec![],
-        vec![None::<MembershipProof>],
+        vec![
+            identity_public(),
+            identity_public(),
+            identity_public(),
+            identity_unauthorized(recipient_npk, &recipient_vpk, shared_secret.clone(), epk),
+        ],
         &ProgramWithDependencies::from(guest_program),
     )
     .expect("execute_and_prove: fund via PP withdraw");
 
-    let epk = EphemeralPublicKey::from_scalar(epk_scalar);
     let message = Message::try_from_circuit_output(
         vec![
             fx.vault_config_account_id,
@@ -183,7 +250,6 @@ pub(crate) fn fund_private_account_via_pp_withdraw(
             fx.owner_account_id,
         ],
         vec![owner_before.nonce],
-        vec![(*recipient_npk, recipient_vpk, epk)],
         output,
     )
     .expect("try_from_circuit_output: fund via PP withdraw");
@@ -239,20 +305,19 @@ pub(crate) fn pp_claim_close_setup() -> PpClaimCloseSetup {
     let receipt = run_pp_withdraw_to_private_recipient(&mut fx, PP_WITHDRAW_AMOUNT, 3 as BlockId);
 
     let commitment_from_withdraw = &receipt.tx.message().new_commitments[0];
-    let provider_committed_account = EncryptionScheme::decrypt(
+    let provider_committed_account = decrypt_account(
         &receipt.tx.message().encrypted_private_post_states[0].ciphertext,
         &receipt.shared_secret,
         commitment_from_withdraw,
         0,
-    )
-    .expect("decrypt provider state from PP withdraw");
+    );
 
     let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
     force_clock_account_monotonic(&mut fx.state, clock_id, 1, PP_T0);
 
     let stream_id = 0u64;
     let stream_pda = derive_stream_pda(fx.program_id, fx.vault_config_account_id, stream_id);
-    let provider_id = AccountId::from(&recipient_npk());
+    let provider_id = private_account_id(&recipient_npk());
     let stream_ix_accounts = [
         fx.vault_config_account_id,
         fx.vault_holding_account_id,
@@ -299,7 +364,7 @@ pub(crate) fn owner_npk() -> NullifierPublicKey {
 }
 
 pub(crate) fn owner_vpk() -> ViewingPublicKey {
-    ViewingPublicKey::from_scalar(OWNER_VSK)
+    vpk_from_seed(OWNER_VSK)
 }
 
 pub(crate) fn load_payment_streams_with_auth_transfer() -> ProgramWithDependencies {
@@ -309,6 +374,12 @@ pub(crate) fn load_payment_streams_with_auth_transfer() -> ProgramWithDependenci
         payment_streams,
         [(auth_transfer.id(), auth_transfer)].into(),
     )
+}
+
+/// Serialize [`authenticated_transfer_core::Instruction::Transfer`] for PP fund helpers.
+pub(crate) fn auth_transfer_instruction(amount: Balance) -> InstructionData {
+    Program::serialize_instruction(authenticated_transfer_core::Instruction::Transfer { amount })
+        .expect("auth_transfer Transfer instruction serializes")
 }
 
 // ---- Phase 3: PP owner-signer instructions ---- //
@@ -332,7 +403,7 @@ pub(crate) fn pp3_recipient_npk() -> NullifierPublicKey {
 }
 
 pub(crate) fn pp3_recipient_vpk() -> ViewingPublicKey {
-    ViewingPublicKey::from_scalar(PP3_RECIPIENT_VSK)
+    vpk_from_seed(PP3_RECIPIENT_VSK)
 }
 
 /// Shared state for Phase 3 PP owner-signer tests.
@@ -361,16 +432,15 @@ pub(crate) fn pp_owner_setup() -> PpOwnerSetup {
     );
 
     let owner_commitment = &receipt.tx.message().new_commitments[0];
-    let owner_committed_account = EncryptionScheme::decrypt(
+    let owner_committed_account = decrypt_account(
         &receipt.tx.message().encrypted_private_post_states[0].ciphertext,
         &receipt.shared_secret,
         owner_commitment,
         0,
-    )
-    .expect("decrypt owner state from PP withdraw");
+    );
     assert_eq!(owner_committed_account.balance, PP3_OWNER_FUND_AMOUNT);
 
-    let owner_id = AccountId::from(&owner_npk);
+    let owner_id = private_account_id(&owner_npk);
     let vault_b_id: u64 = 2;
     let (vault_config_b_id, vault_holding_b_id) =
         derive_vault_pdas(fx.program_id, owner_id, vault_b_id);
