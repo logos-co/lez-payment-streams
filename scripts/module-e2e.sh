@@ -2,8 +2,9 @@
 # module-e2e.sh — User Journey (Flow A, module only) single-host happy path.
 #
 # Exercises payment_streams_module chainAction end-to-end through logoscore:
-# vault init, deposit, stream create, optional top-up (MODULE_E2E_TOPUP=1), accrual,
+# vault init, deposit, stream create, optional pause/resume/top-up, accrual,
 # close, then claim residual on the closed stream.
+# PRIVACY=1 defaults pause/resume and top-up on (Step 36 PseudonymousFunder lifecycle).
 # No delivery_module, no Store, no eligibility. This is the module-only cell of
 # the 2x2 verification matrix (Flow A x localnet or testnet).
 #
@@ -140,8 +141,11 @@ VAULT_ID="${VAULT_ID:-0}"
 STREAM_ID="${STREAM_ID:-0}"
 RATE="${RATE:-1}"
 TOPUP_INCREASE="${TOPUP_INCREASE:-1}"
-# Default 0: skip topUpStream to keep the demo shorter. Set MODULE_E2E_TOPUP=1 to include it.
-MODULE_E2E_TOPUP="${MODULE_E2E_TOPUP:-0}"
+# Default 0: skip topUpStream to keep the public demo shorter. Set MODULE_E2E_TOPUP=1 to include it.
+# PRIVACY=1 defaults top-up on so Step 36 covers pause/resume/top_up via shielded submits.
+MODULE_E2E_TOPUP="${MODULE_E2E_TOPUP:-$(ps_is_privacy_e2e && echo 1 || echo 0)}"
+# PRIVACY=1 also exercises pauseStream/resumeStream (same private submit path as create/close).
+MODULE_E2E_PAUSE_RESUME="${MODULE_E2E_PAUSE_RESUME:-$(ps_is_privacy_e2e && echo 1 || echo 0)}"
 # Set MODULE_E2E_SKIP_CLOSE=1 to skip settlement (close + claim; saves testnet txs).
 MODULE_E2E_SKIP_CLOSE="${MODULE_E2E_SKIP_CLOSE:-0}"
 # Set MODULE_E2E_SKIP_FUND=1 to skip inline testnet pinata funding (assumes the
@@ -155,6 +159,12 @@ MODULE_E2E_FRESH_VAULT="${MODULE_E2E_FRESH_VAULT:-1}"
 
 # Chain-specific demo sizing and poll budgets. Public testnet blocks advance irregularly
 # (often tens of seconds between heights); serial txs dominate wall clock via inclusion wait.
+#
+# Localnet Clock10 can lag while the sequencer is idle, then catch up toward wall time when
+# user txs land. pause_stream folds accrual first; if the catch-up span exceeds
+# allocation/rate the stream auto-pauses and pause_stream returns StreamNotActive (6016).
+# Pause/resume runs call ps_wait_clock_synced before create so create stamps a near-wall
+# accrued_as_of; keep demo deposit/allocation sizing (pinata funding stays cheap).
 if ps_is_testnet; then
   DEPOSIT="${DEPOSIT:-500}"
   ALLOCATION="${ALLOCATION:-400}"
@@ -652,6 +662,12 @@ if ps_is_local; then
         FAILURES=$((FAILURES + 1))
       fi
       timeout 30 lgs wallet topup --address "Public/$PROVIDER" >/dev/null 2>&1 || true
+      # Pinata funding advances Clock10; wait so create_stream stamps a near-wall accrued_as_of
+      # before pause/resume (otherwise catch-up can auto-pause the stream via at_time).
+      if [[ "$MODULE_E2E_PAUSE_RESUME" == "1" ]]; then
+        narr_step "Syncing Clock10 after funding (pause/resume Active-window guard)"
+        ps_wait_clock_synced || narr_verbose "clock sync wait returned non-zero (continuing)"
+      fi
     else
       narr_step "Funding owner and provider for gas"
       # The pinata faucet pays ~150 tokens per claim. The owner must hold at least
@@ -895,6 +911,12 @@ fi
 # ---------------------------------------------------------------------------
 narr_phase "Stream Creation"
 
+if ps_is_local && [[ "$MODULE_E2E_PAUSE_RESUME" == "1" ]]; then
+  narr_step "Syncing Clock10 to wall time before create (pause/resume needs Active unaccrued)"
+  ps_wait_clock_synced || narr_verbose "clock sync wait returned non-zero (continuing)"
+  sync_wallet
+fi
+
 narr_step "Alice opens stream $STREAM_ID to Bob"
 narr_value "rate=$RATE tokens/sec, allocation=$ALLOCATION tokens, vault=$VAULT_ID"
 narr_verbose "A payment stream allocates tokens to a provider at a fixed rate."
@@ -902,11 +924,34 @@ narr_verbose "The allocation is the maximum the stream can pay out."
 call_ps create_stream 1 createStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PROVIDER\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}")" "" "Stream $STREAM_ID created (ACTIVE)" verify_create_stream
 
 # ---------------------------------------------------------------------------
-# PHASE: Stream Lifecycle (optional top-up)
+# PHASE: Stream Lifecycle (optional pause/resume + top-up)
 # ---------------------------------------------------------------------------
-if [[ "$MODULE_E2E_TOPUP" == "1" ]]; then
+if [[ "$MODULE_E2E_PAUSE_RESUME" == "1" || "$MODULE_E2E_TOPUP" == "1" ]]; then
   narr_phase "Stream Lifecycle"
+fi
 
+if [[ "$MODULE_E2E_PAUSE_RESUME" == "1" ]]; then
+  # Guard: if Clock10 catch-up already depleted the stream, pause_stream cannot succeed.
+  if STREAM_PRE_PAUSE="$(poll_read read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"; then
+    read -r PRE_PAUSE_ACC PRE_PAUSE_UNC PRE_PAUSE_STATE <<< "$STREAM_PRE_PAUSE"
+    emit_phase pause_precheck true "{\"accrued_lo\":$PRE_PAUSE_ACC,\"unaccrued_lo\":$PRE_PAUSE_UNC,\"stream_state\":$PRE_PAUSE_STATE}"
+    if [[ "${PRE_PAUSE_UNC:-0}" -le 0 ]]; then
+      narr_fail "Stream has no unaccrued balance before pause (state=$PRE_PAUSE_STATE); Clock10 catch-up likely auto-paused it"
+      narr_hint "Increase ALLOCATION for pause/resume runs, or re-run after ps_wait_clock_synced"
+      FAILURES=$((FAILURES + 1))
+    fi
+  else
+    emit_phase pause_precheck false "{\"error\":\"read_failed\"}"
+    narr_fail "Could not read stream before pause"
+    FAILURES=$((FAILURES + 1))
+  fi
+  narr_step "Pausing stream $STREAM_ID"
+  call_ps pause_stream 1 pauseStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Stream paused"
+  narr_step "Resuming stream $STREAM_ID"
+  call_ps resume_stream 1 resumeStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Stream resumed"
+fi
+
+if [[ "$MODULE_E2E_TOPUP" == "1" ]]; then
   narr_step "Topping up stream $STREAM_ID by $TOPUP_INCREASE token"
   # Capture on-chain allocation (accrued + unaccrued) before the top-up so we can
   # verify the delta equals the top-up amount.
@@ -933,8 +978,8 @@ if [[ "$MODULE_E2E_TOPUP" == "1" ]]; then
     narr_fail "Could not read allocation on chain"
     narr_hint "getStreamStatus returned no data — check wallet sync and sequencer"
   fi
-else
-  narr_verbose "Skipping stream top-up (set MODULE_E2E_TOPUP=1 to include topUpStream)"
+elif [[ "$MODULE_E2E_PAUSE_RESUME" != "1" ]]; then
+  narr_verbose "Skipping stream lifecycle ops (set MODULE_E2E_TOPUP=1 / MODULE_E2E_PAUSE_RESUME=1)"
 fi
 
 # ---------------------------------------------------------------------------
