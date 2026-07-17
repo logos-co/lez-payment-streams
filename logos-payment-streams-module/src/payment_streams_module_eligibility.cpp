@@ -15,6 +15,7 @@
 #include <logos_sdk.h>
 
 #include "payment_streams_ffi_bridge.h"
+#include "payment_streams_privacy_policy.h"
 
 #include <cstring>
 #include <functional>
@@ -467,7 +468,7 @@ bool ffiBufferTwoPhase(const std::function<uint32_t(uint8_t*, size_t, size_t*)>&
 
 QString providerBase58ForPeer(const QString& peerId) {
     const QJsonObject mappings = state().root.value(QStringLiteral("peer_mappings")).toObject();
-    return mappings.value(peerId.trimmed()).toString().trimmed();
+    return payment_streams_privacy::providerBase58ForPeer(mappings, peerId);
 }
 
 QString providerIdHexForPeer(LogosExecutionZone& wallet, const QString& peerId, QString* errorOut) {
@@ -478,14 +479,10 @@ QString providerIdHexForPeer(LogosExecutionZone& wallet, const QString& peerId, 
         }
         return {};
     }
-    const QString hex = walletAccountIdHexFromBase58(wallet, base58);
-    if (hex.size() != 64) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("provider account_id_from_base58 failed");
-        }
-        return {};
-    }
-    return hex.toLower();
+    return payment_streams_privacy::providerIdHexFromMappedBase58(
+        base58,
+        [&wallet](const QString& b58) { return walletAccountIdHexFromBase58(wallet, b58); },
+        errorOut);
 }
 
 QJsonArray negotiations() {
@@ -986,7 +983,7 @@ QString PaymentStreamsModuleImpl::registerProviderMapping(const QVariant& provid
     }
     ensureStateSchema();
     QJsonObject mappings = state().root.value(QStringLiteral("peer_mappings")).toObject();
-    mappings.insert(peer, base58);
+    payment_streams_privacy::setProviderBase58ForPeer(&mappings, peer, base58);
     state().root.insert(QStringLiteral("peer_mappings"), mappings);
     state().dirty = true;
     persistIfDirty();

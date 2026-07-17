@@ -69,7 +69,7 @@ Each `run` performs prepare, orchestration, and teardown unless `SKIP_TEARDOWN=1
 | `MODE` | `store` | `module` = module verification; `store` = Store integration |
 | `CHAIN` | set by subcommand | `local` or `testnet` |
 | `OWNER_PRIVACY` | `0` | `1` = PseudonymousFunder vault owner path in `module-e2e.sh` (Step 36; module mode) |
-| `PROVIDER_PRIVACY` | `0` | `1` = private provider / shielded claim (Step 37; not implemented yet) |
+| `PROVIDER_PRIVACY` | `0` | `1` = private provider / shielded claim (Step 37; module mode) |
 | `PRIVACY` | `0` | Alias for `OWNER_PRIVACY=1` when `OWNER_PRIVACY` is unset |
 | `SKIP_BUILD` | `0` on prepare | Skip `.lgx` build when `1` |
 | `SKIP_SEED` | `0` | Continuation legs (maintainer only) |

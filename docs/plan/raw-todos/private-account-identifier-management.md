@@ -3,7 +3,7 @@
 Ideas not yet scheduled as a plan step. Index: [../index.md](../index.md).
 
 Related: [Step 36](../completed/step-36-payer-funder-unlinkability.md) (D36.3 account-id
-fields), [Step 37](../upcoming/step-37-payee-receiver-privacy.md) (D37.4 / D37.10 —
+fields), [Step 37](../completed/step-37-payee-receiver-privacy.md) (D37.4 / D37.10 —
 claim uses `provider` account id only; no `provider_private_identifier` on claim).
 
 ## Problem

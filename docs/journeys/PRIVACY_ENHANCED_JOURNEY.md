@@ -1,6 +1,6 @@
 # Privacy-enhanced Journey — payment streams with LEZ private execution
 
-Status: draft — payer section reflects Step 36; payee section is a placeholder for Step 37.
+Status: draft — payer section reflects Step 36; payee section reflects Step 37.
 
 This document describes the privacy-enhanced payment-streams flow where the payer
 uses a `PseudonymousFunder` vault and/or the payee claims to a shielded address.
@@ -10,8 +10,8 @@ alone or together. Automated module checks use `OWNER_PRIVACY=1` and
 `OWNER_PRIVACY=1`.
 
 It does not modify the existing `USER_JOURNEY.md` or `DEVELOPER_JOURNEY.md`.
-Instead, it is the source of truth for the privacy-enhanced track and will be
-extended as Steps 36 and 37 land.
+Instead, it is the source of truth for the privacy-enhanced track.
+Store × privacy E2E is Step 38.
 
 ## What this journey achieves
 
@@ -146,17 +146,67 @@ Step 37 generalizes the payee-side receiver-privacy flow for a private provider.
 
 ## Payee privacy-enhanced flow (Step 37)
 
-This section is a placeholder. After Step 37 lands, it will describe:
+Provider receiving privacy is independent of vault owner privacy. A stream can
+use a public vault and a private provider (`PROVIDER_PRIVACY=1`), or combine
+both flags.
 
-- How the provider publishes an NPK/VPK pair via
-  `logoscore call logos_execution_zone get_private_account_keys`, mirroring the
-  public-mode flow where the provider shares a public account id.
-- How the user creates the stream with the NPK-derived `provider_id`, using the
-  same `registerProviderMapping` logic as public mode but with a private identity.
-- How the provider claims accrued funds to a private receiving account via
-  `submitGenericPrivate`, with the provider as the private signer and the public
-  vault PDAs as non-signing accounts.
-- How the provider reuses one `(npk, identifier)` for consolidation.
+### 1. Provider publishes a private receiving identity
+
+The provider creates a private account and exports keys (same wallet surface as
+the payer side):
+
+```bash
+logoscore call logos_execution_zone create_account_private
+logoscore call logos_execution_zone get_private_account_keys <provider_private_account_id_hex>
+```
+
+Share the NPK-derived account id (base58 or hex) with the stream creator out of
+band, the same way a public payee shares a public account id.
+
+Reuse one `(npk, identifier)` across create and claim so credits land in one
+private account chain. Do not invent a claim-time identifier field.
+
+### 2. User creates the stream with that `provider_id`
+
+```bash
+logoscore call payment_streams_module chainAction createStream \
+  '{"signer":"<owner>","vault_id":<id>,"stream_id":<id>,"provider":"<private_provider>","rate":<rate>,"allocation_lo":<lo>}'
+```
+
+On a `Public` vault, create stays on public submit: `provider` is instruction
+data, not an account slot. For Store routing, `registerProviderMapping` takes
+the same private account id (N5). Encoding smoke is covered in module unit
+tests; dual-host Store E2E is Step 38.
+
+### 3. Provider claims to the private account
+
+After close (or when accrued is claimable):
+
+```bash
+logoscore call payment_streams_module chainAction claim \
+  '{"owner":"<owner>","provider":"<private_provider>","vault_id":<id>,"stream_id":<id>}'
+```
+
+The module marks the provider signer slot `private` and calls only
+`submitGenericPrivate`, including on a `Public` vault. Public PDAs stay
+`public_no_sign`. The `vault_holding` balance drop is visible; the destination
+is shielded.
+
+Automated local gate:
+
+```bash
+MODE=module CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+# or: make verify-module-local-provider-privacy
+```
+
+E2E dust-shields a small amount into the private provider before claim so the
+wallet has a committed private note (create-only without a note fails private
+submit).
+
+### 4. Timing note
+
+Automatic-claim-on-closure (if used) forces the shielded payout to coincide
+with close. Prefer delayed or batched claims when timing correlation matters.
 
 ## Known limitations
 

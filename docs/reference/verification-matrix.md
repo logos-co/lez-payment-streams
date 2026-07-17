@@ -111,5 +111,9 @@ Maintainer-only (not integrator gates): `make verify-store-local-lifecycle` or
   `MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run`
   (or `make verify-module-local-privacy`; `PRIVACY=1` alias still works).
   Phases include `pre_shield` when pre-shielding runs.
-  `PROVIDER_PRIVACY` is independent (Step 37); Store × privacy is a later gate.
+  Provider-privacy optional gate:
+  `MODE=module CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run`
+  (or `make verify-module-local-provider-privacy`). Claim confirms via
+  `vault_holding` drop when the provider is private.
+  Store × privacy is [Step 38](../plan/upcoming/step-38-store-privacy-e2e.md).
   Store: `e2e-*.log` (`store_query_success`, `store_query_missing_proof`, `claim`, …).

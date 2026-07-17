@@ -5,7 +5,7 @@
 # vault init, deposit, stream create, optional pause/resume/top-up, accrual,
 # close, then claim residual on the closed stream.
 # OWNER_PRIVACY=1 defaults pause/resume and top-up on (Step 36 PseudonymousFunder).
-# PROVIDER_PRIVACY=1 is reserved for Step 37 shielded provider claim (independent).
+# PROVIDER_PRIVACY=1 enables private provider / shielded claim (Step 37; independent).
 # PRIVACY=1 remains an alias for OWNER_PRIVACY=1.
 # No delivery_module, no Store, no eligibility. This is the module-only cell of
 # the 2x2 verification matrix (Flow A x localnet or testnet), with optional
@@ -20,6 +20,7 @@
 #   ./scripts/module-e2e.sh --verbosity quiet|normal|verbose
 # Driven by: MODE=module CHAIN=<chain> ./scripts/e2e.sh <chain> run
 # Owner privacy (Step 36): OWNER_PRIVACY=1 (or PRIVACY=1) / module-e2e-privacy.sh
+# Provider privacy (Step 37): PROVIDER_PRIVACY=1
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -33,9 +34,6 @@ source "$REPO_ROOT/scripts/lib/auth_transfer.sh"
 source "$REPO_ROOT/scripts/lib/fund_testnet.sh"
 
 ps_normalize_privacy_flags
-if ps_is_provider_privacy_e2e; then
-  ps_fatal "PROVIDER_PRIVACY=1 is not implemented yet (Step 37). Use OWNER_PRIVACY=1 for payer unlinkability."
-fi
 
 # ---------------------------------------------------------------------------
 # Verbosity
@@ -357,8 +355,9 @@ logoscore_string_arg() {
   python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"
 }
 
-ps_pre_shield_to_private_owner() {
-  local from_hex="$1" to_hex="$2" amount="$3"
+# Public → private shield. phase_name defaults to pre_shield (owner deposit buffer).
+ps_pre_shield_to_private_account() {
+  local from_hex="$1" to_hex="$2" amount="$3" phase_name="${4:-pre_shield}" label="${5:-private account}"
   local amt_hex amt_file line tx_hash
   # logoscore coerces all-digit hex to float; the s: prefix (stripped by the
   # wallet patch) keeps the le16 encoding intact. Pass via @file so the CLI
@@ -400,14 +399,30 @@ try:
 except Exception:
     sys.exit(1)
 ' "$line" 2>/dev/null; then
-    emit_phase pre_shield true "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\"$( [[ -n "$tx_hash" ]] && echo ",\"tx_hash\":\"$tx_hash\"" )}"
-    narr_ok "Pre-shielded $amount tokens into vault owner private account"
+    emit_phase "$phase_name" true "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\"$( [[ -n "$tx_hash" ]] && echo ",\"tx_hash\":\"$tx_hash\"" )}"
+    narr_ok "Pre-shielded $amount tokens into $label"
     sync_wallet
     return 0
   fi
-  emit_phase pre_shield false "{\"raw\":$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "${line:-}")}"
-  narr_fail "transfer_shielded_owned failed"
+  emit_phase "$phase_name" false "{\"raw\":$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "${line:-}")}"
+  narr_fail "transfer_shielded_owned failed ($label)"
   return 1
+}
+
+ps_pre_shield_to_private_owner() {
+  ps_pre_shield_to_private_account "$1" "$2" "$3" pre_shield "vault owner private account"
+}
+
+# First private claim needs a committed private note (harness funds via PP withdraw).
+# D37.11: dust pre-shield only after create-only path failed empirically.
+ps_dust_pre_shield_private_provider() {
+  local from_hex="$1"
+  local to_hex="${PROVIDER_HEX:-}"
+  [[ -n "$from_hex" && -n "$to_hex" ]] || {
+    narr_fail "dust pre-shield provider: missing funder or PROVIDER_HEX"
+    return 1
+  }
+  ps_pre_shield_to_private_account "$from_hex" "$to_hex" 1 provider_dust_pre_shield "private provider account"
 }
 
 parse_new_account() {
@@ -426,7 +441,11 @@ if s: print(s)
 
 if ps_is_local; then
   if ps_is_owner_privacy_e2e; then
-    narr_step "Creating public funder, private vault owner, and public provider (OWNER_PRIVACY=1)"
+    if ps_is_provider_privacy_e2e; then
+      narr_step "Creating public funder, private vault owner, and private provider (OWNER_PRIVACY=1 PROVIDER_PRIVACY=1)"
+    else
+      narr_step "Creating public funder, private vault owner, and public provider (OWNER_PRIVACY=1)"
+    fi
     PUBLIC_FUNDER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
     [[ -z "$PUBLIC_FUNDER" ]] && ps_fatal "could not create public funder account"
     [[ ${#PUBLIC_FUNDER} -eq 64 ]] && PUBLIC_FUNDER="$(to_base58 "$PUBLIC_FUNDER")"
@@ -435,9 +454,25 @@ if ps_is_local; then
     [[ -z "$OWNER_HEX" || ${#OWNER_HEX} -ne 64 ]] && ps_fatal "could not create private vault owner (expected 32-byte hex id)"
     OWNER="$(to_base58 "$OWNER_HEX")"
 
-    PROVIDER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
-    [[ -z "$PROVIDER" ]] && ps_fatal "could not create provider account"
-    [[ ${#PROVIDER} -eq 64 ]] && PROVIDER="$(to_base58 "$PROVIDER")"
+    if ps_is_provider_privacy_e2e; then
+      PROVIDER_HEX="$(parse_new_account "$(logoscore call logos_execution_zone create_account_private 2>/dev/null | tail -1)")"
+      [[ -z "$PROVIDER_HEX" || ${#PROVIDER_HEX} -ne 64 ]] && ps_fatal "could not create private provider (expected 32-byte hex id)"
+      PROVIDER="$(to_base58 "$PROVIDER_HEX")"
+    else
+      PROVIDER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
+      [[ -z "$PROVIDER" ]] && ps_fatal "could not create provider account"
+      [[ ${#PROVIDER} -eq 64 ]] && PROVIDER="$(to_base58 "$PROVIDER")"
+    fi
+    logoscore call logos_execution_zone save >/dev/null 2>&1 || true
+  elif ps_is_provider_privacy_e2e; then
+    narr_step "Creating public vault owner and private provider (PROVIDER_PRIVACY=1)"
+    OWNER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
+    [[ -z "$OWNER" ]] && { narr_fail "Could not create owner account"; ps_fatal "could not create owner account"; }
+    [[ ${#OWNER} -eq 64 ]] && OWNER="$(to_base58 "$OWNER")"
+
+    PROVIDER_HEX="$(parse_new_account "$(logoscore call logos_execution_zone create_account_private 2>/dev/null | tail -1)")"
+    [[ -z "$PROVIDER_HEX" || ${#PROVIDER_HEX} -ne 64 ]] && ps_fatal "could not create private provider (expected 32-byte hex id)"
+    PROVIDER="$(to_base58 "$PROVIDER_HEX")"
     logoscore call logos_execution_zone save >/dev/null 2>&1 || true
   else
     OWNER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
@@ -618,11 +653,23 @@ if ps_is_local || ps_is_testnet; then
   export WALLET_STORAGE="${WALLET_STORAGE:-$WALLET_HOME/storage.json}"
   export PS_AT_LOGOSCORE_WALLET_HANDOFF=1
   narr_step "Initializing accounts under authenticated_transfer program"
-  if ps_is_owner_privacy_e2e; then
+  # D37.11: AT-init public accounts only. Private owner/provider skip AT.
+  if ps_is_owner_privacy_e2e && ps_is_provider_privacy_e2e; then
+    narr_ok "Skipping AT init (private owner and private provider)"
+    emit_phase auth_init_skip true "{\"reason\":\"both_private\"}"
+  elif ps_is_owner_privacy_e2e; then
     if ps_auth_transfer_init_one "$PROVIDER" auth_init_provider; then
       narr_ok "Provider verified under authenticated_transfer (private owner skips AT init)"
     else
       narr_fail "authenticated_transfer ensure failed for provider (see artifact auth_init_provider)"
+      narr_hint "register_public_account or wallet auth-transfer init did not settle"
+      FAILURES=$((FAILURES + 1))
+    fi
+  elif ps_is_provider_privacy_e2e; then
+    if ps_auth_transfer_init_one "$OWNER" auth_init_owner; then
+      narr_ok "Owner verified under authenticated_transfer (private provider skips AT init)"
+    else
+      narr_fail "authenticated_transfer ensure failed for owner (see artifact auth_init_owner)"
       narr_hint "register_public_account or wallet auth-transfer init did not settle"
       FAILURES=$((FAILURES + 1))
     fi
@@ -665,7 +712,16 @@ if ps_is_local; then
       if ! ps_pre_shield_to_private_owner "$FUNDER_HEX" "$OWNER_HEX" "$owner_target"; then
         FAILURES=$((FAILURES + 1))
       fi
-      timeout 30 lgs wallet topup --address "Public/$PROVIDER" >/dev/null 2>&1 || true
+      # D37.11: never pinata a private provider as Public/$PROVIDER. Dust-shield
+      # into the private provider so claim has a committed private note.
+      if ps_is_provider_privacy_e2e; then
+        narr_step "Dust pre-shielding private provider (committed note for claim)"
+        if ! ps_dust_pre_shield_private_provider "$FUNDER_HEX"; then
+          FAILURES=$((FAILURES + 1))
+        fi
+      else
+        timeout 30 lgs wallet topup --address "Public/$PROVIDER" >/dev/null 2>&1 || true
+      fi
       # Pinata funding advances Clock10; wait so create_stream stamps a near-wall accrued_as_of
       # before pause/resume (otherwise catch-up can auto-pause the stream via at_time).
       if [[ "$MODULE_E2E_PAUSE_RESUME" == "1" ]]; then
@@ -693,8 +749,17 @@ if ps_is_local; then
         owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null || echo 0)"
       done
       narr_verbose "Owner balance $owner_bal (target $owner_target) after $owner_attempts faucet claim(s)"
-      # Provider only needs gas for the claim signature; one claim is plenty.
-      timeout 30 lgs wallet topup --address "Public/$PROVIDER" >/dev/null 2>&1 || true
+      # D37.11: public provider needs gas; private provider gets dust shield (no Public pinata).
+      if ps_is_provider_privacy_e2e; then
+        OWNER_HEX="$(account_id_to_hex "$OWNER")"
+        [[ -z "$OWNER_HEX" || -z "${PROVIDER_HEX:-}" ]] && ps_fatal "could not resolve hex ids for provider dust pre-shield"
+        narr_step "Dust pre-shielding private provider from public owner"
+        if ! ps_dust_pre_shield_private_provider "$OWNER_HEX"; then
+          FAILURES=$((FAILURES + 1))
+        fi
+      else
+        timeout 30 lgs wallet topup --address "Public/$PROVIDER" >/dev/null 2>&1 || true
+      fi
     fi
   fi
   sync_wallet
@@ -715,15 +780,19 @@ if ps_is_testnet; then
     else
       narr_verbose "Owner balance $owner_bal (target $owner_target)"
     fi
-    provider_bal="0"
-    if ! provider_bal="$(ps_fund_testnet_account "$PROVIDER" "${PROVIDER_MIN:-50}" 3)"; then
-      narr_verbose "Provider balance ${provider_bal:-0} (min ${PROVIDER_MIN:-50})"
+    if ps_is_provider_privacy_e2e; then
+      narr_verbose "Skipping testnet provider pinata (PROVIDER_PRIVACY=1; private provider create-only)"
     else
-      narr_verbose "Provider balance after pinata: $provider_bal (min ${PROVIDER_MIN:-50})"
-    fi
-    if [[ -z "$provider_bal" || "$provider_bal" == "0" ]]; then
-      narr_fail "Provider has zero balance after pinata (claim signer needs gas)"
-      FAILURES=$((FAILURES + 1))
+      provider_bal="0"
+      if ! provider_bal="$(ps_fund_testnet_account "$PROVIDER" "${PROVIDER_MIN:-50}" 3)"; then
+        narr_verbose "Provider balance ${provider_bal:-0} (min ${PROVIDER_MIN:-50})"
+      else
+        narr_verbose "Provider balance after pinata: $provider_bal (min ${PROVIDER_MIN:-50})"
+      fi
+      if [[ -z "$provider_bal" || "$provider_bal" == "0" ]]; then
+        narr_fail "Provider has zero balance after pinata (claim signer needs gas)"
+        FAILURES=$((FAILURES + 1))
+      fi
     fi
   fi
 fi
@@ -844,9 +913,18 @@ verify_close_stream() {
   [[ "${st:-}" == "2" ]]   # Closed
 }
 
-# Claim credits the provider via authenticated_transfer; confirm the provider
-# account balance rose above the snapshot captured before the claim call.
+# Claim credits the provider. Public provider: getAccount balance rises.
+# Private provider (PROVIDER_PRIVACY=1): destination is shielded; confirm the
+# public vault_holding drop instead (D37.9 / amount-visible constraint).
 verify_claim() {
+  if ps_is_provider_privacy_e2e; then
+    local vault_read vault_bal
+    vault_read="$(read_vault "$OWNER" "$VAULT_ID" || true)"
+    [[ -n "$vault_read" ]] || return 1
+    read -r vault_bal _ <<< "$vault_read"
+    [[ -n "${vault_bal:-}" && "$vault_bal" -lt "${PRE_CLAIM_VAULT:-0}" ]]
+    return
+  fi
   local bal
   bal="$(ps_account_balance "$PROVIDER" || echo 0)"
   [[ -n "${bal:-}" && "$bal" -gt "${PRE_CLAIM_BALANCE:-0}" ]]
@@ -1079,17 +1157,36 @@ else
     CLAIM_BAL_ATTEMPTS=6
     for attempt in $(seq 1 $CLAIM_BAL_ATTEMPTS); do
       sync_wallet
-      POST_CLAIM_BALANCE="$(ps_account_balance "$PROVIDER" || echo 0)"
+      if ! ps_is_provider_privacy_e2e; then
+        POST_CLAIM_BALANCE="$(ps_account_balance "$PROVIDER" || echo 0)"
+      fi
       if CLAIM_POST_VAULT="$(read_vault "$OWNER" "$VAULT_ID")"; then
         read -r POST_CLAIM_VAULT _ <<< "$CLAIM_POST_VAULT"
       fi
-      if [[ -n "$POST_CLAIM_BALANCE" && "$POST_CLAIM_BALANCE" -gt "${PRE_CLAIM_BALANCE:-0}" ]]; then
+      if ps_is_provider_privacy_e2e; then
+        if [[ -n "${POST_CLAIM_VAULT:-}" && "$POST_CLAIM_VAULT" -lt "${PRE_CLAIM_VAULT:-0}" ]]; then
+          break
+        fi
+      elif [[ -n "$POST_CLAIM_BALANCE" && "$POST_CLAIM_BALANCE" -gt "${PRE_CLAIM_BALANCE:-0}" ]]; then
         break
       fi
       sleep 5
     done
 
-    if [[ -n "$POST_CLAIM_BALANCE" && "$POST_CLAIM_BALANCE" -gt "${PRE_CLAIM_BALANCE:-0}" ]]; then
+    if ps_is_provider_privacy_e2e; then
+      VAULT_DROP=$((PRE_CLAIM_VAULT - ${POST_CLAIM_VAULT:-0}))
+      if [[ -n "${POST_CLAIM_VAULT:-}" && "$VAULT_DROP" -gt 0 ]]; then
+        emit_phase claim_balance true "{\"vault_drop\":$VAULT_DROP,\"vault_pre\":$PRE_CLAIM_VAULT,\"vault_post\":$POST_CLAIM_VAULT,\"provider_private\":true,\"attempts\":$attempt}"
+        narr_ok "Claim confirmed on chain: vault holding dropped by $VAULT_DROP (private provider destination)"
+        narr_value "Vault holding: $PRE_CLAIM_VAULT -> $POST_CLAIM_VAULT"
+        narr_value "Provider receiving account is private (public getAccount balance not used)"
+      else
+        emit_phase claim_balance false "{\"vault_pre\":$PRE_CLAIM_VAULT,\"vault_post\":${POST_CLAIM_VAULT:-0},\"provider_private\":true,\"attempts\":$CLAIM_BAL_ATTEMPTS}"
+        narr_fail "Claim failed: vault holding did not drop on chain"
+        narr_hint "If claim tx included, re-read getVaultStatus after wallet sync"
+        FAILURES=$((FAILURES + 1))
+      fi
+    elif [[ -n "$POST_CLAIM_BALANCE" && "$POST_CLAIM_BALANCE" -gt "${PRE_CLAIM_BALANCE:-0}" ]]; then
       RECEIVED=$((POST_CLAIM_BALANCE - PRE_CLAIM_BALANCE))
       VAULT_DROP=$((PRE_CLAIM_VAULT - ${POST_CLAIM_VAULT:-0}))
       if [[ -n "$POST_CLAIM_VAULT" && "$VAULT_DROP" -eq "$RECEIVED" ]]; then
@@ -1108,6 +1205,7 @@ else
       emit_phase claim_balance false "{\"provider_pre\":$PRE_CLAIM_BALANCE,\"provider_post\":${POST_CLAIM_BALANCE:-0},\"vault_pre\":$PRE_CLAIM_VAULT,\"vault_post\":${POST_CLAIM_VAULT:-0},\"attempts\":$CLAIM_BAL_ATTEMPTS}"
       narr_fail "Claim failed: provider balance did not increase on chain"
       narr_hint "If claim tx included, re-read getAccount and getVaultStatus after wallet sync"
+      FAILURES=$((FAILURES + 1))
     fi
   fi
 fi

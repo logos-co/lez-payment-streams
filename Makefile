@@ -43,6 +43,8 @@ help: ## Show this help
 	@echo ""
 	@echo "  Verification — see docs/reference/verification-matrix.md (canonical: scripts/e2e.sh):"
 	@echo "  make verify-module-local       Module verification, localnet"
+	@echo "  make verify-module-local-privacy  Module owner privacy (OWNER_PRIVACY=1)"
+	@echo "  make verify-module-local-provider-privacy  Module provider privacy (PROVIDER_PRIVACY=1)"
 	@echo "  make verify-module-testnet     Module verification, testnet"
 	@echo "  make verify-store-local        Store integration, localnet"
 	@echo "  make verify-store-testnet      Store integration, testnet"
@@ -143,6 +145,10 @@ verify-module-local: ## Flow A (module only) local happy path (MODE=module scrip
 verify-module-local-privacy: ## Owner privacy (OWNER_PRIVACY=1) PseudonymousFunder lifecycle on localnet
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
 	MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
+
+verify-module-local-provider-privacy: ## Provider privacy (PROVIDER_PRIVACY=1) shielded claim on localnet
+	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh
+	MODE=module CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
 
 verify-module-testnet: ## Flow A (module only) testnet happy path
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh

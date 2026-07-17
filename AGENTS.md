@@ -54,14 +54,14 @@ Cancelled: [step-25-demo-coordination-module.md](docs/plan/cancelled/step-25-dem
 
 ### Privacy-preserving payment streams (Steps 36-38)
 
-Step 36 complete:
-[step-36-payer-funder-unlinkability.md](docs/plan/completed/step-36-payer-funder-unlinkability.md).
+Steps 36 and 37 complete:
+[step-36-payer-funder-unlinkability.md](docs/plan/completed/step-36-payer-funder-unlinkability.md),
+[step-37-payee-receiver-privacy.md](docs/plan/completed/step-37-payee-receiver-privacy.md).
 
-Active engineering packets:
+Active engineering packet:
 
 | Step | Focus | Can Start |
 |------|-------|-----------|
-| [37](docs/plan/upcoming/step-37-payee-receiver-privacy.md) | Payee receiver privacy via LEZ private execution | Now — reuses Step 36 `submitGenericPrivate` |
 | [38](docs/plan/upcoming/step-38-store-privacy-e2e.md) | Store E2E privacy profiles (full privacy mode) | Phase A after 36; Phase B after 37 |
 
 ## Verification

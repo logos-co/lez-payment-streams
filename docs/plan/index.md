@@ -13,7 +13,7 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 24, 26-31, 33) |
-| [upcoming/](upcoming/) | Steps 20, 22, 32, 34, 35, 36, 37 (active); optional 21 (UI), 23 |
+| [upcoming/](upcoming/) | Steps 20, 22, 32, 34, 35, 38 (active); optional 21 (UI), 23 |
 | [cancelled/](cancelled/) | Step 25 won't fix |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
@@ -66,7 +66,7 @@ paid Store mode on the provider.
 | AT-init unify + Store claim phase | 32 (active; D3 gate pending) |
 | Store E2E fresh vault + testnet sizing | 33 (complete) |
 | Payer funder unlinkability via LEZ private execution | 36 (complete) |
-| Payee receiver privacy via LEZ private execution | 37 (active) |
+| Payee receiver privacy via LEZ private execution | 37 (complete) |
 | Store E2E privacy profiles (full privacy mode) | 38 (active) |
 
 Step 25 (in-process demo coordinator module) is **won't fix**
@@ -93,6 +93,7 @@ Dual-host demo coordination stays in host scripts
 | 31 | Delivery fork rebase + wallet bump | [step-31-dependencies-upgrade.md](completed/step-31-dependencies-upgrade.md) |
 | 33 | Store E2E fresh vault + testnet sizing | [step-33-store-e2e-fresh-vault.md](completed/step-33-store-e2e-fresh-vault.md) |
 | 36 | Payer funder unlinkability via LEZ private execution | [step-36-payer-funder-unlinkability.md](completed/step-36-payer-funder-unlinkability.md) |
+| 37 | Payee receiver privacy via LEZ private execution | [step-37-payee-receiver-privacy.md](completed/step-37-payee-receiver-privacy.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
 [step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33).
@@ -108,8 +109,7 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | 32 | AT-init unify + Store claim phase | Active (signed off; D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
 | 34 | User Journey manual walkthrough (testnet CLI) | Active -- [step-34-user-journey-manual-walkthrough.md](upcoming/step-34-user-journey-manual-walkthrough.md) |
 | 35 | Developer Journey generalization (protocol-agnostic eligibility guide) | Active -- [step-35-developer-journey-generalization.md](upcoming/step-35-developer-journey-generalization.md) |
-| 37 | Payee receiver privacy via LEZ private execution | Active -- [step-37-payee-receiver-privacy.md](upcoming/step-37-payee-receiver-privacy.md) |
-| 38 | Store E2E privacy profiles (full privacy mode) | Active (after 36; Phase B after 37) -- [step-38-store-privacy-e2e.md](upcoming/step-38-store-privacy-e2e.md) |
+| 38 | Store E2E privacy profiles (full privacy mode) | Active (Phase A after 36; Phase B after 37) -- [step-38-store-privacy-e2e.md](upcoming/step-38-store-privacy-e2e.md) |
 
 Ideas not yet steps: [raw-todos/](raw-todos/).
 

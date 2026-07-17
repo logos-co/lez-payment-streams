@@ -76,8 +76,26 @@ Expected: exit code 0; same lifecycle phases as the public module cell, plus
 `pre_shield` before vault init. `OWNER_PRIVACY=1` defaults pause/resume and
 top-up on. Artifact: `.scaffold/e2e/artifacts/module-e2e-*.log`.
 
-`PROVIDER_PRIVACY=1` (private provider / shielded claim) is Step 37 and is not
-wired in the module orchestrator yet. Store × privacy profiles are
+## Module × localnet (provider privacy)
+
+Optional privacy profile overlay for payee receiver privacy (private provider
+account, shielded claim). Independent of `OWNER_PRIVACY`.
+
+```bash
+SKIP_BUILD=1 MODE=module CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+```
+
+Make alias: `make verify-module-local-provider-privacy`.
+
+Expected: exit code 0; public vault owner; private provider; claim confirms via
+`vault_holding` drop (destination shielded). AT-init covers the public owner
+only. Combo with owner privacy:
+
+```bash
+SKIP_BUILD=1 MODE=module CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+```
+
+Store × privacy profiles remain
 [Step 38](../plan/upcoming/step-38-store-privacy-e2e.md).
 
 Narrative walkthrough: [PRIVACY_ENHANCED_JOURNEY.md](PRIVACY_ENHANCED_JOURNEY.md).

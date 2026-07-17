@@ -408,6 +408,7 @@ Flags:
 Verification matrix (mode x chain):
   MODE=module CHAIN=local  $0 local run   # module verification, localnet
   MODE=module CHAIN=local OWNER_PRIVACY=1 $0 local run   # Step 36 PseudonymousFunder (PRIVACY=1 alias OK)
+  MODE=module CHAIN=local PROVIDER_PRIVACY=1 $0 local run  # Step 37 private provider claim
   MODE=store  CHAIN=local  $0 local run   # Store integration, localnet
   MODE=store  CHAIN=testnet $0 testnet run # Store integration, testnet
   MODE=module CHAIN=testnet                # module verification, testnet

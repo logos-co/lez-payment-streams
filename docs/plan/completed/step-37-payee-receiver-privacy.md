@@ -1,6 +1,6 @@
 # Step 37 — payee receiver privacy via LEZ private execution
 
-Index: [index.md](../index.md). Status: **active** — planning and implementation packet.
+Index: [index.md](../index.md). Status: **complete**.
 
 Goal: productize LEZ private execution for the receiving service provider
 side of payment streams so the provider can claim accrued funds to a
@@ -115,7 +115,7 @@ exposes it through the `chainAction claim` JSON schema.
 | Identifier consolidation | Documented as hygiene, not implemented in-module. Reuse one private provider account id; no claim-time identifier field (D37.10). |
 | Automatic-claim-on-closure | Documented as a timing-correlation trade-off, not a hard incompatibility. |
 | E2E AT-init / funding | Mirror owner-privacy asymmetry (D37.11): AT-init public accounts only; private provider is `create_account_private` only (no AT, no `Public/$PROVIDER` pinata). |
-| `registerProviderMapping` verify | Encoding smoke in this step (D37.12); Store E2E and Store integration owned by [Step 38](step-38-store-privacy-e2e.md). |
+| `registerProviderMapping` verify | Encoding smoke in this step (D37.12); Store E2E and Store integration owned by [Step 38](../upcoming/step-38-store-privacy-e2e.md). |
 
 ## JSON schema for private `chainAction claim`
 
@@ -202,7 +202,7 @@ Do not silently upgrade a public submit after failure.
    prepare / map lookup yields the same 32-byte `provider_id` as
    `StreamConfig.provider` (base58 → bytes, no dual-host Store). Module
    lifecycle E2E does not require Store mapping. Paid Store query and
-   Store integration with that mapping are [Step 38](step-38-store-privacy-e2e.md).
+   Store integration with that mapping are [Step 38](../upcoming/step-38-store-privacy-e2e.md).
 
 5. Identifier hygiene. Document that reusing one private provider account id
    (one `(npk, identifier)` chosen at account creation) for create and claim
@@ -232,7 +232,7 @@ Do not silently upgrade a public submit after failure.
    Step 36 unchanged and combinable. Update [E2E.md](../../journeys/E2E.md)
    and [verification-matrix.md](../../reference/verification-matrix.md) for
    the provider-privacy module cell. Store × privacy remains out of scope
-   ([Step 38](step-38-store-privacy-e2e.md)).
+   ([Step 38](../upcoming/step-38-store-privacy-e2e.md)).
 
 ## Decision log
 
@@ -248,7 +248,7 @@ Do not silently upgrade a public submit after failure.
 | D37.8 | E2E flags | Use `PROVIDER_PRIVACY=1` for this step. Do not overload `PRIVACY` / `OWNER_PRIVACY`. Owner and provider privacy remain independently toggleable. |
 | D37.9 | Submit-path selection | Explicit per-slot resolutions, then hard rule: any `private` slot → only `submitGenericPrivate`; else only `submitGenericPublic`. No vault-tier-only inference and no public/private fallback. Vault-tier “PF forbids public submit” stays a separate invariant. |
 | D37.10 | No claim-time identifier field | Do not add `provider_private_identifier` on `claim`. Guest binds payee to `StreamConfig.provider`; Step 36 already uses account ids only. Future identifier tooling: [raw-todos/private-account-identifier-management.md](../raw-todos/private-account-identifier-management.md). |
-| D37.11 | E2E AT-init / funding for private provider | Mirror Step 36 owner-privacy asymmetry. AT-init only public accounts (`wallet auth-transfer init` / `register_public_account` on `Public/$acct`). Never AT-init a private provider. Public owner (when `OWNER_PRIVACY=0`) keeps pinata as today. Private provider is `create_account_private` only — no `Public/$PROVIDER` pinata and no dust pre-shield unless implementation proves first claim needs a prior private note. Combo `OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`: AT neither private party; keep funder → pre-shield owner; private provider create-only. |
+| D37.11 | E2E AT-init / funding for private provider | Mirror Step 36 owner-privacy asymmetry. AT-init only public accounts (`wallet auth-transfer init` / `register_public_account` on `Public/$acct`). Never AT-init a private provider. Public owner (when `OWNER_PRIVACY=0`) keeps pinata as today. Private provider: no `Public/$PROVIDER` pinata; dust `transfer_shielded_owned` into the private provider so claim has a committed private note (create-only without a note fails private submit). Combo `OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`: AT neither private party; funder → pre-shield owner and dust-shield provider. |
 | D37.12 | `registerProviderMapping` verify depth | Step 37 owns encoding smoke only: register with NPK-derived base58 and assert prepare / map lookup uses the correct 32-byte `provider_id` (no dual-host Store). Step 38 owns Store E2E and Store integration (`registerProviderMapping` before paid `storeQuery`, settlement). Do not build a Store-shaped harness in this step. |
 
 ### D37.9 rationale: explicit slots then explicit submit API
@@ -342,40 +342,35 @@ helper is shared from the start.
 
 ## Deliverables
 
-- [ ] Private-claim path in `chainAction` routing `claim` through
-  `submitGenericPrivate` with a private provider signer slot.
-- [ ] `claim` credits the provider's private receiving account; the
+- [x] Private-claim path in `chainAction` routing `claim` through
+  `submitGenericPrivate` with a private provider signer slot (D37.9).
+- [x] `claim` credits the provider's private receiving account; the
   `vault_holding` public drop is visible and the destination is hidden.
-- [ ] `registerProviderMapping` encoding smoke (D37.12): NPK-derived id
-  registers and prepare / map lookup yields matching 32-byte `provider_id`.
-  Store E2E for mapping is Step 38.
-- [ ] PP claim `program_tests` pass with `RISC0_DEV_MODE=1`.
-- [ ] Module-level test that `claim` routes to a private recipient and that the
-  destination is hidden.
-- [ ] Localnet E2E with `PROVIDER_PRIVACY=1` (and one combo with
-  `OWNER_PRIVACY=1`) succeeds for payee claim to a shielded address.
-- [ ] No regression on transparent claim or `OWNER_PRIVACY=1`.
-- [ ] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` extended with the payee-side
-  claiming walkthrough, provider key publication, identifier consolidation
-  hygiene, and the automatic-claim-on-closure timing trade-off.
-- [ ] [index.md](../index.md) upcoming table and program outcomes list
-  Step 37.
-- [ ] [AGENTS.md](../../AGENTS.md) active-work pointer lists Step 37.
+- [x] `registerProviderMapping` encoding smoke (D37.12): LogosTests cover
+  NPK-derived base58 store and hex match. Store E2E for mapping is Step 38.
+- [x] PP claim `program_tests` already covered (`test_pp_claim_private_provider_succeeds`).
+- [x] Module-level submit-path LogosTests (any private slot → private submit).
+- [x] Localnet E2E with `PROVIDER_PRIVACY=1` and combo `OWNER_PRIVACY=1
+  PROVIDER_PRIVACY=1` green.
+- [x] No regression on transparent claim or `OWNER_PRIVACY=1`.
+- [x] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` extended with the payee-side
+  claiming walkthrough.
+- [x] [index.md](../index.md) and [AGENTS.md](../../AGENTS.md) updated.
 
 ## Definition of done
 
-- [ ] Provider can claim accrued funds to a private receiving account not
+- [x] Provider can claim accrued funds to a private receiving account not
   tied to its primary identity.
-- [ ] Shielded claim succeeds via `submitGenericPrivate`; destination
+- [x] Shielded claim succeeds via `submitGenericPrivate`; destination
   hidden, amount visible.
-- [ ] `registerProviderMapping` encoding smoke green (D37.12); Store mapping
+- [x] `registerProviderMapping` encoding smoke green (D37.12); Store mapping
   E2E deferred to Step 38.
-- [ ] Transparent claim path unchanged and green.
-- [ ] Unit tests for the privacy-enhanced journey flow pass.
-- [ ] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` extended with the payee-side
+- [x] Transparent claim path unchanged and green.
+- [x] Unit tests for the privacy-enhanced journey flow pass.
+- [x] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` extended with the payee-side
   claiming walkthrough, provider key publication, identifier consolidation
   hygiene, and the automatic-claim-on-closure timing trade-off.
-- [ ] Step 37 listed in `index.md` and `AGENTS.md`.
+- [x] Step 37 listed complete in `index.md` and `AGENTS.md`.
 
 ## Known limitations
 
@@ -397,7 +392,7 @@ helper is shared from the start.
 - logos-docs publication.
 - Store integration, Store E2E, and dual-host use of `registerProviderMapping`
   (Developer Journey track; no wire or `delivery_module` changes). Owned by
-  [Step 38](step-38-store-privacy-e2e.md), reusing `OWNER_PRIVACY` /
+  [Step 38](../upcoming/step-38-store-privacy-e2e.md), reusing `OWNER_PRIVACY` /
   `PROVIDER_PRIVACY` (D37.12).
 
 ## Resolved
@@ -426,8 +421,8 @@ D37.11 also locks:
   private accounts; skip AT for private provider the same way Step 36 skips
   AT for private owner.
 - Do not pinata-topup a private provider as `Public/$PROVIDER`.
-- Prefer create-only private provider first; add dust pre-shield only if a
-  concrete claim/private-submit failure requires a prior private note.
+- Private provider gets dust `transfer_shielded_owned` (committed note for
+  claim); never pinata as `Public/$PROVIDER`.
 
 D37.12 also locks:
 
@@ -437,9 +432,9 @@ D37.12 also locks:
 
 ## Related
 
-- [step-36-payer-funder-unlinkability.md](../completed/step-36-payer-funder-unlinkability.md) —
+- [step-36-payer-funder-unlinkability.md](step-36-payer-funder-unlinkability.md) —
   payer side, supplies the shared PP submit wiring.
-- [step-38-store-privacy-e2e.md](step-38-store-privacy-e2e.md) —
+- [step-38-store-privacy-e2e.md](../upcoming/step-38-store-privacy-e2e.md) —
   Store E2E privacy profiles (depends on this step for provider/full privacy).
 - [integration-decisions.md](../../reference/integration-decisions.md) —
   N5 (provider identity mapping), N10 (module writes).

@@ -331,38 +331,68 @@ bool vaultPrivacyTierForSubmit(LogosExecutionZone& wallet,
     return true;
 }
 
-QString resolutionForPseudonymousSlot(VaultIxLayout layout, int index, const QString& signerHexLower, const QString& authorityHexLower) {
-    switch (layout) {
-    case VaultIxLayout::InitOrDeposit3:
-        return index == 2 ? QStringLiteral("private") : QStringLiteral("public_no_sign");
-    case VaultIxLayout::StreamOwner5:
-        return index == 3 ? QStringLiteral("private") : QStringLiteral("public_no_sign");
-    case VaultIxLayout::StreamAuthority6:
-        if (index == 3) {
-            return QStringLiteral("private");
-        }
-        if (index == 4) {
-            return QStringLiteral("public_sign");
-        }
-        return QStringLiteral("public_no_sign");
+// True when the wallet keychain holds a private account for this id (D37.9).
+bool walletHoldsPrivateAccount(LogosExecutionZone& wallet, const QString& accountHex) {
+    if (accountHex.size() != kAccountIdHexLen) {
+        return false;
     }
-    return QStringLiteral("public_no_sign");
+    const QString keysJson =
+        QString::fromStdString(wallet.get_private_account_keys(accountHex.toStdString()));
+    if (keysJson.isEmpty()) {
+        return false;
+    }
+    QJsonParseError parseError{};
+    const QJsonDocument doc = QJsonDocument::fromJson(keysJson.toUtf8(), &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        return false;
+    }
+    const QString npkHex =
+        doc.object().value(QStringLiteral("nullifier_public_key")).toString().trimmed();
+    return npkHex.size() == kAccountIdHexLen;
 }
 
-QJsonArray accountSlotsJsonForSubmit(VaultIxLayout layout,
-                                     bool pseudonymousFunder,
+// PF layout fallback: owner identity slots stay private even if keychain probe
+// races. Provider/authority use wallet probe so a private provider on a Public
+// or PF vault becomes a private slot (D37.9).
+bool pfOwnerSlotByLayout(VaultIxLayout layout, int index) {
+    switch (layout) {
+    case VaultIxLayout::InitOrDeposit3:
+        return index == 2;
+    case VaultIxLayout::StreamOwner5:
+    case VaultIxLayout::StreamAuthority6:
+        return index == 3;
+    }
+    return false;
+}
+
+QStringList slotResolutionsForSubmit(LogosExecutionZone& wallet,
+                                     VaultIxLayout layout,
+                                     uint8_t privacyTier,
                                      const QStringList& accountHexIds,
                                      const QList<bool>& signingFlags) {
+    QStringList resolutions;
+    resolutions.reserve(accountHexIds.size());
+    for (int i = 0; i < accountHexIds.size(); ++i) {
+        const QString& accountHex = accountHexIds.at(i);
+        if (walletHoldsPrivateAccount(wallet, accountHex) ||
+            (privacyTier == kPrivacyTierPseudonymousFunder && pfOwnerSlotByLayout(layout, i))) {
+            resolutions.append(QStringLiteral("private"));
+        } else if (i < signingFlags.size() && signingFlags.at(i)) {
+            resolutions.append(QStringLiteral("public_sign"));
+        } else {
+            resolutions.append(QStringLiteral("public_no_sign"));
+        }
+    }
+    return resolutions;
+}
+
+QJsonArray accountSlotsJsonForSubmit(const QStringList& accountHexIds, const QStringList& resolutions) {
     QJsonArray slotList;
     for (int i = 0; i < accountHexIds.size(); ++i) {
         QJsonObject slot;
         slot.insert(QStringLiteral("account_id_hex"), accountHexIds.at(i));
-        if (pseudonymousFunder) {
-            slot.insert(QStringLiteral("resolution"), resolutionForPseudonymousSlot(layout, i, {}, {}));
-        } else {
-            slot.insert(QStringLiteral("resolution"),
-                        signingFlags.at(i) ? QStringLiteral("public_sign") : QStringLiteral("public_no_sign"));
-        }
+        slot.insert(QStringLiteral("resolution"),
+                    i < resolutions.size() ? resolutions.at(i) : QStringLiteral("public_no_sign"));
         slotList.append(slot);
     }
     return slotList;
@@ -910,8 +940,13 @@ QString buildAndSubmit(LogosExecutionZone& wallet,
         vaultCtx != nullptr ? bytes32ToHexLower(vaultCfg.owner) : QString();
     const bool enforceDepositSigner =
         vaultCtx != nullptr && vaultCtx->enforceDepositSignerEqualsOwner;
+    const VaultIxLayout layout =
+        vaultCtx != nullptr ? vaultCtx->layout : VaultIxLayout::InitOrDeposit3;
+    const QStringList resolutions =
+        slotResolutionsForSubmit(wallet, layout, privacyTier, accountIds, signing);
+    const bool anyPrivateSlot = payment_streams_privacy::resolutionsContainPrivate(resolutions);
     const auto submitDecision = payment_streams_privacy::decideVaultSubmitPath(
-        privacyTier, enforceDepositSigner, signerHex, vaultOwnerHex);
+        privacyTier, anyPrivateSlot, enforceDepositSigner, signerHex, vaultOwnerHex);
     if (!submitDecision.ok) {
         return makeErrorJson(submitDecision.error);
     }
@@ -926,10 +961,7 @@ QString buildAndSubmit(LogosExecutionZone& wallet,
         }
         QJsonObject payload;
         payload.insert(QStringLiteral("account_slots"),
-                       accountSlotsJsonForSubmit(vaultCtx != nullptr ? vaultCtx->layout : VaultIxLayout::InitOrDeposit3,
-                                                 true,
-                                                 accountIds,
-                                                 signing));
+                       accountSlotsJsonForSubmit(accountIds, resolutions));
         payload.insert(QStringLiteral("instruction_hex"), QString::fromLatin1(instructionBytes.toHex()));
         payload.insert(QStringLiteral("program_elf_path"), guestPath);
         if (vaultCtx != nullptr && vaultCtx->requireAuthTransferDep) {
