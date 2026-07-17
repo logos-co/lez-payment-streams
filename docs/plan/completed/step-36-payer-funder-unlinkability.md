@@ -282,11 +282,13 @@ For `Public` vaults, replace `PrivateOwned` owner slots with `Public` signer or
    `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md`. Do not modify
    `USER_JOURNEY.md` or `DEVELOPER_JOURNEY.md`.
 
-9. E2E script. Add a privacy profile to `scripts/module-e2e.sh` (or a new
+9. E2E script. Add an owner-privacy profile to `scripts/module-e2e.sh` (or a new
    `scripts/module-e2e-privacy.sh`) that creates a private owner and a public
    provider, pre-shields funds via `transfer_shielded_owned`, initializes a
    `PseudonymousFunder` vault, and runs the full lifecycle. Keep the existing
-   public flow as the default.
+   public flow as the default. Use `OWNER_PRIVACY=1` for this profile
+   (`PRIVACY=1` remains a compatibility alias). Provider privacy is a separate
+   flag (`PROVIDER_PRIVACY`) owned by Step 37.
 
 ### Dependency ELF matrix
 
@@ -352,7 +354,7 @@ If the patch proves large, land it as a separate PR before the module routing ch
 | --- | --- | --- | --- |
 | PP program tests | `RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --features pp-program-tests` | Existing PP tests plus `PseudonymousFunder` lifecycle tests pass. | Pass |
 | Public tier regression | `make verify-module-local` | `Public`-tier flows unchanged and green. | Pass (re-run after guest ImageID + privacy E2E script) |
-| User Journey local | `MODE=module CHAIN=local PRIVACY=1 ./scripts/e2e.sh local run` | Full `PseudonymousFunder` lifecycle succeeds, including pause/resume/top_up. | Pass (guest fold-seconds + localnet redeploy) |
+| User Journey local | `MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run` (`PRIVACY=1` alias) | Full `PseudonymousFunder` lifecycle succeeds, including pause/resume/top_up. | Pass (guest fold-seconds + localnet redeploy) |
 | Module private submit | `nix build .#unit-tests` in `logos-payment-streams-module/` | Public submit rejected for `PseudonymousFunder` vaults; deposit signer mismatch rejected. | Pass (`payment_streams_privacy_policy` + 6 LogosTest cases) |
 | Eligibility (private owner) | Rust unit test + `sign_private_payload` module wiring | `VaultProof.owner_signature` over a `PseudonymousFunder` vault verifies via `verify_stream_proposal_vault_signature`. | Pass (`pseudonymous_funder_vault_proof_signature_verifies_with_nsk`; wallet NSK sign patch wired) |
 
@@ -371,9 +373,9 @@ Done:
   (init, deposit, create, pause, resume, top_up, close, claim) in module routing
   and PP `program_tests`.
 - [x] PP `program_tests` pass with `RISC0_DEV_MODE=1`.
-- [x] `scripts/module-e2e.sh` privacy profile (`PRIVACY=1`) creates a private
-  owner, a public provider, pre-shields funds, and runs the privacy-enhanced
-  lifecycle.
+- [x] `scripts/module-e2e.sh` owner-privacy profile (`OWNER_PRIVACY=1`,
+  `PRIVACY=1` alias) creates a private owner, a public provider, pre-shields
+  funds, and runs the privacy-enhanced lifecycle.
 - [x] No regression on the `Public` tier (`make verify-module-local`).
 - [x] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` documents the pre-shielding
   prerequisite, the deposit signer invariant, cross-relationship vault rotation
@@ -382,7 +384,7 @@ Done:
   Step 36.
 - [x] [AGENTS.md](../../AGENTS.md) active-work pointer lists Step 36.
 - [x] Localnet E2E green:
-  `MODE=module CHAIN=local PRIVACY=1 ./scripts/e2e.sh local run`
+  `MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run`
   including pause, resume, and top_up
   (guest `chain_timestamp_to_fold_seconds`; ImageID `072a26cc…`).
 - [x] Eligibility proof over a `PseudonymousFunder` vault verifies with
@@ -408,7 +410,7 @@ Done:
 - [x] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` documents the payer-side
   pre-shielding prerequisite, the deposit signer invariant, and the known
   traffic-analysis limitations.
-- [x] `scripts/module-e2e.sh` (`PRIVACY=1`) creates a private owner and
+- [x] `scripts/module-e2e.sh` (`OWNER_PRIVACY=1`) creates a private owner and
   public provider and drives the `PseudonymousFunder` lifecycle.
 - [x] Step 36 listed in `index.md` and `AGENTS.md`.
 - [x] PP deposit, create_stream, pause, resume, top_up, close, and claim
@@ -419,6 +421,16 @@ Done:
 - [x] Module-level C++ tests for public-submit refusal and deposit signer
   mismatch.
 - [x] Step packet moved to `docs/plan/completed/`.
+
+
+## Follow-ups (post-complete)
+
+- E2E privacy flags were split so owner and provider choices stay independent:
+  `OWNER_PRIVACY` (this step) and `PROVIDER_PRIVACY` (Step 37). `PRIVACY=1`
+  remains an alias for `OWNER_PRIVACY=1`.
+- Store × privacy profiles are out of scope here; planned as a Developer Journey
+  verification step (Step 38) that reuses the same two flags.
+- Recipe SSOT for the owner-privacy module cell: [E2E.md](../../journeys/E2E.md).
 
 ## Known limitations
 

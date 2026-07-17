@@ -8,6 +8,13 @@ shielded address. This delivers the LIP-155 secondary privacy goal,
 provider receiving privacy: limiting linkage between on-chain claims and
 the provider's real receiving addresses.
 
+Owner privacy and provider privacy are independent product choices. A payer
+may open a `Public` or `PseudonymousFunder` vault; independently, a provider
+may claim to a public or private receiving account. E2E reflects that with
+two flags: `OWNER_PRIVACY` (Step 36) and `PROVIDER_PRIVACY` (this step).
+`PRIVACY=1` is only an alias for `OWNER_PRIVACY=1` and must not be overloaded
+to mean “full privacy.”
+
 ## Problem
 
 Today the provider claims accrued funds to a public account (`provider`
@@ -102,6 +109,7 @@ exposes it through the `chainAction claim` JSON schema.
 | --- | --- |
 | Guest transition logic | No change. `test_pp_claim_private_provider_succeeds` in `lez-payment-streams-core/src/program_tests/claim.rs` already runs the standard `Instruction::Claim` with the provider as a private authorized account (visibility-1 slot). The existing slot suffices. |
 | Step 36 dependency | Step 37 does not need a `PseudonymousFunder` vault and is not blocked by Step 36. It reuses the `submitGenericPrivate` helper added in Step 36, so it should land after Step 36 or in the same PR. |
+| E2E flag | Drive the payee path with `PROVIDER_PRIVACY=1` on `MODE=module` (independent of `OWNER_PRIVACY`). Primary gate is `OWNER_PRIVACY=0 PROVIDER_PRIVACY=1`; also keep one combo run with both flags set. |
 | Provider-side signing | No patch needed. Claim authorization happens inside the PP circuit; the wallet signs with the NSK during proving. |
 | Identifier consolidation | Documented as hygiene, not implemented. |
 | Automatic-claim-on-closure | Documented as a timing-correlation trade-off, not a hard incompatibility. |
@@ -172,6 +180,14 @@ non-signing account.
    payee-side claiming walkthrough. Do not modify `USER_JOURNEY.md` or
    `DEVELOPER_JOURNEY.md`.
 
+9. E2E profile. Wire `PROVIDER_PRIVACY=1` in `scripts/module-e2e.sh` (create
+   private provider, stream `provider_id` = that account, claim via private
+   submit). Keep `OWNER_PRIVACY` behavior from Step 36 unchanged and
+   combinable. Update [E2E.md](../../journeys/E2E.md) and
+   [verification-matrix.md](../../reference/verification-matrix.md) for the
+   provider-privacy module cell. Store × privacy remains out of scope
+   (planned Step 38).
+
 ## Decision log
 
 | Id | Topic | Outcome |
@@ -183,6 +199,7 @@ non-signing account.
 | D37.5 | Automatic-claim-on-closure | Documented as a timing-correlation trade-off: it forces the shielded payout to coincide with the close event. The destination stays shielded; the amount is already public. |
 | D37.6 | `chainAction claim` field shape | Reuse the same private account id convention as Step 36 (D36.3). The only claim-specific addition is an optional `provider_private_identifier` for consolidation. |
 | D37.7 | Provider-side signing patch | None needed. Claim authorization happens inside the PP circuit; the wallet signs with the NSK during proving. |
+| D37.8 | E2E flags | Use `PROVIDER_PRIVACY=1` for this step. Do not overload `PRIVACY` / `OWNER_PRIVACY`. Owner and provider privacy remain independently toggleable. |
 
 ### D37.2 rationale: provider key publication
 
@@ -238,7 +255,9 @@ helper is shared from the start.
 | --- | --- | --- |
 | PP program tests | `RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core` | `test_pp_claim_private_provider_succeeds` and new module-layer private-claim tests pass. |
 | Module private claim | Unit test in `logos-payment-streams-module/tests/` (to be added) | `claim` routes to `submitGenericPrivate` when `provider` resolves to a private account; destination is hidden, `vault_holding` drop is visible. |
-| Payee Journey local | `MODE=module CHAIN=local ./scripts/e2e.sh local run` with a shielded provider | Payee claim to a private receiving account succeeds. |
+| Payee Journey local | `MODE=module CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run` | Payee claim to a private receiving account succeeds (`OWNER_PRIVACY=0`). |
+| Combo local | `MODE=module CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run` | Both profiles together succeed. |
+| Owner-privacy regression | `make verify-module-local-privacy` | Step 36 `OWNER_PRIVACY=1` path unchanged and green. |
 | Transparent regression | `make verify-module-local` | Transparent claim path unchanged and green. |
 
 ## Deliverables
@@ -251,8 +270,9 @@ helper is shared from the start.
 - [ ] PP claim `program_tests` pass with `RISC0_DEV_MODE=1`.
 - [ ] Module-level test that `claim` routes to a private recipient and that the
   destination is hidden.
-- [ ] Localnet E2E payee claim to a shielded address succeeds.
-- [ ] No regression on transparent claim.
+- [ ] Localnet E2E with `PROVIDER_PRIVACY=1` (and one combo with
+  `OWNER_PRIVACY=1`) succeeds for payee claim to a shielded address.
+- [ ] No regression on transparent claim or `OWNER_PRIVACY=1`.
 - [ ] `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` extended with the payee-side
   claiming walkthrough, provider key publication, identifier consolidation
   hygiene, and the automatic-claim-on-closure timing trade-off.
@@ -292,7 +312,9 @@ helper is shared from the start.
 - GMS shared private account implementation.
 - Forcing cross-relationship provider NPK rotation.
 - logos-docs publication.
-- Store integration and eligibility hooks (Developer Journey track; no wire or `delivery_module` changes).
+- Store integration and eligibility hooks (Developer Journey track; no wire or
+  `delivery_module` changes). Planned verification of Store × privacy profiles
+  is Step 38, reusing `OWNER_PRIVACY` / `PROVIDER_PRIVACY`.
 
 ## Resolved
 
@@ -300,7 +322,8 @@ All decisions are recorded in the [Decision log](#decision-log) above:
 D37.1 (shared helper), D37.2 (provider key publication), D37.3
 (`registerProviderMapping` encoding), D37.4 (identifier consolidation),
 D37.5 (automatic-claim-on-closure trade-off), D37.6 (claim field shape reuses
-Step 36 convention), and D37.7 (no provider-side signing patch).
+Step 36 convention), D37.7 (no provider-side signing patch), and D37.8
+(independent `PROVIDER_PRIVACY` E2E flag).
 
 ## Related
 

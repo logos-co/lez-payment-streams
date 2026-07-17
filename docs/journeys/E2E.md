@@ -17,9 +17,10 @@ Hands-on testnet commands for learning LIP-155 without scripts:
 | Document | Role |
 | --- | --- |
 | [verification-matrix.md](../reference/verification-matrix.md) | Required tiers, cold start, maintainer notes, artifact paths |
-| **E2E.md** (this file) | Per-cell prepare/bootstrap and run recipes |
+| E2E.md (this file) | Per-cell prepare/bootstrap and run recipes, plus privacy profile overlays |
 | [USER_JOURNEY.md](USER_JOURNEY.md) | End-user testnet CLI walkthrough (module only, no Store) |
 | [DEVELOPER_JOURNEY.md](DEVELOPER_JOURNEY.md) | Protocol-agnostic eligibility integration guide (Store as worked example) |
+| [PRIVACY_ENHANCED_JOURNEY.md](PRIVACY_ENHANCED_JOURNEY.md) | Hands-on owner and provider privacy narrative |
 
 ## Shared prepare
 
@@ -56,6 +57,30 @@ Optional top-up phase:
 ```bash
 MODULE_E2E_TOPUP=1 SKIP_BUILD=1 MODE=module CHAIN=local ./scripts/e2e.sh local run
 ```
+
+## Module × localnet (owner privacy)
+
+Optional privacy profile overlay on the User Journey module cell.
+Owner privacy and provider privacy are independent choices; this cell covers
+payer unlinkability only (`PseudonymousFunder` vault, public provider).
+
+```bash
+SKIP_BUILD=1 MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
+```
+
+Make alias: `make verify-module-local-privacy`.
+
+`PRIVACY=1` is accepted as an alias for `OWNER_PRIVACY=1` when `OWNER_PRIVACY` is unset.
+
+Expected: exit code 0; same lifecycle phases as the public module cell, plus
+`pre_shield` before vault init. `OWNER_PRIVACY=1` defaults pause/resume and
+top-up on. Artifact: `.scaffold/e2e/artifacts/module-e2e-*.log`.
+
+`PROVIDER_PRIVACY=1` (private provider / shielded claim) is Step 37 and is not
+wired in the module orchestrator yet. Store × privacy profiles are a later
+Developer Journey gate (planned Step 38).
+
+Narrative walkthrough: [PRIVACY_ENHANCED_JOURNEY.md](PRIVACY_ENHANCED_JOURNEY.md).
 
 ## Module × testnet (User Journey)
 
@@ -147,6 +172,9 @@ Gate history: [step-33-testnet-gate-log.md](../plan/completed/step-33-testnet-ga
 - `PAYMENT_STREAMS_GUEST_BIN`: Path to compiled guest ELF.
 - `MODE`: `store` (default) or `module` (single-host module E2E only).
 - `CHAIN`: `local` or `testnet`.
+- `OWNER_PRIVACY`: `0` (default) or `1` for PseudonymousFunder vault owner (module mode).
+- `PROVIDER_PRIVACY`: `0` (default) or `1` for private provider claim (Step 37; module mode).
+- `PRIVACY`: alias for `OWNER_PRIVACY=1` when `OWNER_PRIVACY` is unset.
 - `SKIP_BUILD=1`: Skip `.lgx` rebuilds on subsequent runs.
 - `E2E_CLAIM_OPTIONAL`: Testnet claim strictness (default `1`; use `0` for strict).
 - `FIXTURE_MANIFEST`: Override fixture path.

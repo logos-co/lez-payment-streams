@@ -140,9 +140,9 @@ verify-module-local: ## Flow A (module only) local happy path (MODE=module scrip
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
 	MODE=module CHAIN=local ./scripts/e2e.sh local run
 
-verify-module-local-privacy: ## Step 36 PseudonymousFunder lifecycle on localnet (PRIVACY=1)
+verify-module-local-privacy: ## Owner privacy (OWNER_PRIVACY=1) PseudonymousFunder lifecycle on localnet
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
-	MODE=module CHAIN=local PRIVACY=1 ./scripts/e2e.sh local run
+	MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
 
 verify-module-testnet: ## Flow A (module only) testnet happy path
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh

@@ -107,6 +107,9 @@ Maintainer-only (not integrator gates): `make verify-store-local-lifecycle` or
 - Artifacts: `.scaffold/e2e/artifacts/` JSON-lines logs.
   Layout: [naming-conventions.md#scaffold-layout](naming-conventions.md#scaffold-layout).
   Module: `module-e2e-*.log` (`vault_init`, `deposit`, `create_stream`, `claim`, …).
-  Step 36 optional gate: `MODE=module CHAIN=local PRIVACY=1 ./scripts/e2e.sh local run`
-  (or `make verify-module-local-privacy`); phases include `pre_shield` when pre-shielding runs.
+  Owner-privacy optional gate:
+  `MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run`
+  (or `make verify-module-local-privacy`; `PRIVACY=1` alias still works).
+  Phases include `pre_shield` when pre-shielding runs.
+  `PROVIDER_PRIVACY` is independent (Step 37); Store × privacy is a later gate.
   Store: `e2e-*.log` (`store_query_success`, `store_query_missing_proof`, `claim`, …).

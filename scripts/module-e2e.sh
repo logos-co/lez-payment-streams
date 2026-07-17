@@ -4,9 +4,12 @@
 # Exercises payment_streams_module chainAction end-to-end through logoscore:
 # vault init, deposit, stream create, optional pause/resume/top-up, accrual,
 # close, then claim residual on the closed stream.
-# PRIVACY=1 defaults pause/resume and top-up on (Step 36 PseudonymousFunder lifecycle).
+# OWNER_PRIVACY=1 defaults pause/resume and top-up on (Step 36 PseudonymousFunder).
+# PROVIDER_PRIVACY=1 is reserved for Step 37 shielded provider claim (independent).
+# PRIVACY=1 remains an alias for OWNER_PRIVACY=1.
 # No delivery_module, no Store, no eligibility. This is the module-only cell of
-# the 2x2 verification matrix (Flow A x localnet or testnet).
+# the 2x2 verification matrix (Flow A x localnet or testnet), with optional
+# privacy profile overlays.
 #
 # Scenario: Alice creates a payment stream to Bob, funds accrue, Alice closes
 # the stream, Bob claims residual accrued on the closed stream.
@@ -16,7 +19,7 @@
 #   CHAIN=testnet ./scripts/module-e2e.sh
 #   ./scripts/module-e2e.sh --verbosity quiet|normal|verbose
 # Driven by: MODE=module CHAIN=<chain> ./scripts/e2e.sh <chain> run
-# Privacy-enhanced (Step 36): PRIVACY=1 or scripts/module-e2e-privacy.sh
+# Owner privacy (Step 36): OWNER_PRIVACY=1 (or PRIVACY=1) / module-e2e-privacy.sh
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -29,9 +32,10 @@ source "$REPO_ROOT/scripts/lib/auth_transfer.sh"
 # shellcheck source=scripts/lib/fund_testnet.sh
 source "$REPO_ROOT/scripts/lib/fund_testnet.sh"
 
-ps_is_privacy_e2e() {
-  [[ "${PRIVACY:-0}" == "1" ]]
-}
+ps_normalize_privacy_flags
+if ps_is_provider_privacy_e2e; then
+  ps_fatal "PROVIDER_PRIVACY=1 is not implemented yet (Step 37). Use OWNER_PRIVACY=1 for payer unlinkability."
+fi
 
 # ---------------------------------------------------------------------------
 # Verbosity
@@ -71,7 +75,7 @@ narr_header() {
   local line="============================================"
   echo "" >&2
   echo "[$(_narr_ts)] $line" >&2
-  echo "[$(_narr_ts)] Payment Streams E2E: User Journey ($([ "$CHAIN" = "testnet" ] && echo TestNet || echo LocalNet))$(ps_is_privacy_e2e && echo ' — PseudonymousFunder (PRIVACY=1)' || true)" >&2
+  echo "[$(_narr_ts)] Payment Streams E2E: User Journey ($([ "$CHAIN" = "testnet" ] && echo TestNet || echo LocalNet))$(ps_is_any_privacy_e2e && echo " — privacy profile ($(ps_privacy_profile_label))" || true)" >&2
   echo "[$(_narr_ts)] Scenario: Alice creates a stream to Bob, funds accrue," >&2
   echo "[$(_narr_ts)]          Alice closes stream, Bob claims residual accrued" >&2
   echo "[$(_narr_ts)] $line" >&2
@@ -142,10 +146,10 @@ STREAM_ID="${STREAM_ID:-0}"
 RATE="${RATE:-1}"
 TOPUP_INCREASE="${TOPUP_INCREASE:-1}"
 # Default 0: skip topUpStream to keep the public demo shorter. Set MODULE_E2E_TOPUP=1 to include it.
-# PRIVACY=1 defaults top-up on so Step 36 covers pause/resume/top_up via shielded submits.
-MODULE_E2E_TOPUP="${MODULE_E2E_TOPUP:-$(ps_is_privacy_e2e && echo 1 || echo 0)}"
-# PRIVACY=1 also exercises pauseStream/resumeStream (same private submit path as create/close).
-MODULE_E2E_PAUSE_RESUME="${MODULE_E2E_PAUSE_RESUME:-$(ps_is_privacy_e2e && echo 1 || echo 0)}"
+# OWNER_PRIVACY=1 defaults top-up on so Step 36 covers pause/resume/top_up via shielded submits.
+MODULE_E2E_TOPUP="${MODULE_E2E_TOPUP:-$(ps_is_owner_privacy_e2e && echo 1 || echo 0)}"
+# OWNER_PRIVACY=1 also exercises pauseStream/resumeStream (same private submit path as create/close).
+MODULE_E2E_PAUSE_RESUME="${MODULE_E2E_PAUSE_RESUME:-$(ps_is_owner_privacy_e2e && echo 1 || echo 0)}"
 # Set MODULE_E2E_SKIP_CLOSE=1 to skip settlement (close + claim; saves testnet txs).
 MODULE_E2E_SKIP_CLOSE="${MODULE_E2E_SKIP_CLOSE:-0}"
 # Set MODULE_E2E_SKIP_FUND=1 to skip inline testnet pinata funding (assumes the
@@ -284,10 +288,10 @@ narr_ok "Sequencer ready"
 }
 
 narr_step "Starting logoscore, loading modules"
-if ps_is_privacy_e2e; then
+if ps_is_any_privacy_e2e; then
   export RISC0_DEV_MODE="${RISC0_DEV_MODE:-1}"
   export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
-  narr_verbose "PRIVACY=1 env: RISC0_DEV_MODE=$RISC0_DEV_MODE PAYMENT_STREAMS_GUEST_BIN=$PAYMENT_STREAMS_GUEST_BIN"
+  narr_verbose "privacy profile ($(ps_privacy_profile_label)): RISC0_DEV_MODE=$RISC0_DEV_MODE PAYMENT_STREAMS_GUEST_BIN=$PAYMENT_STREAMS_GUEST_BIN"
 fi
 logoscore stop 2>/dev/null || true
 sleep 2
@@ -421,8 +425,8 @@ if s: print(s)
 }
 
 if ps_is_local; then
-  if ps_is_privacy_e2e; then
-    narr_step "Creating public funder, private vault owner, and public provider (PRIVACY=1)"
+  if ps_is_owner_privacy_e2e; then
+    narr_step "Creating public funder, private vault owner, and public provider (OWNER_PRIVACY=1)"
     PUBLIC_FUNDER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
     [[ -z "$PUBLIC_FUNDER" ]] && ps_fatal "could not create public funder account"
     [[ ${#PUBLIC_FUNDER} -eq 64 ]] && PUBLIC_FUNDER="$(to_base58 "$PUBLIC_FUNDER")"
@@ -614,7 +618,7 @@ if ps_is_local || ps_is_testnet; then
   export WALLET_STORAGE="${WALLET_STORAGE:-$WALLET_HOME/storage.json}"
   export PS_AT_LOGOSCORE_WALLET_HANDOFF=1
   narr_step "Initializing accounts under authenticated_transfer program"
-  if ps_is_privacy_e2e; then
+  if ps_is_owner_privacy_e2e; then
     if ps_auth_transfer_init_one "$PROVIDER" auth_init_provider; then
       narr_ok "Provider verified under authenticated_transfer (private owner skips AT init)"
     else
@@ -637,7 +641,7 @@ if ps_is_local; then
   if [[ -x "$SCAFFOLD_WALLET" ]]; then
     export PATH="$(dirname "$SCAFFOLD_WALLET"):$PATH"
     export LEE_WALLET_HOME_DIR="$WALLET_HOME"
-    if ps_is_privacy_e2e; then
+    if ps_is_owner_privacy_e2e; then
       narr_step "Funding public funder and pre-shielding private vault owner"
       owner_target=$((DEPOSIT + 50))
       funder_bal=0
@@ -880,7 +884,7 @@ if ps_is_testnet && [[ "$MODULE_E2E_FRESH_VAULT" != "0" ]] \
 fi
 
 narr_step "Alice creates vault $VAULT_ID"
-if ps_is_privacy_e2e; then
+if ps_is_owner_privacy_e2e; then
   call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"privacy_tier\":1}")" "" "Vault $VAULT_ID created on chain (PseudonymousFunder)" verify_vault_init
 else
   call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID}")" "" "Vault $VAULT_ID created on chain" verify_vault_init

@@ -256,13 +256,15 @@ cmd_run() {
     export ARTIFACT="${ARTIFACT:-$(ps_e2e_artifacts_dir)/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
     mkdir -p "$(dirname "$ARTIFACT")"
     ps_log_info "Launching module happy path (Flow A)..."
-    if [[ "${PRIVACY:-0}" == "1" ]]; then
+    ps_normalize_privacy_flags
+    if ps_is_any_privacy_e2e; then
       # Private submit proves in-process; stub receipts keep the module IPC
       # path inside the extended Timeout used by submitGenericPrivateViaFfi.
       export RISC0_DEV_MODE="${RISC0_DEV_MODE:-1}"
-      ps_log_info "PRIVACY=1 — PseudonymousFunder vault owner (RISC0_DEV_MODE=$RISC0_DEV_MODE; see PRIVACY_ENHANCED_JOURNEY.md)"
+      ps_log_info "Privacy profile ($(ps_privacy_profile_label)) — RISC0_DEV_MODE=$RISC0_DEV_MODE; see PRIVACY_ENHANCED_JOURNEY.md"
     fi
-    MODULES="$MODULES_USER" ARTIFACT="$ARTIFACT" PRIVACY="${PRIVACY:-0}" \
+    MODULES="$MODULES_USER" ARTIFACT="$ARTIFACT" \
+      OWNER_PRIVACY="$OWNER_PRIVACY" PROVIDER_PRIVACY="$PROVIDER_PRIVACY" PRIVACY="$PRIVACY" \
       "$REPO_ROOT/scripts/module-e2e.sh" ${E2E_VERBOSITY:+--verbosity "$E2E_VERBOSITY"} || {
         ps_log_error "Module E2E run failed"
         return 1
@@ -405,7 +407,7 @@ Flags:
 
 Verification matrix (mode x chain):
   MODE=module CHAIN=local  $0 local run   # module verification, localnet
-  MODE=module CHAIN=local PRIVACY=1 $0 local run   # Step 36 PseudonymousFunder lifecycle
+  MODE=module CHAIN=local OWNER_PRIVACY=1 $0 local run   # Step 36 PseudonymousFunder (PRIVACY=1 alias OK)
   MODE=store  CHAIN=local  $0 local run   # Store integration, localnet
   MODE=store  CHAIN=testnet $0 testnet run # Store integration, testnet
   MODE=module CHAIN=testnet                # module verification, testnet

@@ -449,4 +449,50 @@ export FIXTURE_MANIFEST="${FIXTURE_MANIFEST:-$(ps_default_fixture_manifest)}"
 export WALLET_CONFIG="${WALLET_CONFIG:-$(ps_default_wallet_config)}"
 export WALLET_STORAGE="${WALLET_STORAGE:-$(ps_default_wallet_storage)}"
 
+# Privacy profile flags (independent owner vs provider choice).
+# OWNER_PRIVACY=1 — PseudonymousFunder vault owner (Step 36).
+# PROVIDER_PRIVACY=1 — private provider / shielded claim (Step 37).
+# PRIVACY=1 remains an alias for OWNER_PRIVACY=1.
+ps_normalize_privacy_flags() {
+  if [[ -z "${OWNER_PRIVACY:-}" && "${PRIVACY:-0}" == "1" ]]; then
+    OWNER_PRIVACY=1
+  fi
+  OWNER_PRIVACY="${OWNER_PRIVACY:-0}"
+  PROVIDER_PRIVACY="${PROVIDER_PRIVACY:-0}"
+  if [[ "$OWNER_PRIVACY" == "1" ]]; then
+    PRIVACY=1
+  else
+    PRIVACY=0
+  fi
+  export OWNER_PRIVACY PROVIDER_PRIVACY PRIVACY
+}
+
+ps_is_owner_privacy_e2e() {
+  [[ "${OWNER_PRIVACY:-0}" == "1" ]]
+}
+
+ps_is_provider_privacy_e2e() {
+  [[ "${PROVIDER_PRIVACY:-0}" == "1" ]]
+}
+
+ps_is_any_privacy_e2e() {
+  ps_is_owner_privacy_e2e || ps_is_provider_privacy_e2e
+}
+
+ps_privacy_profile_label() {
+  local parts=()
+  if ps_is_owner_privacy_e2e; then
+    parts+=("OWNER_PRIVACY=1")
+  fi
+  if ps_is_provider_privacy_e2e; then
+    parts+=("PROVIDER_PRIVACY=1")
+  fi
+  if ((${#parts[@]} == 0)); then
+    echo "public"
+    return 0
+  fi
+  local IFS=','
+  echo "${parts[*]}"
+}
+
 ps_log_info "Common library loaded (REPO_ROOT=$REPO_ROOT)"

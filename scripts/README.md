@@ -41,8 +41,9 @@ installed. Path layout: [naming-conventions.md](../docs/reference/naming-convent
 # Module verification — Required, localnet
 MODE=module CHAIN=local ./scripts/e2e.sh local run
 
-# Step 36 — PseudonymousFunder lifecycle (private owner, public provider, PRIVACY=1)
-MODE=module CHAIN=local PRIVACY=1 ./scripts/e2e.sh local run
+# Owner privacy — PseudonymousFunder lifecycle (private owner, public provider)
+MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
+# PRIVACY=1 is still accepted as an alias for OWNER_PRIVACY=1
 
 # Store integration — Required, localnet (MODE=store is default)
 ./scripts/e2e.sh local run
@@ -67,7 +68,9 @@ Each `run` performs prepare, orchestration, and teardown unless `SKIP_TEARDOWN=1
 | --- | --- | --- |
 | `MODE` | `store` | `module` = module verification; `store` = Store integration |
 | `CHAIN` | set by subcommand | `local` or `testnet` |
-| `PRIVACY` | `0` | `1` = Step 36 PseudonymousFunder path in `module-e2e.sh` (module mode only) |
+| `OWNER_PRIVACY` | `0` | `1` = PseudonymousFunder vault owner path in `module-e2e.sh` (Step 36; module mode) |
+| `PROVIDER_PRIVACY` | `0` | `1` = private provider / shielded claim (Step 37; not implemented yet) |
+| `PRIVACY` | `0` | Alias for `OWNER_PRIVACY=1` when `OWNER_PRIVACY` is unset |
 | `SKIP_BUILD` | `0` on prepare | Skip `.lgx` build when `1` |
 | `SKIP_SEED` | `0` | Continuation legs (maintainer only) |
 | `RESTORE_LOCALNET` | `1` | Snapshot restore for Store prepare |
@@ -83,8 +86,8 @@ Each `run` performs prepare, orchestration, and teardown unless `SKIP_TEARDOWN=1
 | [e2e.sh](e2e.sh) | Prepare / run / teardown |
 | [lifecycle.sh](lifecycle.sh) | Localnet, snapshots, testnet wallet |
 | [fixture.sh](fixture.sh) | Prefund, vault, stream CLI (Store prepare) |
-| [module-e2e.sh](module-e2e.sh) | Module verification orchestrator (local or testnet; `PRIVACY=1` for Step 36) |
-| [module-e2e-privacy.sh](module-e2e-privacy.sh) | Sets `PRIVACY=1` and execs `module-e2e.sh` |
+| [module-e2e.sh](module-e2e.sh) | Module verification orchestrator (local or testnet; `OWNER_PRIVACY` / `PROVIDER_PRIVACY` profiles) |
+| [module-e2e-privacy.sh](module-e2e-privacy.sh) | Sets `OWNER_PRIVACY=1` and execs `module-e2e.sh` |
 | [e2e/run_local_e2e.py](e2e/run_local_e2e.py) | Store integration dual-host orchestrator |
 
 ## Make aliases (optional)

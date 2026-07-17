@@ -3,7 +3,12 @@
 Status: draft — payer section reflects Step 36; payee section is a placeholder for Step 37.
 
 This document describes the privacy-enhanced payment-streams flow where the payer
-uses a `PseudonymousFunder` vault and the payee claims to a shielded address.
+uses a `PseudonymousFunder` vault and/or the payee claims to a shielded address.
+Owner privacy and provider privacy are independent choices; either may be used
+alone or together. Automated module checks use `OWNER_PRIVACY=1` and
+`PROVIDER_PRIVACY=1` (see [E2E.md](E2E.md)); `PRIVACY=1` is only an alias for
+`OWNER_PRIVACY=1`.
+
 It does not modify the existing `USER_JOURNEY.md` or `DEVELOPER_JOURNEY.md`.
 Instead, it is the source of truth for the privacy-enhanced track and will be
 extended as Steps 36 and 37 land.
@@ -73,8 +78,9 @@ The PP `deposit` debits the vault owner account directly, so the funds must be
 in that account. The module checks that the `signer` passed to `deposit` matches
 `VaultConfig.owner` and rejects the deposit if it does not.
 
-Local privacy E2E sets `RISC0_DEV_MODE=1` so private submits use stub receipts.
-Without it, proving can exceed the module IPC timeout even on localnet.
+Local owner-privacy E2E (`OWNER_PRIVACY=1` / `make verify-module-local-privacy`)
+sets `RISC0_DEV_MODE=1` so private submits use stub receipts. Without it,
+proving can exceed the module IPC timeout even on localnet.
 
 ### Step 3 — Initialize a PseudonymousFunder vault
 
