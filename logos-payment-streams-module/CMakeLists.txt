@@ -16,6 +16,8 @@ logos_module(
     src/payment_streams_module_impl.h
     src/payment_streams_module_impl.cpp
     src/payment_streams_module_writes.cpp
+    src/payment_streams_privacy_policy.h
+    src/payment_streams_privacy_policy.cpp
     src/payment_streams_ffi_bridge.c
     src/payment_streams_ffi_bridge_writes.c
     src/payment_streams_module_eligibility.cpp

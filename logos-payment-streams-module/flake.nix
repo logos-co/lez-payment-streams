@@ -19,5 +19,8 @@
           packages.default = "payment-streams-ffi";
         };
       };
+      tests = {
+        dir = ./tests;
+      };
     };
 }

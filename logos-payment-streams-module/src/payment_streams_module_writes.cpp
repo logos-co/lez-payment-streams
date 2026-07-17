@@ -20,6 +20,7 @@
 #include <logos_sdk.h>
 
 #include "payment_streams_ffi_bridge.h"
+#include "payment_streams_privacy_policy.h"
 
 #include <cstring>
 
@@ -903,15 +904,19 @@ QString buildAndSubmit(LogosExecutionZone& wallet,
                                        &loadErr)) {
             return makeErrorJson(loadErr);
         }
-        if (vaultCtx->enforceDepositSignerEqualsOwner) {
-            const QString ownerHex = bytes32ToHexLower(vaultCfg.owner);
-            if (signerHex != ownerHex) {
-                return makeErrorJson(QStringLiteral("deposit signer must equal VaultConfig.owner for PseudonymousFunder vaults"));
-            }
-        }
     }
 
-    if (privacyTier == kPrivacyTierPseudonymousFunder) {
+    const QString vaultOwnerHex =
+        vaultCtx != nullptr ? bytes32ToHexLower(vaultCfg.owner) : QString();
+    const bool enforceDepositSigner =
+        vaultCtx != nullptr && vaultCtx->enforceDepositSignerEqualsOwner;
+    const auto submitDecision = payment_streams_privacy::decideVaultSubmitPath(
+        privacyTier, enforceDepositSigner, signerHex, vaultOwnerHex);
+    if (!submitDecision.ok) {
+        return makeErrorJson(submitDecision.error);
+    }
+
+    if (submitDecision.path == payment_streams_privacy::VaultSubmitPath::Private) {
         // Pass the guest ELF by path (or PAYMENT_STREAMS_GUEST_BIN in the wallet
         // process). Embedding program_elf_hex (~700KB+) exceeds the practical
         // QRemoteObjects payload size used for inter-module IPC and returns empty.
