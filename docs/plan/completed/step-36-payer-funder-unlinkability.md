@@ -429,7 +429,7 @@ Done:
   `OWNER_PRIVACY` (this step) and `PROVIDER_PRIVACY` (Step 37). `PRIVACY=1`
   remains an alias for `OWNER_PRIVACY=1`.
 - Store × privacy profiles are out of scope here; see
-  [step-38-store-privacy-e2e.md](../upcoming/step-38-store-privacy-e2e.md).
+  [step-38-store-privacy-e2e.md](step-38-store-privacy-e2e.md).
 - Recipe SSOT for the owner-privacy module cell: [E2E.md](../../journeys/E2E.md).
 
 ## Known limitations

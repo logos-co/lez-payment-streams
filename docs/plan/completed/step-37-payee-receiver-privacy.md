@@ -115,7 +115,7 @@ exposes it through the `chainAction claim` JSON schema.
 | Identifier consolidation | Documented as hygiene, not implemented in-module. Reuse one private provider account id; no claim-time identifier field (D37.10). |
 | Automatic-claim-on-closure | Documented as a timing-correlation trade-off, not a hard incompatibility. |
 | E2E AT-init / funding | Mirror owner-privacy asymmetry (D37.11): AT-init public accounts only; private provider is `create_account_private` only (no AT, no `Public/$PROVIDER` pinata). |
-| `registerProviderMapping` verify | Encoding smoke in this step (D37.12); Store E2E and Store integration owned by [Step 38](../upcoming/step-38-store-privacy-e2e.md). |
+| `registerProviderMapping` verify | Encoding smoke in this step (D37.12); Store E2E and Store integration owned by [Step 38](step-38-store-privacy-e2e.md). |
 
 ## JSON schema for private `chainAction claim`
 
@@ -202,7 +202,7 @@ Do not silently upgrade a public submit after failure.
    prepare / map lookup yields the same 32-byte `provider_id` as
    `StreamConfig.provider` (base58 → bytes, no dual-host Store). Module
    lifecycle E2E does not require Store mapping. Paid Store query and
-   Store integration with that mapping are [Step 38](../upcoming/step-38-store-privacy-e2e.md).
+   Store integration with that mapping are [Step 38](step-38-store-privacy-e2e.md).
 
 5. Identifier hygiene. Document that reusing one private provider account id
    (one `(npk, identifier)` chosen at account creation) for create and claim
@@ -232,7 +232,7 @@ Do not silently upgrade a public submit after failure.
    Step 36 unchanged and combinable. Update [E2E.md](../../journeys/E2E.md)
    and [verification-matrix.md](../../reference/verification-matrix.md) for
    the provider-privacy module cell. Store × privacy remains out of scope
-   ([Step 38](../upcoming/step-38-store-privacy-e2e.md)).
+   ([Step 38](step-38-store-privacy-e2e.md)).
 
 ## Decision log
 
@@ -392,7 +392,7 @@ helper is shared from the start.
 - logos-docs publication.
 - Store integration, Store E2E, and dual-host use of `registerProviderMapping`
   (Developer Journey track; no wire or `delivery_module` changes). Owned by
-  [Step 38](../upcoming/step-38-store-privacy-e2e.md), reusing `OWNER_PRIVACY` /
+  [Step 38](step-38-store-privacy-e2e.md), reusing `OWNER_PRIVACY` /
   `PROVIDER_PRIVACY` (D37.12).
 
 ## Resolved
@@ -434,7 +434,7 @@ D37.12 also locks:
 
 - [step-36-payer-funder-unlinkability.md](step-36-payer-funder-unlinkability.md) —
   payer side, supplies the shared PP submit wiring.
-- [step-38-store-privacy-e2e.md](../upcoming/step-38-store-privacy-e2e.md) —
+- [step-38-store-privacy-e2e.md](step-38-store-privacy-e2e.md) —
   Store E2E privacy profiles (depends on this step for provider/full privacy).
 - [integration-decisions.md](../../reference/integration-decisions.md) —
   N5 (provider identity mapping), N10 (module writes).

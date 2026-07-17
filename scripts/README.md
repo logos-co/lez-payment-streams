@@ -51,6 +51,12 @@ MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
 # Store owner privacy — PseudonymousFunder vault (Step 38 Phase A)
 MODE=store CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
 
+# Store provider privacy — private provider claim (Step 38 Phase B)
+MODE=store CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+
+# Store full privacy — both flags
+MODE=store CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+
 # Store integration — Required, testnet (after bootstrap)
 MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run
 
@@ -82,8 +88,8 @@ rely on the submit acknowledgement. This applies to `MODE=store`
 | --- | --- | --- |
 | `MODE` | `store` | `module` = module verification; `store` = Store integration |
 | `CHAIN` | set by subcommand | `local` or `testnet` |
-| `OWNER_PRIVACY` | `0` | `1` = PseudonymousFunder vault owner path in `module-e2e.sh` (Step 36; module mode) |
-| `PROVIDER_PRIVACY` | `0` | `1` = private provider / shielded claim (Step 37; module mode) |
+| `OWNER_PRIVACY` | `0` | `1` = PseudonymousFunder vault owner (module and Store; Steps 36/38) |
+| `PROVIDER_PRIVACY` | `0` | `1` = private provider / shielded claim (module and Store; Steps 37/38) |
 | `PRIVACY` | `0` | Alias for `OWNER_PRIVACY=1` when `OWNER_PRIVACY` is unset |
 | `SKIP_BUILD` | `0` on prepare | Skip `.lgx` build when `1` |
 | `SKIP_SEED` | `0` | Continuation legs (maintainer only) |

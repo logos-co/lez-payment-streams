@@ -1,14 +1,14 @@
 # Step 38 — Store E2E privacy profiles
 
-Index: [index.md](../index.md). Status: active — planning packet (not started).
+Index: [index.md](../index.md). Status: **complete**.
 
 Goal: prove Developer Journey Store integration end to end under privacy
 profiles, up through full privacy mode (private vault owner and private
 provider claim), without changing Delivery wire or eligibility hooks.
 
 This step is verification and harness work only. Product paths already landed
-in [Step 36](../completed/step-36-payer-funder-unlinkability.md) and
-[Step 37](../completed/step-37-payee-receiver-privacy.md). Delivery continues
+in [Step 36](step-36-payer-funder-unlinkability.md) and
+[Step 37](step-37-payee-receiver-privacy.md). Delivery continues
 to treat `EligibilityProof` as opaque bytes on Store tag `30`.
 
 ## Problem
@@ -53,15 +53,14 @@ Module E2E is single-host. Store E2E is dual-host. Place keys as follows:
 
 - User host: private vault owner (when `OWNER_PRIVACY=1`), public funder, stream
   create / deposit / close / prepare / `registerProviderMapping`. Needs the
-  provider account id (base58) for create and mapping; does not need provider NSK.
-- Provider host: private provider account (when `PROVIDER_PRIVACY=1`). Claim
-  already runs via `cfg_provider` `chainAction claim` — that host must hold the
-  private provider keys and the dust-funded committed note.
+  provider account id (base58) for create and mapping.
+- Provider host: private provider account when `PROVIDER_PRIVACY=1` alone
+  (claim + dust on that host). Full privacy creates both private accounts on
+  the user host in one session; claim also runs there (see D38.8).
 - Eligibility verify stays on the provider host; Delivery wire unchanged.
 
 Do not copy full wallet storage between hosts. Export the private provider
-account id (and VPK only if a user-host shield path is chosen) into the run
-manifest the way public payee ids are shared today.
+account id into the run manifest the way public payee ids are shared today.
 
 ## Prerequisites
 
@@ -144,7 +143,7 @@ Out of scope:
 | D38.5 | Lifecycle submit path | Store E2E user-callable LIP-155 ops (vault init/deposit, create, close, claim) use `payment_streams_module` `chainAction` for both public and privacy profiles (`E2E_LIFECYCLE_VIA=chainaction` default). `seed_localnet_fixture` remains for coordination only (manifest write, clock sync, pinata funding). Do not keep a public-seed vs privacy-chainAction split. |
 | D38.6 | Phase A vs B | Phase A (owner-only) can start now that Step 36 is complete. Phase B (provider / full) requires Step 37 (complete). |
 | D38.7 | `registerProviderMapping` Store E2E | This step owns dual-host Store mapping under privacy profiles. Step 37 owns encoding smoke only (D37.12). Wire mapping in `run_local_e2e.py` before paid Store query when `PROVIDER_PRIVACY=1`. |
-| D38.8 | Dual-host + funding inherit | Private owner keys and owner pre-shield on user host. Private provider keys, dust pre-shield, and claim on provider host (`cfg_provider`). AT-init public only. Private-provider claim_balance uses vault_holding drop. |
+| D38.8 | Dual-host + funding inherit | Private owner keys and owner pre-shield on user host. `PROVIDER_PRIVACY` only: private provider keys, dust, and claim on provider host. Full privacy: create both private accounts in one user-host session (shared wallet seed cannot mint a second private id on the other host); dust and claim on user host; mapping still uses the private provider id. AT-init public only. Private-provider claim_balance uses vault_holding drop. |
 | D38.9 | On-chain confirmation principle | Every `chainAction` op whose next step reads the state it writes is verified on-chain, not by the wallet submit acknowledgement. `await_chain_action_inclusion` always polls the sequencer on localnet; `E2E_ALLOW_FIRE_AND_FORGET=1` restores the legacy skip only for non-local chains where `getTransaction` lags. Close polls `stream_closed_on_chain`; claim polls provider balance; vault init polls `vault_config_present`; deposit waits on the init tx. See [E2E.md](../../journeys/E2E.md#on-chain-confirmation-principle). |
 
 ## Risk
@@ -176,18 +175,18 @@ Exact Make alias names may follow the module pattern
 
 ## Deliverables
 
-- [ ] Store orchestrator respects `OWNER_PRIVACY` and `PROVIDER_PRIVACY`
+- [x] Store orchestrator respects `OWNER_PRIVACY` and `PROVIDER_PRIVACY`
   (including dual-host key placement and dust pre-shield, D38.8).
 - [x] Phase A: Store local × `OWNER_PRIVACY=1` green (orchestrator + Make alias;
   verified locally).
-- [ ] Phase B: Store local × `PROVIDER_PRIVACY=1` and both flags green, including
+- [x] Phase B: Store local × `PROVIDER_PRIVACY=1` and both flags green, including
   `registerProviderMapping` → prepare → paid `storeQuery` → settlement (D38.7).
 - [x] Public Store local remains green.
-- [x] [E2E.md](../../journeys/E2E.md) documents Store owner-privacy recipe (Phase A).
+- [x] [E2E.md](../../journeys/E2E.md) documents Store privacy profile recipes.
 - [x] [verification-matrix.md](../../reference/verification-matrix.md) lists
-  Store owner-privacy gate (optional until promoted).
-- [x] [scripts/README.md](../../scripts/README.md) and Make alias
-  `verify-store-local-owner-privacy` for Phase A.
+  Store privacy gates (optional until promoted).
+- [x] [scripts/README.md](../../scripts/README.md) and Make aliases for Store
+  owner / provider / full privacy.
 - [x] [index.md](../index.md) and [AGENTS.md](../../AGENTS.md) list Step 38.
 - [ ] Optional Phase C: testnet Store privacy recorded or explicitly deferred
   with rationale.
@@ -196,17 +195,16 @@ Exact Make alias names may follow the module pattern
 
 - [x] Paid Store queries succeed for a `PseudonymousFunder` vault owner on
   localnet (Phase A).
-- [ ] Paid Store queries succeed with private provider claim on localnet
+- [x] Paid Store queries succeed with private provider claim on localnet
   (Phase B), with `registerProviderMapping` wired to the private payee id and
   claim confirmed via vault_holding drop.
-- [ ] Full privacy mode Store local green:
+- [x] Full privacy mode Store local green:
   `OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`.
 - [x] No Delivery wire or hook shape change required for the above (or any
   unexpected change is documented as a decision).
-- [x] Public Store and module (public) regressions green for Phase A.
-  Module privacy gates remain Step 36/37; Store provider privacy is Phase B.
-- [ ] Docs and plan index updated; packet moved to `docs/plan/completed/` when
-  phases A and B pass.
+- [x] Public Store local green after Phase B. Module privacy gates remain
+  Step 36/37.
+- [x] Docs and plan index updated; packet moved to `docs/plan/completed/`.
 
 ## Known limitations
 
@@ -224,11 +222,11 @@ Exact Make alias names may follow the module pattern
 
 ## Related
 
-- [step-36-payer-funder-unlinkability.md](../completed/step-36-payer-funder-unlinkability.md) —
+- [step-36-payer-funder-unlinkability.md](step-36-payer-funder-unlinkability.md) —
   owner privacy product; module `OWNER_PRIVACY`.
-- [step-37-payee-receiver-privacy.md](../completed/step-37-payee-receiver-privacy.md) —
+- [step-37-payee-receiver-privacy.md](step-37-payee-receiver-privacy.md) —
   provider privacy product; module `PROVIDER_PRIVACY`; D37.9–D37.12.
-- [step-33-store-e2e-fresh-vault.md](../completed/step-33-store-e2e-fresh-vault.md) —
+- [step-33-store-e2e-fresh-vault.md](step-33-store-e2e-fresh-vault.md) —
   Store fresh vault and sizing baseline.
 - [E2E.md](../../journeys/E2E.md) — recipe SSOT; privacy as profile overlays.
 - [PRIVACY_ENHANCED_JOURNEY.md](../../journeys/PRIVACY_ENHANCED_JOURNEY.md) —

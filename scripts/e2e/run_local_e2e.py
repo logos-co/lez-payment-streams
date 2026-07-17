@@ -2099,31 +2099,55 @@ def fund_owner_via_fixture(
     )
 
 
+def _normalize_private_account_hex(cfg: Path, account_raw: str) -> tuple[str, str]:
+    """Return (hex, base58) for a create_account_private result."""
+    account_hex = account_raw.strip()
+    if len(account_hex) != 64:
+        account_hex = account_id_to_hex(cfg, account_hex)
+    account_b58 = account_id_to_base58(cfg, account_hex)
+    return account_hex, account_b58
+
+
 def setup_store_owner_privacy_accounts(
     cfg_user: Path,
     cfg_provider: Path,
-    repo: Path,
+    _repo: Path,
     manifest_path: Path,
     manifest: dict,
     artifact: Path,
 ) -> None:
-    """Create public funder + private vault owner; keep fixture public provider (Phase A)."""
-    if provider_privacy_enabled():
-        raise E2EError(
-            "PROVIDER_PRIVACY=1 is Step 38 Phase B; this orchestrator path is Phase A "
-            "(OWNER_PRIVACY only). Unset PROVIDER_PRIVACY."
-        )
+    """Create public funder + private vault owner on the user host (Step 38 Phase A/B).
+
+    When PROVIDER_PRIVACY=1 as well, also create the private provider in the same
+    in-memory wallet session. Dual-host create_account_private against a shared
+    seed otherwise regenerates the first private account id on the other host.
+    """
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
-    narrator.step("Creating public funder and private vault owner (OWNER_PRIVACY=1)")
+    if provider_privacy_enabled():
+        narrator.step(
+            "Creating public funder, private vault owner, and private provider "
+            "(OWNER_PRIVACY=1 PROVIDER_PRIVACY=1; same wallet session)"
+        )
+    else:
+        narrator.step("Creating public funder and private vault owner (OWNER_PRIVACY=1)")
     funder_raw = create_account(cfg_user, private=False)
     funder_b58 = account_id_to_base58(cfg_user, funder_raw)
-    owner_hex = create_account(cfg_user, private=True)
-    if len(owner_hex) != 64:
-        # create_account_private may return base58; normalize to hex + base58.
-        owner_hex = account_id_to_hex(cfg_user, owner_hex)
-    owner_b58 = account_id_to_base58(cfg_user, owner_hex)
+    owner_hex, owner_b58 = _normalize_private_account_hex(
+        cfg_user, create_account(cfg_user, private=True)
+    )
+    provider_hex = ""
+    provider_b58 = str(manifest.get("provider_account_id") or "").strip()
+    if provider_privacy_enabled():
+        provider_hex, provider_b58 = _normalize_private_account_hex(
+            cfg_user, create_account(cfg_user, private=True)
+        )
+        if provider_b58 == owner_b58:
+            raise E2EError(
+                "create_account_private returned duplicate owner/provider private ids "
+                f"in one session (owner={owner_b58})"
+            )
     logoscore_cmd(cfg_user, "call", "logos_execution_zone", "save", timeout=60)
-    # Provider host shares wallet storage; reopen so keys are visible if needed.
+    # Shared wallet storage: reopen provider so funder / private keys are visible.
     release_logoscore_wallet(cfg_provider)
     reopen_logoscore_wallet(cfg_provider, seq_url)
     reload_payment_streams_wallet(cfg_user, seq_url)
@@ -2135,6 +2159,10 @@ def setup_store_owner_privacy_accounts(
     manifest["owner_account_id_hex"] = owner_hex
     manifest["privacy_tier"] = 1
     manifest["owner_privacy"] = 1
+    if provider_privacy_enabled():
+        manifest["provider_account_id"] = provider_b58
+        manifest["provider_account_id_hex"] = provider_hex
+        manifest["provider_privacy"] = 1
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     log_artifact(
         artifact,
@@ -2144,8 +2172,145 @@ def setup_store_owner_privacy_accounts(
         owner_account_id=owner_b58,
         provider_account_id=manifest.get("provider_account_id"),
         privacy_tier=1,
+        provider_privacy=1 if provider_privacy_enabled() else 0,
     )
-    narrator.ok(f"Private vault owner ready (funder={funder_b58[:8]}… owner={owner_b58[:8]}…)")
+    if provider_privacy_enabled():
+        log_artifact(
+            artifact,
+            "provider_privacy_accounts",
+            True,
+            provider_account_id=provider_b58,
+            provider_account_id_hex=provider_hex,
+            owner_account_id=owner_b58,
+            via="same_session_as_owner",
+        )
+        narrator.ok(
+            f"Private owner+provider ready (funder={funder_b58[:8]}… "
+            f"owner={owner_b58[:8]}… provider={provider_b58[:8]}…)"
+        )
+    else:
+        narrator.ok(f"Private vault owner ready (funder={funder_b58[:8]}… owner={owner_b58[:8]}…)")
+
+
+def setup_store_provider_privacy_accounts(
+    cfg_user: Path,
+    cfg_provider: Path,
+    manifest_path: Path,
+    manifest: dict,
+    artifact: Path,
+) -> None:
+    """Create private provider (Step 38 Phase B; D38.8).
+
+    PROVIDER_PRIVACY-only: create on the provider host (claim host).
+    Combo with OWNER_PRIVACY: already created in setup_store_owner_privacy_accounts.
+    """
+    if owner_privacy_enabled() and int(manifest.get("provider_privacy") or 0) == 1:
+        narrator.step("Private provider already created with vault owner (same wallet session)")
+        narrator.ok(f"Using provider {str(manifest.get('provider_account_id', ''))[:8]}…")
+        return
+
+    seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
+    narrator.step("Creating private provider account on provider host (PROVIDER_PRIVACY=1)")
+    logoscore_cmd(cfg_user, "call", "logos_execution_zone", "save", timeout=60)
+    logoscore_cmd(cfg_provider, "call", "logos_execution_zone", "save", timeout=60)
+    release_logoscore_wallet(cfg_user)
+    release_logoscore_wallet(cfg_provider)
+    try:
+        reopen_logoscore_wallet(cfg_provider, seq_url)
+        provider_hex, provider_b58 = _normalize_private_account_hex(
+            cfg_provider, create_account(cfg_provider, private=True)
+        )
+        logoscore_cmd(cfg_provider, "call", "logos_execution_zone", "save", timeout=60)
+    finally:
+        reopen_logoscore_wallet(cfg_user, seq_url)
+        reopen_logoscore_wallet(cfg_provider, seq_url)
+        reload_payment_streams_wallet(cfg_user, seq_url)
+        reload_payment_streams_wallet(cfg_provider, seq_url)
+    sync_wallet(cfg_provider, seq_url)
+
+    manifest["provider_account_id"] = provider_b58
+    manifest["provider_account_id_hex"] = provider_hex
+    manifest["provider_privacy"] = 1
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    log_artifact(
+        artifact,
+        "provider_privacy_accounts",
+        True,
+        provider_account_id=provider_b58,
+        provider_account_id_hex=provider_hex,
+        owner_account_id=manifest.get("owner_account_id"),
+        via="provider_host",
+    )
+    narrator.ok(f"Private provider ready ({provider_b58[:8]}…)")
+
+
+def transfer_shielded_owned(
+    cfg: Path,
+    from_account: str,
+    to_account: str,
+    amount: int,
+    artifact: Path,
+    *,
+    phase: str,
+    label: str,
+    seq_url: str,
+) -> None:
+    """Public → private shield via logos_execution_zone.transfer_shielded_owned."""
+    from_hex = account_id_to_hex(cfg, from_account)
+    to_hex = account_id_to_hex(cfg, to_account)
+    amt_token = f"s:{amount_le16_hex(amount)}"
+    amt_file = Path(os.environ.get("TMPDIR", "/tmp")) / f"ps-store-shield-{uuid.uuid4().hex}.amt"
+    amt_file.write_text(amt_token)
+    try:
+        r = logoscore_cmd(
+            cfg,
+            "call",
+            "logos_execution_zone",
+            "transfer_shielded_owned",
+            from_hex,
+            to_hex,
+            f"@{amt_file}",
+            timeout=e2e_subprocess_timeout_s(),
+        )
+    finally:
+        try:
+            amt_file.unlink()
+        except OSError:
+            pass
+    parsed = call_result(r)
+    inner = chain_action_result_inner(parsed)
+    if not isinstance(inner, dict):
+        inner = parsed.get("result") if isinstance(parsed.get("result"), dict) else parsed
+    ok = False
+    tx_hash = None
+    if isinstance(inner, dict):
+        ok = inner.get("status") == "ok" or inner.get("success") is True
+        tx_hash = inner.get("tx_hash") or inner.get("txHash")
+        if isinstance(tx_hash, str):
+            tx_hash = tx_hash.strip() or None
+    if not ok and isinstance(parsed.get("result"), str):
+        try:
+            nested = json.loads(parsed["result"])
+            ok = nested.get("status") == "ok" or nested.get("success") is True
+            tx_hash = nested.get("tx_hash") or nested.get("txHash") or tx_hash
+        except json.JSONDecodeError:
+            pass
+    log_artifact(
+        artifact,
+        phase,
+        ok,
+        amount=amount,
+        from_hex=from_hex,
+        to_hex=to_hex,
+        tx_hash=tx_hash,
+        raw=parsed if not ok else None,
+    )
+    if not ok:
+        raise E2EError(f"transfer_shielded_owned ({phase}) failed: {parsed}")
+    if tx_hash:
+        wait_for_sequencer_tx(seq_url, str(tx_hash), artifact, label=phase)
+    sync_wallet(cfg, seq_url)
+    narrator.ok(f"Pre-shielded {amount} tokens into {label}")
 
 
 def pre_shield_to_private_owner(
@@ -2159,68 +2324,74 @@ def pre_shield_to_private_owner(
     owner = str(manifest.get("owner_account_id") or "").strip()
     if not funder or not owner:
         raise E2EError("pre_shield requires funder_account_id and owner_account_id")
-    funder_hex = account_id_to_hex(cfg_user, funder)
-    owner_hex = account_id_to_hex(cfg_user, owner)
-    amt_token = f"s:{amount_le16_hex(amount)}"
-    amt_file = Path(os.environ.get("TMPDIR", "/tmp")) / f"ps-store-preshield-{uuid.uuid4().hex}.amt"
-    amt_file.write_text(amt_token)
-    try:
-        r = logoscore_cmd(
-            cfg_user,
-            "call",
-            "logos_execution_zone",
-            "transfer_shielded_owned",
-            funder_hex,
-            owner_hex,
-            f"@{amt_file}",
-            timeout=e2e_subprocess_timeout_s(),
-        )
-    finally:
-        try:
-            amt_file.unlink()
-        except OSError:
-            pass
-    parsed = call_result(r)
-    inner = chain_action_result_inner(parsed)
-    # transfer_shielded_owned returns wallet-shaped result, not always chainAction wrapper.
-    if not isinstance(inner, dict):
-        inner = parsed.get("result") if isinstance(parsed.get("result"), dict) else parsed
-    ok = False
-    tx_hash = None
-    if isinstance(inner, dict):
-        ok = inner.get("status") == "ok" or inner.get("success") is True
-        tx_hash = inner.get("tx_hash") or inner.get("txHash")
-        if isinstance(tx_hash, str):
-            tx_hash = tx_hash.strip() or None
-    # Some logoscore wrappers nest again under result string.
-    if not ok and isinstance(parsed.get("result"), str):
-        try:
-            nested = json.loads(parsed["result"])
-            ok = nested.get("status") == "ok" or nested.get("success") is True
-            tx_hash = nested.get("tx_hash") or nested.get("txHash") or tx_hash
-        except json.JSONDecodeError:
-            pass
-    log_artifact(
+    transfer_shielded_owned(
+        cfg_user,
+        funder,
+        owner,
+        amount,
         artifact,
-        "pre_shield",
-        ok,
-        amount=amount,
-        from_hex=funder_hex,
-        to_hex=owner_hex,
-        tx_hash=tx_hash,
-        raw=parsed if not ok else None,
+        phase="pre_shield",
+        label="private vault owner",
+        seq_url=manifest.get("sequencer_url", "http://127.0.0.1:3040"),
     )
-    if not ok:
-        raise E2EError(f"transfer_shielded_owned (pre_shield) failed: {parsed}")
-    if tx_hash:
-        wait_for_sequencer_tx(
-            manifest.get("sequencer_url", "http://127.0.0.1:3040"),
-            str(tx_hash),
+
+
+def dust_pre_shield_private_provider(
+    cfg_provider: Path,
+    cfg_user: Path,
+    manifest: dict,
+    artifact: Path,
+) -> None:
+    """Dust-shield into private provider so claim has a committed note (D37.11 / D38.8)."""
+    provider = str(manifest.get("provider_account_id") or "").strip()
+    if not provider:
+        raise E2EError("provider dust pre-shield requires provider_account_id")
+    # Prefer public funder when OWNER_PRIVACY; else public vault owner.
+    from_acct = str(manifest.get("funder_account_id") or manifest.get("owner_account_id") or "").strip()
+    if not from_acct:
+        raise E2EError("provider dust pre-shield requires funder or owner account id")
+    seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
+    narrator.step("Dust pre-shielding private provider (committed note for claim)")
+    # Combo full privacy: private provider was created on the user host in the
+    # same session as the owner; dust there (KeyNotFound=8 on provider host).
+    # PROVIDER_PRIVACY-only: dust on the provider host that holds the NSK.
+    if owner_privacy_enabled():
+        transfer_shielded_owned(
+            cfg_user,
+            from_acct,
+            provider,
+            1,
             artifact,
-            label="pre_shield",
+            phase="provider_dust_pre_shield",
+            label="private provider account",
+            seq_url=seq_url,
         )
-    sync_wallet(cfg_user, manifest.get("sequencer_url", "http://127.0.0.1:3040"))
-    narrator.ok(f"Pre-shielded {amount} tokens into private vault owner")
+        logoscore_cmd(cfg_user, "call", "logos_execution_zone", "save", timeout=60)
+        release_logoscore_wallet(cfg_provider)
+        reopen_logoscore_wallet(cfg_provider, seq_url)
+        reload_payment_streams_wallet(cfg_provider, seq_url)
+        return
+
+    logoscore_cmd(cfg_user, "call", "logos_execution_zone", "save", timeout=60)
+    release_logoscore_wallet(cfg_user)
+    try:
+        reopen_logoscore_wallet(cfg_provider, seq_url)
+        reload_payment_streams_wallet(cfg_provider, seq_url)
+        transfer_shielded_owned(
+            cfg_provider,
+            from_acct,
+            provider,
+            1,
+            artifact,
+            phase="provider_dust_pre_shield",
+            label="private provider account",
+            seq_url=seq_url,
+        )
+        logoscore_cmd(cfg_provider, "call", "logos_execution_zone", "save", timeout=60)
+    finally:
+        reopen_logoscore_wallet(cfg_user, seq_url)
+        reload_payment_streams_wallet(cfg_user, seq_url)
+        reload_payment_streams_wallet(cfg_provider, seq_url)
 
 
 def vault_config_present(cfg: Path, manifest: dict) -> bool:
@@ -2828,33 +2999,47 @@ def run_auth_transfer_ensure(
     ensure_script = repo / "scripts" / "auth-transfer-ensure.sh"
     if not ensure_script.is_file():
         raise E2EError(f"missing auth-transfer ensure script: {ensure_script}")
-    # D37.11 / D38.8: AT-init public accounts only. Under OWNER_PRIVACY the public
-    # funder is AT-initialized instead of the private vault owner.
-    at_owner = str(manifest.get("funder_account_id") or manifest["owner_account_id"])
+    # D37.11 / D38.8: AT-init public accounts only.
+    skip_owner = owner_privacy_enabled()
+    skip_provider = provider_privacy_enabled()
+    at_owner = str(manifest.get("owner_account_id") or "").strip()
+    at_provider = str(manifest.get("provider_account_id") or "").strip()
     if owner_privacy_enabled():
+        # Public funder stands in for the private vault owner.
         at_owner = str(manifest.get("funder_account_id") or "").strip()
         if not at_owner:
             raise E2EError("OWNER_PRIVACY=1 requires funder_account_id before AT-ensure")
+        # Store fixture pinata (fund-owner) needs an AT-initialized public funder.
+        # Private vault owner still skips AT. Private provider also skips.
+        skip_owner = False
+        if provider_privacy_enabled():
+            skip_provider = True
+    if provider_privacy_enabled() and not owner_privacy_enabled():
+        skip_provider = True
+    if not skip_owner and not at_owner:
+        raise E2EError("AT-ensure requires owner account id")
+    if not skip_provider and not at_provider:
+        raise E2EError("AT-ensure requires provider account id")
     release_logoscore_wallet(cfg_user)
     release_logoscore_wallet(cfg_provider)
     try:
         env = os.environ.copy()
-        proc = run(
-            [
-                str(ensure_script),
-                "--owner",
-                at_owner,
-                "--provider",
-                str(manifest["provider_account_id"]),
-                "--artifact",
-                str(artifact),
-                "--wallet-home",
-                str(wallet_home),
-            ],
-            cwd=repo,
-            env=env,
-            timeout=600,
-        )
+        cmd = [
+            str(ensure_script),
+            "--artifact",
+            str(artifact),
+            "--wallet-home",
+            str(wallet_home),
+        ]
+        if skip_owner:
+            cmd.append("--skip-owner")
+        else:
+            cmd.extend(["--owner", at_owner])
+        if skip_provider:
+            cmd.append("--skip-provider")
+        else:
+            cmd.extend(["--provider", at_provider])
+        proc = run(cmd, cwd=repo, env=env, timeout=600)
         if proc.returncode != 0:
             raise E2EError(f"auth-transfer-ensure failed: {proc.stderr or proc.stdout}")
     finally:
@@ -3258,15 +3443,23 @@ def demo_teardown(
         "vault_id": vault_id,
         "stream_id": stream_id,
     }
-    # PF claim forces a private owner slot (StreamAuthority6). Dual-host Store
-    # opens shared wallet storage, but the private owner NSK is created on the
-    # user daemon; provider-host resolve fails (wallet error 7). Claim from the
-    # user host when OWNER_PRIVACY=1 (fixture provider keys are in the same
-    # wallet). Public provider claim stays on cfg_provider.
-    claim_cfg = cfg_user if owner_privacy_enabled() else cfg_provider
+    # Claim host selection (dual-host + shared wallet seed):
+    # - PROVIDER_PRIVACY only: private provider NSK created on cfg_provider.
+    # - OWNER_PRIVACY only: PF owner slot NSK on cfg_user.
+    # - Both: private owner+provider created in one user-host session (shared
+    #   seed cannot mint a second private id on the other host). Claim on
+    #   cfg_user; shared-storage reopen on provider does not reload NSKs.
+    if owner_privacy_enabled() and provider_privacy_enabled():
+        claim_cfg = cfg_user
+    elif provider_privacy_enabled():
+        claim_cfg = cfg_provider
+    elif owner_privacy_enabled():
+        claim_cfg = cfg_user
+    else:
+        claim_cfg = cfg_provider
     claim_timeout = (
         e2e_subprocess_timeout_s()
-        if owner_privacy_enabled()
+        if owner_privacy_enabled() or provider_privacy_enabled()
         else testnet_chain_action_timeout_s()
     )
     r = logoscore_cmd(
@@ -3287,6 +3480,7 @@ def demo_teardown(
         "tx_hash": tx_claim,
         "stream_id": stream_id,
         "via": "chainAction_claim",
+        "provider_privacy": 1 if provider_privacy_enabled() else 0,
     }
     log_artifact(
         artifact,
@@ -3296,21 +3490,21 @@ def demo_teardown(
         accrued_lo=accrued,
         tx_hash=tx_claim,
         stream_id=stream_id,
+        provider_privacy=1 if provider_privacy_enabled() else 0,
     )
     emit_claim_with_demo_alias(artifact, ok_claim, claim_extra)
     if not ok_claim:
         raise E2EError(f"demo_claim failed: {parsed}")
     if tx_claim:
         await_chain_action_inclusion(seq_url, parsed, artifact, label="demo_claim")
-    # On-chain confirmation principle: the claim is only "applied" once the
-    # provider balance actually increases (and the stream's accrued drops) on
-    # chain. Sequencer inclusion alone is not enough (mirror lag), so poll the
-    # on-chain balances directly instead of trusting the submit acknowledgement.
+    # On-chain confirmation: public provider → balance rise; private provider →
+    # vault_holding drop (destination is shielded; D37.9 / D38.8).
     claim_poll_attempts = int(os.environ.get("E2E_CLAIM_STATE_POLL_ATTEMPTS", "10"))
     received = 0
     vault_drop = 0
     post_provider = pre_provider
     post_vault = pre_vault
+    claim_applied = False
     for poll_idx in range(claim_poll_attempts):
         sync_wallet(cfg_user, seq_url)
         sync_wallet(cfg_provider, seq_url)
@@ -3318,23 +3512,29 @@ def demo_teardown(
         post_provider = account_balance_seq(seq_url, manifest["provider_account_id"])
         post_vault, _ = vault_status_balances(cfg_user, manifest)
         received = max(0, post_provider - pre_provider)
-        if received > 0:
+        vault_drop = pre_vault - post_vault
+        if provider_privacy_enabled():
+            claim_applied = vault_drop > 0
+        else:
+            claim_applied = received > 0
+        if claim_applied:
             break
         time.sleep(1)
-    vault_drop = pre_vault - post_vault
-    bal_extra = {
+    bal_extra: dict[str, Any] = {
         "received": received,
         "provider_pre": pre_provider,
         "provider_post": post_provider,
         "vault_pre": pre_vault,
         "vault_post": post_vault,
+        "vault_drop": vault_drop,
         "attempts": claim_poll_attempts,
+        "provider_private": bool(provider_privacy_enabled()),
     }
-    if received > 0 and vault_drop != received:
+    if not provider_privacy_enabled() and received > 0 and vault_drop != received:
         bal_extra["hint"] = "vault_drop_mismatch"
-    emit_module_phase(artifact, "claim_balance", received > 0, bal_extra)
+    emit_module_phase(artifact, "claim_balance", claim_applied, bal_extra)
     log_vault_liquidity(cfg_user, manifest, artifact, phase="vault_liquidity_after_claim")
-    if received == 0:
+    if not claim_applied:
         is_testnet = os.environ.get("CHAIN", "local").strip().lower() == "testnet"
         claim_optional = os.environ.get(
             "E2E_CLAIM_OPTIONAL", "1" if is_testnet else "0"
@@ -3353,6 +3553,12 @@ def demo_teardown(
                 },
             )
             return
+        if provider_privacy_enabled():
+            raise E2EError(
+                f"demo_claim tx accepted but vault_holding did not drop on chain "
+                f"after {claim_poll_attempts} polls (pre={pre_vault} post={post_vault} "
+                f"tx={tx_claim})"
+            )
         raise E2EError(
             f"demo_claim tx accepted but provider balance did not increase on chain "
             f"after {claim_poll_attempts} polls (pre={pre_provider} post={post_provider} "
@@ -3377,6 +3583,14 @@ def user_prepare_proof(
         provider_b58,
     )
     ensure_ok(call_result(r), "registerProviderMapping")
+    log_artifact(
+        artifact,
+        "register_provider_mapping",
+        True,
+        provider_peer_id=provider_peer_id,
+        provider_account_id=provider_b58,
+        provider_privacy=1 if provider_privacy_enabled() else 0,
+    )
 
     chain = os.environ.get("CHAIN", "local").strip().lower()
     vault_id = int(manifest["vault_id"])
@@ -3420,7 +3634,11 @@ def user_prepare_proof(
                 wait_for_sequencer_tx(seq_url, tx_topup, artifact, label="chainAction_topUpStream")
             continue
 
-        prepare_timeout = 240 if chain == "testnet" or owner_privacy_enabled() else 120
+        prepare_timeout = (
+            240
+            if chain == "testnet" or owner_privacy_enabled() or provider_privacy_enabled()
+            else 120
+        )
         r = logoscore_cmd(
             cfg,
             "call",
@@ -3837,10 +4055,28 @@ def main() -> int:
                 manifest.clear()
                 manifest.update(json.loads(manifest_path.read_text()))
 
-            if owner_privacy_enabled():
+            if provider_privacy_enabled():
+                narrator.phase("Provider Privacy Setup")
+                setup_store_provider_privacy_accounts(
+                    cfg_user, cfg_provider, manifest_path, manifest, artifact
+                )
+                manifest.clear()
+                manifest.update(json.loads(manifest_path.read_text()))
+
+            if owner_privacy_enabled() and provider_privacy_enabled():
+                narrator.step(
+                    "Ensuring public funder under authenticated_transfer "
+                    "(private owner and private provider are not AT-initialized)"
+                )
+            elif owner_privacy_enabled():
                 narrator.step(
                     "Ensuring public funder and provider under authenticated_transfer "
                     "(private owner is not AT-initialized)"
+                )
+            elif provider_privacy_enabled():
+                narrator.step(
+                    "Ensuring public owner under authenticated_transfer "
+                    "(private provider is not AT-initialized)"
                 )
             else:
                 narrator.step("Ensuring owner and provider accounts under authenticated_transfer")
@@ -3852,13 +4088,19 @@ def main() -> int:
             if owner_privacy_enabled() and not store_reuse_baseline_vault():
                 deposit_lo = seed_deposit_amount_lo(manifest)
                 funder = str(manifest["funder_account_id"])
+                # +1 leaves dust for private provider when PROVIDER_PRIVACY=1.
+                funder_target = deposit_lo + 50 + (1 if provider_privacy_enabled() else 0)
                 owner_target = deposit_lo + 50
-                narrator.step(f"Funding public funder via pinata (≥{owner_target} lo)")
+                narrator.step(f"Funding public funder via pinata (≥{funder_target} lo)")
                 fund_public_account_via_fixture(
-                    repo, cfg_user, cfg_provider, manifest, funder, owner_target
+                    repo, cfg_user, cfg_provider, manifest, funder, funder_target
                 )
                 narrator.step("Pre-shielding deposit buffer into private vault owner")
                 pre_shield_to_private_owner(cfg_user, manifest, artifact, owner_target)
+                if provider_privacy_enabled():
+                    dust_pre_shield_private_provider(
+                        cfg_provider, cfg_user, manifest, artifact
+                    )
                 sync_wallet(cfg_user, seq_url)
                 vault_id = resolve_empty_vault_id_for_owner(cfg_user, manifest)
                 refresh_manifest_vault_baseline(repo, manifest_path, manifest, vault_id)
@@ -3875,6 +4117,21 @@ def main() -> int:
                     privacy_tier=1,
                 )
                 narrator.ok(f"Vault {vault_id} planned for private owner")
+            elif provider_privacy_enabled() and not store_reuse_baseline_vault():
+                # Dust before vault deposit so the public owner still has balance
+                # (error 9 = InsufficientFunds if dust runs after deposit spends the faucet).
+                deposit_lo = seed_deposit_amount_lo(manifest)
+                owner_target = deposit_lo + 50
+                narrator.step(f"Funding public owner via pinata (≥{owner_target} lo)")
+                fund_public_account_via_fixture(
+                    repo,
+                    cfg_user,
+                    cfg_provider,
+                    manifest,
+                    str(manifest["owner_account_id"]),
+                    owner_target,
+                )
+                dust_pre_shield_private_provider(cfg_provider, cfg_user, manifest, artifact)
 
             if not store_reuse_baseline_vault() and e2e_vault_ensure_via() == "chainaction":
                 narrator.phase("Vault Ensure")

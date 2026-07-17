@@ -144,7 +144,38 @@ Expected: exit code 0; phases include `owner_privacy_accounts`, `pre_shield`,
 `vault_init` with `privacy_tier=1`, paid Store query, and settlement. Sets
 `RISC0_DEV_MODE=1` by default. Close and claim `chainAction`s run on the user
 host because the private owner NSK lives there; the provider account id stays
-public. `PROVIDER_PRIVACY=1` on Store is Phase B (not wired yet).
+public.
+
+## Store × localnet (provider privacy)
+
+Optional privacy profile overlay (Step 38 Phase B). Public vault owner; private
+provider claim destination. Maps the Store peer to the private payee id before
+prepare.
+
+```bash
+SKIP_BUILD=1 MODE=store CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+```
+
+Make alias: `make verify-store-local-provider-privacy`.
+
+Expected: exit code 0; phases include `provider_privacy_accounts`,
+`provider_dust_pre_shield`, `register_provider_mapping`, paid Store query, and
+claim confirmed via `vault_holding` drop (not public provider balance).
+
+## Store × localnet (full privacy)
+
+Both privacy flags together (Step 38 end goal).
+
+```bash
+SKIP_BUILD=1 MODE=store CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+```
+
+Make alias: `make verify-store-local-full-privacy`.
+
+Expected: PF vault owner plus private provider; mapping + paid Store query +
+settlement with `vault_holding` claim verify. Private owner and provider are
+created in one user-host wallet session (shared seed); close and claim both
+run on the user host.
 
 Narrative walkthrough: [PRIVACY_ENHANCED_JOURNEY.md](PRIVACY_ENHANCED_JOURNEY.md).
 
@@ -239,8 +270,8 @@ Gate history: [step-33-testnet-gate-log.md](../plan/completed/step-33-testnet-ga
 - `PAYMENT_STREAMS_GUEST_BIN`: Path to compiled guest ELF.
 - `MODE`: `store` (default) or `module` (single-host module E2E only).
 - `CHAIN`: `local` or `testnet`.
-- `OWNER_PRIVACY`: `0` (default) or `1` for PseudonymousFunder vault owner (module mode).
-- `PROVIDER_PRIVACY`: `0` (default) or `1` for private provider claim (Step 37; module mode).
+- `OWNER_PRIVACY`: `0` (default) or `1` for PseudonymousFunder vault owner (module and Store).
+- `PROVIDER_PRIVACY`: `0` (default) or `1` for private provider claim (module and Store; Step 37/38).
 - `PRIVACY`: alias for `OWNER_PRIVACY=1` when `OWNER_PRIVACY` is unset.
 - `SKIP_BUILD=1`: Skip `.lgx` rebuilds on subsequent runs.
 - `E2E_CLAIM_OPTIONAL`: Testnet claim strictness (default `1`; use `0` for strict).

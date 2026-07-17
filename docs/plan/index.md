@@ -94,6 +94,7 @@ Dual-host demo coordination stays in host scripts
 | 33 | Store E2E fresh vault + testnet sizing | [step-33-store-e2e-fresh-vault.md](completed/step-33-store-e2e-fresh-vault.md) |
 | 36 | Payer funder unlinkability via LEZ private execution | [step-36-payer-funder-unlinkability.md](completed/step-36-payer-funder-unlinkability.md) |
 | 37 | Payee receiver privacy via LEZ private execution | [step-37-payee-receiver-privacy.md](completed/step-37-payee-receiver-privacy.md) |
+| 38 | Store E2E privacy profiles (full privacy mode) | [step-38-store-privacy-e2e.md](completed/step-38-store-privacy-e2e.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
 [step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33).
@@ -109,7 +110,6 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | 32 | AT-init unify + Store claim phase | Active (signed off; D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
 | 34 | User Journey manual walkthrough (testnet CLI) | Active -- [step-34-user-journey-manual-walkthrough.md](upcoming/step-34-user-journey-manual-walkthrough.md) |
 | 35 | Developer Journey generalization (protocol-agnostic eligibility guide) | Active -- [step-35-developer-journey-generalization.md](upcoming/step-35-developer-journey-generalization.md) |
-| 38 | Store E2E privacy profiles (full privacy mode) | Active (Phase A after 36; Phase B after 37) -- [step-38-store-privacy-e2e.md](upcoming/step-38-store-privacy-e2e.md) |
 
 Ideas not yet steps: [raw-todos/](raw-todos/).
 

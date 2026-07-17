@@ -124,5 +124,11 @@ Maintainer-only (not integrator gates): `make verify-store-local-lifecycle` or
   `MODE=store CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run`
   (or `make verify-store-local-owner-privacy`). Phases include
   `owner_privacy_accounts`, `pre_shield`, and `privacy_tier=1` vault init.
-  Store provider privacy / full privacy remain Step 38 Phase B.
+  Store provider-privacy optional gate (Step 38 Phase B):
+  `MODE=store CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run`
+  (or `make verify-store-local-provider-privacy`). Claim confirms via
+  `vault_holding` drop; mapping phase `register_provider_mapping`.
+  Store full-privacy optional gate:
+  `MODE=store CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run`
+  (or `make verify-store-local-full-privacy`).
   Store: `e2e-*.log` (`store_query_success`, `store_query_missing_proof`, `claim`, …).
