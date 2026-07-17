@@ -1,0 +1,12 @@
+diff --git a/src/lez_core_module.cpp b/src/lez_core_module.cpp
+--- a/src/lez_core_module.cpp
++++ b/src/lez_core_module.cpp
+@@ -1027,7 +1027,7 @@
+ 
+ std::vector<uint8_t> LEZCoreModule::authenticated_transfer_elf() {
+     FfiProgram ffi_program{};
+-    WalletFfiError error = wallet_ffi_token_elf(&ffi_program);
++    WalletFfiError error = wallet_ffi_transfer_elf(&ffi_program);
+     if (error != SUCCESS) {
+         fprintf(stderr, "authenticated_transfer_elf: wallet FFI error %d\n", error);
+         return std::vector<uint8_t>{};

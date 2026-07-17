@@ -274,6 +274,11 @@ narr_ok "Sequencer ready"
 }
 
 narr_step "Starting logoscore, loading modules"
+if ps_is_privacy_e2e; then
+  export RISC0_DEV_MODE="${RISC0_DEV_MODE:-1}"
+  export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+  narr_verbose "PRIVACY=1 env: RISC0_DEV_MODE=$RISC0_DEV_MODE PAYMENT_STREAMS_GUEST_BIN=$PAYMENT_STREAMS_GUEST_BIN"
+fi
 logoscore stop 2>/dev/null || true
 sleep 2
 logoscore -D -m "$MODULES" -q >>"$DAEMON_LOG" 2>&1 &
@@ -340,10 +345,16 @@ logoscore_string_arg() {
 
 ps_pre_shield_to_private_owner() {
   local from_hex="$1" to_hex="$2" amount="$3"
-  local amt_hex line tx_hash
+  local amt_hex amt_file line tx_hash
+  # logoscore coerces all-digit hex to float; the s: prefix (stripped by the
+  # wallet patch) keeps the le16 encoding intact. Pass via @file so the CLI
+  # does not reinterpret the colon-bearing argv.
   amt_hex="s:$(amount_le16_hex "$amount")"
+  amt_file="$(mktemp "${TMPDIR:-/tmp}/ps-preshield-amt.XXXXXX")"
+  printf '%s' "$amt_hex" >"$amt_file"
   line="$(logoscore call logos_execution_zone transfer_shielded_owned \
-    "$from_hex" "$to_hex" "$amt_hex" 2>/dev/null | tail -1)"
+    "$from_hex" "$to_hex" "@$amt_file" 2>/dev/null | tail -1)"
+  rm -f "$amt_file"
   tx_hash="$(python3 -c '
 import json,sys
 try:

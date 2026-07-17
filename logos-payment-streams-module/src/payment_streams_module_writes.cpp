@@ -30,6 +30,10 @@ constexpr uint8_t kPrivacyTierPublic = 0;
 constexpr uint8_t kPrivacyTierPseudonymousFunder = 1;
 constexpr uint8_t kPrivacyTierReadFromChain = 255;
 constexpr uint32_t kFfiSuccess = 0u;
+// Private submit runs the privacy-preserving prover. Default LogosAPIClient
+// Timeout is 20s, which is too short even for RISC0_DEV_MODE stub receipts on
+// a cold path and far too short for real proving.
+constexpr int kPrivateSubmitTimeoutMs = 600000;
 
 enum class VaultIxLayout : uint8_t {
     InitOrDeposit3,
@@ -78,18 +82,31 @@ LogosAPIClient* walletQtClientOrNull(LogosAPI* api) {
     return api->getClient(QStringLiteral("logos_execution_zone"));
 }
 
-QString invokeWalletQtString(LogosAPIClient* client, const char* method, const QVariant& arg = {}) {
+QString invokeWalletQtString(LogosAPIClient* client,
+                             const char* method,
+                             const QVariant& arg = {},
+                             Timeout timeout = Timeout(),
+                             QString* errorOut = nullptr) {
     if (client == nullptr) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("logos_execution_zone client unavailable");
+        }
         return {};
     }
     const QString methodName = QString::fromUtf8(method);
     QVariant result;
     if (arg.isValid() && !arg.isNull()) {
-        result = client->invokeRemoteMethod(QStringLiteral("logos_execution_zone"), methodName, arg);
+        result = client->invokeRemoteMethod(
+            QStringLiteral("logos_execution_zone"), methodName, arg, timeout);
     } else {
-        result = client->invokeRemoteMethod(QStringLiteral("logos_execution_zone"), methodName);
+        result = client->invokeRemoteMethod(
+            QStringLiteral("logos_execution_zone"), methodName, QVariantList{}, timeout);
     }
     if (!result.isValid()) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("IPC returned invalid result (timeout or dispatch failure; timeout_ms=%1)")
+                            .arg(timeout.ms);
+        }
         return {};
     }
     return result.toString();
@@ -810,15 +827,25 @@ QString submitGenericPublic(LogosAPI* api,
 
 QString submitGenericPrivateViaFfi(LogosAPI* api, const QJsonObject& payload, QString* errorOut) {
     LogosAPIClient* qtClient = walletQtClientOrNull(api);
+    QString invokeErr;
+    // Must pass QString (not QByteArray): the wallet slot is std::string/QString.
+    // QByteArray variants fail QRemoteObjects dispatch and return an empty QString.
+    const QString payloadJson =
+        QString::fromUtf8(QJsonDocument(payload).toJson(QJsonDocument::Compact));
     const QString walletJson = invokeWalletQtString(
         qtClient,
         "send_generic_private_transaction_json",
-        QJsonDocument(payload).toJson(QJsonDocument::Compact));
+        payloadJson,
+        Timeout(kPrivateSubmitTimeoutMs),
+        &invokeErr);
     if (walletJson.isEmpty()) {
+        const QString msg = invokeErr.isEmpty()
+            ? QStringLiteral("send_generic_private_transaction_json returned empty")
+            : QStringLiteral("send_generic_private_transaction_json: %1").arg(invokeErr);
         if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("send_generic_private_transaction_json returned empty");
+            *errorOut = msg;
         }
-        return makeErrorJson(QStringLiteral("send_generic_private_transaction_json returned empty"));
+        return makeErrorJson(msg);
     }
     QJsonObject fields;
     return parseWalletSubmitJson(walletJson, &fields, errorOut);
@@ -885,9 +912,12 @@ QString buildAndSubmit(LogosExecutionZone& wallet,
     }
 
     if (privacyTier == kPrivacyTierPseudonymousFunder) {
-        QByteArray guestElf;
-        if (!loadGuestElfBytes(&guestElf, &loadErr)) {
-            return makeErrorJson(loadErr);
+        // Pass the guest ELF by path (or PAYMENT_STREAMS_GUEST_BIN in the wallet
+        // process). Embedding program_elf_hex (~700KB+) exceeds the practical
+        // QRemoteObjects payload size used for inter-module IPC and returns empty.
+        const QString guestPath = guestElfPath();
+        if (guestPath.isEmpty() || !QFile::exists(guestPath)) {
+            return makeErrorJson(QStringLiteral("guest ELF missing at %1").arg(guestPath));
         }
         QJsonObject payload;
         payload.insert(QStringLiteral("account_slots"),
@@ -896,20 +926,9 @@ QString buildAndSubmit(LogosExecutionZone& wallet,
                                                  accountIds,
                                                  signing));
         payload.insert(QStringLiteral("instruction_hex"), QString::fromLatin1(instructionBytes.toHex()));
-        payload.insert(QStringLiteral("program_elf_hex"), QString::fromLatin1(guestElf.toHex()));
+        payload.insert(QStringLiteral("program_elf_path"), guestPath);
         if (vaultCtx != nullptr && vaultCtx->requireAuthTransferDep) {
-            const QList<uint8_t> authElf = walletAuthenticatedTransferElfBytes(api, &loadErr);
-            if (authElf.isEmpty()) {
-                return makeErrorJson(loadErr.isEmpty() ? QStringLiteral("authenticated_transfer_elf missing") : loadErr);
-            }
-            QByteArray authRaw;
-            authRaw.reserve(authElf.size());
-            for (uint8_t byte : authElf) {
-                authRaw.append(static_cast<char>(byte));
-            }
-            QJsonArray deps;
-            deps.append(QString::fromLatin1(authRaw.toHex()));
-            payload.insert(QStringLiteral("dependency_elf_hex_list"), deps);
+            payload.insert(QStringLiteral("include_authenticated_transfer_elf"), true);
         }
         return submitGenericPrivateViaFfi(api, payload, errorOut);
     }

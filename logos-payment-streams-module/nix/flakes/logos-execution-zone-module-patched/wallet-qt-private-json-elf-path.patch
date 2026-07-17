@@ -1,0 +1,97 @@
+diff --git a/src/lez_core_module.cpp b/src/lez_core_module.cpp
+--- a/src/lez_core_module.cpp
++++ b/src/lez_core_module.cpp
+@@ -3,6 +3,7 @@
+ #include <algorithm>
+ #include <cstdio>
+ #include <cstdlib>
++#include <fstream>
+ #include <cstring>
+ #include <random>
+ #include <vector>
+@@ -1306,34 +1307,72 @@
+         instruction.push_back(word);
+     }
+ 
+-    if (!doc.contains("program_elf_hex") || !doc["program_elf_hex"].is_string()) {
++    auto freeIdentities = [&]() {
+         for (FfiAccountIdentity& prior : identities_resolved) {
+             wallet_ffi_free_account_identity(&prior);
+         }
+-        return transferResultToJson(nullptr, "send_generic_private_transaction_json: missing program_elf_hex");
+-    }
++    };
++
++    auto readElfFile = [&](const std::string& elf_path, std::vector<uint8_t>* out) -> std::string {
++        std::ifstream in(elf_path, std::ios::binary);
++        if (!in) {
++            freeIdentities();
++            return transferResultToJson(nullptr, "send_generic_private_transaction_json: cannot read program elf path");
++        }
++        in.seekg(0, std::ios::end);
++        const std::streamoff size = in.tellg();
++        if (size <= 0) {
++            freeIdentities();
++            return transferResultToJson(nullptr, "send_generic_private_transaction_json: empty program elf path");
++        }
++        in.seekg(0, std::ios::beg);
++        out->resize(static_cast<size_t>(size));
++        if (!in.read(reinterpret_cast<char*>(out->data()), size)) {
++            freeIdentities();
++            return transferResultToJson(nullptr, "send_generic_private_transaction_json: failed reading program elf path");
++        }
++        return {};
++    };
++
+     std::vector<uint8_t> program_elf;
+-    if (!hexToBytes(doc["program_elf_hex"].get<std::string>(), program_elf)) {
+-        for (FfiAccountIdentity& prior : identities_resolved) {
+-            wallet_ffi_free_account_identity(&prior);
++    if (doc.contains("program_elf_path") && doc["program_elf_path"].is_string()) {
++        const std::string err = readElfFile(doc["program_elf_path"].get<std::string>(), &program_elf);
++        if (!err.empty()) {
++            return err;
++        }
++    } else if (doc.contains("program_elf_hex") && doc["program_elf_hex"].is_string()) {
++        if (!hexToBytes(doc["program_elf_hex"].get<std::string>(), program_elf)) {
++            freeIdentities();
++            return transferResultToJson(nullptr, "send_generic_private_transaction_json: invalid program_elf_hex");
+         }
+-        return transferResultToJson(nullptr, "send_generic_private_transaction_json: invalid program_elf_hex");
++    } else if (const char* guest_bin = std::getenv("PAYMENT_STREAMS_GUEST_BIN"); guest_bin != nullptr && guest_bin[0] != '\0') {
++        const std::string err = readElfFile(guest_bin, &program_elf);
++        if (!err.empty()) {
++            return err;
++        }
++    } else {
++        freeIdentities();
++        return transferResultToJson(nullptr, "send_generic_private_transaction_json: missing program_elf_path or program_elf_hex");
+     }
+ 
+     std::vector<std::vector<uint8_t>> program_dependencies;
++    if (doc.contains("include_authenticated_transfer_elf") && doc["include_authenticated_transfer_elf"].is_boolean()
++        && doc["include_authenticated_transfer_elf"].get<bool>()) {
++        program_dependencies.push_back(authenticated_transfer_elf());
++        if (program_dependencies.back().empty()) {
++            freeIdentities();
++            return transferResultToJson(nullptr, "send_generic_private_transaction_json: authenticated_transfer_elf empty");
++        }
++    }
+     if (doc.contains("dependency_elf_hex_list") && doc["dependency_elf_hex_list"].is_array()) {
+         for (const auto& dep_entry : doc["dependency_elf_hex_list"]) {
+             if (!dep_entry.is_string()) {
+-                for (FfiAccountIdentity& prior : identities_resolved) {
+-                    wallet_ffi_free_account_identity(&prior);
+-                }
++                freeIdentities();
+                 return transferResultToJson(nullptr, "send_generic_private_transaction_json: dependency_elf_hex_list must be strings");
+             }
+             std::vector<uint8_t> dep_elf;
+             if (!hexToBytes(dep_entry.get<std::string>(), dep_elf)) {
+-                for (FfiAccountIdentity& prior : identities_resolved) {
+-                    wallet_ffi_free_account_identity(&prior);
+-                }
++                freeIdentities();
+                 return transferResultToJson(nullptr, "send_generic_private_transaction_json: invalid dependency elf hex");
+             }
+             program_dependencies.push_back(std::move(dep_elf));

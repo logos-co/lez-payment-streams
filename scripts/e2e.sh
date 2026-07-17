@@ -252,11 +252,15 @@ cmd_run() {
     export WALLET_CONFIG="$(ps_default_wallet_config)"
     export WALLET_STORAGE="$(ps_default_wallet_storage)"
     export MODULES_USER="${MODULES_USER:-$(ps_e2e_user_modules_dir)}"
+    export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
     export ARTIFACT="${ARTIFACT:-$(ps_e2e_artifacts_dir)/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
     mkdir -p "$(dirname "$ARTIFACT")"
     ps_log_info "Launching module happy path (Flow A)..."
     if [[ "${PRIVACY:-0}" == "1" ]]; then
-      ps_log_info "PRIVACY=1 — PseudonymousFunder vault owner (see PRIVACY_ENHANCED_JOURNEY.md)"
+      # Private submit proves in-process; stub receipts keep the module IPC
+      # path inside the extended Timeout used by submitGenericPrivateViaFfi.
+      export RISC0_DEV_MODE="${RISC0_DEV_MODE:-1}"
+      ps_log_info "PRIVACY=1 — PseudonymousFunder vault owner (RISC0_DEV_MODE=$RISC0_DEV_MODE; see PRIVACY_ENHANCED_JOURNEY.md)"
     fi
     MODULES="$MODULES_USER" ARTIFACT="$ARTIFACT" PRIVACY="${PRIVACY:-0}" \
       "$REPO_ROOT/scripts/module-e2e.sh" ${E2E_VERBOSITY:+--verbosity "$E2E_VERBOSITY"} || {

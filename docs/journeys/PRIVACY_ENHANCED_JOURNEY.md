@@ -62,13 +62,19 @@ wallet public-to-private transfer, not a `payment_streams_module` operation.
 Example wallet CLI command (verify exact syntax against the current CLI):
 
 ```bash
+# amount_le16_hex is 32 lowercase hex chars (u128 little-endian).
+# Prefix with s: so logoscore does not coerce all-digit hex to a float;
+# the patched wallet strips the prefix before parsing.
 logoscore call logos_execution_zone transfer_shielded_owned \
-  <public_account_id> <vault_owner_private_account_id> <amount_le16_hex>
+  <public_account_id_hex> <vault_owner_private_account_id_hex> s:<amount_le16_hex>
 ```
 
 The PP `deposit` debits the vault owner account directly, so the funds must be
 in that account. The module checks that the `signer` passed to `deposit` matches
 `VaultConfig.owner` and rejects the deposit if it does not.
+
+Local privacy E2E sets `RISC0_DEV_MODE=1` so private submits use stub receipts.
+Without it, proving can exceed the module IPC timeout even on localnet.
 
 ### Step 3 — Initialize a PseudonymousFunder vault
 
