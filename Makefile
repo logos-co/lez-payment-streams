@@ -47,6 +47,7 @@ help: ## Show this help
 	@echo "  make verify-module-local-provider-privacy  Module provider privacy (PROVIDER_PRIVACY=1)"
 	@echo "  make verify-module-testnet     Module verification, testnet"
 	@echo "  make verify-store-local        Store integration, localnet"
+	@echo "  make verify-store-local-owner-privacy  Store owner privacy (OWNER_PRIVACY=1)"
 	@echo "  make verify-store-testnet      Store integration, testnet"
 	@echo "  make verify-store-local-lifecycle  Maintainer: two runs on one ledger"
 	@echo "  (legacy aliases: verify-step17, verify-step18, verify-step17-back-to-back)"
@@ -157,6 +158,10 @@ verify-module-testnet: ## Flow A (module only) testnet happy path
 verify-store-local: ## Store integration local dual-host E2E (scripts/e2e.sh local run)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
 	MODE=store CHAIN=local ./scripts/e2e.sh local run
+
+verify-store-local-owner-privacy: ## Store local OWNER_PRIVACY=1 (PseudonymousFunder vault, public provider)
+	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
+	MODE=store CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
 
 verify-store-testnet: ## Store integration public sequencer E2E (scripts/e2e.sh testnet run)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py

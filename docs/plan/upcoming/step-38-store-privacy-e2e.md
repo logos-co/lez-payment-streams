@@ -106,7 +106,9 @@ Out of scope:
 2. User wallet: public funder + private vault owner; pre-shield; `initializeVault`
    with `privacy_tier: 1` via `chainAction`.
 3. Deposit, create, close via `chainAction` (no transparent seed on PF).
-4. Keep provider public; claim stays public-provider path.
+4. Keep provider public. PF close/claim still need the private owner slot, so
+   under dual-host Store those `chainAction`s run on the user host (holds the
+   NSK); provider remains the claim destination account id.
 5. Expect Store phases (`store_query_success`, `store_query_missing_proof`,
    settlement) plus privacy setup phases such as `pre_shield`.
 6. Make alias e.g. `verify-store-local-owner-privacy`; document in E2E.md.
@@ -176,31 +178,33 @@ Exact Make alias names may follow the module pattern
 
 - [ ] Store orchestrator respects `OWNER_PRIVACY` and `PROVIDER_PRIVACY`
   (including dual-host key placement and dust pre-shield, D38.8).
-- [ ] Phase A: Store local × `OWNER_PRIVACY=1` green.
+- [x] Phase A: Store local × `OWNER_PRIVACY=1` green (orchestrator + Make alias;
+  verified locally).
 - [ ] Phase B: Store local × `PROVIDER_PRIVACY=1` and both flags green, including
   `registerProviderMapping` → prepare → paid `storeQuery` → settlement (D38.7).
-- [ ] Public Store local remains green.
-- [ ] [E2E.md](../../journeys/E2E.md) documents Store privacy profile recipes.
-- [ ] [verification-matrix.md](../../reference/verification-matrix.md) lists
-  Store privacy gates (optional until promoted).
-- [ ] [scripts/README.md](../../scripts/README.md) and Make aliases for the
-  Store privacy commands.
+- [x] Public Store local remains green.
+- [x] [E2E.md](../../journeys/E2E.md) documents Store owner-privacy recipe (Phase A).
+- [x] [verification-matrix.md](../../reference/verification-matrix.md) lists
+  Store owner-privacy gate (optional until promoted).
+- [x] [scripts/README.md](../../scripts/README.md) and Make alias
+  `verify-store-local-owner-privacy` for Phase A.
 - [x] [index.md](../index.md) and [AGENTS.md](../../AGENTS.md) list Step 38.
 - [ ] Optional Phase C: testnet Store privacy recorded or explicitly deferred
   with rationale.
 
 ## Definition of done
 
-- [ ] Paid Store queries succeed for a `PseudonymousFunder` vault owner on
+- [x] Paid Store queries succeed for a `PseudonymousFunder` vault owner on
   localnet (Phase A).
 - [ ] Paid Store queries succeed with private provider claim on localnet
   (Phase B), with `registerProviderMapping` wired to the private payee id and
   claim confirmed via vault_holding drop.
 - [ ] Full privacy mode Store local green:
   `OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`.
-- [ ] No Delivery wire or hook shape change required for the above (or any
+- [x] No Delivery wire or hook shape change required for the above (or any
   unexpected change is documented as a decision).
-- [ ] Public Store and module privacy regressions green.
+- [x] Public Store and module (public) regressions green for Phase A.
+  Module privacy gates remain Step 36/37; Store provider privacy is Phase B.
 - [ ] Docs and plan index updated; packet moved to `docs/plan/completed/` when
   phases A and B pass.
 

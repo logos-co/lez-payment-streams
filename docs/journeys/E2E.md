@@ -129,8 +129,22 @@ only. Combo with owner privacy:
 SKIP_BUILD=1 MODE=module CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
 ```
 
-Store × privacy profiles remain
-[Step 38](../plan/upcoming/step-38-store-privacy-e2e.md).
+## Store × localnet (owner privacy)
+
+Optional privacy profile overlay on the Developer Journey Store cell (Step 38
+Phase A). Private vault owner (`PseudonymousFunder`); public provider.
+
+```bash
+SKIP_BUILD=1 MODE=store CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
+```
+
+Make alias: `make verify-store-local-owner-privacy`.
+
+Expected: exit code 0; phases include `owner_privacy_accounts`, `pre_shield`,
+`vault_init` with `privacy_tier=1`, paid Store query, and settlement. Sets
+`RISC0_DEV_MODE=1` by default. Close and claim `chainAction`s run on the user
+host because the private owner NSK lives there; the provider account id stays
+public. `PROVIDER_PRIVACY=1` on Store is Phase B (not wired yet).
 
 Narrative walkthrough: [PRIVACY_ENHANCED_JOURNEY.md](PRIVACY_ENHANCED_JOURNEY.md).
 
@@ -173,7 +187,8 @@ Note: `module-e2e.sh` still passes the payee as `closeStream` `authority` until
 
 ## Store × localnet (Developer Journey)
 
-Required tier. Dual-host Store query with eligibility proof.
+Required tier. Dual-host Store query with eligibility proof. Public vault owner
+and provider (default). Owner-privacy overlay is documented above.
 
 ```bash
 SKIP_BUILD=1 E2E_VERBOSITY=verbose MODE=store CHAIN=local ./scripts/e2e.sh local run

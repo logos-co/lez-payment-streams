@@ -313,9 +313,19 @@ cmd_run() {
   export RESTORE_LOCALNET="${RESTORE_LOCALNET:-1}"
   
   mkdir -p "$(dirname "$ARTIFACT")"
+
+  ps_normalize_privacy_flags
+  if ps_is_any_privacy_e2e; then
+    # Private submit / NSK vault proof prove in-process; stub receipts keep IPC
+    # inside module timeouts (same as module privacy E2E).
+    export RISC0_DEV_MODE="${RISC0_DEV_MODE:-1}"
+    ps_log_info "Privacy profile ($(ps_privacy_profile_label)) — RISC0_DEV_MODE=$RISC0_DEV_MODE"
+  fi
   
   # Run Python orchestrator
   ps_log_info "Launching Python orchestrator..."
+  OWNER_PRIVACY="${OWNER_PRIVACY:-0}" PROVIDER_PRIVACY="${PROVIDER_PRIVACY:-0}" PRIVACY="${PRIVACY:-0}" \
+  RISC0_DEV_MODE="${RISC0_DEV_MODE:-}" \
   python3 "$REPO_ROOT/scripts/e2e/run_local_e2e.py" \
     --repo "$REPO_ROOT" \
     --phase "$E2E_PHASE" \

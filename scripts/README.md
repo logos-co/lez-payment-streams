@@ -48,6 +48,9 @@ MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
 # Store integration — Required, localnet (MODE=store is default)
 ./scripts/e2e.sh local run
 
+# Store owner privacy — PseudonymousFunder vault (Step 38 Phase A)
+MODE=store CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
+
 # Store integration — Required, testnet (after bootstrap)
 MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run
 
