@@ -35,7 +35,7 @@ pub struct StreamConfig {
     pub allocation: Balance,
     pub accrued: Balance,
     pub state: StreamState,
-    /// Latest chain time folded into `accrued`.
+    /// Latest fold time for `accrued`, in seconds (see [`crate::chain_timestamp_to_fold_seconds`]).
     /// When not depleted: equals `t` after each fold.
     /// When depleted: equals the depletion instant
     /// (`⌈unaccrued/rate⌉` seconds after the prior `accrued_as_of`),

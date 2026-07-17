@@ -3,6 +3,7 @@
 use spel_framework::prelude::*;
 
 use lez_payment_streams_core::{
+    chain_timestamp_to_fold_seconds,
     checked_total_allocated_after_add,
     checked_total_allocated_after_release,
     ClockAccountData,
@@ -121,16 +122,20 @@ mod lez_payment_streams {
             borsh::from_slice(meta.account.data.as_ref()).map_err(|_| {
                 spel_err(ErrorCode::InvalidClockAccount, "invalid clock account data")
             })?;
-        Ok(parsed.timestamp)
+        // LEZ clock wire is milliseconds; rates and at_time use fold seconds.
+        Ok(chain_timestamp_to_fold_seconds(parsed.timestamp))
     }
 
     fn parse_stream_account(stream_config: &AccountWithMetadata) -> Result<StreamConfig, SpelError> {
-        borsh::from_slice::<StreamConfig>(&stream_config.account.data).map_err(|_| {
-            SpelError::DeserializationError {
+        let mut stream = borsh::from_slice::<StreamConfig>(&stream_config.account.data).map_err(
+            |_| SpelError::DeserializationError {
                 account_index: STREAM_CONFIG_ACCOUNT_INDEX,
                 message: "invalid stream config data".into(),
-            }
-        })
+            },
+        )?;
+        // Normalize legacy ms checkpoints so at_time matches module status folds.
+        stream.accrued_as_of = chain_timestamp_to_fold_seconds(stream.accrued_as_of);
+        Ok(stream)
     }
 
     // ---- Validation helpers ---- //

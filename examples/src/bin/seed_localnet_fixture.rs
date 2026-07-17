@@ -535,7 +535,9 @@ async fn wait_clock_synced(wallet: &WalletCore, max_skew_s: u64, timeout_s: u64,
         let clock_s = chain_timestamp_to_unix_seconds(clock_raw);
         let wall_s = wall_unix_seconds();
         let skew = wall_s.saturating_sub(clock_s);
-        eprintln!("wait-clock-synced: wall={wall_s} clock={clock_s} skew={skew}s (max {max_skew_s})");
+        eprintln!(
+            "wait-clock-synced: wall={wall_s} clock={clock_s} clock_raw={clock_raw} skew={skew}s (max {max_skew_s})"
+        );
         if skew <= max_skew_s {
             return Ok(());
         }

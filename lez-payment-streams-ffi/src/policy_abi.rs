@@ -24,16 +24,7 @@ pub(crate) fn balance_from_lo_hi(lo: u64, hi: u64) -> Balance {
     Balance::from(lo) | (Balance::from(hi) << 64)
 }
 
-/// LEZ 510+ on-chain clock and stream checkpoints use millisecond timestamps; core fold uses seconds.
-#[must_use]
-pub(crate) fn chain_timestamp_to_fold_seconds(ts: u64) -> u64 {
-    const MS_EPOCH_THRESHOLD: u64 = 1_000_000_000_000;
-    if ts >= MS_EPOCH_THRESHOLD {
-        ts / 1000
-    } else {
-        ts
-    }
-}
+pub(crate) use lez_payment_streams_core::chain_timestamp_to_fold_seconds;
 
 #[must_use]
 fn guest_error_repr(code: ErrorCode) -> u32 {

@@ -73,6 +73,42 @@ pub type StreamId = u64;
 pub type TokensPerSecond = u64;
 pub type Timestamp = u64;
 
+/// LEZ clock accounts expose millisecond timestamps; stream fold math uses seconds
+/// (tokens-per-second rates). Values at or above `1_000_000_000_000` are treated as
+/// Unix epoch milliseconds and truncated to seconds. Smaller values are already
+/// seconds. Same rule as the module/FFI status fold path.
+#[must_use]
+pub const fn chain_timestamp_to_fold_seconds(ts: Timestamp) -> Timestamp {
+    const MS_EPOCH_THRESHOLD: Timestamp = 1_000_000_000_000;
+    if ts >= MS_EPOCH_THRESHOLD {
+        ts / 1000
+    } else {
+        ts
+    }
+}
+
 // ---- Version ---- //
 
 pub const DEFAULT_VERSION: VersionId = 1;
+
+#[cfg(test)]
+mod chain_timestamp_tests {
+    use super::chain_timestamp_to_fold_seconds;
+
+    #[test]
+    fn ms_epoch_truncated_to_seconds() {
+        assert_eq!(
+            chain_timestamp_to_fold_seconds(1_784_281_063_169),
+            1_784_281_063
+        );
+    }
+
+    #[test]
+    fn already_seconds_unchanged() {
+        assert_eq!(chain_timestamp_to_fold_seconds(105), 105);
+        assert_eq!(
+            chain_timestamp_to_fold_seconds(1_784_281_063),
+            1_784_281_063
+        );
+    }
+}
