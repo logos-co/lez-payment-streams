@@ -17,9 +17,9 @@ agent reports greens, human alone moves packet to completed or writes off
 
 | Field | Value |
 | --- | --- |
-| Freeze commit | `c1f5b605705a8d8d2030d2c547ec7b9b9e77236a` (Phase 1 freeze; deploy pending Phase 2) |
-| Deploy date | _pending Phase 2_ |
-| ImageID Y (hex) | `072a26cc9865e95679012e53f2b1861b71f488b5e90da93611459afbc7adcfc7` (≠ fixture `de17c0db…` → redeploy required) |
+| Freeze commit | `c1f5b605705a8d8d2030d2c547ec7b9b9e77236a` |
+| Deploy date | 2026-07-22 |
+| ImageID Y (hex) | `072a26cc9865e95679012e53f2b1861b71f488b5e90da93611459afbc7adcfc7` |
 | ELF size (bytes) | 362044 |
 | ELF path | `methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin` |
 | Operator | Agent (`make build` → `make deploy-testnet` + prefix checks) |
@@ -72,6 +72,7 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`.
 | 2026-07-22 | c1f5b60 | local module public | module-e2e-20260722T140326.log | pass | Phase 1; SKIP_BUILD=1 |
 | 2026-07-22 | c1f5b60 | local Store public | e2e-20260722T140901.log | pass | Phase 1; SKIP_BUILD=1 |
 | 2026-07-22 | c1f5b60 | freeze build | (Docker ELF) | pass | ImageID Y=072a26cc…; ELF 362044 bytes; Y≠de17c0db → redeploy |
+| 2026-07-22 | 61e8085 | deploy-testnet + fixture sync | (fixtures/scripts tip = Y) | pass | deploy-program exit 0; prefix checks 1–3 OK; operational de17c0db grep clean |
 
 ## Agent summary (after Phase 5)
 

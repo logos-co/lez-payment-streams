@@ -537,8 +537,8 @@ prints the payee on-chain balance and `Success: Payment stream walkthrough compl
 ## Configuration details
 
 Default sizing: sequencer `https://testnet.lez.logos.co/`, program id
-`de17c0db368abf9f6476f4d67a56ad24e89ddb23bc49b58f7effb566146c1677` (release guest ELF
-361716 bytes), deposit 500 (must cover `allocation` 80; leftover deposit stays in the vault after
+`072a26cc9865e95679012e53f2b1861b71f488b5e90da93611459afbc7adcfc7` (release guest ELF
+362044 bytes), deposit 500 (must cover `allocation` 80; leftover deposit stays in the vault after
 close), rate 1 token per second of chain clock time, `MIN_ACCRUED` 1, vault/stream ids start at 0.
 Testnet program id is org-deployed; your built guest must match `fixtures/testnet-module.json`
 (Step 3).

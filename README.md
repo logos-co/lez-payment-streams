@@ -15,10 +15,11 @@ Maintainer E2E recipes: [docs/journeys/E2E.md](docs/journeys/E2E.md).
 ## Public testnet guest program
 
 The payment-streams guest on public testnet (`https://testnet.lez.logos.co/`) was last deployed
-on 2026-07-15 from git commit
-`6772238bed072d87e62f57f5194d717d9b4ee0b9` (tree includes pinned `methods/guest/Cargo.lock` for
-Docker guest-builder rustc 1.88). ImageID / `program_id_hex`:
-`de17c0db368abf9f6476f4d67a56ad24e89ddb23bc49b58f7effb566146c1677` (release ELF 361716 bytes).
+on 2026-07-22 from freeze commit
+`c1f5b605705a8d8d2030d2c547ec7b9b9e77236a` (tree includes clock normalization after
+`6772238b`; pinned `methods/guest/Cargo.lock` for Docker guest-builder rustc 1.88).
+ImageID / `program_id_hex`:
+`072a26cc9865e95679012e53f2b1861b71f488b5e90da93611459afbc7adcfc7` (release ELF 362044 bytes).
 SSOT fixture: [fixtures/testnet-module.json](fixtures/testnet-module.json). After changing guest
 source or release profile, rebuild (`make build`), redeploy (`make deploy-testnet`), refresh
 fixtures and bootstrap helpers, then re-run module testnet E2E.
