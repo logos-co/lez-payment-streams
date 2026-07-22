@@ -518,6 +518,15 @@ ps_e2e_user_wallet_local_dir() {
   echo "$(ps_scaffold_e2e_dir)/user/wallet-local"
 }
 
+# Store dual-host: independent wallet homes (never share storage.json across daemons).
+ps_e2e_user_wallet_dir() {
+  echo "$(ps_scaffold_e2e_dir)/user/wallet"
+}
+
+ps_e2e_provider_wallet_dir() {
+  echo "$(ps_scaffold_e2e_dir)/provider/wallet"
+}
+
 ps_e2e_provider_ad_path() {
   echo "$(ps_scaffold_e2e_dir)/provider-advertisement.json"
 }

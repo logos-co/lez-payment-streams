@@ -1182,10 +1182,8 @@ def reload_payment_streams_wallet(cfg: Path, seq_url: str) -> None:
     sync_wallet(cfg, seq_url)
     logoscore_cmd(cfg, "unload-module", "payment_streams_module")
     logoscore_cmd(cfg, "load-module", "payment_streams_module")
-    wc = os.environ.get("WALLET_CONFIG", "")
-    ws = os.environ.get("WALLET_STORAGE", "")
-    if wc and ws:
-        logoscore_cmd(cfg, "call", "logos_execution_zone", "open", wc, ws)
+    wc, ws = cfg_wallet_paths(cfg)
+    logoscore_cmd(cfg, "call", "logos_execution_zone", "open", str(wc), str(ws))
     sync_wallet(cfg, seq_url)
 
 
@@ -1228,6 +1226,12 @@ def vault_unallocated_lo(cfg: Path, manifest: dict) -> int:
     return max(0, holding_bal - total_lo)
 
 
+# Per-daemon wallet files. Store E2E must never open the same storage.json on
+# both user and provider logoscore (stale peer save wipes private keys / FFI 7).
+# D38.8: full privacy keeps private owner+provider NSKs on the user host only.
+_CFG_WALLET_PATHS: dict[str, tuple[Path, Path]] = {}
+
+
 def _e2e_cfg_paths() -> tuple[Path, Path]:
     repo = Path(os.environ.get("REPO", Path(__file__).resolve().parents[2]))
     e2e = repo / ".scaffold" / "e2e"
@@ -1237,41 +1241,76 @@ def _e2e_cfg_paths() -> tuple[Path, Path]:
     )
 
 
-def _peer_cfg(cfg: Path) -> Path | None:
-    """Other Store logoscore config when cfg is user or provider (shared wallet)."""
-    user, prov = _e2e_cfg_paths()
-    cfg_r = cfg.resolve()
-    if cfg_r == user.resolve():
-        return prov
-    if cfg_r == prov.resolve():
-        return user
-    return None
+def register_cfg_wallet(cfg: Path, wallet_config: Path, wallet_storage: Path) -> None:
+    _CFG_WALLET_PATHS[str(cfg.resolve())] = (wallet_config, wallet_storage)
+
+
+def cfg_wallet_paths(cfg: Path) -> tuple[Path, Path]:
+    key = str(cfg.resolve())
+    if key in _CFG_WALLET_PATHS:
+        return _CFG_WALLET_PATHS[key]
+    wc = Path(os.environ.get("WALLET_CONFIG", ""))
+    ws = Path(os.environ.get("WALLET_STORAGE", ""))
+    if not wc.name or not ws.name:
+        raise E2EError(f"no wallet paths registered for {cfg}")
+    return wc, ws
+
+
+def cfg_wallet_home(cfg: Path) -> Path:
+    return cfg_wallet_paths(cfg)[1].parent
+
+
+def prepare_split_store_wallets(
+    repo: Path,
+    cfg_user: Path,
+    cfg_provider: Path,
+    base_config: Path,
+    base_storage: Path,
+) -> tuple[Path, Path, Path, Path]:
+    """Clone seed wallet into independent user and provider homes.
+
+    Each daemon opens only its own storage.json. Further saves cannot cross-wipe.
+    """
+    e2e = repo / ".scaffold" / "e2e"
+    user_home = Path(os.environ.get("WALLET_HOME_USER", e2e / "user" / "wallet"))
+    prov_home = Path(os.environ.get("WALLET_HOME_PROVIDER", e2e / "provider" / "wallet"))
+    if not base_config.is_file() or not base_storage.is_file():
+        raise E2EError(
+            f"split wallets need seed files: config={base_config} storage={base_storage}"
+        )
+    for home in (user_home, prov_home):
+        home.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(base_config, home / "wallet_config.json")
+        shutil.copy2(base_storage, home / "storage.json")
+    user_wc = user_home / "wallet_config.json"
+    user_ws = user_home / "storage.json"
+    prov_wc = prov_home / "wallet_config.json"
+    prov_ws = prov_home / "storage.json"
+    register_cfg_wallet(cfg_user, user_wc, user_ws)
+    register_cfg_wallet(cfg_provider, prov_wc, prov_ws)
+    # CLI tools (wallet, fixture, auth-transfer-ensure) default to the user home.
+    os.environ["LEE_WALLET_HOME_DIR"] = str(user_home)
+    os.environ["WALLET_CONFIG"] = str(user_wc)
+    os.environ["WALLET_STORAGE"] = str(user_ws)
+    return user_wc, user_ws, prov_wc, prov_ws
 
 
 def release_logoscore_wallet(cfg: Path, *, save: bool = True) -> None:
-    """Release LEZ wallet handle.
-
-    When two logoscore daemons share one storage.json, only the host that just
-    mutated keys may save. The peer must use save=False or it overwrites disk
-    with a stale in-memory wallet (private keys vanish; FFI error 7).
-    """
+    """Release LEZ wallet handle for this daemon's own storage file."""
     if save:
         logoscore_cmd(cfg, "call", "logos_execution_zone", "save", timeout=60)
     logoscore_cmd(cfg, "call", "logos_execution_zone", "close")
 
 
 def discard_and_reopen_wallet(cfg: Path, seq_url: str) -> None:
-    """Drop in-memory wallet without persisting; reload from shared storage.
+    """Drop in-memory wallet without persisting; reload this daemon's storage.
 
     close() is often a no-op on current LEZ ("wallet is already open"). Unload
-    logos_execution_zone so the peer cannot later save a stale view over disk.
+    logos_execution_zone to force a fresh open of this host's storage file.
     delivery_module stays loaded.
     """
     logoscore_cmd(cfg, "unload-module", "payment_streams_module")
-    try:
-        logoscore_cmd(cfg, "call", "logos_execution_zone", "close")
-    except E2EError:
-        pass
+    logoscore_cmd(cfg, "call", "logos_execution_zone", "close")
     logoscore_cmd(cfg, "unload-module", "logos_execution_zone")
     logoscore_cmd(cfg, "load-module", "logos_execution_zone")
     reopen_logoscore_wallet(cfg, seq_url)
@@ -1280,10 +1319,8 @@ def discard_and_reopen_wallet(cfg: Path, seq_url: str) -> None:
 
 
 def reopen_logoscore_wallet(cfg: Path, seq_url: str) -> None:
-    wc = os.environ.get("WALLET_CONFIG", "")
-    ws = os.environ.get("WALLET_STORAGE", "")
-    if wc and ws:
-        logoscore_cmd(cfg, "call", "logos_execution_zone", "open", wc, ws)
+    wc, ws = cfg_wallet_paths(cfg)
+    logoscore_cmd(cfg, "call", "logos_execution_zone", "open", str(wc), str(ws))
     sync_wallet(cfg, seq_url)
 
 
@@ -2283,8 +2320,8 @@ def fund_public_account_via_fixture(
 ) -> None:
     """Pinata-fund a public account (harness machinery; not a module user API)."""
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
+    # Fixture CLI uses LEE_WALLET_HOME_DIR (user home). Release that host only.
     release_logoscore_wallet(cfg_user, save=True)
-    release_logoscore_wallet(cfg_provider, save=False)
     try:
         env = os.environ.copy()
         env["FIXTURE_MANIFEST"] = os.environ.get(
@@ -2308,9 +2345,7 @@ def fund_public_account_via_fixture(
             raise E2EError(f"fixture account fund-owner failed: {proc.stderr or proc.stdout}")
     finally:
         reopen_logoscore_wallet(cfg_user, seq_url)
-        reopen_logoscore_wallet(cfg_provider, seq_url)
         reload_payment_streams_wallet(cfg_user, seq_url)
-        reload_payment_streams_wallet(cfg_provider, seq_url)
 
 
 def fund_owner_via_fixture(
@@ -2391,10 +2426,11 @@ def setup_store_owner_privacy_accounts(
                 f"in one session (owner={owner_b58})"
             )
     logoscore_cmd(cfg_user, "call", "logos_execution_zone", "save", timeout=60)
-    # Shared wallet storage: peer must not save stale memory over the new keys.
-    discard_and_reopen_wallet(cfg_provider, seq_url)
+    # Split wallets: provider has its own storage (seed clone). Do not copy
+    # user storage onto provider (D38.8). Full-privacy claim stays on user.
     reload_payment_streams_wallet(cfg_user, seq_url)
     sync_wallet(cfg_user, seq_url)
+    sync_wallet(cfg_provider, seq_url)
 
     manifest["funder_account_id"] = funder_b58
     manifest["owner_account_id"] = owner_b58
@@ -2453,20 +2489,11 @@ def setup_store_provider_privacy_accounts(
 
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
     narrator.step("Creating private provider account on provider host (PROVIDER_PRIVACY=1)")
+    provider_hex, provider_b58 = _normalize_private_account_hex(
+        cfg_provider, create_account(cfg_provider, private=True)
+    )
     logoscore_cmd(cfg_provider, "call", "logos_execution_zone", "save", timeout=60)
-    # User holds a shared-storage view; discard without save before provider mutates.
-    discard_and_reopen_wallet(cfg_user, seq_url)
-    release_logoscore_wallet(cfg_provider, save=True)
-    try:
-        reopen_logoscore_wallet(cfg_provider, seq_url)
-        provider_hex, provider_b58 = _normalize_private_account_hex(
-            cfg_provider, create_account(cfg_provider, private=True)
-        )
-        logoscore_cmd(cfg_provider, "call", "logos_execution_zone", "save", timeout=60)
-    finally:
-        reopen_logoscore_wallet(cfg_provider, seq_url)
-        discard_and_reopen_wallet(cfg_user, seq_url)
-        reload_payment_streams_wallet(cfg_provider, seq_url)
+    reload_payment_streams_wallet(cfg_provider, seq_url)
     sync_wallet(cfg_provider, seq_url)
 
     manifest["provider_account_id"] = provider_b58
@@ -2604,23 +2631,13 @@ def wallet_auth_transfer_send(
             env["PATH"] = f"{release}:{env.get('PATH', '')}"
 
     narrator.step(f"Shield via wallet auth-transfer send ({label}; real prove)")
-    # Dual Store daemons share storage: save authoritative host, discard peer
-    # without save, unload LEZ on both so wallet CLI can use the file, then reload.
+    # Exclusive handoff for this host's storage only (split wallets: peer untouched).
+    wallet_home = cfg_wallet_home(cfg)
+    env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
     logoscore_cmd(cfg, "call", "logos_execution_zone", "save", timeout=60)
-    peer = _peer_cfg(cfg)
     logoscore_cmd(cfg, "unload-module", "payment_streams_module")
-    try:
-        logoscore_cmd(cfg, "call", "logos_execution_zone", "close")
-    except E2EError:
-        pass
+    logoscore_cmd(cfg, "call", "logos_execution_zone", "close")
     logoscore_cmd(cfg, "unload-module", "logos_execution_zone")
-    if peer is not None:
-        logoscore_cmd(peer, "unload-module", "payment_streams_module")
-        try:
-            logoscore_cmd(peer, "call", "logos_execution_zone", "close")
-        except E2EError:
-            pass
-        logoscore_cmd(peer, "unload-module", "logos_execution_zone")
     try:
         timeout_s = int(os.environ.get("PS_WALLET_SHIELD_TIMEOUT", "600"))
         proc = run(
@@ -2643,10 +2660,6 @@ def wallet_auth_transfer_send(
         logoscore_cmd(cfg, "load-module", "logos_execution_zone")
         reopen_logoscore_wallet(cfg, seq_url)
         logoscore_cmd(cfg, "load-module", "payment_streams_module")
-        if peer is not None:
-            logoscore_cmd(peer, "load-module", "logos_execution_zone")
-            reopen_logoscore_wallet(peer, seq_url)
-            logoscore_cmd(peer, "load-module", "payment_streams_module")
 
     ok = proc.returncode == 0
     err_text = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()
@@ -2663,8 +2676,6 @@ def wallet_auth_transfer_send(
     if not ok:
         raise E2EError(f"wallet auth-transfer send ({phase}) failed: {err_text[:500]}")
     reload_payment_streams_wallet(cfg, seq_url)
-    if peer is not None:
-        reload_payment_streams_wallet(peer, seq_url)
     narrator.ok(f"Pre-shielded {amount} tokens into {label} (wallet auth-transfer send)")
 
 
@@ -2711,6 +2722,7 @@ def dust_pre_shield_private_provider(
     # same session as the owner; dust there (KeyNotFound=8 on provider host).
     # PROVIDER_PRIVACY-only: dust on the provider host that holds the NSK.
     if owner_privacy_enabled():
+        # D38.8 full privacy: private provider NSK lives on user host.
         transfer_shielded_owned(
             cfg_user,
             from_acct,
@@ -2722,26 +2734,21 @@ def dust_pre_shield_private_provider(
             seq_url=seq_url,
         )
         logoscore_cmd(cfg_user, "call", "logos_execution_zone", "save", timeout=60)
-        discard_and_reopen_wallet(cfg_provider, seq_url)
         return
 
+    # PROVIDER_PRIVACY only: keys + dust on provider host (separate storage).
     logoscore_cmd(cfg_user, "call", "logos_execution_zone", "save", timeout=60)
-    discard_and_reopen_wallet(cfg_user, seq_url)
-    try:
-        transfer_shielded_owned(
-            cfg_provider,
-            from_acct,
-            provider,
-            1,
-            artifact,
-            phase="provider_dust_pre_shield",
-            label="private provider account",
-            seq_url=seq_url,
-        )
-        logoscore_cmd(cfg_provider, "call", "logos_execution_zone", "save", timeout=60)
-    finally:
-        discard_and_reopen_wallet(cfg_user, seq_url)
-        reload_payment_streams_wallet(cfg_provider, seq_url)
+    transfer_shielded_owned(
+        cfg_provider,
+        from_acct,
+        provider,
+        1,
+        artifact,
+        phase="provider_dust_pre_shield",
+        label="private provider account",
+        seq_url=seq_url,
+    )
+    logoscore_cmd(cfg_provider, "call", "logos_execution_zone", "save", timeout=60)
 
 
 def vault_config_present(cfg: Path, manifest: dict) -> bool:
@@ -3393,11 +3400,12 @@ def run_auth_transfer_ensure(
         raise E2EError("AT-ensure requires owner account id")
     if not skip_provider and not at_provider:
         raise E2EError("AT-ensure requires provider account id")
-    # User is authoritative for privacy-account keys; provider must not save stale.
+    # AT-init CLI uses wallet_home (user). Release that host only; provider
+    # keeps its independent storage open.
     release_logoscore_wallet(cfg_user, save=True)
-    release_logoscore_wallet(cfg_provider, save=False)
     try:
         env = os.environ.copy()
+        env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
         cmd = [
             str(ensure_script),
             "--artifact",
@@ -3418,9 +3426,7 @@ def run_auth_transfer_ensure(
             raise E2EError(f"auth-transfer-ensure failed: {proc.stderr or proc.stdout}")
     finally:
         reopen_logoscore_wallet(cfg_user, seq_url)
-        reopen_logoscore_wallet(cfg_provider, seq_url)
         reload_payment_streams_wallet(cfg_user, seq_url)
-        reload_payment_streams_wallet(cfg_provider, seq_url)
 
 
 def seed_close_stream_onchain(
@@ -3548,7 +3554,6 @@ def demo_teardown(
     if e2e_close_via() != "chainaction":
         try:
             release_logoscore_wallet(cfg_user, save=True)
-            release_logoscore_wallet(cfg_provider, save=False)
             seed_close_stream_onchain(repo, manifest, vault_id, stream_id)
             log_artifact(artifact, "demo_close_stream", True, stream_id=stream_id, via="seed_close_stream_onchain")
             emit_module_phase(
@@ -3725,7 +3730,6 @@ def demo_teardown(
     if e2e_close_via() != "chainaction":
         try:
             release_logoscore_wallet(cfg_user, save=True)
-            release_logoscore_wallet(cfg_provider, save=False)
             seed_claim_onchain(repo, manifest, vault_id, stream_id)
             log_artifact(
                 artifact,
@@ -3824,12 +3828,9 @@ def demo_teardown(
         "vault_id": vault_id,
         "stream_id": stream_id,
     }
-    # Claim host selection (dual-host + shared wallet seed):
-    # - PROVIDER_PRIVACY only: private provider NSK created on cfg_provider.
-    # - OWNER_PRIVACY only: PF owner slot NSK on cfg_user.
-    # - Both: private owner+provider created in one user-host session (shared
-    #   seed cannot mint a second private id on the other host). Claim on
-    #   cfg_user; shared-storage reopen on provider does not reload NSKs.
+    # Claim host (D38.8 + split wallets):
+    # - PROVIDER_PRIVACY only: private provider NSK on cfg_provider storage.
+    # - OWNER_PRIVACY only / full privacy: NSKs on cfg_user storage; claim there.
     if owner_privacy_enabled() and provider_privacy_enabled():
         claim_cfg = cfg_user
     elif provider_privacy_enabled():
@@ -4285,8 +4286,12 @@ def main() -> int:
     persist_user = Path(os.environ.get("PERSIST_USER", e2e / "user" / "persist"))
     persist_provider = Path(os.environ.get("PERSIST_PROVIDER", e2e / "provider" / "persist"))
     manifest_path = Path(os.environ.get("FIXTURE_MANIFEST", repo / "fixtures" / "localnet.json"))
-    wallet_config = Path(os.environ.get("WALLET_CONFIG", repo / ".scaffold" / "wallet" / "wallet_config.json"))
-    wallet_storage = Path(os.environ.get("WALLET_STORAGE", repo / ".scaffold" / "wallet" / "storage.json"))
+    seed_wallet_config = Path(
+        os.environ.get("WALLET_CONFIG", repo / ".scaffold" / "wallet" / "wallet_config.json")
+    )
+    seed_wallet_storage = Path(
+        os.environ.get("WALLET_STORAGE", repo / ".scaffold" / "wallet" / "storage.json")
+    )
     guest_bin = Path(
         os.environ.get(
             "PAYMENT_STREAMS_GUEST_BIN",
@@ -4299,6 +4304,13 @@ def main() -> int:
     os.environ["REPO"] = str(repo)
     os.environ["FIXTURE_MANIFEST"] = str(manifest_path)
     normalize_privacy_env()
+
+    # Independent storage.json per daemon (never share across user/provider).
+    wallet_config, wallet_storage, prov_wallet_config, prov_wallet_storage = (
+        prepare_split_store_wallets(
+            repo, cfg_user, cfg_provider, seed_wallet_config, seed_wallet_storage
+        )
+    )
 
     manifest = json.loads(manifest_path.read_text())
     # OWNER_PRIVACY replaces the vault owner after daemons start; defer vault plan.
@@ -4371,7 +4383,7 @@ def main() -> int:
             narrator.step("Starting provider logoscore, loading modules")
             start_daemon(cfg_provider, modules_provider, persist_provider)
             load_modules(cfg_provider)
-            open_wallet(cfg_provider, wallet_config, wallet_storage)
+            open_wallet(cfg_provider, prov_wallet_config, prov_wallet_storage)
             sync_wallet(cfg_provider, manifest.get("sequencer_url", "http://127.0.0.1:3040"))
 
             provider_create = {
@@ -4427,7 +4439,7 @@ def main() -> int:
             sync_wallet(cfg_user, seq_url)
             sync_wallet(cfg_provider, seq_url)
 
-            wallet_home = Path(wallet_config).parent
+            wallet_home = cfg_wallet_home(cfg_user)
             if owner_privacy_enabled() and not store_reuse_baseline_vault():
                 narrator.phase("Owner Privacy Setup")
                 setup_store_owner_privacy_accounts(

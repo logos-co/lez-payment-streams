@@ -104,16 +104,17 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`, shield p
 
 | 2026-07-22 | 867f64e | store full privacy testnet (2nd, real) | e2e-20260722T235004.log | fail | initializeVault FFI 7; provider stale save wiped private keys from shared storage |
 
+| 2026-07-23 | b364840 | store full privacy testnet (2nd) | e2e-20260722T235004.log | fail | initializeVault FFI 7; shared storage wipe |
+
+| 2026-07-23 | — | dual-wallet isolation smoke | verify-dual-wallet-isolation.sh | pass | split storage keeps A private; shared wipe reproduced |
+
 ## Agent summary (after Phase 5)
 
-Phases 1–3 green (do not reopen). D39.24 local module real-prove smoke green.
-Phase 4 module full privacy testnet green
-(`module-e2e-20260722T215542.log`, `RISC0_DEV_MODE=0`, claim `vault_drop=400`).
-
-Store full privacy: AT-init + wallet shields green after funder reuse fix;
-initializeVault failed (FFI 7 / private account not found) because the
-provider daemon saved a stale shared-wallet view over new private keys.
-Fix: peer release without save + LEZ unload handoff for wallet CLI. Retry pending.
+Phases 1–3 green. Phase 4 module full privacy testnet green.
+Store failed twice on dual-daemon shared `storage.json` (AT-init, then
+FFI 7 key wipe). Architecture fix: per-host wallet homes
+(`.scaffold/e2e/{user,provider}/wallet`); isolation smoke green.
+Store full privacy retry pending under split wallets.
 
 Human closes (D39.15 / implementer step 9) after Store + Phase 5.
 
