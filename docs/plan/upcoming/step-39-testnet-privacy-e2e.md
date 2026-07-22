@@ -439,7 +439,7 @@ Human-only (D39.15):
 - [x] Packet, wiring, gate log, decisions through D39.20 (Phase 0).
 - [x] Phase 1 preflight + freeze build.
 - [x] Phase 2 deploy + fixture sync + prefix checks.
-- [ ] Phase 3 public testnet.
+- [x] Phase 3 public testnet.
 - [ ] Phase 4 module full then Store full.
 - [ ] Phase 5 docs + agent gate-log summary.
 - [ ] Human close (completed or write-off).

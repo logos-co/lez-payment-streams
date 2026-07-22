@@ -2414,21 +2414,16 @@ def ensure_vault_funded_via_chainaction(
     manifest: dict,
     artifact: Path,
 ) -> None:
-    """initializeVault + deposit through payment_streams_module (user-callable path)."""
-    chain = os.environ.get("CHAIN", "local").strip().lower()
-    if chain != "local":
-        log_artifact(
-            artifact,
-            "vault_ensure",
-            True,
-            skipped=True,
-            reason="chainaction_vault_ensure_local_only",
-            chain=chain,
-        )
-        return
+    """initializeVault + deposit through payment_streams_module (user-callable path).
+
+    Runs on local and testnet. Fresh vault_id after a guest ImageID change has no
+    config/holding accounts until initializeVault lands; skipping here falsely
+    reports vault ready and createStream fails with account data missing.
+    """
     if e2e_vault_ensure_via() != "chainaction":
         return
 
+    chain = os.environ.get("CHAIN", "local").strip().lower()
     vault_id = int(manifest.get("vault_id", 0))
     deposit_lo = seed_deposit_amount_lo(manifest)
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
@@ -2457,6 +2452,10 @@ def ensure_vault_funded_via_chainaction(
 
     if owner_privacy_enabled():
         # Funder pinata + pre_shield already ran before vault ensure.
+        sync_wallet(cfg_user, seq_url)
+    elif chain == "testnet":
+        # Operator prefunds via fund-testnet-accounts.sh (D39.12 / D39.18).
+        # Do not call localnet pinata fixture funding mid-run on testnet.
         sync_wallet(cfg_user, seq_url)
     else:
         fund_owner_via_fixture(repo, cfg_user, cfg_provider, manifest, deposit_lo)
