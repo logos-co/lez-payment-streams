@@ -21,17 +21,21 @@ Gate log (append runs here):
 ## Implementer plan of action
 
 Do these in order. Stop on failure.
-Local preflight may use soft proving (`RISC0_DEV_MODE=1`; localnet sequencer
-accepts stubs). Required testnet privacy gates use real proving
-(`RISC0_DEV_MODE=0`; D39.4). One green per required gate (D39.8).
+Local Phase 1 preflight may use soft proving (`RISC0_DEV_MODE=1`; localnet
+accepts stubs). After Phase 3, harness must align shield with the LEZ wallet
+CLI tutorial path (D39.22), then run a local real-prove module smoke
+(D39.24) before testnet privacy. Required testnet privacy gates use real
+proving (`RISC0_DEV_MODE=0`; D39.4). One green per required gate (D39.8).
+Do not reopen Phase 1–3 green rows (D39.23).
 
 | Step | Action | Required |
 | --- | --- | --- |
-| 1 | Local preflight (privacy first, then public): see Phase 1 | Yes |
-| 2 | `make build` (Docker guest path); capture freeze commit + ImageID Y + ELF size | Yes |
-| 3 | Credential / funding checklist (Phase 1); confirm Y ≠ fixture `de17c0db…` (or Y-equal path) | Yes |
-| 4 | `make deploy-testnet`; fixture sync (not full re-bootstrap); prefix checks | Yes |
-| 5 | Public testnet with `SKIP_BUILD=1` (module then Store) | Yes |
+| 1 | Local preflight (privacy first, then public): see Phase 1 | Yes (done) |
+| 2 | `make build` (Docker guest path); capture freeze commit + ImageID Y + ELF size | Yes (done) |
+| 3 | Credential / funding checklist (Phase 1); confirm Y ≠ fixture `de17c0db…` (or Y-equal path) | Yes (done) |
+| 4 | `make deploy-testnet`; fixture sync (not full re-bootstrap); prefix checks | Yes (done) |
+| 5 | Public testnet with `SKIP_BUILD=1` (module then Store) | Yes (done) |
+| 5b | Harness: wallet-CLI shield/dust (D39.22); local module full privacy with `RISC0_DEV_MODE=0` (D39.24) | Yes |
 | 6 | Module full privacy testnet (`E2E_CLAIM_OPTIONAL=0`, `RISC0_DEV_MODE=0`) | Yes (warm-up) |
 | 7 | Store full privacy testnet (`E2E_CLAIM_OPTIONAL=0`, `RISC0_DEV_MODE=0`) | Yes (primary) |
 | 8 | Phase 5 docs minimum; gate-log summary that required gates are green | Yes (agent) |
@@ -61,8 +65,8 @@ gates. Do not reopen Step 38.
 | --- | --- | --- |
 | D39.1 | Packet ownership | New Step 39; do not reopen Step 38. |
 | D39.2 | Guest freeze | Native-token only. Multi-token deferred. |
-| D39.3 | Order | Local preflight → build/freeze → deploy → public testnet → module full → Store full. |
-| D39.4 | Proving | Amended 2026-07-22. Public testnet privacy DoD requires real proofs (`RISC0_DEV_MODE=0`). Soft stubs (`RISC0_DEV_MODE=1`) are for local preflight only — the public sequencer rejects FakeReceipts. |
+| D39.3 | Order | Amended 2026-07-22. Local soft preflight → build/freeze → deploy → public testnet → wallet-CLI shield harness + local real-prove module smoke → module full testnet → Store full. |
+| D39.4 | Proving | Amended 2026-07-22. Public testnet privacy DoD requires real proofs (`RISC0_DEV_MODE=0`). Soft stubs (`RISC0_DEV_MODE=1`) are for Phase 1 local preflight only — the public sequencer rejects FakeReceipts. |
 | D39.5 | Matrix tier | Privacy testnet stays optional in verification-matrix until boringly green. |
 | D39.6 | Harness | Inherit Step 38 / D38.8. Port-gap rule: see [Port-gap vs protocol](#port-gap-vs-protocol). |
 | D39.7 | Required cells | Module full privacy, then Store full privacy. Isolation cells optional. |
@@ -80,6 +84,35 @@ gates. Do not reopen Step 38.
 | D39.19 | Soft proving on testnet | Superseded by D39.4 amendment. Soft proving on public testnet is not DoD and must not greenwash a privacy gate. Local soft proving remains valid for Phase 1. |
 | D39.20 | Store cold start | Orchestrator starts dual-host logoscore; no pre-running daemons required. Cold-start remediation from verification-matrix is in scope if local Store preflight fails; stop if it needs human auth/flake access. |
 | D39.21 | Real-proof wall clock | Phase 4 real proves can take many minutes per PPE submit (shield, vault, stream, claim). Raise timeouts as a port-gap if needed (D39.6); do not fall back to soft mode to pass. |
+| D39.22 | Shield path | Align pre_shield and provider dust shield with the LEZ tutorial operator path: `wallet auth-transfer send` (Public→Private), with the same logoscore↔wallet handoff family already used for AT-init. Do not rely on `logoscore call … transfer_shielded_owned` for real proving — LogosAPI default IPC timeout (~20s) is far below PPE prove wall clock (~30s–4 min per LEZ tutorial; ~2 min/CPU bench). Soft-mode logoscore shield remains acceptable only where Phase 1 soft proving is still in force. |
+| D39.23 | Reopen Phase 1–3 greens | Do not. Phase 1 soft greens stand under D39.4/D39.19. Phase 2 has no proving. Phase 3 public module/Store are public txs (no client PPE); `RISC0_DEV_MODE` is irrelevant there. |
+| D39.24 | Local real-prove smoke | After D39.22 harness lands, and before testnet Phase 4, run one local module full-privacy smoke with `RISC0_DEV_MODE=0` and `E2E_CLAIM_OPTIONAL=0`. Not a reopen of Phase 1 DoD — isolation only. If PP `chainAction` then hits logoscore outer IPC timeout, raise that timeout as a port-gap (D39.6/D39.21) before spending testnet wall clock. |
+
+## Shield and prove path (D39.22, D39.24)
+
+Canonical LEZ testnet shielded native transfer (tutorial
+`token-transfer.md`):
+
+```bash
+wallet auth-transfer send \
+  --from Public/<sender_b58> \
+  --to Private/<recipient_b58> \
+  --amount <n>
+```
+
+That CLI proves in-process and may take tens of seconds to several minutes.
+`lez-programs` testnet runbooks use `wallet` / `spel` the same way.
+
+Payment-streams privacy E2E historically called
+`logoscore call logos_execution_zone transfer_shielded_owned`, which only
+finishes under soft stubs inside the default LogosAPI timeout.
+For Step 39 real proving, module and Store harnesses must use the wallet CLI
+path for owner pre_shield and provider dust shield (D39.22), matching AT-init
+handoff practice.
+
+PP vault/stream/claim still go through `payment_streams_module` `chainAction`
+and also prove. The local real-prove smoke (D39.24) is the place to discover
+whether logoscore outer call timeouts must be raised before testnet.
 
 ## Freeze and deploy identity
 
@@ -242,6 +275,10 @@ Allowed mid-step without a new decision (port-gap):
 - Dust host / claim host selection
 - Guest bin path / module path wiring
 - Timeouts, logging, artifact paths
+  (including logoscore outer `callModuleMethod` / CLI invoke budgets once
+  wallet-CLI shield works and PP `chainAction` still times out under real prove)
+- Routing pre_shield / dust shield through `wallet auth-transfer send` with
+  existing AT-init handoff (D39.22)
 - Making an already-locked explicit env (for example `E2E_CLAIM_OPTIONAL=0`)
   actually take effect on the command line
 
@@ -255,6 +292,7 @@ Stop and escalate (not port-gap):
   `is_testnet` → `E2E_CLAIM_OPTIONAL=1` default
 - Relaxing D39.13 to greenwash (setting `E2E_CLAIM_OPTIONAL=1` on a
   required privacy command to pass a flake)
+- Re-opening Phase 1–3 green rows to “re-verify” soft or public runs (D39.23)
 
 On a strict-claim flake: record artifact, escalate in the gate log, wait for
 human (D39.15). Do not “fix” the flake by changing defaults.
@@ -297,29 +335,34 @@ Former implementer flags, all locked:
 | Delivery / dual-host setup? | Orchestrator starts daemons (D39.20); cold start if missing. |
 | Funding target? | 550/50 before each privacy run; bump once to 700/100 (D39.18). |
 | Phase 5 doc shape? | Two required recipes only; distinguish claim `0` vs public `1` (D39.14). |
-| Testnet proving mode? | Real proofs required (`RISC0_DEV_MODE=0`); soft only for local (D39.4 amended). |
+| Testnet proving mode? | Real proofs required (`RISC0_DEV_MODE=0`); soft only for Phase 1 (D39.4 amended). |
 | Who closes / write-off? | Human only (D39.15). Agent reports. |
+| Shield via logoscore IPC? | No for real prove — wallet CLI `auth-transfer send` (D39.22). |
+| Reopen Phase 1–3 greens? | No (D39.23). Local real-prove smoke is new isolation only (D39.24). |
 
 ## Open for deliberation
 
-None. Locked through D39.21 (D39.4/D39.19 amended 2026-07-22).
+None. Locked through D39.24 (wallet-CLI shield + local real-prove smoke;
+2026-07-22).
 
 ## Prerequisites
 
 - Steps 36–38 complete.
 - Verification-matrix cold start satisfied for Store testnet.
 - Phase 1 credential checklist green (D39.12).
+- Pinned `wallet` on PATH and wallet home handoff usable (same as AT-init).
 
 ## Scope
 
 In scope: freeze; agent deploy + fixture sync + prefix checks; public
-regression; required privacy gates; port-gap harness fixes (D39.6); Phase 5
+regression; wallet-CLI shield harness (D39.22); local real-prove module smoke
+(D39.24); required privacy gates; port-gap harness fixes (D39.6); Phase 5
 doc minimum (D39.14).
 
 Out of scope: multi-token; reopening 36–38 product DoD; Delivery wire changes;
-soft-proof DoD on public testnet; two consecutive greens; promoting matrix
-tier to required; Make aliases (deferred); full six-cell privacy matrix;
-rewriting historical deploy notes.
+soft-proof DoD on public testnet; reopening Phase 1–3 green rows (D39.23);
+two consecutive greens; promoting matrix tier to required; Make aliases
+(deferred); full six-cell privacy matrix; rewriting historical deploy notes.
 
 ## Implementation plan
 
@@ -361,10 +404,36 @@ Done.
 
 Stop if either fails.
 
-### Phase 4 — Privacy E2E
+Do not re-run Phase 1 soft privacy or Phase 3 public gates to “confirm”
+real proving (D39.23).
+
+### Phase 3b — Wallet-CLI shield harness + local real-prove smoke
+
+Required before testnet Phase 4 (D39.22, D39.24).
+
+13b. Port harness (module `module-e2e.sh` and Store `run_local_e2e.py`) so
+     owner `pre_shield` and provider dust shield use
+     `wallet auth-transfer send` (Public→Private) with logoscore↔wallet
+     handoff, not `logoscore call … transfer_shielded_owned`, when real
+     proving is required (`RISC0_DEV_MODE=0`). Soft-mode local Phase 1 path
+     may keep logoscore shield if already green.
+13c. Local module full privacy smoke (isolation only; not Phase 1 reopen):
+
+    ```bash
+    SKIP_BUILD=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 \
+      MODE=module CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 \
+      ./scripts/e2e.sh local run
+    ```
+
+     Expect long wall clock. If shield succeeds but PP `chainAction` fails
+     with logoscore IPC / RPC timeout, raise outer call timeouts as a
+     port-gap (D39.6/D39.21), re-run 13c, then proceed. Do not skip 13c
+     and burn testnet time.
+
+### Phase 4 — Privacy E2E (testnet)
 
 `RISC0_DEV_MODE=0` (real proofs; D39.4). `E2E_CLAIM_OPTIONAL=0`. No fire-and-forget.
-Expect long wall clock per PPE submit (D39.21).
+Expect long wall clock per PPE submit (D39.21). Requires Phase 3b green.
 
 14. Prefund, then module full:
     ```bash
@@ -390,13 +459,14 @@ Do not set `RISC0_DEV_MODE=1` to close Phase 4 on public testnet (D39.19).
 
 16. Make aliases: deferred (not DoD).
 17. Doc minimum (D39.14): E2E.md sections for the two required testnet privacy
-    commands above only (must state `RISC0_DEV_MODE=0`); verification-matrix
-    optional rows that state `E2E_CLAIM_OPTIONAL=0`, real proving, + gate-log
-    link. Leave the public Store default-`1` line untouched; add a one-line
-    distinguisher that privacy gates are the exception. Do not mirror local
-    isolation cells.
+    commands above only (must state `RISC0_DEV_MODE=0` and wallet-CLI shield);
+    verification-matrix optional rows that state `E2E_CLAIM_OPTIONAL=0`, real
+    proving, + gate-log link. Leave the public Store default-`1` line
+    untouched; add a one-line distinguisher that privacy gates are the
+    exception. Do not mirror local isolation cells.
 18. Gate log run rows: Artifact = path under `.scaffold/e2e/artifacts/`;
-    Notes = `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, ImageID Y, `SKIP_BUILD=1`.
+    Notes = `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, ImageID Y, `SKIP_BUILD=1`,
+    shield path (`wallet` vs logoscore).
     Append a short summary that required gates are green (or incomplete).
 19. Agent stops. Human reviews gate log + artifacts, then moves the packet to
     completed (or writes off incomplete gates per D39.15). Agent does not
@@ -406,13 +476,14 @@ Do not set `RISC0_DEV_MODE=1` to close Phase 4 on public testnet (D39.19).
 
 | Gate | Command | Pass criteria |
 | --- | --- | --- |
-| Local module full | `SKIP_BUILD=1 MODE=module CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run` | Exit 0 |
-| Local Store full | `make verify-store-local-full-privacy` | Exit 0 |
+| Local module full (Phase 1 soft) | `SKIP_BUILD=1 MODE=module CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run` | Exit 0 (soft OK) |
+| Local Store full (Phase 1) | `make verify-store-local-full-privacy` | Exit 0 |
 | Local public | `make verify-module-local`; `make verify-store-local` | Exit 0 |
 | Build / freeze | `make build`; `make program-id` | Y recorded; Docker ELF path exists |
 | Deploy + sync | `make deploy-testnet` + D39.11 | Fixtures/scripts tip = Y; prefix checks |
 | Public module testnet | `SKIP_BUILD=1 make verify-module-testnet` | Exit 0 |
 | Public Store testnet | `SKIP_BUILD=1 make verify-store-testnet` | Exit 0 |
+| Local module real-prove smoke | Phase 3b command (`RISC0_DEV_MODE=0`, claim optional 0; wallet-CLI shield) | Exit 0; fix port-gaps before testnet |
 | Module full testnet | Phase 4 command (`RISC0_DEV_MODE=0`, claim optional 0) | Exit 0; fix before Store |
 | Store full testnet | Phase 4 command (`RISC0_DEV_MODE=0`, claim optional 0) | Exit 0; vault_holding drop on claim |
 
@@ -424,6 +495,8 @@ Agent-reported (gate log + artifacts):
   (or Y-equal no-op per D39.16); fixtures/operational defaults match Y
   (D39.10–D39.11).
 - [x] Public module + Store testnet green (one pass each).
+- [ ] Wallet-CLI shield/dust harness (D39.22) + local module real-prove smoke
+  green (D39.24).
 - [ ] Module full privacy testnet green with real proving (`RISC0_DEV_MODE=0`)
   and `E2E_CLAIM_OPTIONAL=0`.
 - [ ] Store full privacy testnet green with real proving (`RISC0_DEV_MODE=0`),
@@ -443,9 +516,11 @@ Human-only (D39.15):
 - [x] Phase 1 preflight + freeze build.
 - [x] Phase 2 deploy + fixture sync + prefix checks.
 - [x] Phase 3 public testnet.
+- [ ] Phase 3b wallet-CLI shield + local real-prove smoke (D39.22–D39.24).
 - [ ] Phase 4 module full then Store full (real proving).
 - [ ] Phase 5 docs + agent gate-log summary.
 - [ ] Human close (completed or write-off).
+- [x] Decisions D39.22–D39.24 locked in packet (2026-07-22).
 
 ## Risk
 
@@ -453,7 +528,8 @@ Human-only (D39.15):
 | --- | --- |
 | ImageID surprise (host vs Docker) | Docker ELF only (D39.10). |
 | Optional claim fakes privacy DoD | `E2E_CLAIM_OPTIONAL=0` on Phase 4 (D39.13). |
-| Soft proofs on public testnet | DoD requires `RISC0_DEV_MODE=0` (D39.4); soft only for local Phase 1. |
+| Soft proofs on public testnet | DoD requires `RISC0_DEV_MODE=0` (D39.4); soft only for Phase 1. |
+| Logoscore IPC vs PPE wall clock | Wallet-CLI shield (D39.22); local smoke then timeout port-gap for `chainAction` (D39.24). |
 | Real-proof wall clock / timeouts | Raise as port-gap (D39.21); no soft fallback. |
 | Dual-host / dust / guest env | Warm-up module first; port-gap fixes in scope (D39.6). |
 | Shared fixture wallet after module | Fresh vault_id; re-fund before Store. |
@@ -472,3 +548,5 @@ Human-only (D39.15):
 - [step-39-testnet-gate-log.md](../completed/step-39-testnet-gate-log.md)
 - [E2E.md](../../journeys/E2E.md),
   [verification-matrix.md](../../reference/verification-matrix.md)
+- LEZ testnet tutorial `token-transfer.md` (wallet `auth-transfer send`
+  Public→Private; prove wall clock note)
