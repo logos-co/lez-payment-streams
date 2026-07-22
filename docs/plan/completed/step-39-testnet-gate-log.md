@@ -91,13 +91,22 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`, shield p
 | 2026-07-22 | — | D39.4 amend | (docs) | policy | Green for Phase 4 requires RISC0_DEV_MODE=0 |
 | 2026-07-22 | — | D39.22–D39.24 | (docs) | policy | Wallet-CLI shield; no reopen Phase 1–3; local real-prove smoke before testnet Phase 4 |
 | 2026-07-22 | 5674fcb | module full privacy testnet (3rd, real) | module-e2e-20260722T154921.log | fail | RISC0_DEV_MODE=0; logoscore transfer_shielded_owned RPC_FAILED (~20s IPC vs PPE wall clock) |
+| 2026-07-22 | a443f66+ | local module full privacy (real smoke) | module-e2e-20260722T172701.log | partial | RISC0_DEV_MODE=0; wallet shield OK; vault_init+deposit real-prove OK; create_stream incl timeout; later FFI 99; core_service timeout fix in logos-logoscore-cli 66c4194 |
 
 ## Agent summary (after Phase 5)
 
-_pending Phase 3b/4/5 — Phases 1–3 green (do not reopen). Next: wallet-CLI
-shield harness (D39.22), local module real-prove smoke (D39.24), then testnet
-module then Store full privacy with `RISC0_DEV_MODE=0` and
-`E2E_CLAIM_OPTIONAL=0`._
+Phases 1–3 green (do not reopen). Phase 3b harness: wallet `auth-transfer send`
+for shield; logoscore daemon stop/restart handoff; portable logoscore honors
+`LOGOSCORE_RPC_TIMEOUT_MS` on CLI and core_service→module (66c4194).
+
+Local real-prove smoke (`module-e2e-20260722T172701.log`): pre_shield + dust via
+wallet OK; vault_init + deposit real-prove OK; create_stream submitted but
+inclusion/verify failed; pause/resume/topup/close hit wallet FFI error 99
+(InternalError). Teardown hang fixed by scoping RPC timeout to daemon only.
+
+Next: green local module real-prove through claim (D39.24), then Phase 4
+testnet module then Store with `RISC0_DEV_MODE=0` and `E2E_CLAIM_OPTIONAL=0`.
+
 
 ## Human close (D39.15)
 
