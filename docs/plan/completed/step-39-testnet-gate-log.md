@@ -76,10 +76,16 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`.
 | 2026-07-22 | cf43886 | public module testnet | module-e2e-20260722T142615.log | pass | Phase 3; SKIP_BUILD=1; MODULE_E2E_SKIP_FUND=1; ImageID Y=072a26cc… |
 | 2026-07-22 | cf43886 | public Store testnet (1st) | e2e-20260722T143205.log | fail | vault_ensure skipped (`chainaction_vault_ensure_local_only`); createStream account data missing |
 | 2026-07-22 | cf43886+fix | public Store testnet | e2e-20260722T143847.log | pass | Phase 3; port-gap: enable chainAction vault ensure on testnet; SKIP_BUILD=1 |
+| 2026-07-22 | de167d3 | module full privacy testnet (1st) | module-e2e-20260722T145028.log | fail | privacy accounts local-only; fixture public owner + privacy_tier=1 → resolve failed 7 |
+| 2026-07-22 | de167d3+fix | module full privacy testnet (2nd) | module-e2e-20260722T150845.log | fail | private accounts+pre_shield wallet-ack ok; getTransaction null; funder bal unchanged — soft proofs rejected by public sequencer (daemon: “proving in dev mode… invalid”) |
 
 ## Agent summary (after Phase 5)
 
-_pending — agent fills when required gates finish (green or incomplete)._
+_pending Phase 4/5 — Phase 3 public gates green. Phase 4 blocked: public
+testnet rejects RISC0_DEV_MODE soft proofs (shielded txs get wallet submit
+ack but never land; funder balance unchanged). D39.4 says soft closes DoD;
+D39.19 says real proving is optional/skip-by-default. Needs human decision
+before continuing (try `RISC0_DEV_MODE=0`, write-off, or other)._
 
 ## Human close (D39.15)
 

@@ -385,7 +385,12 @@ except Exception:
     pass
 ' "$line" 2>/dev/null || true)"
   if [[ -n "$tx_hash" ]]; then
-    await_inclusion "$tx_hash" || true
+    if ! await_inclusion "$tx_hash"; then
+      emit_phase "$phase_name" false "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\",\"tx_hash\":\"$tx_hash\",\"inclusion\":\"timeout\"}"
+      narr_fail "transfer_shielded_owned submitted but not included on chain ($label)"
+      narr_hint "tx_hash=$tx_hash — soft proofs (RISC0_DEV_MODE=1) are rejected by public testnet; localnet accepts them"
+      return 1
+    fi
   fi
   if python3 -c '
 import json,sys
@@ -399,7 +404,12 @@ try:
 except Exception:
     sys.exit(1)
 ' "$line" 2>/dev/null; then
-    emit_phase "$phase_name" true "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\"$( [[ -n "$tx_hash" ]] && echo ",\"tx_hash\":\"$tx_hash\"" )}"
+    if [[ -z "$tx_hash" ]]; then
+      emit_phase "$phase_name" false "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\",\"error\":\"missing_tx_hash\"}"
+      narr_fail "transfer_shielded_owned returned ok without tx_hash ($label)"
+      return 1
+    fi
+    emit_phase "$phase_name" true "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\",\"tx_hash\":\"$tx_hash\"}"
     narr_ok "Pre-shielded $amount tokens into $label"
     sync_wallet
     return 0
@@ -482,6 +492,38 @@ if ps_is_local; then
     PROVIDER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
     [[ -z "$PROVIDER" ]] && { narr_fail "Could not create provider account"; ps_fatal "could not create provider account"; }
     [[ ${#PROVIDER} -eq 64 ]] && PROVIDER="$(to_base58 "$PROVIDER")"
+    logoscore call logos_execution_zone save >/dev/null 2>&1 || true
+  fi
+elif ps_is_testnet && (ps_is_owner_privacy_e2e || ps_is_provider_privacy_e2e); then
+  # Port-gap (Step 39): privacy account creation was local-only; testnet kept the
+  # fixture public owner/provider and then skipped AT + used privacy_tier=1, which
+  # fails with resolve failed 7. Mirror Store: private accounts in-session, public
+  # fixture owner as funder (D39.18 — private accounts are not pinata targets).
+  if ps_is_owner_privacy_e2e; then
+    PUBLIC_FUNDER="$OWNER"
+    if ps_is_provider_privacy_e2e; then
+      narr_step "Creating private vault owner and private provider (testnet; funder=$PUBLIC_FUNDER)"
+    else
+      narr_step "Creating private vault owner (testnet; funder=$PUBLIC_FUNDER)"
+    fi
+    OWNER_HEX="$(parse_new_account "$(logoscore call logos_execution_zone create_account_private 2>/dev/null | tail -1)")"
+    [[ -z "$OWNER_HEX" || ${#OWNER_HEX} -ne 64 ]] && ps_fatal "could not create private vault owner (expected 32-byte hex id)"
+    OWNER="$(to_base58 "$OWNER_HEX")"
+
+    if ps_is_provider_privacy_e2e; then
+      PROVIDER_HEX="$(parse_new_account "$(logoscore call logos_execution_zone create_account_private 2>/dev/null | tail -1)")"
+      [[ -z "$PROVIDER_HEX" || ${#PROVIDER_HEX} -ne 64 ]] && ps_fatal "could not create private provider (expected 32-byte hex id)"
+      PROVIDER="$(to_base58 "$PROVIDER_HEX")"
+      if [[ "$PROVIDER" == "$OWNER" ]]; then
+        ps_fatal "create_account_private returned duplicate owner/provider private ids"
+      fi
+    fi
+    logoscore call logos_execution_zone save >/dev/null 2>&1 || true
+  else
+    narr_step "Creating private provider (testnet; public owner=$OWNER)"
+    PROVIDER_HEX="$(parse_new_account "$(logoscore call logos_execution_zone create_account_private 2>/dev/null | tail -1)")"
+    [[ -z "$PROVIDER_HEX" || ${#PROVIDER_HEX} -ne 64 ]] && ps_fatal "could not create private provider (expected 32-byte hex id)"
+    PROVIDER="$(to_base58 "$PROVIDER_HEX")"
     logoscore call logos_execution_zone save >/dev/null 2>&1 || true
   fi
 fi
@@ -767,9 +809,53 @@ fi
 
 if ps_is_testnet; then
   export LEE_WALLET_HOME_DIR="$WALLET_HOME"
-  if [[ "${MODULE_E2E_SKIP_FUND:-0}" == "1" ]]; then
+  SCAFFOLD_WALLET="$(ps_lez_cache)/target/release/wallet"
+  if [[ -x "$SCAFFOLD_WALLET" ]]; then
+    export PATH="$(dirname "$SCAFFOLD_WALLET"):$PATH"
+  fi
+  if ps_is_owner_privacy_e2e; then
+    # Prefund the public funder (fixture owner), then pre-shield into private accounts.
+    # MODULE_E2E_SKIP_FUND=1 skips pinata only — pre-shield still runs (D39.18).
+    owner_target=$((DEPOSIT + 50))
+    [[ -n "${PUBLIC_FUNDER:-}" ]] || ps_fatal "OWNER_PRIVACY=1 on testnet requires PUBLIC_FUNDER"
+    if [[ "${MODULE_E2E_SKIP_FUND:-0}" == "1" ]]; then
+      narr_step "Skipping funder pinata (MODULE_E2E_SKIP_FUND=1); pre-shielding from $PUBLIC_FUNDER"
+      narr_hint "Pre-fund funder with ./scripts/fund-testnet-accounts.sh before the demo"
+    else
+      narr_step "Funding public funder on testnet then pre-shielding private vault owner"
+      funder_bal="0"
+      if ! funder_bal="$(ps_fund_testnet_account "$PUBLIC_FUNDER" "$owner_target" 6)"; then
+        narr_fail "Funder balance ${funder_bal:-0} below deposit target $owner_target"
+        FAILURES=$((FAILURES + 1))
+      else
+        narr_verbose "Funder balance $funder_bal (target $owner_target)"
+      fi
+    fi
+    FUNDER_HEX="$(account_id_to_hex "$PUBLIC_FUNDER")"
+    OWNER_HEX="${OWNER_HEX:-$(account_id_to_hex "$OWNER")}"
+    [[ -z "$FUNDER_HEX" || -z "$OWNER_HEX" ]] && ps_fatal "could not resolve hex account ids for pre-shield"
+    if ! ps_pre_shield_to_private_owner "$FUNDER_HEX" "$OWNER_HEX" "$owner_target"; then
+      FAILURES=$((FAILURES + 1))
+    fi
+    if ps_is_provider_privacy_e2e; then
+      narr_step "Dust pre-shielding private provider (committed note for claim)"
+      if ! ps_dust_pre_shield_private_provider "$FUNDER_HEX"; then
+        FAILURES=$((FAILURES + 1))
+      fi
+    fi
+    sync_wallet
+  elif [[ "${MODULE_E2E_SKIP_FUND:-0}" == "1" ]]; then
     narr_step "Skipping testnet funding (MODULE_E2E_SKIP_FUND=1; assuming pre-funded)"
     narr_hint "Pre-fund with ./scripts/fund-testnet-accounts.sh before the demo"
+    if ps_is_provider_privacy_e2e; then
+      OWNER_HEX="$(account_id_to_hex "$OWNER")"
+      [[ -z "$OWNER_HEX" || -z "${PROVIDER_HEX:-}" ]] && ps_fatal "could not resolve hex ids for provider dust pre-shield"
+      narr_step "Dust pre-shielding private provider from public owner"
+      if ! ps_dust_pre_shield_private_provider "$OWNER_HEX"; then
+        FAILURES=$((FAILURES + 1))
+      fi
+      sync_wallet
+    fi
   else
     narr_step "Funding owner and provider on testnet (wallet pinata)"
     owner_target=$((DEPOSIT + 50))
@@ -781,7 +867,12 @@ if ps_is_testnet; then
       narr_verbose "Owner balance $owner_bal (target $owner_target)"
     fi
     if ps_is_provider_privacy_e2e; then
-      narr_verbose "Skipping testnet provider pinata (PROVIDER_PRIVACY=1; private provider create-only)"
+      OWNER_HEX="$(account_id_to_hex "$OWNER")"
+      [[ -z "$OWNER_HEX" || -z "${PROVIDER_HEX:-}" ]] && ps_fatal "could not resolve hex ids for provider dust pre-shield"
+      narr_step "Dust pre-shielding private provider from public owner"
+      if ! ps_dust_pre_shield_private_provider "$OWNER_HEX"; then
+        FAILURES=$((FAILURES + 1))
+      fi
     else
       provider_bal="0"
       if ! provider_bal="$(ps_fund_testnet_account "$PROVIDER" "${PROVIDER_MIN:-50}" 3)"; then
@@ -794,6 +885,7 @@ if ps_is_testnet; then
         FAILURES=$((FAILURES + 1))
       fi
     fi
+    sync_wallet
   fi
 fi
 
