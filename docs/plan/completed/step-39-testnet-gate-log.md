@@ -94,16 +94,17 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`, shield p
 | 2026-07-22 | a443f66+ | local module full privacy (real smoke) | module-e2e-20260722T172701.log | partial | RISC0_DEV_MODE=0; wallet shield OK; vault_init+deposit real-prove OK; create_stream incl timeout; later FFI 99; core_service timeout fix in logos-logoscore-cli 66c4194 |
 | 2026-07-22 | c905417+ | local module full privacy (real smoke 2) | module-e2e-20260722T183436.log | partial | RISC0_DEV_MODE=0; Clock50 module; create_stream Validated; close InvalidPrivacyPreservingProof (window crossed); accrual needs CLOCK_50 tick wait |
 | 2026-07-22 | 21333c2 | local module full privacy (real smoke 3) | module-e2e-20260722T191735.log | partial | create+close Validated under CLOCK_50; claim InvalidPrivacyPreservingProof (stale clock window after close); accrual ok |
+| 2026-07-22 | d86146a | local module full privacy (real smoke 4) | module-e2e-20260722T200257.log | pass | D39.24; RISC0_DEV_MODE=0; CLOCK_50; claim vault_drop=400; all PPE Validated |
 
 ## Agent summary (after Phase 5)
 
-Phases 1–3 green (do not reopen). D39.25 CLOCK_50 real-prove path: create and
-close now validate under `RISC0_DEV_MODE=0` (`module-e2e-20260722T191735.log`).
-Claim still hit `InvalidPrivacyPreservingProof` — post-close clock window used a
-stale rem=0 read. Fix: force CLOCK_50 epoch advance after close, then re-align
-window with double-sync before claim.
+Phases 1–3 green (do not reopen). Phase 3b + D39.24 local module real-prove
+smoke green (`module-e2e-20260722T200257.log`, `RISC0_DEV_MODE=0`, CLOCK_50,
+claim `vault_drop=400`).
 
-Next: re-smoke local module real-prove through claim (D39.24), then Phase 4.
+Next: Phase 4 testnet — fund → module full → fund → Store full
+(`RISC0_DEV_MODE=0`, `E2E_CLAIM_OPTIONAL=0`), then Phase 5 docs. Human closes
+(D39.15).
 
 
 ## Human close (D39.15)
