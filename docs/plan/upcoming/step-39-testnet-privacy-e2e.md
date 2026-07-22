@@ -498,7 +498,7 @@ Agent-reported (gate log + artifacts):
 - [x] Public module + Store testnet green (one pass each).
 - [x] Wallet-CLI shield/dust harness (D39.22) + local module real-prove smoke
   green (D39.24).
-- [ ] Module full privacy testnet green with real proving (`RISC0_DEV_MODE=0`)
+- [x] Module full privacy testnet green with real proving (`RISC0_DEV_MODE=0`)
   and `E2E_CLAIM_OPTIONAL=0`.
 - [ ] Store full privacy testnet green with real proving (`RISC0_DEV_MODE=0`),
   `E2E_CLAIM_OPTIONAL=0`, and vault_holding drop confirmation.

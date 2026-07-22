@@ -98,15 +98,16 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`, shield p
 
 | 2026-07-22 | 8787afb | module full privacy testnet (4th, real) | module-e2e-20260722T205804.log | fail | RISC0_DEV_MODE=0; wallet shield+vault+create+close Validated; accrual fail — CLOCK_50 stuck at 32000 for 10min wait (need ~50 testnet blocks); claim skipped zero_accrued |
 
+| 2026-07-22 | 9491316 | module full privacy testnet (5th, real) | module-e2e-20260722T215542.log | pass | D39.4/Phase 4 warm-up; RISC0_DEV_MODE=0; CLOCK_50; claim vault_drop=400; wallet shield |
+
 ## Agent summary (after Phase 5)
 
-Phases 1–3 green (do not reopen). D39.24 local module real-prove smoke green
-(`module-e2e-20260722T200257.log`). Phase 4 module testnet: PPE create/close
-green under CLOCK_50; accrual failed because CLOCK_50 epoch wait (~10 min) is
-shorter than ~50 slow testnet blocks. Raising testnet CLOCK_50/accrual budgets.
+Phases 1–3 green (do not reopen). D39.24 local module real-prove smoke green.
+Phase 4 module full privacy testnet green
+(`module-e2e-20260722T215542.log`, `RISC0_DEV_MODE=0`, claim `vault_drop=400`).
 
-Next: re-run Phase 4 module, then Store, then Phase 5 docs. Human closes
-(D39.15).
+Next: fund → Store full privacy testnet, then Phase 5 docs. Human closes
+(D39.15 / implementer step 9).
 
 
 ## Human close (D39.15)
