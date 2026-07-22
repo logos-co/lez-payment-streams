@@ -196,10 +196,18 @@ else
 fi
 
 # Real prove uses CLOCK_50 (D39.25); accrual only moves when CLOCK_50 ticks
-# (~50 blocks). Raise the poll budget so one tick can land (~12–15 min local).
+# (~50 blocks). Raise the poll budget so one tick can land (~12–15 min local;
+# testnet blocks are slower — allow ~50 min).
 if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
-  ACCRUAL_ATTEMPTS="${ACCRUAL_ATTEMPTS:-120}"
-  ACCRUAL_POLL_SLEEP="${ACCRUAL_POLL_SLEEP:-8}"
+  if ps_is_testnet; then
+    ACCRUAL_ATTEMPTS="${ACCRUAL_ATTEMPTS:-90}"
+    ACCRUAL_POLL_SLEEP="${ACCRUAL_POLL_SLEEP:-15}"
+    PS_CLOCK50_ADVANCE_ATTEMPTS="${PS_CLOCK50_ADVANCE_ATTEMPTS:-720}"
+    PS_CLOCK50_WINDOW_ATTEMPTS="${PS_CLOCK50_WINDOW_ATTEMPTS:-360}"
+  else
+    ACCRUAL_ATTEMPTS="${ACCRUAL_ATTEMPTS:-120}"
+    ACCRUAL_POLL_SLEEP="${ACCRUAL_POLL_SLEEP:-8}"
+  fi
 fi
 
 ARTIFACT="${ARTIFACT:-$(ps_e2e_artifacts_dir)/module-e2e-$(date +%Y%m%dT%H%M%S).log}"

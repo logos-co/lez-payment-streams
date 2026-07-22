@@ -496,7 +496,7 @@ Agent-reported (gate log + artifacts):
   (or Y-equal no-op per D39.16); fixtures/operational defaults match Y
   (D39.10–D39.11).
 - [x] Public module + Store testnet green (one pass each).
-- [ ] Wallet-CLI shield/dust harness (D39.22) + local module real-prove smoke
+- [x] Wallet-CLI shield/dust harness (D39.22) + local module real-prove smoke
   green (D39.24).
 - [ ] Module full privacy testnet green with real proving (`RISC0_DEV_MODE=0`)
   and `E2E_CLAIM_OPTIONAL=0`.
