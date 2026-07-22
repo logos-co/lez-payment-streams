@@ -52,3 +52,7 @@ __pycache__/
 
 # Slide deck working files (marp exports, asciinema casts, run notes)
 docs/journeys/slides/
+
+# Store dual-host split wallets (cloned per run)
+.scaffold/e2e/user/wallet/
+.scaffold/e2e/provider/wallet/
