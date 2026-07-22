@@ -5,13 +5,15 @@ public testnet.
 SSOT:
 [step-39-testnet-privacy-e2e.md](../upcoming/step-39-testnet-privacy-e2e.md).
 
-Locked highlights: soft proving (D39.4); module full then Store full (D39.7);
-one green (D39.8); agent tries deploy, flag+stop on failure (D39.9); Docker
-ELF + ImageID from `make program-id` (D39.10); fixture sync not full bootstrap
-(D39.11); strict claim on privacy gates — `E2E_CLAIM_OPTIONAL=0` (D39.13);
-agent reports greens, human alone moves packet to completed or writes off
-(D39.15); Y-equal no-op contingency (D39.16); funding defaults then bump
-(D39.18).
+Locked highlights: real proving on public testnet privacy gates — `RISC0_DEV_MODE=0`
+(D39.4 amended 2026-07-22); soft proving only for local Phase 1; module full
+then Store full (D39.7); one green (D39.8); agent tries deploy, flag+stop on
+failure (D39.9); Docker ELF + ImageID from `make program-id` (D39.10); fixture
+sync not full bootstrap (D39.11); strict claim on privacy gates —
+`E2E_CLAIM_OPTIONAL=0` (D39.13); agent reports greens, human alone moves packet
+to completed or writes off (D39.15); Y-equal no-op contingency (D39.16);
+funding defaults then bump (D39.18). Soft stubs on public testnet are not DoD
+(D39.19).
 
 ## Deploy
 
@@ -34,31 +36,27 @@ SKIP_BUILD=1 MODULE_E2E_SKIP_FUND=1 make verify-module-testnet
 SKIP_BUILD=1 make verify-store-testnet
 ```
 
-Privacy (soft proving; strict claim). Order matters; fund before each:
+Privacy (real proving; strict claim). Order matters; fund before each:
 
 ```bash
 ./scripts/fund-testnet-accounts.sh
-SKIP_BUILD=1 MODULE_E2E_SKIP_FUND=1 RISC0_DEV_MODE=1 E2E_CLAIM_OPTIONAL=0 \
+SKIP_BUILD=1 MODULE_E2E_SKIP_FUND=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 \
   MODE=module CHAIN=testnet OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 \
   ./scripts/e2e.sh testnet run
 
 ./scripts/fund-testnet-accounts.sh
-SKIP_BUILD=1 RISC0_DEV_MODE=1 E2E_CLAIM_OPTIONAL=0 \
+SKIP_BUILD=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 \
   MODE=store CHAIN=testnet OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 \
   ./scripts/e2e.sh testnet run
 ```
 
 Funding-short once: `OWNER_TARGET=700 PROVIDER_MIN=100 ./scripts/fund-testnet-accounts.sh`.
 
-## Optional (not DoD)
+## Not DoD (do not greenwash)
 
-Skip by default (D39.19). If run and fails, append a row marked optional; does
-not block close.
-
-```bash
-RISC0_DEV_MODE=0 MODE=store CHAIN=testnet OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 \
-  E2E_CLAIM_OPTIONAL=0 SKIP_BUILD=1 ./scripts/e2e.sh testnet run
-```
+Soft proving against public testnet (`RISC0_DEV_MODE=1`) is rejected by the
+sequencer (FakeReceipt verify). Local soft proving remains valid for Phase 1
+only. Historical soft attempts below are fail rows, not close criteria.
 
 ## Runs
 
@@ -77,15 +75,13 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`.
 | 2026-07-22 | cf43886 | public Store testnet (1st) | e2e-20260722T143205.log | fail | vault_ensure skipped (`chainaction_vault_ensure_local_only`); createStream account data missing |
 | 2026-07-22 | cf43886+fix | public Store testnet | e2e-20260722T143847.log | pass | Phase 3; port-gap: enable chainAction vault ensure on testnet; SKIP_BUILD=1 |
 | 2026-07-22 | de167d3 | module full privacy testnet (1st) | module-e2e-20260722T145028.log | fail | privacy accounts local-only; fixture public owner + privacy_tier=1 → resolve failed 7 |
-| 2026-07-22 | de167d3+fix | module full privacy testnet (2nd) | module-e2e-20260722T150845.log | fail | private accounts+pre_shield wallet-ack ok; getTransaction null; funder bal unchanged — soft proofs rejected by public sequencer (daemon: “proving in dev mode… invalid”) |
+| 2026-07-22 | de167d3+fix | module full privacy testnet (2nd, soft) | module-e2e-20260722T150845.log | fail | not DoD after D39.4 amend; soft stubs rejected by public sequencer |
+| 2026-07-22 | — | D39.4 amend | (docs) | policy | Green for Phase 4 requires RISC0_DEV_MODE=0 |
 
 ## Agent summary (after Phase 5)
 
-_pending Phase 4/5 — Phase 3 public gates green. Phase 4 blocked: public
-testnet rejects RISC0_DEV_MODE soft proofs (shielded txs get wallet submit
-ack but never land; funder balance unchanged). D39.4 says soft closes DoD;
-D39.19 says real proving is optional/skip-by-default. Needs human decision
-before continuing (try `RISC0_DEV_MODE=0`, write-off, or other)._
+_pending Phase 4/5 — Phases 1–3 green. Phase 4 next: module then Store full
+privacy with `RISC0_DEV_MODE=0` and `E2E_CLAIM_OPTIONAL=0` (D39.4 amended)._
 
 ## Human close (D39.15)
 

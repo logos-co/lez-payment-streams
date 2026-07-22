@@ -3,9 +3,9 @@
 Index: [index.md](../index.md). Status: **active**.
 
 Goal: freeze the current native-token guest, redeploy it to public testnet
-(agent-run), and close privacy v1 with soft proving: module full privacy
-warm-up, then Store full privacy on that ImageID, without waiting for
-multi-token vaults.
+(agent-run), and close privacy v1 with real proving on public testnet:
+module full privacy warm-up, then Store full privacy on that ImageID,
+without waiting for multi-token vaults.
 
 This step is agent-run deploy + verification only (D39.9).
 Product paths: [Step 36](../completed/step-36-payer-funder-unlinkability.md),
@@ -21,7 +21,9 @@ Gate log (append runs here):
 ## Implementer plan of action
 
 Do these in order. Stop on failure.
-Soft proving (`RISC0_DEV_MODE=1` default). One green per required gate (D39.8).
+Local preflight may use soft proving (`RISC0_DEV_MODE=1`; localnet sequencer
+accepts stubs). Required testnet privacy gates use real proving
+(`RISC0_DEV_MODE=0`; D39.4). One green per required gate (D39.8).
 
 | Step | Action | Required |
 | --- | --- | --- |
@@ -30,11 +32,11 @@ Soft proving (`RISC0_DEV_MODE=1` default). One green per required gate (D39.8).
 | 3 | Credential / funding checklist (Phase 1); confirm Y ≠ fixture `de17c0db…` (or Y-equal path) | Yes |
 | 4 | `make deploy-testnet`; fixture sync (not full re-bootstrap); prefix checks | Yes |
 | 5 | Public testnet with `SKIP_BUILD=1` (module then Store) | Yes |
-| 6 | Module full privacy testnet (`E2E_CLAIM_OPTIONAL=0`, soft proving) | Yes (warm-up) |
-| 7 | Store full privacy testnet (`E2E_CLAIM_OPTIONAL=0`, soft proving) | Yes (primary) |
+| 6 | Module full privacy testnet (`E2E_CLAIM_OPTIONAL=0`, `RISC0_DEV_MODE=0`) | Yes (warm-up) |
+| 7 | Store full privacy testnet (`E2E_CLAIM_OPTIONAL=0`, `RISC0_DEV_MODE=0`) | Yes (primary) |
 | 8 | Phase 5 docs minimum; gate-log summary that required gates are green | Yes (agent) |
 | 9 | Human review of gate log + artifacts; then move packet to completed | Yes (human) |
-| — | Isolation cells; `RISC0_DEV_MODE=0`; new Make aliases | Optional / deferred |
+| — | Isolation cells; new Make aliases | Optional / deferred |
 
 Exact env and commands: [Verification](#verification).
 
@@ -60,7 +62,7 @@ gates. Do not reopen Step 38.
 | D39.1 | Packet ownership | New Step 39; do not reopen Step 38. |
 | D39.2 | Guest freeze | Native-token only. Multi-token deferred. |
 | D39.3 | Order | Local preflight → build/freeze → deploy → public testnet → module full → Store full. |
-| D39.4 | Proving | Soft. `RISC0_DEV_MODE=1` closes DoD. Real proofs optional. |
+| D39.4 | Proving | Amended 2026-07-22. Public testnet privacy DoD requires real proofs (`RISC0_DEV_MODE=0`). Soft stubs (`RISC0_DEV_MODE=1`) are for local preflight only — the public sequencer rejects FakeReceipts. |
 | D39.5 | Matrix tier | Privacy testnet stays optional in verification-matrix until boringly green. |
 | D39.6 | Harness | Inherit Step 38 / D38.8. Port-gap rule: see [Port-gap vs protocol](#port-gap-vs-protocol). |
 | D39.7 | Required cells | Module full privacy, then Store full privacy. Isolation cells optional. |
@@ -75,8 +77,9 @@ gates. Do not reopen Step 38.
 | D39.16 | Y-equal contingency | If freeze ImageID Y equals fixture `de17c0db…`, skip redeploy, log no-op, still verify fixtures + prefix checks, proceed. Do not invent a guest edit to force a new ImageID. (Post-`6772238b` guest commit `a59a66d` makes Y≠fixture the expected path.) |
 | D39.17 | Phase 1 local purpose | Harness regression only (`SKIP_BUILD=1` against existing local guest). Not identity parity with freeze ImageID Y. |
 | D39.18 | Funding targets | Fund before module full and again before Store full (defaults `OWNER_TARGET=550` / `PROVIDER_MIN=50`). Do not use a stacked target (for example 1200) for both runs — re-fund restores the public owner between runs. If Store funding-short: once `OWNER_TARGET=700 PROVIDER_MIN=100`, then escalate. No wallet wipe between runs. |
-| D39.19 | Optional real proving | Skip by default. If run and fails: gate-log row marked optional / not DoD. Does not block close. |
+| D39.19 | Soft proving on testnet | Superseded by D39.4 amendment. Soft proving on public testnet is not DoD and must not greenwash a privacy gate. Local soft proving remains valid for Phase 1. |
 | D39.20 | Store cold start | Orchestrator starts dual-host logoscore; no pre-running daemons required. Cold-start remediation from verification-matrix is in scope if local Store preflight fails; stop if it needs human auth/flake access. |
+| D39.21 | Real-proof wall clock | Phase 4 real proves can take many minutes per PPE submit (shield, vault, stream, claim). Raise timeouts as a port-gap if needed (D39.6); do not fall back to soft mode to pass. |
 
 ## Freeze and deploy identity
 
@@ -294,12 +297,12 @@ Former implementer flags, all locked:
 | Delivery / dual-host setup? | Orchestrator starts daemons (D39.20); cold start if missing. |
 | Funding target? | 550/50 before each privacy run; bump once to 700/100 (D39.18). |
 | Phase 5 doc shape? | Two required recipes only; distinguish claim `0` vs public `1` (D39.14). |
-| Optional `RISC0_DEV_MODE=0` fail? | Record optional row; cannot block (D39.19). |
+| Testnet proving mode? | Real proofs required (`RISC0_DEV_MODE=0`); soft only for local (D39.4 amended). |
 | Who closes / write-off? | Human only (D39.15). Agent reports. |
 
 ## Open for deliberation
 
-None. Locked through D39.20.
+None. Locked through D39.21 (D39.4/D39.19 amended 2026-07-22).
 
 ## Prerequisites
 
@@ -314,9 +317,9 @@ regression; required privacy gates; port-gap harness fixes (D39.6); Phase 5
 doc minimum (D39.14).
 
 Out of scope: multi-token; reopening 36–38 product DoD; Delivery wire changes;
-real-proof DoD; two consecutive greens; promoting matrix tier to required;
-Make aliases (deferred); full six-cell privacy matrix; rewriting historical
-deploy notes.
+soft-proof DoD on public testnet; two consecutive greens; promoting matrix
+tier to required; Make aliases (deferred); full six-cell privacy matrix;
+rewriting historical deploy notes.
 
 ## Implementation plan
 
@@ -360,19 +363,20 @@ Stop if either fails.
 
 ### Phase 4 — Privacy E2E
 
-`RISC0_DEV_MODE=1`. `E2E_CLAIM_OPTIONAL=0`. No fire-and-forget.
+`RISC0_DEV_MODE=0` (real proofs; D39.4). `E2E_CLAIM_OPTIONAL=0`. No fire-and-forget.
+Expect long wall clock per PPE submit (D39.21).
 
 14. Prefund, then module full:
     ```bash
     ./scripts/fund-testnet-accounts.sh
-    SKIP_BUILD=1 MODULE_E2E_SKIP_FUND=1 RISC0_DEV_MODE=1 E2E_CLAIM_OPTIONAL=0 \
+    SKIP_BUILD=1 MODULE_E2E_SKIP_FUND=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 \
       MODE=module CHAIN=testnet OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 \
       ./scripts/e2e.sh testnet run
     ```
 15. Prefund again, then Store full:
     ```bash
     ./scripts/fund-testnet-accounts.sh
-    SKIP_BUILD=1 RISC0_DEV_MODE=1 E2E_CLAIM_OPTIONAL=0 \
+    SKIP_BUILD=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 \
       MODE=store CHAIN=testnet OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 \
       ./scripts/e2e.sh testnet run
     ```
@@ -380,18 +384,17 @@ Stop if either fails.
 
 Pass: exit 0; Store phases include paid query + settlement; private claim
 shows vault_holding drop (`claim_balance` with `provider_private` / vault_drop).
-
-Optional `RISC0_DEV_MODE=0` (D39.19): skip by default; if attempted and fails,
-log as optional / not DoD.
+Do not set `RISC0_DEV_MODE=1` to close Phase 4 on public testnet (D39.19).
 
 ### Phase 5 — Housekeeping
 
 16. Make aliases: deferred (not DoD).
 17. Doc minimum (D39.14): E2E.md sections for the two required testnet privacy
-    commands above only; verification-matrix optional rows that state
-    `E2E_CLAIM_OPTIONAL=0` + gate-log link. Leave the public Store default-`1`
-    line untouched; add a one-line distinguisher that privacy gates are the
-    exception. Do not mirror local isolation cells.
+    commands above only (must state `RISC0_DEV_MODE=0`); verification-matrix
+    optional rows that state `E2E_CLAIM_OPTIONAL=0`, real proving, + gate-log
+    link. Leave the public Store default-`1` line untouched; add a one-line
+    distinguisher that privacy gates are the exception. Do not mirror local
+    isolation cells.
 18. Gate log run rows: Artifact = path under `.scaffold/e2e/artifacts/`;
     Notes = `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, ImageID Y, `SKIP_BUILD=1`.
     Append a short summary that required gates are green (or incomplete).
@@ -410,20 +413,20 @@ log as optional / not DoD.
 | Deploy + sync | `make deploy-testnet` + D39.11 | Fixtures/scripts tip = Y; prefix checks |
 | Public module testnet | `SKIP_BUILD=1 make verify-module-testnet` | Exit 0 |
 | Public Store testnet | `SKIP_BUILD=1 make verify-store-testnet` | Exit 0 |
-| Module full testnet | Phase 4 command (claim optional 0) | Exit 0; fix before Store |
-| Store full testnet | Phase 4 command (claim optional 0) | Exit 0; vault_holding drop on claim |
+| Module full testnet | Phase 4 command (`RISC0_DEV_MODE=0`, claim optional 0) | Exit 0; fix before Store |
+| Store full testnet | Phase 4 command (`RISC0_DEV_MODE=0`, claim optional 0) | Exit 0; vault_holding drop on claim |
 
 ## Definition of done
 
 Agent-reported (gate log + artifacts):
 
-- [ ] Freeze commit + ImageID Y + ELF size in gate log; Docker ELF deployed
+- [x] Freeze commit + ImageID Y + ELF size in gate log; Docker ELF deployed
   (or Y-equal no-op per D39.16); fixtures/operational defaults match Y
   (D39.10–D39.11).
-- [ ] Public module + Store testnet green (one pass each).
-- [ ] Module full privacy testnet green with soft proving and
-  `E2E_CLAIM_OPTIONAL=0`.
-- [ ] Store full privacy testnet green with soft proving,
+- [x] Public module + Store testnet green (one pass each).
+- [ ] Module full privacy testnet green with real proving (`RISC0_DEV_MODE=0`)
+  and `E2E_CLAIM_OPTIONAL=0`.
+- [ ] Store full privacy testnet green with real proving (`RISC0_DEV_MODE=0`),
   `E2E_CLAIM_OPTIONAL=0`, and vault_holding drop confirmation.
 - [ ] E2E.md + verification-matrix updated to Phase 5 minimum (D39.14).
 - [ ] Gate-log summary that required gates are green (or incomplete with risk).
@@ -436,11 +439,11 @@ Human-only (D39.15):
 
 ## Deliverables
 
-- [x] Packet, wiring, gate log, decisions through D39.20 (Phase 0).
+- [x] Packet, wiring, gate log, decisions through D39.21 (Phase 0 + proving amendment).
 - [x] Phase 1 preflight + freeze build.
 - [x] Phase 2 deploy + fixture sync + prefix checks.
 - [x] Phase 3 public testnet.
-- [ ] Phase 4 module full then Store full.
+- [ ] Phase 4 module full then Store full (real proving).
 - [ ] Phase 5 docs + agent gate-log summary.
 - [ ] Human close (completed or write-off).
 
@@ -450,6 +453,8 @@ Human-only (D39.15):
 | --- | --- |
 | ImageID surprise (host vs Docker) | Docker ELF only (D39.10). |
 | Optional claim fakes privacy DoD | `E2E_CLAIM_OPTIONAL=0` on Phase 4 (D39.13). |
+| Soft proofs on public testnet | DoD requires `RISC0_DEV_MODE=0` (D39.4); soft only for local Phase 1. |
+| Real-proof wall clock / timeouts | Raise as port-gap (D39.21); no soft fallback. |
 | Dual-host / dust / guest env | Warm-up module first; port-gap fixes in scope (D39.6). |
 | Shared fixture wallet after module | Fresh vault_id; re-fund before Store. |
 | Deploy / credential failure | Agent tries; flag in gate log and stop (D39.9). |

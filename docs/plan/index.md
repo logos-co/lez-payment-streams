@@ -70,7 +70,7 @@ paid Store mode on the provider.
 | Payer funder unlinkability via LEZ private execution | 36 (complete) |
 | Payee receiver privacy via LEZ private execution | 37 (complete) |
 | Store E2E privacy profiles (full privacy mode) | 38 (complete) |
-| Testnet privacy E2E after native guest deploy | 39 (active; module full then Store full; soft proving) |
+| Testnet privacy E2E after native guest deploy | 39 (active; module full then Store full; real proving) |
 
 Step 25 (in-process demo coordinator module) is **won't fix**
 ([cancelled packet](cancelled/step-25-demo-coordination-module.md)).
@@ -114,7 +114,7 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | 32 | AT-init unify + Store claim phase | Active (signed off; D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
 | 34 | User Journey manual walkthrough (testnet CLI) | Active -- [step-34-user-journey-manual-walkthrough.md](upcoming/step-34-user-journey-manual-walkthrough.md) |
 | 35 | Developer Journey generalization (protocol-agnostic eligibility guide) | Active -- [step-35-developer-journey-generalization.md](upcoming/step-35-developer-journey-generalization.md) |
-| 39 | Testnet privacy E2E after native guest deploy | Active — module full then Store full; soft proving; agent deploy + report; human close -- [step-39-testnet-privacy-e2e.md](upcoming/step-39-testnet-privacy-e2e.md) |
+| 39 | Testnet privacy E2E after native guest deploy | Active — module full then Store full; real proving (`RISC0_DEV_MODE=0`); agent deploy + report; human close -- [step-39-testnet-privacy-e2e.md](upcoming/step-39-testnet-privacy-e2e.md) |
 
 Ideas not yet steps: [raw-todos/](raw-todos/).
 

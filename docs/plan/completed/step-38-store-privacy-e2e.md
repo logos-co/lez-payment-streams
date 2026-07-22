@@ -133,7 +133,8 @@ Deferred out of this packet. Promoted to
 
 Step 39 owns native guest freeze, agent-run testnet redeploy, public
 regression, then required privacy gates: module full privacy warm-up, then
-Store full privacy (soft proving). See Step 39 decision log (D39.4–D39.9).
+Store full privacy (real proving on public testnet). See Step 39 decision log
+(D39.4–D39.9; D39.4 amended 2026-07-22).
 Do not reopen this packet for testnet work.
 
 ## Decision log
@@ -220,7 +221,8 @@ Exact Make alias names may follow the module pattern
   the shielding boundary.
 - Testnet Store × privacy is owned by
   [Step 39](../upcoming/step-39-testnet-privacy-e2e.md)
-  (module full warm-up then Store full; soft proving; agent-run deploy).
+  (module full warm-up then Store full; real proving on public testnet;
+  agent-run deploy).
   Pointer:
   [raw-todos/testnet-privacy-e2e-after-guest-deploy.md](../raw-todos/testnet-privacy-e2e-after-guest-deploy.md).
 
