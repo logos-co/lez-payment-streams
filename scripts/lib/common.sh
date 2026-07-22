@@ -211,6 +211,7 @@ ps_wait_clock50_prove_window() {
   local attempt=0 max_attempts="${PS_CLOCK50_WINDOW_ATTEMPTS:-90}" rem block_id line
   while (( attempt < max_attempts )); do
     attempt=$((attempt + 1))
+    sync_wallet 2>/dev/null || true
     line="$(logoscore call payment_streams_module readClockDecoded "$PS_CLOCK50_ACCOUNT_ID" 2>/dev/null | tail -1)"
     block_id="$(python3 -c '
 import json,sys
@@ -230,14 +231,32 @@ except Exception:
       rem=$((block_id % 50))
       # Early window: rem<=2 leaves ~48 blocks (~12 min at 15s) for PPE prove.
       if (( rem <= 2 )); then
-        echo "CLOCK_50 prove window ok: block_id=$block_id rem=$rem" >&2
-        return 0
+        # Confirm once more after a fresh sync so we do not trust a stale read.
+        sync_wallet 2>/dev/null || true
+        sleep 1
+        line="$(logoscore call payment_streams_module readClockDecoded "$PS_CLOCK50_ACCOUNT_ID" 2>/dev/null | tail -1)"
+        block_id="$(python3 -c '
+import json,sys
+try:
+  outer=json.loads(sys.argv[1])
+  inner=outer.get("result","{}")
+  if isinstance(inner,str):
+    inner=json.loads(inner) if inner.strip().startswith("{") else {}
+  dec=inner.get("decoded") if isinstance(inner.get("decoded"), dict) else inner
+  print(int(dec.get("block_id") or dec.get("blockId") or 0))
+except Exception:
+  print(0)
+' "$line" 2>/dev/null || echo 0)"
+        rem=$((block_id % 50))
+        if (( rem <= 2 )); then
+          echo "CLOCK_50 prove window ok: block_id=$block_id rem=$rem" >&2
+          return 0
+        fi
       fi
       echo "CLOCK_50 window wait: block_id=$block_id rem=$rem (want <=2) attempt=$attempt" >&2
     else
       echo "CLOCK_50 window wait: could not parse block_id attempt=$attempt" >&2
     fi
-    sync_wallet 2>/dev/null || true
     sleep 2
   done
   return 1

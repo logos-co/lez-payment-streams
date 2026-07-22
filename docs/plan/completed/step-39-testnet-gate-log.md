@@ -93,20 +93,17 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`, shield p
 | 2026-07-22 | 5674fcb | module full privacy testnet (3rd, real) | module-e2e-20260722T154921.log | fail | RISC0_DEV_MODE=0; logoscore transfer_shielded_owned RPC_FAILED (~20s IPC vs PPE wall clock) |
 | 2026-07-22 | a443f66+ | local module full privacy (real smoke) | module-e2e-20260722T172701.log | partial | RISC0_DEV_MODE=0; wallet shield OK; vault_init+deposit real-prove OK; create_stream incl timeout; later FFI 99; core_service timeout fix in logos-logoscore-cli 66c4194 |
 | 2026-07-22 | c905417+ | local module full privacy (real smoke 2) | module-e2e-20260722T183436.log | partial | RISC0_DEV_MODE=0; Clock50 module; create_stream Validated; close InvalidPrivacyPreservingProof (window crossed); accrual needs CLOCK_50 tick wait |
+| 2026-07-22 | 21333c2 | local module full privacy (real smoke 3) | module-e2e-20260722T191735.log | partial | create+close Validated under CLOCK_50; claim InvalidPrivacyPreservingProof (stale clock window after close); accrual ok |
 
 ## Agent summary (after Phase 5)
 
-Phases 1–3 green (do not reopen). Phase 3b wallet-CLI shield + logoscore IPC
-timeout port-gaps landed. Root cause for create_stream failure on first real
-smoke: PPE `public_pre_states` include CLOCK_01 (mislabeled clock_10); multi-minute
-prove crossed a clock update → `InvalidPrivacyPreservingProof` (D39.25).
+Phases 1–3 green (do not reopen). D39.25 CLOCK_50 real-prove path: create and
+close now validate under `RISC0_DEV_MODE=0` (`module-e2e-20260722T191735.log`).
+Claim still hit `InvalidPrivacyPreservingProof` — post-close clock window used a
+stale rem=0 read. Fix: force CLOCK_50 epoch advance after close, then re-align
+window with double-sync before claim.
 
-Second local real smoke (`module-e2e-20260722T183436.log`): vault/deposit/create
-green under CLOCK_50; close still hit InvalidPrivacyPreservingProof when prove
-crossed a CLOCK_50 tick. Accrual polls finished before CLOCK_50 advanced.
-
-Next: CLOCK_50 window align before close/claim + accrual epoch wait; re-smoke
-local module real-prove to full green (D39.24), then Phase 4 testnet.
+Next: re-smoke local module real-prove through claim (D39.24), then Phase 4.
 
 
 ## Human close (D39.15)

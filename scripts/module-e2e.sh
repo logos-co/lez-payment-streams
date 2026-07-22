@@ -1338,8 +1338,18 @@ else
     fi
 
     if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
-      narr_step "Aligning CLOCK_50 prove window before claim (D39.25)"
-      ps_wait_clock50_prove_window || narr_verbose "CLOCK_50 window wait returned non-zero (continuing)"
+      # Close prove advances many blocks; a stale wallet clock read can still
+      # report rem=0 from the pre-close epoch. Force a real CLOCK_50 tick, then
+      # re-align so claim prove starts at the beginning of a fresh window.
+      narr_step "Waiting for CLOCK_50 tick after close, then claim prove window (D39.25)"
+      ps_wait_clock50_advance || {
+        narr_fail "CLOCK_50 did not advance after close"
+        FAILURES=$((FAILURES + 1))
+      }
+      ps_wait_clock50_prove_window || {
+        narr_fail "CLOCK_50 claim prove window not reached"
+        FAILURES=$((FAILURES + 1))
+      }
       sync_wallet
     fi
 
