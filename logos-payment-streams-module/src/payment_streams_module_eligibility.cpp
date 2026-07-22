@@ -426,7 +426,13 @@ bool ownerBytesFromBase58(LogosExecutionZone& wallet, const QString& base58, uin
 }
 
 bool clockBytes(uint8_t out[32], QString* errorOut) {
-    if (ps_ffi_fixed_clock_10_account_id(out) != kFfiSuccess) {
+    // Match writes.cpp: Clock50 under real prove so PPE public_pre_states stay
+    // stable across multi-minute proves (InvalidPrivacyPreservingProof otherwise).
+    const QByteArray devMode = qgetenv("RISC0_DEV_MODE");
+    const uint32_t selector = (devMode == QByteArrayLiteral("0"))
+        ? static_cast<uint32_t>(2)  // Clock50
+        : static_cast<uint32_t>(0); // Clock01 soft default
+    if (ps_ffi_fixed_clock_account_id(selector, out) != kFfiSuccess) {
         if (errorOut != nullptr) {
             *errorOut = QStringLiteral("clock account id FFI failed");
         }

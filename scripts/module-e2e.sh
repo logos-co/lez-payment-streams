@@ -145,9 +145,15 @@ RATE="${RATE:-1}"
 TOPUP_INCREASE="${TOPUP_INCREASE:-1}"
 # Default 0: skip topUpStream to keep the public demo shorter. Set MODULE_E2E_TOPUP=1 to include it.
 # OWNER_PRIVACY=1 defaults top-up on so Step 36 covers pause/resume/top_up via shielded submits.
-MODULE_E2E_TOPUP="${MODULE_E2E_TOPUP:-$(ps_is_owner_privacy_e2e && echo 1 || echo 0)}"
-# OWNER_PRIVACY=1 also exercises pauseStream/resumeStream (same private submit path as create/close).
-MODULE_E2E_PAUSE_RESUME="${MODULE_E2E_PAUSE_RESUME:-$(ps_is_owner_privacy_e2e && echo 1 || echo 0)}"
+# Real prove uses CLOCK_50 (D39.25); skip pause/top-up unless explicitly requested — Clock50
+# jumps can auto-deplete allocation between create and pause.
+if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+  MODULE_E2E_TOPUP="${MODULE_E2E_TOPUP:-0}"
+  MODULE_E2E_PAUSE_RESUME="${MODULE_E2E_PAUSE_RESUME:-0}"
+else
+  MODULE_E2E_TOPUP="${MODULE_E2E_TOPUP:-$(ps_is_owner_privacy_e2e && echo 1 || echo 0)}"
+  MODULE_E2E_PAUSE_RESUME="${MODULE_E2E_PAUSE_RESUME:-$(ps_is_owner_privacy_e2e && echo 1 || echo 0)}"
+fi
 # Set MODULE_E2E_SKIP_CLOSE=1 to skip settlement (close + claim; saves testnet txs).
 MODULE_E2E_SKIP_CLOSE="${MODULE_E2E_SKIP_CLOSE:-0}"
 # Set MODULE_E2E_SKIP_FUND=1 to skip inline testnet pinata funding (assumes the
@@ -189,6 +195,13 @@ else
   POLL_READ_SLEEP="${POLL_READ_SLEEP:-5}"
 fi
 
+# Real prove uses CLOCK_50 (D39.25); accrual only moves when CLOCK_50 ticks
+# (~50 blocks). Raise the poll budget so one tick can land (~12–15 min local).
+if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+  ACCRUAL_ATTEMPTS="${ACCRUAL_ATTEMPTS:-120}"
+  ACCRUAL_POLL_SLEEP="${ACCRUAL_POLL_SLEEP:-8}"
+fi
+
 ARTIFACT="${ARTIFACT:-$(ps_e2e_artifacts_dir)/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
 mkdir -p "$(dirname "$ARTIFACT")"
 : > "$ARTIFACT"
@@ -201,6 +214,11 @@ DAEMON_LOG="${DAEMON_LOG:-$(dirname "$ARTIFACT")/module-e2e-daemon.log}"
 
 FAILURES=0
 DAEMON_PID=""
+# Never inherit a raised CLI RPC budget into this shell — logoscore stop would
+# wait up to that budget when no daemon is reachable (D39.24).
+unset LOGOSCORE_RPC_TIMEOUT_MS
+# Daemon / real-prove call budget (passed via env= on specific logoscore invocations only).
+PS_LOGOSCORE_RPC_TIMEOUT_MS="${PS_LOGOSCORE_RPC_TIMEOUT_MS:-600000}"
 
 emit_phase() {
   # emit_phase <phase> <ok:true|false> [extra-json-object]
@@ -210,7 +228,6 @@ emit_phase() {
 }
 
 cleanup() {
-  # Do not let a raised LOGOSCORE_RPC_TIMEOUT_MS stretch stop/teardown (D39.24).
   unset LOGOSCORE_RPC_TIMEOUT_MS
   timeout 20 logoscore stop 2>/dev/null || true
   [[ -n "$DAEMON_PID" ]] && wait "$DAEMON_PID" 2>/dev/null || true
@@ -295,10 +312,10 @@ if ps_is_any_privacy_e2e; then
 fi
 # Daemon-side core_service→module IPC defaults to 20s. Pass the raised budget only
 # on the daemon process (not exported into this shell) so stop/teardown stay fast.
-logoscore stop 2>/dev/null || true
+timeout 20 logoscore stop 2>/dev/null || true
 sleep 2
 if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
-  env LOGOSCORE_RPC_TIMEOUT_MS="${LOGOSCORE_RPC_TIMEOUT_MS:-600000}" \
+  env LOGOSCORE_RPC_TIMEOUT_MS="${PS_LOGOSCORE_RPC_TIMEOUT_MS}" \
     logoscore -D -m "$MODULES" -q >>"$DAEMON_LOG" 2>&1 &
 else
   logoscore -D -m "$MODULES" -q >>"$DAEMON_LOG" 2>&1 &
@@ -649,7 +666,7 @@ call_ps() {
   for attempt in 1 2 3 4 5 6; do
     # Real prove: raise outer logoscore CLI→daemon budget for this call only (D39.24).
     if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
-      line="$(env "LOGOSCORE_RPC_TIMEOUT_MS=${LOGOSCORE_RPC_TIMEOUT_MS:-600000}" \
+      line="$(env "LOGOSCORE_RPC_TIMEOUT_MS=${PS_LOGOSCORE_RPC_TIMEOUT_MS}" \
         logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)"
     else
       line="$(logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)"
@@ -1150,6 +1167,14 @@ if ps_is_local && [[ "$MODULE_E2E_PAUSE_RESUME" == "1" ]]; then
   sync_wallet
 fi
 
+# Real PPE: align to early CLOCK_50 window so prove wall clock does not cross a
+# clock update (sequencer would reject with InvalidPrivacyPreservingProof).
+if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+  narr_step "Aligning CLOCK_50 prove window before create_stream (D39.25)"
+  ps_wait_clock50_prove_window || narr_verbose "CLOCK_50 window wait returned non-zero (continuing)"
+  sync_wallet
+fi
+
 narr_step "Alice opens stream $STREAM_ID to Bob"
 narr_value "rate=$RATE tokens/sec, allocation=$ALLOCATION tokens, vault=$VAULT_ID"
 narr_verbose "A payment stream allocates tokens to a provider at a fixed rate."
@@ -1222,7 +1247,10 @@ narr_phase "Accrual"
 
 narr_step "Waiting for funds to accrue (rate=$RATE tokens/sec)"
 narr_verbose "Accrual is timestamp-based: derived from on-chain accrued_as_of field."
-if ps_is_testnet; then
+if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+  narr_verbose "Real prove folds against CLOCK_50; wait for a CLOCK_50 tick before polling (D39.25)."
+  ps_wait_clock50_advance || narr_verbose "CLOCK_50 advance wait returned non-zero (continuing)"
+elif ps_is_testnet; then
   narr_verbose "Public testnet often advances a block every ~15–60s; accrual follows chain time, not wall clock."
 else
   narr_verbose "Localnet folded clock advances quickly between polls."
@@ -1249,7 +1277,10 @@ if [[ "$ACCRUED" -ge "$MIN_ACCRUED" ]]; then
   narr_ok "Accrued: $ACCRUED tokens after ${attempt} poll(s) (unaccrued: $UNACCRUED)"
 else
   narr_fail "Insufficient accrual: $ACCRUED tokens (need $MIN_ACCRUED)"
-  narr_hint "Check sequencer is advancing and clock is synced"
+  narr_hint "Check sequencer is advancing and CLOCK_50 has ticked since create (D39.25)"
+  if [[ "${E2E_CLAIM_OPTIONAL:-1}" == "0" ]]; then
+    FAILURES=$((FAILURES + 1))
+  fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -1261,6 +1292,12 @@ if [[ "$MODULE_E2E_SKIP_CLOSE" == "1" ]]; then
   emit_phase claim true "{\"skipped\":true,\"reason\":\"MODULE_E2E_SKIP_CLOSE\"}"
 else
   narr_phase "Close"
+
+  if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+    narr_step "Aligning CLOCK_50 prove window before closeStream (D39.25)"
+    ps_wait_clock50_prove_window || narr_verbose "CLOCK_50 window wait returned non-zero (continuing)"
+    sync_wallet
+  fi
 
   narr_step "Alice closes stream $STREAM_ID, reclaims unspent allocation"
   CLOSE_LINE="$(call_ps close_stream 1 closeStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"authority\":\"$PROVIDER\"}")" "" "Close transaction included on chain" verify_close_stream)"
@@ -1298,6 +1335,12 @@ else
     PRE_CLAIM_VAULT=0
     if CLAIM_PRE_VAULT="$(poll_read read_vault "$OWNER" "$VAULT_ID")"; then
       read -r PRE_CLAIM_VAULT _ <<< "$CLAIM_PRE_VAULT"
+    fi
+
+    if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+      narr_step "Aligning CLOCK_50 prove window before claim (D39.25)"
+      ps_wait_clock50_prove_window || narr_verbose "CLOCK_50 window wait returned non-zero (continuing)"
+      sync_wallet
     fi
 
     narr_step "Bob claims residual accrued ($CLAIM_ACCRUED) from closed stream $STREAM_ID"

@@ -11,6 +11,7 @@
   "vault_config_account_id": "5eVd8F6P4RqTNHEg9Zr27Ha4GFWhVxCBNoukQ8v2gVkd",
   "vault_holding_account_id": "55oaHXvNxkDvVtQqZsKNmmTwgyMkqJpwZVtRYPjReNiL",
   "clock_10_account_id": "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWNU",
+  "clock_50_account_id": "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWkX",
   "demo_deposit_amount": 500,
   "stream_rate": 1,
   "allocation": 80,

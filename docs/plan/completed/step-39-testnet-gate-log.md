@@ -92,20 +92,21 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`, shield p
 | 2026-07-22 | — | D39.22–D39.24 | (docs) | policy | Wallet-CLI shield; no reopen Phase 1–3; local real-prove smoke before testnet Phase 4 |
 | 2026-07-22 | 5674fcb | module full privacy testnet (3rd, real) | module-e2e-20260722T154921.log | fail | RISC0_DEV_MODE=0; logoscore transfer_shielded_owned RPC_FAILED (~20s IPC vs PPE wall clock) |
 | 2026-07-22 | a443f66+ | local module full privacy (real smoke) | module-e2e-20260722T172701.log | partial | RISC0_DEV_MODE=0; wallet shield OK; vault_init+deposit real-prove OK; create_stream incl timeout; later FFI 99; core_service timeout fix in logos-logoscore-cli 66c4194 |
+| 2026-07-22 | c905417+ | local module full privacy (real smoke 2) | module-e2e-20260722T183436.log | partial | RISC0_DEV_MODE=0; Clock50 module; create_stream Validated; close InvalidPrivacyPreservingProof (window crossed); accrual needs CLOCK_50 tick wait |
 
 ## Agent summary (after Phase 5)
 
-Phases 1–3 green (do not reopen). Phase 3b harness: wallet `auth-transfer send`
-for shield; logoscore daemon stop/restart handoff; portable logoscore honors
-`LOGOSCORE_RPC_TIMEOUT_MS` on CLI and core_service→module (66c4194).
+Phases 1–3 green (do not reopen). Phase 3b wallet-CLI shield + logoscore IPC
+timeout port-gaps landed. Root cause for create_stream failure on first real
+smoke: PPE `public_pre_states` include CLOCK_01 (mislabeled clock_10); multi-minute
+prove crossed a clock update → `InvalidPrivacyPreservingProof` (D39.25).
 
-Local real-prove smoke (`module-e2e-20260722T172701.log`): pre_shield + dust via
-wallet OK; vault_init + deposit real-prove OK; create_stream submitted but
-inclusion/verify failed; pause/resume/topup/close hit wallet FFI error 99
-(InternalError). Teardown hang fixed by scoping RPC timeout to daemon only.
+Second local real smoke (`module-e2e-20260722T183436.log`): vault/deposit/create
+green under CLOCK_50; close still hit InvalidPrivacyPreservingProof when prove
+crossed a CLOCK_50 tick. Accrual polls finished before CLOCK_50 advanced.
 
-Next: green local module real-prove through claim (D39.24), then Phase 4
-testnet module then Store with `RISC0_DEV_MODE=0` and `E2E_CLAIM_OPTIONAL=0`.
+Next: CLOCK_50 window align before close/claim + accrual epoch wait; re-smoke
+local module real-prove to full green (D39.24), then Phase 4 testnet.
 
 
 ## Human close (D39.15)

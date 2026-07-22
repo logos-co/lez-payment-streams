@@ -56,7 +56,11 @@ uint32_t ps_ffi_decode_vault_holding(const uint8_t* data, size_t len, PsFfiDecod
 uint32_t ps_ffi_decode_stream_config(const uint8_t* data, size_t len, PsFfiDecodedStreamConfig* out);
 uint32_t ps_ffi_decode_clock(const uint8_t* data, size_t len, PsFfiDecodedClock* out);
 
+// Historical soft-path default: despite the name, this returns CLOCK_01
+// (fixture clock_10_account_id / RWNU). Prefer ps_ffi_fixed_clock_account_id.
 uint32_t ps_ffi_fixed_clock_10_account_id(uint8_t out_account_id_bytes[32]);
+// selector: 0=Clock01, 1=Clock10, 2=Clock50 (PaymentStreamsFfiClockAccountChoice).
+uint32_t ps_ffi_fixed_clock_account_id(uint32_t selector, uint8_t out_account_id_bytes[32]);
 uint32_t ps_ffi_authenticated_transfer_program_id(uint8_t out_bytes[32]);
 uint32_t ps_ffi_derive_vault_account_ids(const uint8_t program_id_bytes[32],
                                          const uint8_t owner_account_id_bytes[32],

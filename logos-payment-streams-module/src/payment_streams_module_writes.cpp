@@ -399,7 +399,16 @@ QJsonArray accountSlotsJsonForSubmit(const QStringList& accountHexIds, const QSt
 }
 
 bool clockBytes(uint8_t out[32], QString* errorOut) {
-    const auto status = ps_ffi_fixed_clock_10_account_id(out);
+    // Real PPE proves take minutes. CLOCK_01 (every block) and CLOCK_10 (every
+    // 10) advance during prove, so the sequencer rebuilds public_pre_states
+    // with a different clock and rejects with InvalidPrivacyPreservingProof.
+    // CLOCK_50 (~50 blocks) keeps a real-prove window for create/pause/claim.
+    // Soft path (RISC0_DEV_MODE!=0) keeps CLOCK_01 for fast accrual (D39.23).
+    const QByteArray devMode = qgetenv("RISC0_DEV_MODE");
+    const uint32_t selector = (devMode == QByteArrayLiteral("0"))
+        ? static_cast<uint32_t>(2)  // Clock50
+        : static_cast<uint32_t>(0); // Clock01 (historical soft default)
+    const auto status = ps_ffi_fixed_clock_account_id(selector, out);
     if (status != kFfiSuccess) {
         if (errorOut != nullptr) {
             *errorOut = QStringLiteral("fixed clock account id FFI failed");

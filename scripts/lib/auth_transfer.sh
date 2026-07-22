@@ -87,7 +87,7 @@ ps_logoscore_daemon_restart_after_wallet() {
   # Inherit raised RPC budget on the daemon only (core_service→module); do not
   # export into the caller shell or logoscore stop hangs for minutes (D39.24).
   if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
-    env LOGOSCORE_RPC_TIMEOUT_MS="${LOGOSCORE_RPC_TIMEOUT_MS:-600000}" \
+    env LOGOSCORE_RPC_TIMEOUT_MS="${PS_LOGOSCORE_RPC_TIMEOUT_MS:-${LOGOSCORE_RPC_TIMEOUT_MS:-600000}}" \
       logoscore -D -m "$MODULES" -q >>"$log" 2>&1 &
   else
     logoscore -D -m "$MODULES" -q >>"$log" 2>&1 &
