@@ -356,9 +356,31 @@ logoscore_string_arg() {
 }
 
 # Public → private shield. phase_name defaults to pre_shield (owner deposit buffer).
+# Real prove (RISC0_DEV_MODE=0): wallet auth-transfer send + AT-init handoff (D39.22).
+# Soft prove: logoscore transfer_shielded_owned (Phase 1 only).
 ps_pre_shield_to_private_account() {
   local from_hex="$1" to_hex="$2" amount="$3" phase_name="${4:-pre_shield}" label="${5:-private account}"
-  local amt_hex amt_file line tx_hash
+  local amt_hex amt_file line tx_hash from_b58 to_b58 wallet_out
+
+  if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+    from_b58="$(to_base58 "$from_hex")"
+    to_b58="$(to_base58 "$to_hex")"
+    narr_verbose "shield via wallet auth-transfer send (Public→Private; real prove)"
+    if wallet_out="$(ps_wallet_auth_transfer_send "$from_b58" "$to_b58" "$amount" 2>&1)"; then
+      emit_phase "$phase_name" true "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\",\"via\":\"wallet\"}"
+      narr_ok "Pre-shielded $amount tokens into $label (wallet auth-transfer send)"
+      ps_reload_payment_streams_wallet
+      sync_wallet
+      return 0
+    else
+      wallet_out="${wallet_out:-wallet auth-transfer send failed}"
+      emit_phase "$phase_name" false "$(python3 -c 'import json,sys; print(json.dumps({"amount":int(sys.argv[1]),"from_hex":sys.argv[2],"to_hex":sys.argv[3],"via":"wallet","error":sys.argv[4][:2000]}))' "$amount" "$from_hex" "$to_hex" "$wallet_out")"
+      narr_fail "wallet auth-transfer send failed ($label)"
+      narr_hint "real prove can take 30s–4 min; check LEE_WALLET_HOME_DIR and wallet on PATH"
+      return 1
+    fi
+  fi
+
   # logoscore coerces all-digit hex to float; the s: prefix (stripped by the
   # wallet patch) keeps the le16 encoding intact. Pass via @file so the CLI
   # does not reinterpret the colon-bearing argv.
@@ -386,7 +408,7 @@ except Exception:
 ' "$line" 2>/dev/null || true)"
   if [[ -n "$tx_hash" ]]; then
     if ! await_inclusion "$tx_hash"; then
-      emit_phase "$phase_name" false "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\",\"tx_hash\":\"$tx_hash\",\"inclusion\":\"timeout\"}"
+      emit_phase "$phase_name" false "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\",\"tx_hash\":\"$tx_hash\",\"inclusion\":\"timeout\",\"via\":\"logoscore\"}"
       narr_fail "transfer_shielded_owned submitted but not included on chain ($label)"
       narr_hint "tx_hash=$tx_hash — soft proofs (RISC0_DEV_MODE=1) are rejected by public testnet; localnet accepts them"
       return 1
@@ -405,16 +427,16 @@ except Exception:
     sys.exit(1)
 ' "$line" 2>/dev/null; then
     if [[ -z "$tx_hash" ]]; then
-      emit_phase "$phase_name" false "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\",\"error\":\"missing_tx_hash\"}"
+      emit_phase "$phase_name" false "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\",\"error\":\"missing_tx_hash\",\"via\":\"logoscore\"}"
       narr_fail "transfer_shielded_owned returned ok without tx_hash ($label)"
       return 1
     fi
-    emit_phase "$phase_name" true "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\",\"tx_hash\":\"$tx_hash\"}"
+    emit_phase "$phase_name" true "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\",\"tx_hash\":\"$tx_hash\",\"via\":\"logoscore\"}"
     narr_ok "Pre-shielded $amount tokens into $label"
     sync_wallet
     return 0
   fi
-  emit_phase "$phase_name" false "{\"raw\":$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "${line:-}")}"
+  emit_phase "$phase_name" false "{\"via\":\"logoscore\",\"raw\":$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "${line:-}")}"
   narr_fail "transfer_shielded_owned failed ($label)"
   return 1
 }
@@ -616,7 +638,13 @@ call_ps() {
   local phase="$1" required="$2" op="$3" params="$4" key="${5:-}" success_label="${6:-$phase}" verify_fn="${7:-}"
   local attempt line="" tx_hash=""
   for attempt in 1 2 3 4 5 6; do
-    line="$(logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)"
+    # Real prove: raise outer logoscore CLI→daemon budget for this call only (D39.24).
+    if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+      line="$(env "LOGOSCORE_RPC_TIMEOUT_MS=${LOGOSCORE_RPC_TIMEOUT_MS:-600000}" \
+        logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)"
+    else
+      line="$(logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)"
+    fi
     if inner_status_ok "$line" "$key"; then
       tx_hash="$(extract_tx_hash "$line")"
       if [[ -n "$tx_hash" ]] && ! await_inclusion "$tx_hash"; then
@@ -696,10 +724,28 @@ if ps_is_local || ps_is_testnet; then
   export PS_AT_LOGOSCORE_WALLET_HANDOFF=1
   narr_step "Initializing accounts under authenticated_transfer program"
   # D37.11: AT-init public accounts only. Private owner/provider skip AT.
+  # Public funder still needs AT so pinata / wallet auth-transfer send can debit it (D39.22).
   if ps_is_owner_privacy_e2e && ps_is_provider_privacy_e2e; then
-    narr_ok "Skipping AT init (private owner and private provider)"
-    emit_phase auth_init_skip true "{\"reason\":\"both_private\"}"
+    if [[ -n "${PUBLIC_FUNDER:-}" ]]; then
+      if ps_auth_transfer_init_one "$PUBLIC_FUNDER" auth_init_funder; then
+        narr_ok "Public funder verified under authenticated_transfer (private owner/provider skip AT)"
+      else
+        narr_fail "authenticated_transfer ensure failed for public funder (see artifact auth_init_funder)"
+        narr_hint "register_public_account or wallet auth-transfer init did not settle"
+        FAILURES=$((FAILURES + 1))
+      fi
+    else
+      narr_ok "Skipping AT init (private owner and private provider; no PUBLIC_FUNDER yet)"
+      emit_phase auth_init_skip true "{\"reason\":\"both_private\"}"
+    fi
   elif ps_is_owner_privacy_e2e; then
+    if [[ -n "${PUBLIC_FUNDER:-}" ]]; then
+      if ! ps_auth_transfer_init_one "$PUBLIC_FUNDER" auth_init_funder; then
+        narr_fail "authenticated_transfer ensure failed for public funder (see artifact auth_init_funder)"
+        narr_hint "register_public_account or wallet auth-transfer init did not settle"
+        FAILURES=$((FAILURES + 1))
+      fi
+    fi
     if ps_auth_transfer_init_one "$PROVIDER" auth_init_provider; then
       narr_ok "Provider verified under authenticated_transfer (private owner skips AT init)"
     else
@@ -723,6 +769,10 @@ if ps_is_local || ps_is_testnet; then
     FAILURES=$((FAILURES + 1))
   fi
   sync_wallet
+  # Handoff may have closed/reopened LEZ wallet; refresh payment_streams handle (D39.22).
+  if [[ "${PS_AT_LOGOSCORE_WALLET_HANDOFF:-0}" == "1" ]]; then
+    ps_reload_payment_streams_wallet
+  fi
 fi
 
 if ps_is_local; then

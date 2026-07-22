@@ -539,10 +539,28 @@ def run(cmd: list[str], *, cwd: Path | None = None, env: dict | None = None, tim
 
 def logoscore_cmd(cfg_dir: Path, *args: str, timeout: int = 120) -> subprocess.CompletedProcess:
     cmd = ["logoscore", "--config-dir", str(cfg_dir), *args]
-    return run(cmd, timeout=timeout)
+    env = None
+    # Real prove: raise outer logoscore CLI→daemon budget for PPE calls only (D39.24).
+    if (
+        os.environ.get("RISC0_DEV_MODE", "1").strip() == "0"
+        and len(args) >= 3
+        and args[0] == "call"
+        and args[2] == "chainAction"
+    ):
+        env = os.environ.copy()
+        env.setdefault("LOGOSCORE_RPC_TIMEOUT_MS", "600000")
+        timeout = max(timeout, int(env.get("LOGOSCORE_RPC_TIMEOUT_MS", "600000")) // 1000 + 60)
+    return run(cmd, env=env, timeout=timeout)
 
 
-def testnet_chain_action_timeout_s() -> int:
+def chain_action_timeout_s() -> int:
+    """Subprocess budget for payment_streams_module chainAction."""
+    if os.environ.get("RISC0_DEV_MODE", "1").strip() == "0":
+        raw = os.environ.get("LOGOSCORE_CHAIN_ACTION_TIMEOUT", "660").strip()
+        try:
+            return max(600, int(raw))
+        except ValueError:
+            return 660
     if os.environ.get("CHAIN", "local").strip().lower() != "testnet":
         return 120
     raw = os.environ.get("LOGOSCORE_CHAIN_ACTION_TIMEOUT", "360").strip()
@@ -550,6 +568,10 @@ def testnet_chain_action_timeout_s() -> int:
         return max(120, int(raw))
     except ValueError:
         return 360
+
+
+def testnet_chain_action_timeout_s() -> int:
+    return chain_action_timeout_s()
 
 
 def last_json_line(text: str) -> dict | None:
@@ -1049,6 +1071,7 @@ def vault_unallocated_lo(cfg: Path, manifest: dict) -> int:
 
 
 def release_logoscore_wallet(cfg: Path) -> None:
+    logoscore_cmd(cfg, "call", "logos_execution_zone", "save", timeout=60)
     logoscore_cmd(cfg, "call", "logos_execution_zone", "close")
 
 
@@ -2255,7 +2278,24 @@ def transfer_shielded_owned(
     label: str,
     seq_url: str,
 ) -> None:
-    """Public → private shield via logos_execution_zone.transfer_shielded_owned."""
+    """Public → private shield.
+
+    Real prove (RISC0_DEV_MODE=0): wallet auth-transfer send with logoscore↔wallet
+    handoff (D39.22). Soft prove: logoscore transfer_shielded_owned.
+    """
+    if os.environ.get("RISC0_DEV_MODE", "1").strip() == "0":
+        wallet_auth_transfer_send(
+            cfg,
+            from_account,
+            to_account,
+            amount,
+            artifact,
+            phase=phase,
+            label=label,
+            seq_url=seq_url,
+        )
+        return
+
     from_hex = account_id_to_hex(cfg, from_account)
     to_hex = account_id_to_hex(cfg, to_account)
     amt_token = f"s:{amount_le16_hex(amount)}"
@@ -2303,6 +2343,7 @@ def transfer_shielded_owned(
         from_hex=from_hex,
         to_hex=to_hex,
         tx_hash=tx_hash,
+        via="logoscore",
         raw=parsed if not ok else None,
     )
     if not ok:
@@ -2311,6 +2352,78 @@ def transfer_shielded_owned(
         wait_for_sequencer_tx(seq_url, str(tx_hash), artifact, label=phase)
     sync_wallet(cfg, seq_url)
     narrator.ok(f"Pre-shielded {amount} tokens into {label}")
+
+
+def wallet_auth_transfer_send(
+    cfg: Path,
+    from_account: str,
+    to_account: str,
+    amount: int,
+    artifact: Path,
+    *,
+    phase: str,
+    label: str,
+    seq_url: str,
+) -> None:
+    """Public→Private shield via wallet CLI (D39.22); proves outside LogosAPI IPC."""
+    from_b58 = account_id_to_base58(cfg, from_account).replace("Public/", "").replace("Private/", "")
+    to_b58 = account_id_to_base58(cfg, to_account).replace("Public/", "").replace("Private/", "")
+    from_hex = account_id_to_hex(cfg, from_account)
+    to_hex = account_id_to_hex(cfg, to_account)
+    repo = Path(__file__).resolve().parents[2]
+    wallet_home = Path(os.environ.get("LEE_WALLET_HOME_DIR", repo / ".scaffold" / "wallet"))
+    env = os.environ.copy()
+    env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
+    # Prepend pinned LEZ release wallet (same as ps_prepend_lez_wallet_path).
+    cache = run(
+        ["bash", "-c", f'source "{repo}/scripts/lib/common.sh" >/dev/null && ps_lez_cache'],
+        cwd=repo,
+        timeout=30,
+    )
+    if cache.returncode == 0:
+        release = Path((cache.stdout or "").strip()) / "target" / "release"
+        if (release / "wallet").is_file():
+            env["PATH"] = f"{release}:{env.get('PATH', '')}"
+
+    narrator.step(f"Shield via wallet auth-transfer send ({label}; real prove)")
+    release_logoscore_wallet(cfg)
+    try:
+        timeout_s = int(os.environ.get("PS_WALLET_SHIELD_TIMEOUT", "600"))
+        proc = run(
+            [
+                "wallet",
+                "auth-transfer",
+                "send",
+                "--from",
+                f"Public/{from_b58}",
+                "--to",
+                f"Private/{to_b58}",
+                "--amount",
+                str(amount),
+            ],
+            cwd=repo,
+            env=env,
+            timeout=max(120, timeout_s),
+        )
+    finally:
+        reopen_logoscore_wallet(cfg, seq_url)
+
+    ok = proc.returncode == 0
+    err_text = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()
+    log_artifact(
+        artifact,
+        phase,
+        ok,
+        amount=amount,
+        from_hex=from_hex,
+        to_hex=to_hex,
+        via="wallet",
+        raw=err_text[:2000] if not ok else None,
+    )
+    if not ok:
+        raise E2EError(f"wallet auth-transfer send ({phase}) failed: {err_text[:500]}")
+    reload_payment_streams_wallet(cfg, seq_url)
+    narrator.ok(f"Pre-shielded {amount} tokens into {label} (wallet auth-transfer send)")
 
 
 def pre_shield_to_private_owner(
