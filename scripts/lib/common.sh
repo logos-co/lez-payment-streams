@@ -286,7 +286,9 @@ except Exception:
   while (( attempt < max_attempts )); do
     attempt=$((attempt + 1))
     sleep 5
-    sync_wallet 2>/dev/null || true
+    if declare -F sync_wallet >/dev/null 2>&1; then
+      sync_wallet 2>/dev/null || true
+    fi
     line="$(logoscore call payment_streams_module readClockDecoded "$PS_CLOCK50_ACCOUNT_ID" 2>/dev/null | tail -1)"
     block_id="$(python3 -c '
 import json,sys
@@ -305,7 +307,13 @@ except Exception:
       return 0
     fi
     if (( attempt % 6 == 0 )); then
-      echo "CLOCK_50 advance wait: block_id=$block_id start=$start_id attempt=$attempt" >&2
+      local tip=""
+      if declare -F ps_seq_url >/dev/null 2>&1; then
+        tip="$(curl -sf -X POST "$(ps_seq_url)" -H 'Content-Type: application/json' \
+          -d '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}' 2>/dev/null |
+          python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("result",""))' 2>/dev/null || true)"
+      fi
+      echo "CLOCK_50 advance wait: clock_block=$block_id start=$start_id tip=${tip:-?} next_tick=$(( (start_epoch + 1) * 50 )) attempt=$attempt" >&2
     fi
   done
   return 1
