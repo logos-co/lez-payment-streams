@@ -210,7 +210,9 @@ emit_phase() {
 }
 
 cleanup() {
-  logoscore stop 2>/dev/null || true
+  # Do not let a raised LOGOSCORE_RPC_TIMEOUT_MS stretch stop/teardown (D39.24).
+  unset LOGOSCORE_RPC_TIMEOUT_MS
+  timeout 20 logoscore stop 2>/dev/null || true
   [[ -n "$DAEMON_PID" ]] && wait "$DAEMON_PID" 2>/dev/null || true
 }
 trap cleanup EXIT
@@ -289,16 +291,18 @@ narr_step "Starting logoscore, loading modules"
 if ps_is_any_privacy_e2e; then
   export RISC0_DEV_MODE="${RISC0_DEV_MODE:-1}"
   export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
-  # Daemon-side core_service→module IPC also defaults to 20s; export so
-  # CoreServiceImpl honors the same budget as the CLI client (D39.24).
-  if [[ "${RISC0_DEV_MODE}" == "0" ]]; then
-    export LOGOSCORE_RPC_TIMEOUT_MS="${LOGOSCORE_RPC_TIMEOUT_MS:-600000}"
-  fi
   narr_verbose "privacy profile ($(ps_privacy_profile_label)): RISC0_DEV_MODE=$RISC0_DEV_MODE PAYMENT_STREAMS_GUEST_BIN=$PAYMENT_STREAMS_GUEST_BIN"
 fi
+# Daemon-side core_service→module IPC defaults to 20s. Pass the raised budget only
+# on the daemon process (not exported into this shell) so stop/teardown stay fast.
 logoscore stop 2>/dev/null || true
 sleep 2
-logoscore -D -m "$MODULES" -q >>"$DAEMON_LOG" 2>&1 &
+if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+  env LOGOSCORE_RPC_TIMEOUT_MS="${LOGOSCORE_RPC_TIMEOUT_MS:-600000}" \
+    logoscore -D -m "$MODULES" -q >>"$DAEMON_LOG" 2>&1 &
+else
+  logoscore -D -m "$MODULES" -q >>"$DAEMON_LOG" 2>&1 &
+fi
 DAEMON_PID=$!
 sleep 3
 logoscore load-module logos_execution_zone >/dev/null
