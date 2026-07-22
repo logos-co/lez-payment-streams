@@ -681,6 +681,163 @@ def sync_wallet(cfg: Path, sequencer_url: str) -> None:
     time.sleep(2)
 
 
+def ps_clock50_account_id() -> str:
+    return os.environ.get(
+        "PS_CLOCK50_ACCOUNT_ID", "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWkX"
+    ).strip()
+
+
+def real_prove_enabled() -> bool:
+    return os.environ.get("RISC0_DEV_MODE", "1").strip() == "0"
+
+
+def clock50_block_id_from_decoded(data: dict[str, Any]) -> int | None:
+    dec = data.get("decoded") if isinstance(data.get("decoded"), dict) else data
+    if not isinstance(dec, dict):
+        return None
+    for key in ("block_id", "blockId"):
+        if key not in dec:
+            continue
+        raw = str(dec[key]).replace("-", "").strip()
+        if raw.isdigit():
+            return int(raw)
+    return None
+
+
+def read_clock50_block_id(cfg: Path) -> int | None:
+    r = logoscore_cmd(
+        cfg,
+        "call",
+        "payment_streams_module",
+        "readClockDecoded",
+        ps_clock50_account_id(),
+    )
+    parsed = last_json_line(r.stdout or "") or last_json_line(r.stderr or "")
+    if not parsed or parsed.get("status") != "ok":
+        return None
+    inner_raw = parsed.get("result")
+    if isinstance(inner_raw, str):
+        try:
+            inner = json.loads(inner_raw)
+        except json.JSONDecodeError:
+            return None
+    elif isinstance(inner_raw, dict):
+        inner = inner_raw
+    else:
+        return None
+    return clock50_block_id_from_decoded(inner)
+
+
+def ps_wait_clock50_prove_window(cfg: Path, seq_url: str) -> bool:
+    """Early CLOCK_50 window (block_id % 50 <= 2) with double-sync confirm (D39.25)."""
+    max_attempts = int(os.environ.get("PS_CLOCK50_WINDOW_ATTEMPTS", "90"))
+    for attempt in range(1, max_attempts + 1):
+        sync_wallet(cfg, seq_url)
+        block_id = read_clock50_block_id(cfg)
+        if block_id is not None:
+            rem = block_id % 50
+            if rem <= 2:
+                sync_wallet(cfg, seq_url)
+                time.sleep(1)
+                block_id = read_clock50_block_id(cfg)
+                if block_id is not None:
+                    rem = block_id % 50
+                    if rem <= 2:
+                        print(
+                            f"CLOCK_50 prove window ok: block_id={block_id} rem={rem}",
+                            file=sys.stderr,
+                        )
+                        return True
+            print(
+                f"CLOCK_50 window wait: block_id={block_id} rem={rem} (want <=2) "
+                f"attempt={attempt}",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"CLOCK_50 window wait: could not parse block_id attempt={attempt}",
+                file=sys.stderr,
+            )
+        time.sleep(2)
+    return False
+
+
+def ps_wait_clock50_advance(cfg: Path, seq_url: str) -> bool:
+    """Wait until CLOCK_50 epoch (block_id // 50) increases (D39.25)."""
+    max_attempts = int(os.environ.get("PS_CLOCK50_ADVANCE_ATTEMPTS", "120"))
+    start_id = read_clock50_block_id(cfg) or 0
+    start_epoch = start_id // 50
+    print(
+        f"CLOCK_50 advance wait: start block_id={start_id} epoch={start_epoch}",
+        file=sys.stderr,
+    )
+    for attempt in range(1, max_attempts + 1):
+        time.sleep(5)
+        sync_wallet(cfg, seq_url)
+        block_id = read_clock50_block_id(cfg) or 0
+        if block_id // 50 > start_epoch:
+            print(f"CLOCK_50 advanced: {start_id} -> {block_id}", file=sys.stderr)
+            return True
+        if attempt % 6 == 0:
+            print(
+                f"CLOCK_50 advance wait: block_id={block_id} start={start_id} "
+                f"attempt={attempt}",
+                file=sys.stderr,
+            )
+    return False
+
+
+def align_clock50_prove_window_before_ppe(
+    cfg: Path,
+    seq_url: str,
+    artifact: Path,
+    *,
+    label: str,
+    strict: bool = False,
+) -> None:
+    if not real_prove_enabled():
+        return
+    ok = ps_wait_clock50_prove_window(cfg, seq_url)
+    log_artifact(artifact, label, ok, clock50="prove_window")
+    if ok:
+        sync_wallet(cfg, seq_url)
+    elif strict:
+        raise E2EError(f"{label}: CLOCK_50 prove window not reached")
+
+
+def wait_clock50_advance_before_accrual(
+    cfg: Path,
+    seq_url: str,
+    artifact: Path,
+    *,
+    label: str = "clock50_advance_before_accrual",
+) -> None:
+    if not real_prove_enabled():
+        return
+    ok = ps_wait_clock50_advance(cfg, seq_url)
+    log_artifact(artifact, label, ok, clock50="advance")
+
+
+def align_clock50_after_close_before_claim(
+    cfg: Path,
+    seq_url: str,
+    artifact: Path,
+) -> None:
+    if not real_prove_enabled():
+        return
+    ok_adv = ps_wait_clock50_advance(cfg, seq_url)
+    log_artifact(artifact, "clock50_advance_after_close", ok_adv, clock50="advance")
+    if not ok_adv:
+        raise E2EError("CLOCK_50 did not advance after close")
+    align_clock50_prove_window_before_ppe(
+        cfg,
+        seq_url,
+        artifact,
+        label="clock50_prove_window_before_claim",
+        strict=True,
+    )
+
+
 def allocation_available(cfg: Path, vault_id: int, stream_id: int, manifest: dict) -> bool:
     return check_stream_fundable(cfg, vault_id, stream_id, manifest)["fundable"]
 
@@ -698,6 +855,7 @@ def wait_for_stream_fundable(
     max_attempts = max(1, int(wait_s / poll_s))
     last_check: dict[str, Any] = {}
     t0 = time.monotonic()
+    wait_clock50_advance_before_accrual(cfg_user, seq_url, artifact)
     for attempt in range(max_attempts):
         sync_wallet(cfg_user, seq_url)
         logoscore_cmd(cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
@@ -2731,6 +2889,12 @@ def create_demo_stream_for_run(
     if chain == "local":
         create_via = local_e2e_create_via()
         if create_via == "chainaction":
+            align_clock50_prove_window_before_ppe(
+                cfg_user,
+                seq_url,
+                artifact,
+                label="clock50_prove_window_before_create",
+            )
             create_body = {
                 "signer": manifest["owner_account_id"],
                 "vault_id": vault_id,
@@ -2863,6 +3027,12 @@ def create_demo_stream_for_run(
                     "allocation_lo": alloc,
                     "allocation_hi": 0,
                 }
+                align_clock50_prove_window_before_ppe(
+                    cfg_user,
+                    seq_url,
+                    artifact,
+                    label="clock50_prove_window_before_create_fallback",
+                )
                 r = logoscore_cmd(
                     cfg_user,
                     "call",
@@ -2904,6 +3074,12 @@ def create_demo_stream_for_run(
     elif chain == "testnet":
         create_via = testnet_e2e_create_via()
         if create_via == "chainaction":
+            align_clock50_prove_window_before_ppe(
+                cfg_user,
+                seq_url,
+                artifact,
+                label="clock50_prove_window_before_create",
+            )
             create_body = {
                 "signer": manifest["owner_account_id"],
                 "vault_id": vault_id,
@@ -2977,6 +3153,12 @@ def create_demo_stream_for_run(
             manifest.update(json.loads(manifest_path.read_text()))
             wait_for_stream_config_on_chain(cfg_user, manifest, create_id, seq_url, artifact)
     else:
+        align_clock50_prove_window_before_ppe(
+            cfg_user,
+            seq_url,
+            artifact,
+            label="clock50_prove_window_before_create",
+        )
         create_body = {
             "signer": manifest["owner_account_id"],
             "vault_id": vault_id,
@@ -3337,6 +3519,12 @@ def demo_teardown(
             stream_closed=closed,
         )
     if not close_applied:
+        align_clock50_prove_window_before_ppe(
+            cfg_user,
+            seq_url,
+            artifact,
+            label="clock50_prove_window_before_close",
+        )
         close_body = {
             "signer": manifest["owner_account_id"],
             "vault_id": vault_id,
@@ -3453,6 +3641,7 @@ def demo_teardown(
     narrator.step(f"Claiming residual accrued ({accrued}) on closed stream {stream_id}")
     pre_provider = account_balance_seq(seq_url, manifest["provider_account_id"])
     pre_vault, _ = vault_status_balances(cfg_user, manifest)
+    align_clock50_after_close_before_claim(cfg_user, seq_url, artifact)
     if e2e_close_via() != "chainaction":
         try:
             release_logoscore_wallet(cfg_user)
