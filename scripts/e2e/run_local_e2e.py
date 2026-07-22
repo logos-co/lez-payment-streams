@@ -2304,15 +2304,32 @@ def setup_store_owner_privacy_accounts(
     seed otherwise regenerates the first private account id on the other host.
     """
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
-    if provider_privacy_enabled():
-        narrator.step(
-            "Creating public funder, private vault owner, and private provider "
-            "(OWNER_PRIVACY=1 PROVIDER_PRIVACY=1; same wallet session)"
-        )
+    is_testnet = os.environ.get("CHAIN", "local").strip().lower() == "testnet"
+    # Testnet: reuse the fixture public owner as funder (same as module-e2e /
+    # D39.18). Fresh create_account_public + wallet AT-init is brittle under
+    # dual logoscore daemons (keys often missing from storage for wallet CLI).
+    fixture_public_owner = str(manifest.get("owner_account_id") or "").strip()
+    if is_testnet and fixture_public_owner:
+        if provider_privacy_enabled():
+            narrator.step(
+                "Creating private vault owner and private provider "
+                f"(testnet; funder={fixture_public_owner[:8]}…)"
+            )
+        else:
+            narrator.step(
+                f"Creating private vault owner (testnet; funder={fixture_public_owner[:8]}…)"
+            )
+        funder_b58 = fixture_public_owner
     else:
-        narrator.step("Creating public funder and private vault owner (OWNER_PRIVACY=1)")
-    funder_raw = create_account(cfg_user, private=False)
-    funder_b58 = account_id_to_base58(cfg_user, funder_raw)
+        if provider_privacy_enabled():
+            narrator.step(
+                "Creating public funder, private vault owner, and private provider "
+                "(OWNER_PRIVACY=1 PROVIDER_PRIVACY=1; same wallet session)"
+            )
+        else:
+            narrator.step("Creating public funder and private vault owner (OWNER_PRIVACY=1)")
+        funder_raw = create_account(cfg_user, private=False)
+        funder_b58 = account_id_to_base58(cfg_user, funder_raw)
     owner_hex, owner_b58 = _normalize_private_account_hex(
         cfg_user, create_account(cfg_user, private=True)
     )

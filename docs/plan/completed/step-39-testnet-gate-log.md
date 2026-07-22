@@ -100,14 +100,20 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`, shield p
 
 | 2026-07-22 | 9491316 | module full privacy testnet (5th, real) | module-e2e-20260722T215542.log | pass | D39.4/Phase 4 warm-up; RISC0_DEV_MODE=0; CLOCK_50; claim vault_drop=400; wallet shield |
 
+| 2026-07-22 | 2d45928 | store full privacy testnet (1st, real) | e2e-20260722T234458.log | fail | AT-init fresh funder 5pLi93wd…; wallet init did not yield AT-owned; dual-daemon key handoff |
+
 ## Agent summary (after Phase 5)
 
 Phases 1–3 green (do not reopen). D39.24 local module real-prove smoke green.
 Phase 4 module full privacy testnet green
 (`module-e2e-20260722T215542.log`, `RISC0_DEV_MODE=0`, claim `vault_drop=400`).
 
-Next: fund → Store full privacy testnet, then Phase 5 docs. Human closes
-(D39.15 / implementer step 9).
+Store full privacy testnet first attempt failed at funder AT-init
+(`e2e-20260722T234458.log`): created a fresh public funder then
+`wallet auth-transfer init` did not yield AT-owned. Fix: reuse fixture
+public owner as funder on testnet (mirror module / D39.18). Retry pending.
+
+Human closes (D39.15 / implementer step 9) after Store + Phase 5.
 
 
 ## Human close (D39.15)
