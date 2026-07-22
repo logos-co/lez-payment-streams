@@ -437,7 +437,7 @@ Human-only (D39.15):
 ## Deliverables
 
 - [x] Packet, wiring, gate log, decisions through D39.20 (Phase 0).
-- [ ] Phase 1 preflight + freeze build.
+- [x] Phase 1 preflight + freeze build.
 - [ ] Phase 2 deploy + fixture sync + prefix checks.
 - [ ] Phase 3 public testnet.
 - [ ] Phase 4 module full then Store full.

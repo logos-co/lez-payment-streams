@@ -17,10 +17,10 @@ agent reports greens, human alone moves packet to completed or writes off
 
 | Field | Value |
 | --- | --- |
-| Freeze commit | _pending Phase 2_ |
-| Deploy date | _pending_ |
-| ImageID Y (hex) | _pending_ (replaces `de17c0db…`, or unchanged per D39.16) |
-| ELF size (bytes) | _pending_ |
+| Freeze commit | `c1f5b605705a8d8d2030d2c547ec7b9b9e77236a` (Phase 1 freeze; deploy pending Phase 2) |
+| Deploy date | _pending Phase 2_ |
+| ImageID Y (hex) | `072a26cc9865e95679012e53f2b1861b71f488b5e90da93611459afbc7adcfc7` (≠ fixture `de17c0db…` → redeploy required) |
+| ELF size (bytes) | 362044 |
 | ELF path | `methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin` |
 | Operator | Agent (`make build` → `make deploy-testnet` + prefix checks) |
 
@@ -67,7 +67,11 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`.
 
 | Date | Commit | Profile | Artifact | Result | Notes |
 | --- | --- | --- | --- | --- | --- |
-| | | | | | _no runs yet_ |
+| 2026-07-22 | c1f5b60 | local module full privacy | module-e2e-20260722T134520.log | pass | Phase 1; SKIP_BUILD=1; RISC0_DEV_MODE=1; claim_balance vault_drop=45 |
+| 2026-07-22 | c1f5b60 | local Store full privacy | e2e-20260722T135206.log | pass | Phase 1; SKIP_BUILD=1; make verify-store-local-full-privacy |
+| 2026-07-22 | c1f5b60 | local module public | module-e2e-20260722T140326.log | pass | Phase 1; SKIP_BUILD=1 |
+| 2026-07-22 | c1f5b60 | local Store public | e2e-20260722T140901.log | pass | Phase 1; SKIP_BUILD=1 |
+| 2026-07-22 | c1f5b60 | freeze build | (Docker ELF) | pass | ImageID Y=072a26cc…; ELF 362044 bytes; Y≠de17c0db → redeploy |
 
 ## Agent summary (after Phase 5)
 
