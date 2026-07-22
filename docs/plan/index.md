@@ -13,7 +13,7 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 24, 26-31, 33) |
-| [upcoming/](upcoming/) | Steps 20, 22, 32, 34, 35, 38 (active); optional 21 (UI), 23 |
+| [upcoming/](upcoming/) | Steps 20, 22, 32, 34, 35, 39 (active); optional 21 (UI), 23 |
 | [cancelled/](cancelled/) | Step 25 won't fix |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
@@ -28,6 +28,8 @@ Delivery fork rebase + wallet bump: Step 31 (complete).
 Static dependency migration: Step 30 (complete; D6 revisit condition closed).
 Store fresh vault per run: Step 33 (complete).
 AT-init unify + Store claim phase: Step 32 (active; D3 testnet gate pending).
+Local Store privacy profiles: Step 38 (complete).
+Testnet privacy E2E after native guest deploy: Step 39 (active).
 See [N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 
 ## Program scope
@@ -67,7 +69,8 @@ paid Store mode on the provider.
 | Store E2E fresh vault + testnet sizing | 33 (complete) |
 | Payer funder unlinkability via LEZ private execution | 36 (complete) |
 | Payee receiver privacy via LEZ private execution | 37 (complete) |
-| Store E2E privacy profiles (full privacy mode) | 38 (active) |
+| Store E2E privacy profiles (full privacy mode) | 38 (complete) |
+| Testnet privacy E2E after native guest deploy | 39 (active; module full then Store full; soft proving) |
 
 Step 25 (in-process demo coordinator module) is **won't fix**
 ([cancelled packet](cancelled/step-25-demo-coordination-module.md)).
@@ -97,7 +100,8 @@ Dual-host demo coordination stays in host scripts
 | 38 | Store E2E privacy profiles (full privacy mode) | [step-38-store-privacy-e2e.md](completed/step-38-store-privacy-e2e.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
-[step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33).
+[step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33),
+[step-39-testnet-gate-log.md](completed/step-39-testnet-gate-log.md) (Step 39).
 
 ## Upcoming steps
 
@@ -110,6 +114,7 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | 32 | AT-init unify + Store claim phase | Active (signed off; D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
 | 34 | User Journey manual walkthrough (testnet CLI) | Active -- [step-34-user-journey-manual-walkthrough.md](upcoming/step-34-user-journey-manual-walkthrough.md) |
 | 35 | Developer Journey generalization (protocol-agnostic eligibility guide) | Active -- [step-35-developer-journey-generalization.md](upcoming/step-35-developer-journey-generalization.md) |
+| 39 | Testnet privacy E2E after native guest deploy | Active — module full then Store full; soft proving; agent deploy + report; human close -- [step-39-testnet-privacy-e2e.md](upcoming/step-39-testnet-privacy-e2e.md) |
 
 Ideas not yet steps: [raw-todos/](raw-todos/).
 

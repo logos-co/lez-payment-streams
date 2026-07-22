@@ -126,15 +126,15 @@ Out of scope:
 
 ### Phase C — Optional matrix completion (extracted)
 
-Deferred out of this packet. Tracked as
-[testnet-privacy-e2e-after-guest-deploy.md](../raw-todos/testnet-privacy-e2e-after-guest-deploy.md):
-redeploy the next testnet guest when further guest work is done, then verify
-module and Store privacy E2E (and public regressions) on that ImageID.
+Deferred out of this packet. Promoted to
+[Step 39](../upcoming/step-39-testnet-privacy-e2e.md)
+(pointer:
+[testnet-privacy-e2e-after-guest-deploy.md](../raw-todos/testnet-privacy-e2e-after-guest-deploy.md)).
 
-Rationale: local privacy is green; more guest changes may still land, so a
-testnet privacy campaign now would likely need another redeploy soon after.
-Testnet still pins `de17c0db…` while local privacy already uses a newer guest
-(fold-seconds / `072a26cc…`).
+Step 39 owns native guest freeze, agent-run testnet redeploy, public
+regression, then required privacy gates: module full privacy warm-up, then
+Store full privacy (soft proving). See Step 39 decision log (D39.4–D39.9).
+Do not reopen this packet for testnet work.
 
 ## Decision log
 
@@ -149,7 +149,7 @@ Testnet still pins `de17c0db…` while local privacy already uses a newer guest
 | D38.7 | `registerProviderMapping` Store E2E | This step owns dual-host Store mapping under privacy profiles. Step 37 owns encoding smoke only (D37.12). Wire mapping in `run_local_e2e.py` before paid Store query when `PROVIDER_PRIVACY=1`. |
 | D38.8 | Dual-host + funding inherit | Private owner keys and owner pre-shield on user host. `PROVIDER_PRIVACY` only: private provider keys, dust, and claim on provider host. Full privacy: create both private accounts in one user-host session (shared wallet seed cannot mint a second private id on the other host); dust and claim on user host; mapping still uses the private provider id. AT-init public only. Private-provider claim_balance uses vault_holding drop. |
 | D38.9 | On-chain confirmation principle | Every `chainAction` op whose next step reads the state it writes is verified on-chain, not by the wallet submit acknowledgement. `await_chain_action_inclusion` always polls the sequencer on localnet; `E2E_ALLOW_FIRE_AND_FORGET=1` restores the legacy skip only for non-local chains where `getTransaction` lags. Close polls `stream_closed_on_chain`; claim polls provider balance; vault init polls `vault_config_present`; deposit waits on the init tx. See [E2E.md](../../journeys/E2E.md#on-chain-confirmation-principle). |
-| D38.10 | Phase C deferral | Extract optional testnet privacy matrix work to [raw-todos/testnet-privacy-e2e-after-guest-deploy.md](../raw-todos/testnet-privacy-e2e-after-guest-deploy.md). Wait for the next testnet guest deploy after remaining guest-touching work, then verify privacy E2E there. |
+| D38.10 | Phase C deferral | Extracted to a raw TODO, promoted to [Step 39](../upcoming/step-39-testnet-privacy-e2e.md). Required testnet gates and soft-proving bar live there (D39.4–D39.9). Do not reopen this packet. |
 
 ## Risk
 
@@ -193,9 +193,10 @@ Exact Make alias names may follow the module pattern
 - [x] [scripts/README.md](../../scripts/README.md) and Make aliases for Store
   owner / provider / full privacy.
 - [x] [index.md](../index.md) and [AGENTS.md](../../AGENTS.md) list Step 38.
-- [x] Optional Phase C deferred with rationale to
-  [raw-todos/testnet-privacy-e2e-after-guest-deploy.md](../raw-todos/testnet-privacy-e2e-after-guest-deploy.md)
-  (wait for next guest deploy; then run privacy E2E on testnet).
+- [x] Optional Phase C deferred then promoted to
+  [Step 39](../upcoming/step-39-testnet-privacy-e2e.md)
+  (pointer
+  [raw-todos/testnet-privacy-e2e-after-guest-deploy.md](../raw-todos/testnet-privacy-e2e-after-guest-deploy.md)).
 
 ## Definition of done
 
@@ -217,7 +218,10 @@ Exact Make alias names may follow the module pattern
 - Amounts on `vault_holding` remain public.
 - Store × privacy does not itself mitigate timing or amount correlation across
   the shielding boundary.
-- Testnet Store × privacy may lag local gates; see
+- Testnet Store × privacy is owned by
+  [Step 39](../upcoming/step-39-testnet-privacy-e2e.md)
+  (module full warm-up then Store full; soft proving; agent-run deploy).
+  Pointer:
   [raw-todos/testnet-privacy-e2e-after-guest-deploy.md](../raw-todos/testnet-privacy-e2e-after-guest-deploy.md).
 
 ## Not in scope

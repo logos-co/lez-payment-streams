@@ -9,7 +9,7 @@
   "plan_index": "docs/plan/index.md",
   "program_index": "docs/plan/index.md",
   "verification_matrix": "docs/reference/verification-matrix.md",
-  "active_steps": [20, 22, 32],
+  "active_steps": [20, 22, 32, 39],
   "paused_steps": [],
   "cancelled_steps": [25],
   "optional_stretch_steps": [21, 22],
@@ -37,7 +37,13 @@
     "30": "docs/plan/completed/step-30-static-dependency-migration.md",
     "31": "docs/plan/completed/step-31-dependencies-upgrade.md",
     "32": "docs/plan/upcoming/step-32-auth-transfer-unify-store-claim.md",
-    "33": "docs/plan/completed/step-33-store-e2e-fresh-vault.md"
+    "33": "docs/plan/completed/step-33-store-e2e-fresh-vault.md",
+    "34": "docs/plan/upcoming/step-34-user-journey-manual-walkthrough.md",
+    "35": "docs/plan/upcoming/step-35-developer-journey-generalization.md",
+    "36": "docs/plan/completed/step-36-payer-funder-unlinkability.md",
+    "37": "docs/plan/completed/step-37-payee-receiver-privacy.md",
+    "38": "docs/plan/completed/step-38-store-privacy-e2e.md",
+    "39": "docs/plan/upcoming/step-39-testnet-privacy-e2e.md"
   },
   "completed_normative": {
     "12": "docs/plan/completed/step-12-normative.md",

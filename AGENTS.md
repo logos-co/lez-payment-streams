@@ -52,12 +52,19 @@ Active engineering packet:
 Optional: [step-23-public-store-provider.md](docs/plan/upcoming/step-23-public-store-provider.md).
 Cancelled: [step-25-demo-coordination-module.md](docs/plan/cancelled/step-25-demo-coordination-module.md).
 
-### Privacy-preserving payment streams (Steps 36-38)
+### Privacy-preserving payment streams (Steps 36-39)
 
-Steps 36–38 complete:
+Steps 36–38 complete (product + local Store privacy):
 [step-36-payer-funder-unlinkability.md](docs/plan/completed/step-36-payer-funder-unlinkability.md),
 [step-37-payee-receiver-privacy.md](docs/plan/completed/step-37-payee-receiver-privacy.md),
 [step-38-store-privacy-e2e.md](docs/plan/completed/step-38-store-privacy-e2e.md).
+
+Active: [Step 39](docs/plan/upcoming/step-39-testnet-privacy-e2e.md) —
+native guest freeze, agent-run testnet redeploy, then module full privacy
+warm-up and Store full privacy (soft proving). Agent reports greens in the
+gate log; human alone moves the packet to completed (D39.15).
+Gate log: [step-39-testnet-gate-log.md](docs/plan/completed/step-39-testnet-gate-log.md).
+Implementer quick path: top of the Step 39 packet.
 
 ## Verification
 
