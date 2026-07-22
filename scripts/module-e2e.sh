@@ -289,6 +289,11 @@ narr_step "Starting logoscore, loading modules"
 if ps_is_any_privacy_e2e; then
   export RISC0_DEV_MODE="${RISC0_DEV_MODE:-1}"
   export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+  # Daemon-side core_service→module IPC also defaults to 20s; export so
+  # CoreServiceImpl honors the same budget as the CLI client (D39.24).
+  if [[ "${RISC0_DEV_MODE}" == "0" ]]; then
+    export LOGOSCORE_RPC_TIMEOUT_MS="${LOGOSCORE_RPC_TIMEOUT_MS:-600000}"
+  fi
   narr_verbose "privacy profile ($(ps_privacy_profile_label)): RISC0_DEV_MODE=$RISC0_DEV_MODE PAYMENT_STREAMS_GUEST_BIN=$PAYMENT_STREAMS_GUEST_BIN"
 fi
 logoscore stop 2>/dev/null || true
