@@ -66,6 +66,8 @@ warm-up and Store full privacy (real proving on public testnet,
 the packet to completed (D39.15).
 Gate log: [step-39-testnet-gate-log.md](docs/plan/completed/step-39-testnet-gate-log.md).
 Implementer quick path: top of the Step 39 packet.
+Do not stop Phase 4 on missing NVIDIA/CUDA (D39.26) — CPU prove is valid;
+gate on includable PPE smoke, not `nvidia-smi`.
 
 ## Verification
 

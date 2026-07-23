@@ -88,8 +88,9 @@ gates. Do not reopen Step 38.
 | D39.23 | Reopen Phase 1–3 greens | Do not. Phase 1 soft greens stand under D39.4/D39.19. Phase 2 has no proving. Phase 3 public module/Store are public txs (no client PPE); `RISC0_DEV_MODE` is irrelevant there. |
 | D39.24 | Local real-prove smoke | After D39.22 harness lands, and before testnet Phase 4, run one local module full-privacy smoke with `RISC0_DEV_MODE=0` and `E2E_CLAIM_OPTIONAL=0`. Not a reopen of Phase 1 DoD — isolation only. If PP `chainAction` then hits logoscore outer IPC timeout, raise that timeout as a port-gap (D39.6/D39.21) before spending testnet wall clock. |
 | D39.25 | PPE clock for real prove | Soft path keeps genesis CLOCK_01 (fixture `clock_10_account_id` / RWNU — historical misnomer). Real prove (`RISC0_DEV_MODE=0`) uses CLOCK_50 for stream/claim account lists so multi-minute PPE does not cross a clock `public_pre_state` update (sequencer would reject with `InvalidPrivacyPreservingProof`). Align to an early CLOCK_50 window (`block_id % 50 <= 2`) before every clock-using PP op (create/close/claim). Wait for a CLOCK_50 epoch advance before accrual polls. Default skip pause/top-up under real prove. Soft Phase 1–3 unchanged (D39.23). |
+| D39.26 | GPU optional for real prove | Amended 2026-07-23. Missing NVIDIA / CUDA is not a Phase 4 stop. RISC Zero already proves on CPU when no GPU is usable (`r0vm` without CUDA toolkit or without `nvidia.ko`). Gate real-prove readiness on an includable PPE smoke (`wallet auth-transfer send` → `getTransaction` non-null under `RISC0_DEV_MODE=0`), not on `nvidia-smi`. Log CPU vs GPU as an operator note (wall clock only). Do not greenwash soft stubs (D39.4). |
 
-## Shield and prove path (D39.22, D39.24)
+## Shield and prove path (D39.22, D39.24, D39.26)
 
 Canonical LEZ testnet shielded native transfer (tutorial
 `token-transfer.md`):
@@ -101,8 +102,13 @@ wallet auth-transfer send \
   --amount <n>
 ```
 
-That CLI proves in-process and may take tens of seconds to several minutes.
-`lez-programs` testnet runbooks use `wallet` / `spel` the same way.
+That CLI proves in-process and may take tens of seconds to several minutes
+(CPU often ~2–4 min per submit on a laptop; GPU faster when CUDA actually
+engages). `lez-programs` testnet runbooks use `wallet` / `spel` the same way.
+
+Do not treat `nvidia-smi` failure as a prove blocker (D39.26).
+If the driver is missing, continue on CPU and raise timeouts if needed
+(D39.21). Soft mode remains forbidden on public privacy gates (D39.4).
 
 Payment-streams privacy E2E historically called
 `logoscore call logos_execution_zone transfer_shielded_owned`, which only
@@ -532,6 +538,7 @@ Human-only (D39.15):
 | Soft proofs on public testnet | DoD requires `RISC0_DEV_MODE=0` (D39.4); soft only for Phase 1. |
 | Logoscore IPC vs PPE wall clock | Wallet-CLI shield (D39.22); local smoke then timeout port-gap for `chainAction` (D39.24). |
 | Real-proof wall clock / timeouts | Raise as port-gap (D39.21); no soft fallback. |
+| Missing NVIDIA / CUDA | Continue on CPU (D39.26); gate on includable PPE smoke, not `nvidia-smi`. |
 | Dual-host / dust / guest env | Warm-up module first; port-gap fixes in scope (D39.6). |
 | Shared fixture wallet after module | Fresh vault_id; re-fund before Store. |
 | Deploy / credential failure | Agent tries; flag in gate log and stop (D39.9). |

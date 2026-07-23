@@ -816,6 +816,11 @@ def wait_clock50_advance_before_accrual(
         return
     ok = ps_wait_clock50_advance(cfg, seq_url)
     log_artifact(artifact, label, ok, clock50="advance")
+    if not ok:
+        raise E2EError(
+            f"{label}: CLOCK_50 epoch did not advance "
+            "(accrual/claim cannot proceed under real prove; D39.25/D39.13)"
+        )
 
 
 def align_clock50_after_close_before_claim(
@@ -940,6 +945,13 @@ def start_daemon(cfg: Path, modules: Path, persist: Path) -> None:
     depleted = os.environ.get("PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF", "").strip().lower()
     if depleted in ("1", "true", "yes"):
         daemon_env["PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF"] = "1"
+    # Real prove: raise daemon-side LogosAPI RPC budget only (do not export into
+    # the parent shell — logoscore stop can hang for minutes; D39.24).
+    if os.environ.get("RISC0_DEV_MODE", "1").strip() == "0":
+        daemon_env["LOGOSCORE_RPC_TIMEOUT_MS"] = os.environ.get(
+            "PS_LOGOSCORE_RPC_TIMEOUT_MS",
+            os.environ.get("LOGOSCORE_RPC_TIMEOUT_MS", "600000"),
+        )
     persist.mkdir(parents=True, exist_ok=True)
     stderr_path = persist / "logoscore-daemon.stderr"
     stderr_file = stderr_path.open("a")
@@ -1230,6 +1242,9 @@ def vault_unallocated_lo(cfg: Path, manifest: dict) -> int:
 # both user and provider logoscore (stale peer save wipes private keys / FFI 7).
 # D38.8: full privacy keeps private owner+provider NSKs on the user host only.
 _CFG_WALLET_PATHS: dict[str, tuple[Path, Path]] = {}
+# Per-host modules/persist/delivery so wallet-CLI handoff can stop/restart one
+# logoscore without touching the peer (close() is a no-op on current LEZ).
+_CFG_HOST_RUNTIME: dict[str, dict[str, Any]] = {}
 
 
 def _e2e_cfg_paths() -> tuple[Path, Path]:
@@ -1243,6 +1258,64 @@ def _e2e_cfg_paths() -> tuple[Path, Path]:
 
 def register_cfg_wallet(cfg: Path, wallet_config: Path, wallet_storage: Path) -> None:
     _CFG_WALLET_PATHS[str(cfg.resolve())] = (wallet_config, wallet_storage)
+
+
+def register_store_host_runtime(
+    cfg: Path,
+    *,
+    modules: Path,
+    persist: Path,
+    delivery_create: dict | None = None,
+    label: str = "",
+    eligibility_verifier: str | None = None,
+) -> None:
+    _CFG_HOST_RUNTIME[str(cfg.resolve())] = {
+        "modules": modules,
+        "persist": persist,
+        "delivery_create": delivery_create,
+        "label": label,
+        "eligibility_verifier": eligibility_verifier,
+    }
+
+
+def stop_store_host_for_wallet_cli(cfg: Path) -> None:
+    """Exclusive storage handoff for standalone wallet CLI (D39.22).
+
+    logos_execution_zone.close is ineffective ("wallet is already open" after
+    close). Unload/reload leaves a stale in-memory wallet that misses keys the
+    CLI just wrote. Match module-e2e: stop this host's daemon only; peer keeps
+    its independent storage open.
+    """
+    logoscore_cmd(cfg, "call", "logos_execution_zone", "save", timeout=60)
+    stop_daemon(cfg)
+    time.sleep(2)
+
+
+def restart_store_host_after_wallet_cli(cfg: Path, seq_url: str) -> None:
+    """Restart one Store host after wallet CLI; remount delivery if registered."""
+    key = str(cfg.resolve())
+    rt = _CFG_HOST_RUNTIME.get(key)
+    if not rt:
+        raise E2EError(f"no store host runtime registered for {cfg}")
+    modules = rt["modules"]
+    persist = rt["persist"]
+    start_daemon(cfg, modules, persist)
+    load_modules(cfg)
+    wc, ws = cfg_wallet_paths(cfg)
+    open_wallet(cfg, wc, ws)
+    sync_wallet(cfg, seq_url)
+    delivery_create = rt.get("delivery_create")
+    if isinstance(delivery_create, dict):
+        delivery_create_start(
+            cfg,
+            delivery_create,
+            persist=persist,
+            label=str(rt.get("label") or "host"),
+        )
+    verifier = rt.get("eligibility_verifier")
+    if verifier:
+        set_eligibility_verifier(cfg, str(verifier))
+    reload_payment_streams_wallet(cfg, seq_url)
 
 
 def cfg_wallet_paths(cfg: Path) -> tuple[Path, Path]:
@@ -1290,6 +1363,7 @@ def prepare_split_store_wallets(
     register_cfg_wallet(cfg_provider, prov_wc, prov_ws)
     # CLI tools (wallet, fixture, auth-transfer-ensure) default to the user home.
     os.environ["LEE_WALLET_HOME_DIR"] = str(user_home)
+    os.environ["NSSA_WALLET_HOME_DIR"] = str(user_home)
     os.environ["WALLET_CONFIG"] = str(user_wc)
     os.environ["WALLET_STORAGE"] = str(user_ws)
     return user_wc, user_ws, prov_wc, prov_ws
@@ -2320,8 +2394,8 @@ def fund_public_account_via_fixture(
 ) -> None:
     """Pinata-fund a public account (harness machinery; not a module user API)."""
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
-    # Fixture CLI uses LEE_WALLET_HOME_DIR (user home). Release that host only.
-    release_logoscore_wallet(cfg_user, save=True)
+    # Fixture CLI uses LEE_WALLET_HOME_DIR (user home). Stop that host only.
+    stop_store_host_for_wallet_cli(cfg_user)
     try:
         env = os.environ.copy()
         env["FIXTURE_MANIFEST"] = os.environ.get(
@@ -2344,8 +2418,7 @@ def fund_public_account_via_fixture(
         if proc.returncode != 0:
             raise E2EError(f"fixture account fund-owner failed: {proc.stderr or proc.stdout}")
     finally:
-        reopen_logoscore_wallet(cfg_user, seq_url)
-        reload_payment_streams_wallet(cfg_user, seq_url)
+        restart_store_host_after_wallet_cli(cfg_user, seq_url)
 
 
 def fund_owner_via_fixture(
@@ -2633,35 +2706,56 @@ def wallet_auth_transfer_send(
     narrator.step(f"Shield via wallet auth-transfer send ({label}; real prove)")
     # Exclusive handoff for this host's storage only (split wallets: peer untouched).
     wallet_home = cfg_wallet_home(cfg)
+    # Pinned LEZ wallet reads LEE_*; some builds only honor NSSA_*. Set both.
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
-    logoscore_cmd(cfg, "call", "logos_execution_zone", "save", timeout=60)
-    logoscore_cmd(cfg, "unload-module", "payment_streams_module")
-    logoscore_cmd(cfg, "call", "logos_execution_zone", "close")
-    logoscore_cmd(cfg, "unload-module", "logos_execution_zone")
+    env["NSSA_WALLET_HOME_DIR"] = str(wallet_home)
+    # Real prove must reach the public sequencer; never inherit soft mode.
+    env["RISC0_DEV_MODE"] = os.environ.get("RISC0_DEV_MODE", "1").strip()
+    stop_store_host_for_wallet_cli(cfg)
+    # Testnet real prove often needs 3–8 min; keep headroom above module default.
+    default_shield_timeout = (
+        "1200" if os.environ.get("CHAIN", "local").strip().lower() == "testnet" else "600"
+    )
+    timeout_s = int(os.environ.get("PS_WALLET_SHIELD_TIMEOUT", default_shield_timeout))
+    proc: subprocess.CompletedProcess[str] | None = None
+    timed_out = False
     try:
-        timeout_s = int(os.environ.get("PS_WALLET_SHIELD_TIMEOUT", "600"))
-        proc = run(
-            [
-                "wallet",
-                "auth-transfer",
-                "send",
-                "--from",
-                f"Public/{from_b58}",
-                "--to",
-                f"Private/{to_b58}",
-                "--amount",
-                str(amount),
-            ],
-            cwd=repo,
-            env=env,
-            timeout=max(120, timeout_s),
-        )
-    finally:
-        logoscore_cmd(cfg, "load-module", "logos_execution_zone")
-        reopen_logoscore_wallet(cfg, seq_url)
-        logoscore_cmd(cfg, "load-module", "payment_streams_module")
+        try:
+            proc = run(
+                [
+                    "wallet",
+                    "auth-transfer",
+                    "send",
+                    "--from",
+                    f"Public/{from_b58}",
+                    "--to",
+                    f"Private/{to_b58}",
+                    "--amount",
+                    str(amount),
+                ],
+                cwd=repo,
+                env=env,
+                timeout=max(120, timeout_s),
+            )
+        except subprocess.TimeoutExpired as exc:
+            timed_out = True
 
-    ok = proc.returncode == 0
+            def _as_text(blob: object) -> str:
+                if blob is None:
+                    return ""
+                if isinstance(blob, bytes):
+                    return blob.decode("utf-8", errors="replace")
+                return str(blob)
+
+            out = (_as_text(exc.stdout) + "\n" + _as_text(exc.stderr)).strip()
+            proc = subprocess.CompletedProcess(
+                exc.cmd, 124, out, f"timed out after {timeout_s}s"
+            )
+    finally:
+        restart_store_host_after_wallet_cli(cfg, seq_url)
+
+    assert proc is not None
+    ok = proc.returncode == 0 and not timed_out
     err_text = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()
     log_artifact(
         artifact,
@@ -2671,11 +2765,16 @@ def wallet_auth_transfer_send(
         from_hex=from_hex,
         to_hex=to_hex,
         via="wallet",
+        timed_out=timed_out,
+        timeout_s=timeout_s,
         raw=err_text[:2000] if not ok else None,
     )
     if not ok:
-        raise E2EError(f"wallet auth-transfer send ({phase}) failed: {err_text[:500]}")
-    reload_payment_streams_wallet(cfg, seq_url)
+        raise E2EError(
+            f"wallet auth-transfer send ({phase}) failed"
+            + (f" (timeout {timeout_s}s)" if timed_out else "")
+            + f": {err_text[:500]}"
+        )
     narrator.ok(f"Pre-shielded {amount} tokens into {label} (wallet auth-transfer send)")
 
 
@@ -3400,9 +3499,9 @@ def run_auth_transfer_ensure(
         raise E2EError("AT-ensure requires owner account id")
     if not skip_provider and not at_provider:
         raise E2EError("AT-ensure requires provider account id")
-    # AT-init CLI uses wallet_home (user). Release that host only; provider
-    # keeps its independent storage open.
-    release_logoscore_wallet(cfg_user, save=True)
+    # AT-init CLI uses wallet_home (user). Stop that host only; provider keeps
+    # its independent storage open (close() is a no-op on current LEZ).
+    stop_store_host_for_wallet_cli(cfg_user)
     try:
         env = os.environ.copy()
         env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
@@ -3425,8 +3524,7 @@ def run_auth_transfer_ensure(
         if proc.returncode != 0:
             raise E2EError(f"auth-transfer-ensure failed: {proc.stderr or proc.stdout}")
     finally:
-        reopen_logoscore_wallet(cfg_user, seq_url)
-        reload_payment_streams_wallet(cfg_user, seq_url)
+        restart_store_host_after_wallet_cli(cfg_user, seq_url)
 
 
 def seed_close_stream_onchain(
@@ -3720,6 +3818,17 @@ def demo_teardown(
     accrued = stream_accrued_lo(cfg_user, vault_id, stream_id)
     if accrued <= 0:
         claim_extra = {"skipped": True, "reason": "zero_accrued", "stream_id": stream_id}
+        is_testnet = os.environ.get("CHAIN", "local").strip().lower() == "testnet"
+        claim_optional = os.environ.get(
+            "E2E_CLAIM_OPTIONAL", "1" if is_testnet else "0"
+        ).strip() not in ("0", "false", "False", "no", "NO")
+        # D39.13: privacy gates require claim_balance / vault_holding drop.
+        if not claim_optional:
+            emit_claim_with_demo_alias(artifact, False, claim_extra)
+            raise E2EError(
+                "claim skipped zero_accrued under E2E_CLAIM_OPTIONAL=0 "
+                f"(stream_id={stream_id}); CLOCK_50 advance / accrual required"
+            )
         emit_claim_with_demo_alias(artifact, True, claim_extra)
         return
 
@@ -4399,6 +4508,14 @@ def main() -> int:
                 cfg_provider, provider_create, persist=persist_provider, label="provider"
             )
             set_eligibility_verifier(cfg_provider, "payment_streams_module")
+            register_store_host_runtime(
+                cfg_provider,
+                modules=modules_provider,
+                persist=persist_provider,
+                delivery_create=provider_create,
+                label="provider",
+                eligibility_verifier="payment_streams_module",
+            )
 
             peer_id = get_node_info(cfg_provider, "MyPeerId")
             provider_addr = loopback_multiaddr(peer_id, provider_tcp)
@@ -4432,6 +4549,13 @@ def main() -> int:
                 "storenode": provider_addr,
             }
             delivery_create_start(cfg_user, user_create, persist=persist_user, label="user")
+            register_store_host_runtime(
+                cfg_user,
+                modules=modules_user,
+                persist=persist_user,
+                delivery_create=user_create,
+                label="user",
+            )
             # Outbound proof via eligibilityProofHex in query JSON (hook deadlocks Approach A).
             narrator.ok("User ready: delivery_module (Store client), payment_streams_module")
 

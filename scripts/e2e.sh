@@ -97,7 +97,7 @@ cmd_prepare() {
   # Route seed-CLI wallet/sequencer to match CHAIN (testnet vs localnet). Set
   # unconditionally so a stale localnet value in the environment cannot redirect
   # testnet chain ops to the local sequencer.
-  export LEE_WALLET_HOME_DIR="$(ps_chain_wallet_home)"
+  ps_export_wallet_home "$(ps_chain_wallet_home)"
 
   # Validate scaffold
   "$REPO_ROOT/scripts/lifecycle.sh" scaffold check
@@ -247,7 +247,7 @@ cmd_run() {
 
   # Flow A (module only): single-host happy path, no Store / dual-host / N8.
   if ps_is_module_mode; then
-    export LEE_WALLET_HOME_DIR="$(ps_chain_wallet_home)"
+    ps_export_wallet_home "$(ps_chain_wallet_home)"
     export FIXTURE_MANIFEST="$(ps_default_fixture_manifest)"
     if ps_is_testnet && [[ -f "$REPO_ROOT/fixtures/testnet-module.json" ]]; then
       export FIXTURE_MANIFEST="$REPO_ROOT/fixtures/testnet-module.json"
@@ -287,7 +287,7 @@ cmd_run() {
   export CHAIN="${CHAIN:-local}"
   # Seed CLI + orchestrator wallet home must follow CHAIN; set unconditionally
   # so an inherited localnet value cannot redirect testnet ops to 127.0.0.1.
-  export LEE_WALLET_HOME_DIR="$(ps_chain_wallet_home)"
+  ps_export_wallet_home "$(ps_chain_wallet_home)"
   export FIXTURE_MANIFEST="$(ps_default_fixture_manifest)"
   if ps_is_testnet && ! ps_is_module_mode; then
     export SEED_ALLOCATION="${SEED_ALLOCATION:-400}"

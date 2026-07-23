@@ -224,6 +224,8 @@ ps_wallet_auth_transfer_send() {
     echo "LEE_WALLET_HOME_DIR required for wallet auth-transfer send" >&2
     return 1
   }
+  # Some wallet builds only honor NSSA_WALLET_HOME_DIR; keep both in sync.
+  export NSSA_WALLET_HOME_DIR="${NSSA_WALLET_HOME_DIR:-$LEE_WALLET_HOME_DIR}"
 
   ps_prepend_lez_wallet_path
   wallet_bin="$(command -v wallet 2>/dev/null || true)"
@@ -236,7 +238,20 @@ ps_wallet_auth_transfer_send() {
   # close() is ineffective on current LEZ; stop daemon for exclusive storage access.
   ps_logoscore_daemon_stop_for_wallet
   local rc=0
-  timeout "${PS_WALLET_SHIELD_TIMEOUT:-600}" "$wallet_bin" auth-transfer send \
+  # Prefer pinned-LEZ timeout default; testnet real prove often needs >10 min.
+  local shield_timeout="${PS_WALLET_SHIELD_TIMEOUT:-}"
+  if [[ -z "$shield_timeout" ]]; then
+    if [[ "${CHAIN:-local}" == "testnet" ]]; then
+      shield_timeout=1200
+    else
+      shield_timeout=600
+    fi
+  fi
+  timeout "$shield_timeout" env \
+    LEE_WALLET_HOME_DIR="$LEE_WALLET_HOME_DIR" \
+    NSSA_WALLET_HOME_DIR="$NSSA_WALLET_HOME_DIR" \
+    RISC0_DEV_MODE="${RISC0_DEV_MODE:-1}" \
+    "$wallet_bin" auth-transfer send \
     --from "Public/$from_b58" \
     --to "Private/$to_b58" \
     --amount "$amount" >"$out_file" 2>&1 || rc=$?

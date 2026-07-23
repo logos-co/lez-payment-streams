@@ -572,6 +572,13 @@ ps_chain_wallet_home() {
   fi
 }
 
+# Export wallet home for both env names (pinned LEZ uses LEE_*; some builds NSSA_*).
+ps_export_wallet_home() {
+  local home="${1:-$(ps_chain_wallet_home)}"
+  export LEE_WALLET_HOME_DIR="$home"
+  export NSSA_WALLET_HOME_DIR="$home"
+}
+
 # Export environment defaults
 export FIXTURE_MANIFEST="${FIXTURE_MANIFEST:-$(ps_default_fixture_manifest)}"
 export WALLET_CONFIG="${WALLET_CONFIG:-$(ps_default_wallet_config)}"
