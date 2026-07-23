@@ -118,6 +118,7 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`, shield p
 | 2026-07-23 | — | PPE shield isolate (CPU) | Ax7RuWwx… amount=1 | pass | RISC0_DEV_MODE unset; ~194s; getTransaction FOUND; GPU util 0 (CPU path) |
 | 2026-07-23 | (uncommitted) | store full privacy testnet (5th, real) | e2e-20260723T103857.log | fail | owner shield to 8vSpcf… amount=550 timed out 1200s; then TimeoutExpired handler TypeError (bytes/str); fixed in run_local_e2e.py |
 | 2026-07-23 | (uncommitted) | store full privacy testnet (6th, real) | e2e-20260723T110411.log | partial | fresh owner DaV7bT45…; shields+vault+create+Store query+close green (~41 min CPU); claim skipped zero_accrued after clock50_advance_before_accrual fail — not D39.13 DoD |
+| 2026-07-23 | 3abcc0a | store full privacy testnet (7th, real) | e2e-20260723T121329.log | fail | CLOCK_50 Store wait raise landed; owner shield amount=550 to reused DaV7bT45… timed out 1200s — pin wallet returned TX `8d1b947d…` then hung on inclusion; `getTransaction` still null after fail (orphan PPE). No r0vm CPU after submit. |
 
 ## Hand-off (2026-07-23 late morning)
 
@@ -127,7 +128,7 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`, shield p
 | --- | --- |
 | Phases 1–3 | green (do not reopen; D39.23) |
 | Phase 4 module full privacy testnet | green — `module-e2e-20260722T215542.log` |
-| Phase 4 Store full privacy testnet | partial — `e2e-20260723T110411.log` |
+| Phase 4 Store full privacy testnet | blocked — 7th run fail `e2e-20260723T121329.log` (prior partial `e2e-20260723T110411.log`) |
 | Phase 5 docs | not started |
 | D39.15 packet → completed | human only |
 
@@ -141,14 +142,18 @@ under `E2E_CLAIM_OPTIONAL=0`.
 
 ### Current blocker
 
-CLOCK_50 epoch does not advance (or wallet does not observe the advance)
-before accrual under Store real-prove, so accrued stays 0 and claim cannot
-drop vault_holding. Do not greenwash with `E2E_CLAIM_OPTIONAL=1` (D39.13).
+Owner pre_shield orphan PPE on Store real-prove (2026-07-23 7th run):
+pin wallet `auth-transfer send` returns a TX hash then never sees inclusion
+(`getTransaction` null through 1200s). Same class as earlier `8vSpcfHE…`
+orphans; 6th-run recipient `DaV7bT45…` reused and hit it on amount=550.
+CLOCK_50 Store wait raise (`3abcc0a`) is in; claim/accrual not re-tested
+until shields include again. Do not greenwash with `E2E_CLAIM_OPTIONAL=1`
+(D39.13).
 
-Also avoid private owner `8vSpcfHE…`: multiple shields returned a TX hash
-then never included (`getTransaction` null / 1200s timeout). Prefer fresh
-`create_account_private` ids after bumping
-`.scaffold/e2e/testnet-wallet` seed, or known-good recipients (e.g. Ax7…).
+Prefer fresh `create_account_private` after bumping
+`.scaffold/e2e/testnet-wallet` seed; smoke amount=1 includable PPE before
+another full Store run. Avoid `8vSpcfHE…`; treat reused `DaV7bT45…` as
+suspect for large shields until a fresh amount=1 include is green.
 
 ### Do not re-block on GPU (D39.26)
 
