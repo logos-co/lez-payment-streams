@@ -728,9 +728,43 @@ def read_clock50_block_id(cfg: Path) -> int | None:
     return clock50_block_id_from_decoded(inner)
 
 
+def _clock50_wait_defaults() -> tuple[int, int]:
+    """(advance_attempts, window_attempts). Match module-e2e.sh (D39.25)."""
+    # Default 120*5s=~10 min is too short for one CLOCK_50 tick on public
+    # testnet (~50 blocks). Module path uses 720/360 under real prove.
+    if real_prove_enabled() and os.environ.get("CHAIN", "local").strip().lower() == "testnet":
+        return (
+            int(os.environ.get("PS_CLOCK50_ADVANCE_ATTEMPTS", "720")),
+            int(os.environ.get("PS_CLOCK50_WINDOW_ATTEMPTS", "360")),
+        )
+    return (
+        int(os.environ.get("PS_CLOCK50_ADVANCE_ATTEMPTS", "120")),
+        int(os.environ.get("PS_CLOCK50_WINDOW_ATTEMPTS", "90")),
+    )
+
+
+def _sequencer_last_block_id(seq_url: str) -> str:
+    try:
+        import urllib.request
+
+        req = urllib.request.Request(
+            seq_url.rstrip("/") + "/",
+            data=b'{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}',
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            payload = json.loads(resp.read().decode())
+        tip = payload.get("result")
+        return "" if tip is None else str(tip)
+    except Exception:
+        return ""
+
+
 def ps_wait_clock50_prove_window(cfg: Path, seq_url: str) -> bool:
     """Early CLOCK_50 window (block_id % 50 <= 2) with double-sync confirm (D39.25)."""
-    max_attempts = int(os.environ.get("PS_CLOCK50_WINDOW_ATTEMPTS", "90"))
+    _advance_default, window_default = _clock50_wait_defaults()
+    max_attempts = int(os.environ.get("PS_CLOCK50_WINDOW_ATTEMPTS", str(window_default)))
     for attempt in range(1, max_attempts + 1):
         sync_wallet(cfg, seq_url)
         block_id = read_clock50_block_id(cfg)
@@ -764,11 +798,14 @@ def ps_wait_clock50_prove_window(cfg: Path, seq_url: str) -> bool:
 
 def ps_wait_clock50_advance(cfg: Path, seq_url: str) -> bool:
     """Wait until CLOCK_50 epoch (block_id // 50) increases (D39.25)."""
-    max_attempts = int(os.environ.get("PS_CLOCK50_ADVANCE_ATTEMPTS", "120"))
+    advance_default, _window_default = _clock50_wait_defaults()
+    max_attempts = int(os.environ.get("PS_CLOCK50_ADVANCE_ATTEMPTS", str(advance_default)))
     start_id = read_clock50_block_id(cfg) or 0
     start_epoch = start_id // 50
+    next_tick = (start_epoch + 1) * 50
     print(
-        f"CLOCK_50 advance wait: start block_id={start_id} epoch={start_epoch}",
+        f"CLOCK_50 advance wait: start block_id={start_id} epoch={start_epoch} "
+        f"next_tick={next_tick} max_attempts={max_attempts}",
         file=sys.stderr,
     )
     for attempt in range(1, max_attempts + 1):
@@ -779,9 +816,10 @@ def ps_wait_clock50_advance(cfg: Path, seq_url: str) -> bool:
             print(f"CLOCK_50 advanced: {start_id} -> {block_id}", file=sys.stderr)
             return True
         if attempt % 6 == 0:
+            tip = _sequencer_last_block_id(seq_url)
             print(
-                f"CLOCK_50 advance wait: block_id={block_id} start={start_id} "
-                f"attempt={attempt}",
+                f"CLOCK_50 advance wait: clock_block={block_id} start={start_id} "
+                f"tip={tip or '?'} next_tick={next_tick} attempt={attempt}",
                 file=sys.stderr,
             )
     return False

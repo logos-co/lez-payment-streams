@@ -181,9 +181,13 @@ Set both `LEE_WALLET_HOME_DIR` and `NSSA_WALLET_HOME_DIR`.
    `fixtures/testnet.json`): owner `DkT97NZP…`, provider `FQ8fd3P5…`,
    `allocation` 400, ImageID Y, clocks from `fixtures/testnet-module.json`;
    privacy-run `DaV7bT45…` / stream PDAs cleared.
-3. Diagnose CLOCK_50 advance under Store real-prove (why `readClockDecoded`
-   stayed at 32850 while chain moved). Fix sync/tip read or wait budget
-   (D39.25 / D39.21), then re-run Store full privacy only:
+3. ~~Diagnose CLOCK_50 advance under Store real-prove~~ done 2026-07-23:
+   on-chain CLOCK_50 at `32850` while tip `32896` (next tick `32900`) —
+   not a stuck sequencer. Store Python default advance wait was 120×5s
+   (~10 min); one tick needs ~50 blocks (>10 min on testnet). Module path
+   already used 720/360 (`28e4144`); Store missed the raise. Fix: testnet
+   real-prove defaults in `run_local_e2e.py` + `e2e.sh` export, tip logging
+   ported. Then re-run Store full privacy only:
 
 ```bash
 ./scripts/fund-testnet-accounts.sh

@@ -321,6 +321,14 @@ cmd_run() {
     export RISC0_DEV_MODE="${RISC0_DEV_MODE:-1}"
     ps_log_info "Privacy profile ($(ps_privacy_profile_label)) — RISC0_DEV_MODE=$RISC0_DEV_MODE"
   fi
+
+  # Real prove + CLOCK_50 (D39.25): match module-e2e.sh testnet budgets so one
+  # 50-block tick can land (~50 min). Default 120 attempts (~10 min) was too short.
+  if [[ "${RISC0_DEV_MODE:-1}" == "0" ]] && ps_is_testnet; then
+    export PS_CLOCK50_ADVANCE_ATTEMPTS="${PS_CLOCK50_ADVANCE_ATTEMPTS:-720}"
+    export PS_CLOCK50_WINDOW_ATTEMPTS="${PS_CLOCK50_WINDOW_ATTEMPTS:-360}"
+    ps_log_info "CLOCK_50 waits: ADVANCE_ATTEMPTS=$PS_CLOCK50_ADVANCE_ATTEMPTS WINDOW_ATTEMPTS=$PS_CLOCK50_WINDOW_ATTEMPTS"
+  fi
   
   # Run Python orchestrator
   ps_log_info "Launching Python orchestrator..."
