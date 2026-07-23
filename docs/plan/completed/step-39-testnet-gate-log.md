@@ -119,6 +119,8 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`, shield p
 | 2026-07-23 | (uncommitted) | store full privacy testnet (5th, real) | e2e-20260723T103857.log | fail | owner shield to 8vSpcf… amount=550 timed out 1200s; then TimeoutExpired handler TypeError (bytes/str); fixed in run_local_e2e.py |
 | 2026-07-23 | (uncommitted) | store full privacy testnet (6th, real) | e2e-20260723T110411.log | partial | fresh owner DaV7bT45…; shields+vault+create+Store query+close green (~41 min CPU); claim skipped zero_accrued after clock50_advance_before_accrual fail — not D39.13 DoD |
 | 2026-07-23 | 3abcc0a | store full privacy testnet (7th, real) | e2e-20260723T121329.log | fail | CLOCK_50 Store wait raise landed; owner shield amount=550 to reused DaV7bT45… timed out 1200s — pin wallet returned TX `8d1b947d…` then hung on inclusion; `getTransaction` still null after fail (orphan PPE). No r0vm CPU after submit. |
+| 2026-07-23 | — | prepare-testnet-privacy-seed | (seed storage) | pass | Sync tip + burn recycled private slots (DaV7/FqxTy/…); next create `T7qmBdn6…` |
+| 2026-07-23 | — | PPE include smoke amount=1 | verify-ppe-shield-include.sh | pass | pin wallet; `Fhvzd6Cs…`; TX `deacd1b4…` included ~3 min; then re-burned that id on seed |
 
 ## Hand-off (2026-07-23 late morning)
 
@@ -142,18 +144,14 @@ under `E2E_CLAIM_OPTIONAL=0`.
 
 ### Current blocker
 
-Owner pre_shield orphan PPE on Store real-prove (2026-07-23 7th run):
-pin wallet `auth-transfer send` returns a TX hash then never sees inclusion
-(`getTransaction` null through 1200s). Same class as earlier `8vSpcfHE…`
-orphans; 6th-run recipient `DaV7bT45…` reused and hit it on amount=550.
-CLOCK_50 Store wait raise (`3abcc0a`) is in; claim/accrual not re-tested
-until shields include again. Do not greenwash with `E2E_CLAIM_OPTIONAL=1`
-(D39.13).
+Was orphan PPE on recycled private ids (7th run). Mitigations landed:
+`prepare-testnet-privacy-seed.sh` (sync + burn), harness fail-fast orphan
+detection, recycled-id refuse in Store privacy setup, D39.26 amount=1
+include smoke green (`deacd1b4…`). CLOCK_50 Store wait raise remains.
 
-Prefer fresh `create_account_private` after bumping
-`.scaffold/e2e/testnet-wallet` seed; smoke amount=1 includable PPE before
-another full Store run. Avoid `8vSpcfHE…`; treat reused `DaV7bT45…` as
-suspect for large shields until a fresh amount=1 include is green.
+Next: one Store full privacy re-run with fresh ids (ETA still ~45–90 min
+CPU). Do not start that run under a 30-minute wall-clock budget.
+Keep `E2E_CLAIM_OPTIONAL=0` (D39.13).
 
 ### Do not re-block on GPU (D39.26)
 
@@ -186,15 +184,15 @@ Set both `LEE_WALLET_HOME_DIR` and `NSSA_WALLET_HOME_DIR`.
    `fixtures/testnet.json`): owner `DkT97NZP…`, provider `FQ8fd3P5…`,
    `allocation` 400, ImageID Y, clocks from `fixtures/testnet-module.json`;
    privacy-run `DaV7bT45…` / stream PDAs cleared.
-3. ~~Diagnose CLOCK_50 advance under Store real-prove~~ done 2026-07-23:
-   on-chain CLOCK_50 at `32850` while tip `32896` (next tick `32900`) —
-   not a stuck sequencer. Store Python default advance wait was 120×5s
-   (~10 min); one tick needs ~50 blocks (>10 min on testnet). Module path
-   already used 720/360 (`28e4144`); Store missed the raise. Fix: testnet
-   real-prove defaults in `run_local_e2e.py` + `e2e.sh` export, tip logging
-   ported. Then re-run Store full privacy only:
+3. ~~Diagnose CLOCK_50 advance under Store real-prove~~ done 2026-07-23
+   (Store wait raise). ~~Orphan PPE / recycled ids~~ mitigations done
+   2026-07-23 afternoon: seed prepare + amount=1 include smoke + harness
+   fail-fast. Then re-run Store full privacy only (ETA ~45–90 min):
 
 ```bash
+./scripts/prepare-testnet-privacy-seed.sh
+./scripts/verify-ppe-shield-include.sh      # amount=1 must PASS
+PS_PRIVACY_SEED_BURN_COUNT=1 ./scripts/prepare-testnet-privacy-seed.sh
 ./scripts/fund-testnet-accounts.sh
 PATH=../logos-logoscore-cli/result/bin:$PATH \
   SKIP_BUILD=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 \
@@ -202,8 +200,8 @@ PATH=../logos-logoscore-cli/result/bin:$PATH \
   ./scripts/e2e.sh testnet run
 ```
 
-ETA ~45–90 min on CPU. Pass requires `claim` with vault_holding drop
-(`claim_balance` / `vault_drop`), not skip.
+Pass requires `claim` with vault_holding drop (`claim_balance` /
+`vault_drop`), not skip.
 4. Phase 5: E2E.md + verification-matrix minimum; gate-log summary.
 5. Human alone: D39.15 move packet to completed.
 

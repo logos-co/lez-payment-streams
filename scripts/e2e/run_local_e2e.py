@@ -36,6 +36,9 @@ PUBLISH_WAIT_S = 15
 PEER_MESH_WAIT_S = 45
 STORE_QUERY_RETRIES = 4
 DAEMON_START_WAIT_S = 6
+_TX_HASH_RE = re.compile(r"Transaction hash is ([0-9a-fA-F]{64})")
+# Known recycled private ids from wiped-seed replays (Step 39 gate log).
+_RECYCLED_PRIVATE_PREFIXES = ("DaV7bT45", "FqxTyJhY", "8vSpcfHE")
 # Provider verify rejects streams with zero unaccrued allocation; accrual runs between
 # prepare and verify, so proof must be minted immediately before storeQuery.
 def manifest_allocation_lo(manifest: dict, default: int = 200) -> int:
@@ -2525,6 +2528,11 @@ def setup_store_owner_privacy_accounts(
     owner_hex, owner_b58 = _normalize_private_account_hex(
         cfg_user, create_account(cfg_user, private=True)
     )
+    if any(owner_b58.startswith(p) for p in _RECYCLED_PRIVATE_PREFIXES):
+        raise E2EError(
+            f"recycled private owner id {owner_b58} — run "
+            "./scripts/prepare-testnet-privacy-seed.sh before Store privacy E2E"
+        )
     provider_hex = ""
     provider_b58 = str(manifest.get("provider_account_id") or "").strip()
     if provider_privacy_enabled():
@@ -2535,6 +2543,11 @@ def setup_store_owner_privacy_accounts(
             raise E2EError(
                 "create_account_private returned duplicate owner/provider private ids "
                 f"in one session (owner={owner_b58})"
+            )
+        if any(provider_b58.startswith(p) for p in _RECYCLED_PRIVATE_PREFIXES):
+            raise E2EError(
+                f"recycled private provider id {provider_b58} — run "
+                "./scripts/prepare-testnet-privacy-seed.sh before Store privacy E2E"
             )
     logoscore_cmd(cfg_user, "call", "logos_execution_zone", "save", timeout=60)
     # Split wallets: provider has its own storage (seed clone). Do not copy
@@ -2710,6 +2723,25 @@ def transfer_shielded_owned(
     narrator.ok(f"Pre-shielded {amount} tokens into {label}")
 
 
+def _parse_wallet_tx_hash(text: str) -> str | None:
+    m = _TX_HASH_RE.search(text or "")
+    return m.group(1).lower() if m else None
+
+
+def _sequencer_tx_present(seq_url: str, tx_hash: str) -> bool:
+    try:
+        return sequencer_json_rpc(seq_url, "getTransaction", [tx_hash]) is not None
+    except E2EError:
+        return False
+
+
+def _sequencer_tip(seq_url: str) -> int | None:
+    try:
+        return int(sequencer_json_rpc(seq_url, "getLastBlockId", []))
+    except (E2EError, TypeError, ValueError):
+        return None
+
+
 def wallet_auth_transfer_send(
     cfg: Path,
     from_account: str,
@@ -2751,50 +2783,152 @@ def wallet_auth_transfer_send(
     env["RISC0_DEV_MODE"] = os.environ.get("RISC0_DEV_MODE", "1").strip()
     stop_store_host_for_wallet_cli(cfg)
     # Testnet real prove often needs 3–8 min; keep headroom above module default.
-    default_shield_timeout = (
-        "1200" if os.environ.get("CHAIN", "local").strip().lower() == "testnet" else "600"
-    )
+    is_testnet = os.environ.get("CHAIN", "local").strip().lower() == "testnet"
+    default_shield_timeout = "1200" if is_testnet else "600"
     timeout_s = int(os.environ.get("PS_WALLET_SHIELD_TIMEOUT", default_shield_timeout))
+    orphan_tip_blocks = int(os.environ.get("PS_PPE_ORPHAN_TIP_BLOCKS", "8"))
+    orphan_deadline_s = int(os.environ.get("PS_PPE_ORPHAN_DEADLINE_S", "240"))
     proc: subprocess.CompletedProcess[str] | None = None
     timed_out = False
+    orphan = False
+    tx_hash: str | None = None
+    cmd = [
+        "wallet",
+        "auth-transfer",
+        "send",
+        "--from",
+        f"Public/{from_b58}",
+        "--to",
+        f"Private/{to_b58}",
+        "--amount",
+        str(amount),
+    ]
     try:
-        try:
-            proc = run(
-                [
-                    "wallet",
-                    "auth-transfer",
-                    "send",
-                    "--from",
-                    f"Public/{from_b58}",
-                    "--to",
-                    f"Private/{to_b58}",
-                    "--amount",
-                    str(amount),
-                ],
-                cwd=repo,
+        # Testnet real prove: stream wallet output and fail fast on orphan PPE
+        # (hash returned, tip advances, getTransaction stays null).
+        if is_testnet and env["RISC0_DEV_MODE"] == "0":
+            popen = subprocess.Popen(
+                cmd,
+                cwd=str(repo),
                 env=env,
-                timeout=max(120, timeout_s),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
             )
-        except subprocess.TimeoutExpired as exc:
-            timed_out = True
+            chunks: list[str] = []
+            tip_at_hash: int | None = None
+            hash_t0: float | None = None
+            t0 = time.monotonic()
+            assert popen.stdout is not None
+            while True:
+                if time.monotonic() - t0 > max(120, timeout_s):
+                    timed_out = True
+                    popen.kill()
+                    break
+                line = popen.stdout.readline()
+                if line:
+                    chunks.append(line)
+                    if tx_hash is None:
+                        tx_hash = _parse_wallet_tx_hash(line)
+                        if tx_hash:
+                            tip_at_hash = _sequencer_tip(seq_url)
+                            hash_t0 = time.monotonic()
+                            narrator.value(
+                                f"wallet submitted TX {tx_hash[:16]}… "
+                                f"(tip={tip_at_hash}; watching inclusion)"
+                            )
+                elif popen.poll() is not None:
+                    rest = popen.stdout.read()
+                    if rest:
+                        chunks.append(rest)
+                    break
+                else:
+                    time.sleep(0.2)
 
-            def _as_text(blob: object) -> str:
-                if blob is None:
-                    return ""
-                if isinstance(blob, bytes):
-                    return blob.decode("utf-8", errors="replace")
-                return str(blob)
+                if tx_hash and hash_t0 is not None and not _sequencer_tx_present(
+                    seq_url, tx_hash
+                ):
+                    tip_now = _sequencer_tip(seq_url)
+                    tip_delta = (
+                        (tip_now - tip_at_hash)
+                        if tip_now is not None and tip_at_hash is not None
+                        else 0
+                    )
+                    if tip_delta >= orphan_tip_blocks or (
+                        time.monotonic() - hash_t0
+                    ) >= orphan_deadline_s:
+                        orphan = True
+                        timed_out = True
+                        popen.kill()
+                        break
 
-            out = (_as_text(exc.stdout) + "\n" + _as_text(exc.stderr)).strip()
+            out = "".join(chunks).strip()
+            if tx_hash is None:
+                tx_hash = _parse_wallet_tx_hash(out)
+            rc = popen.poll()
+            if rc is None:
+                try:
+                    rc = popen.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    popen.kill()
+                    rc = 124
+            if orphan:
+                rc = 124
+                out = (
+                    out
+                    + f"\norphan PPE: tx={tx_hash} getTransaction null "
+                    + f"after tip_delta>={orphan_tip_blocks} or "
+                    + f"{orphan_deadline_s}s post-hash"
+                ).strip()
+            elif timed_out and rc is None:
+                rc = 124
             proc = subprocess.CompletedProcess(
-                exc.cmd, 124, out, f"timed out after {timeout_s}s"
+                cmd, int(rc if rc is not None else 124), out, ""
             )
+        else:
+            try:
+                proc = run(
+                    cmd,
+                    cwd=repo,
+                    env=env,
+                    timeout=max(120, timeout_s),
+                )
+            except subprocess.TimeoutExpired as exc:
+
+                def _as_text(blob: object) -> str:
+                    if blob is None:
+                        return ""
+                    if isinstance(blob, bytes):
+                        return blob.decode("utf-8", errors="replace")
+                    return str(blob)
+
+                out = (_as_text(exc.stdout) + "\n" + _as_text(exc.stderr)).strip()
+                tx_hash = _parse_wallet_tx_hash(out)
+                timed_out = True
+                proc = subprocess.CompletedProcess(
+                    exc.cmd, 124, out, f"timed out after {timeout_s}s"
+                )
     finally:
         restart_store_host_after_wallet_cli(cfg, seq_url)
 
     assert proc is not None
-    ok = proc.returncode == 0 and not timed_out
     err_text = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()
+    if tx_hash is None:
+        tx_hash = _parse_wallet_tx_hash(err_text)
+    # Submit≠include: even a zero exit can race; require getTransaction on testnet.
+    included = bool(tx_hash) and _sequencer_tx_present(seq_url, tx_hash)
+    if timed_out and tx_hash and not included and not orphan:
+        tip_now = _sequencer_tip(seq_url)
+        orphan = True
+        err_text = (
+            err_text
+            + f"\norphan PPE after timeout: tx={tx_hash} tip={tip_now} "
+            + "getTransaction null"
+        ).strip()
+    ok = proc.returncode == 0 and not timed_out and not orphan
+    if is_testnet and env["RISC0_DEV_MODE"] == "0":
+        ok = ok and included
     log_artifact(
         artifact,
         phase,
@@ -2805,12 +2939,17 @@ def wallet_auth_transfer_send(
         via="wallet",
         timed_out=timed_out,
         timeout_s=timeout_s,
+        tx_hash=tx_hash,
+        orphan=orphan,
+        included=included if tx_hash else None,
         raw=err_text[:2000] if not ok else None,
     )
     if not ok:
+        kind = "orphan PPE" if orphan else "failed"
         raise E2EError(
-            f"wallet auth-transfer send ({phase}) failed"
-            + (f" (timeout {timeout_s}s)" if timed_out else "")
+            f"wallet auth-transfer send ({phase}) {kind}"
+            + (f" (timeout {timeout_s}s)" if timed_out and not orphan else "")
+            + (f" tx={tx_hash}" if tx_hash else "")
             + f": {err_text[:500]}"
         )
     narrator.ok(f"Pre-shielded {amount} tokens into {label} (wallet auth-transfer send)")
