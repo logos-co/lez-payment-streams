@@ -101,4 +101,4 @@ several runs without reclaiming.
   (`claim_at_time`, test `n_closed_residual_succeeds`).
 - v0.2.0 localnet claim fix (Symptom D):
   [plan/completed/step-27-claim-fix-verification.md](../../plan/completed/step-27-claim-fix-verification.md).
-- Testnet packet: [plan/completed/step-18-public-testnet-demo.md](../completed/step-18-public-testnet-demo.md).
+- Testnet packet: [plan/completed/step-18-public-testnet-demo.md](../../plan/completed/step-18-public-testnet-demo.md).

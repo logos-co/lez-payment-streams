@@ -50,6 +50,9 @@ still demands a single asset path.
 
 Keep the dual-path design (native AT vs Token custom, immutable vault
 `token_id`, provider `accepted_tokens` policy) as the near-term plan.
+That policy surface is scheduled as
+[Step 41](../waiting/step-41-non-native-token-policy-spec.md)
+(draft [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)).
 Mention wrapped-native in the RFC only as future work or residual linkage
 if useful. Revisit this raw TODO when a LEZ wrap program exists or when
 unifying the guest asset path becomes a scheduled goal.

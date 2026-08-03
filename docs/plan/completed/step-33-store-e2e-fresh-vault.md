@@ -3,8 +3,8 @@
 Index: [index.md](../index.md). Status: **complete** — testnet gate in
 [step-33-testnet-gate-log.md](step-33-testnet-gate-log.md) (2026-07-03).
 
-Prerequisites: [Step 24c](../completed/step-24c-simplify-demo-flow.md) (per-run stream,
-vault baseline model), [Step 28](../completed/step-28-user-journey-testnet.md) (module
+Prerequisites: [Step 24c](step-24c-simplify-demo-flow.md) (per-run stream,
+vault baseline model), [Step 28](step-28-user-journey-testnet.md) (module
 testnet patterns), [Step 32](step-32-auth-transfer-unify-store-claim.md) (AT ensure,
 close-then-claim). Related UX: [Step 29](step-29-e2e-script-ux.md) (phase tables updated with
 orchestrator changes).
@@ -92,7 +92,7 @@ Implement these unless an open question explicitly overrides.
 
 | Topic | Default |
 | --- | --- |
-| Manifest field for stream size | **`allocation`** only ([Step 32 terminology](../completed/step-32-auth-transfer-unify-store-claim.md) / fc351ca) |
+| Manifest field for stream size | **`allocation`** only ([Step 32 terminology](step-32-auth-transfer-unify-store-claim.md) / fc351ca) |
 | Stream id on new vault | **`0`** (first stream on that vault) |
 | `VAULT_ID` | Honor **`VAULT_ID` env** if set; else scan owner vault ids upward from **0** using an **empty-config probe** (not `vault_is_funded`) until the vault config account has no data (first free id) |
 | Deposit vs allocation | **`SEED_DEPOSIT_AMOUNT` ≥ `allocation` + 100** lo buffer on empty vault; testnet Store run sets **`SEED_ALLOCATION`** from manifest **`allocation`** unless **`SEED_ALLOCATION` env** overrides |

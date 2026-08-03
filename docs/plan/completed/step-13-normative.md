@@ -1,7 +1,7 @@
 # Step 13 — normative plan excerpt
 
 Operator commands: [archive/steps/provider-eligibility-runbook.md](../archive/steps/provider-eligibility-runbook.md).
-Agents on Step 14+ should read [integration-contracts.md](../reference/integration-contracts.md) instead.
+Agents on Step 14+ should read [integration-contracts.md](../../reference/integration-contracts.md) instead.
 
 ### Step 13, Provider-side proof verification
 

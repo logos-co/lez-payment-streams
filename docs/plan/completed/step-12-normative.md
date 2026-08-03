@@ -1,7 +1,7 @@
 # Step 12 — normative plan excerpt
 
 Operator commands: [archive/steps/user-eligibility-runbook.md](../archive/steps/user-eligibility-runbook.md).
-This file keeps closed design choices and DoD detail for audits; agents on Step 14+ should read [integration-contracts.md](../reference/integration-contracts.md) instead.
+This file keeps closed design choices and DoD detail for audits; agents on Step 14+ should read [integration-contracts.md](../../reference/integration-contracts.md) instead.
 
 ### Step 12, Session keys and user-side proof construction
 

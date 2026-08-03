@@ -13,15 +13,12 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-38) |
-| [upcoming/](upcoming/) | Step 39 (active) |
-| [waiting/](waiting/) | Waiting on external input — Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) |
+| [upcoming/](upcoming/) | Steps 39–40, 42–43 (active / upcoming) |
+| [waiting/](waiting/) | Waiting on external input — Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)); Step 41 ([logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)) |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 21, 23, 25 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |
-
-`waiting/` — blocked on external input.
-`wontfix/` — decided against near-term; may move to `upcoming/` if resurrected.
 
 Journeys ([N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
 
@@ -33,7 +30,10 @@ Journeys ([N18](../reference/integration-decisions.md#n18-integration-demo-vs-pa
 | User Journey UI (Basecamp) | Wontfix | Step 21 |
 
 Engineering: Steps 26–33 complete; Steps 36–38 complete;
-Step 39 active (human close pending).
+Step 39 active (human close pending);
+Step 40 upcoming (LIP-155 privacy workflow in the spec);
+Step 41 waiting (PR review on [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379));
+Steps 42–43 upcoming (Testnet v0.3 incentivisation research / spec).
 Public hosted Store provider: Step 23 (wontfix).
 
 ## Program scope
@@ -75,9 +75,18 @@ paid Store mode on the provider.
 | Payee receiver privacy via LEZ private execution | 37 (complete) |
 | Store E2E privacy profiles (full privacy mode) | 38 (complete) |
 | Testnet privacy E2E after native guest deploy | 39 (active; module full then Store full; real proving) |
+| LIP-155 privacy-preserving workflow in the specification | 40 (upcoming) |
+| Non-native token support in provider payment policies (F8, U9) | 41 (waiting; [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)) |
+| Discovery + payment policy advertisement (F6, F7, U8) | 42 (upcoming; Discovery support) |
+| Shared payment pool model research (F9–F11, U10) | 43 (upcoming) |
 
 Step 25 (in-process demo coordinator module) is wontfix
 ([packet](wontfix/step-25-demo-coordination-module.md)).
+
+Testnet v0.3 incentivisation roadmap:
+[incentivisation_v0.3](https://roadmap.logos.co/anoncomms/roadmap/testnet_v0.3/incentivisation_v0.3).
+Client and provider shielding map to Steps 36–40; remaining research
+deliverables are Steps 41–43 (41 waiting on LIP PR review).
 
 ### Store query dependency
 
@@ -116,6 +125,9 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | Step | Focus | Status |
 | --- | --- | --- |
 | 39 | Testnet privacy E2E after native guest deploy | Active — agent Phase 1–5 green (module + Store full privacy, real prove); human close (D39.15) -- [step-39-testnet-privacy-e2e.md](upcoming/step-39-testnet-privacy-e2e.md) |
+| 40 | LIP-155 privacy-preserving workflow in the specification | Upcoming — planning; no LIP edits yet -- [step-40-lip155-privacy-workflow-spec.md](upcoming/step-40-lip155-privacy-workflow-spec.md) |
+| 42 | Discovery + payment policy advertisement | Upcoming — research/spec; Discovery support (F6, F7, U8) -- [step-42-discovery-payment-policy-advertisement.md](upcoming/step-42-discovery-payment-policy-advertisement.md) |
+| 43 | Shared payment pool model research | Upcoming — research/spec only (F9–F11, U10) -- [step-43-shared-payment-pool-research.md](upcoming/step-43-shared-payment-pool-research.md) |
 
 ## Waiting steps
 
@@ -124,6 +136,7 @@ Blocked on external input. Resume when the blocker clears (then keep in `waiting
 | Step | Focus | Blocker |
 | --- | --- | --- |
 | 20 | Developer Journey: Store integration | [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369) — [step-20-developer-journey.md](waiting/step-20-developer-journey.md) |
+| 41 | Non-native token support in provider payment policies | [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) review / publish (F8, U9) — [step-41-non-native-token-policy-spec.md](waiting/step-41-non-native-token-policy-spec.md) |
 
 ## Wontfix steps
 

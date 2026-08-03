@@ -2,7 +2,7 @@
 
 Normative handoff for agents. Index: [index.md](../index.md).
 Prerequisite: Step 18b complete (operational Nix / scaffold / wallet / testnet scripts on rc5).
-Related: [step-24-lee-harness-upgrade.md](../completed/step-24-lee-harness-upgrade.md),
+Related: [step-24-lee-harness-upgrade.md](step-24-lee-harness-upgrade.md),
 [N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06),
 [feature-branch-pins.md](../../reference/feature-branch-pins.md).
 
@@ -29,7 +29,7 @@ harness lag). Step 24b closes that gap.
   (see inventory below); `Cargo.lock` resolves **one** `lee_core` git tree for the workspace.
 - Guest ELF rebuilt (`make build`); `make program-id` recorded in the completion note (below).
 - `cargo test -p lez-payment-streams-core --features host` passes (transparent `program_tests`;
-  PP tests per policy in [Step 24 pitfalls](../completed/step-24-lee-harness-upgrade.md)).
+  PP tests per policy in [Step 24 pitfalls](step-24-lee-harness-upgrade.md)).
 - `make verify-step10a`, `verify-step12-dod.sh`, `verify-step13-dod.sh` pass.
 - **`make verify-step17`** passes (local LEZ dual-host Store E2E).
 - **`make verify-step18-testnet-read-smoke`**, **`make bootstrap-testnet`** (if manifest stale),
@@ -159,7 +159,7 @@ snapshot:
 make full-reset-localnet
 ```
 
-(or project-documented equivalent in [step-17b-localnet-snapshot-restore.md](../completed/step-17b-localnet-snapshot-restore.md)).
+(or project-documented equivalent in [step-17b-localnet-snapshot-restore.md](step-17b-localnet-snapshot-restore.md)).
 
 If ImageID unchanged, still run `make verify-step17` once; if deploy step fails with program id
 mismatch, use `FULL_RESET=1` prepare.
@@ -351,8 +351,8 @@ rc5 guest rebuild”.
 
 ## References
 
-- Step 24 methodology: [step-24-lee-harness-upgrade.md](../completed/step-24-lee-harness-upgrade.md)
+- Step 24 methodology: [step-24-lee-harness-upgrade.md](step-24-lee-harness-upgrade.md)
 - Operational testnet runbook: [archive/steps/public-sequencer-store-runbook.md](../../archive/steps/public-sequencer-store-runbook.md)
 - Local E2E: [archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md)
-- Localnet snapshot: [step-17b-localnet-snapshot-restore.md](../completed/step-17b-localnet-snapshot-restore.md)
+- Localnet snapshot: [step-17b-localnet-snapshot-restore.md](step-17b-localnet-snapshot-restore.md)
 - LEZ repo: `github.com/logos-blockchain/logos-execution-zone` (`lee`, `lee_core`, `wallet`)

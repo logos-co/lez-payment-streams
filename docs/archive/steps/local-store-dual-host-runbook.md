@@ -343,8 +343,11 @@ logoscore "${LC_PROVIDER[@]}" call payment_streams_module chainAction claim \
   '{"owner":"<owner_account_id>","provider":"<provider_account_id>","vault_id":0,"stream_id":<run_stream_id>}'
 ```
 
-If accrued is zero after close, the orchestrator logs `demo_claim` with
-`skipped: true`, `reason: zero_accrued` (still exit 0 when Store DoD passed).
+If accrued is zero after close, the orchestrator logs phase `claim` with
+`skipped: true`, `reason: zero_accrued`. Under default strict claim
+(`E2E_CLAIM_OPTIONAL=0`, Step 32 D3) that fails the run; with soft
+`E2E_CLAIM_OPTIONAL=1` the run may still exit 0 when Store DoD passed.
+(Older artifacts used a transitional `demo_claim` alias.)
 
 Legacy manual claim-only snippet (superseded by close-then-claim in the script):
 
@@ -371,8 +374,10 @@ JSON-lines, one object per phase, e.g.:
 {"phase":"store_query_missing_proof","ok":true,"status":null,"message_count":0}
 {"phase":"demo_close_stream","ok":true,"stream_id":0,"via":"seed_close_stream_onchain"}
 {"phase":"vault_liquidity_after_close","ok":true,"total_allocated_lo":0,"unallocated_lo":2000}
-{"phase":"demo_claim","ok":true,"skipped":true,"reason":"zero_accrued","stream_id":0}
+{"phase":"claim","ok":true,"extra":{"skipped":true,"reason":"zero_accrued","stream_id":0}}
 ```
+
+(Older logs may show flat `demo_claim` instead of module-shaped `claim`.)
 
 On a failed `store_query_success`, the orchestrator adds a diagnostic line with the provider's
 real verdict (the client-visible error is only `BAD_REQUEST`):
@@ -453,8 +458,8 @@ Local prepare policy (Step 17b + 24c):
 
 - First run (or after reset): `scripts/e2e.sh local prepare` restores `.scaffold/snapshots/funded/` and writes a vault-only manifest (no stream fields).
 - Repeat demos on the same chain: `SKIP_SEED=1` or `RESTORE_LOCALNET=0` so the orchestrator does not rewind rocksdb; each run creates at `next_stream_id`.
-- E2E artifacts include `plan_demo_stream`, `baseline_before_create`, `checkpoint_after_create`, `demo_close_stream`, `vault_liquidity_after_close`, `demo_claim`.
-- Env: `E2E_CLOSE_VIA=seed` (default local) or `chainaction`; `E2E_STRICT_SEQUENCER_TX_WAIT=1` to require `getTransaction` after wallet submit.
+- E2E artifacts include `plan_demo_stream`, `baseline_before_create`, `checkpoint_after_create`, `demo_close_stream`, `vault_liquidity_after_close`, `claim` (older logs: `demo_claim`).
+- Env: `E2E_CLOSE_VIA=seed` (default local) or `chainaction`; `E2E_STRICT_SEQUENCER_TX_WAIT=1` to require `getTransaction` after wallet submit. Default claim policy is strict (`E2E_CLAIM_OPTIONAL=0`).
 
 Equivalent: `MODE=store CHAIN=local ./scripts/e2e.sh local run` (phases `E2E_PHASE=core|claim|all`, default `all`).
 Requires local LEZ on `127.0.0.1:3040` and a valid funded snapshot (or `make full-reset-localnet` once).

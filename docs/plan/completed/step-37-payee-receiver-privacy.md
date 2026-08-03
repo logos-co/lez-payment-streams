@@ -83,7 +83,7 @@ that, because the user saw `provider_id` at stream creation.
 ## Prerequisites
 
 - [Step 32](step-32-auth-transfer-unify-store-claim.md)
-  close-then-claim lifecycle (signed off; D3 gate pending) or equivalent.
+  close-then-claim lifecycle (complete; D3 closed) or equivalent.
 - `PAYMENT_STREAMS_GUEST_BIN` and the `logos_execution_zone` wallet module
   with the private-transaction surface (`send_generic_private_transaction`)
   available.

@@ -72,6 +72,24 @@ Gate log: [step-39-testnet-gate-log.md](docs/plan/completed/step-39-testnet-gate
 Do not reopen Phase 1–3 greens (D39.23). CPU prove is valid without NVIDIA
 (D39.26).
 
+Upcoming (docs): [Step 40](docs/plan/upcoming/step-40-lip155-privacy-workflow-spec.md) —
+reflect privacy-preserving payer and provider workflows in LIP-155
+(no code; do not edit the LIP until the step’s decision log is closed).
+
+### Testnet v0.3 incentivisation research (Steps 41-43)
+
+Roadmap: [incentivisation_v0.3](https://roadmap.logos.co/anoncomms/roadmap/testnet_v0.3/incentivisation_v0.3).
+Client/provider shielding already map to Steps 36–40.
+Remaining research/spec packets (docs and LIP only in-step):
+
+- [Step 41](docs/plan/waiting/step-41-non-native-token-policy-spec.md) —
+  non-native token policy (F8, U9); waiting review on
+  [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379).
+- [Step 42](docs/plan/upcoming/step-42-discovery-payment-policy-advertisement.md) —
+  discovery + payment policy advertisement (F6, F7, U8); Discovery support.
+- [Step 43](docs/plan/upcoming/step-43-shared-payment-pool-research.md) —
+  shared payment pool investigation (F9–F11, U10).
+
 ## Verification
 
 Canonical: `scripts/e2e.sh` — [docs/reference/verification-matrix.md](docs/reference/verification-matrix.md),

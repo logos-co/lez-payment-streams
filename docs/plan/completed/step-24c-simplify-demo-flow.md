@@ -4,7 +4,7 @@ Completed packet. Index: [index.md](../index.md).
 Prerequisites: Step 17/17b scripts; Step 24b (rc5 guest + tooling).
 Related: [step-17b-localnet-snapshot-restore.md](step-17b-localnet-snapshot-restore.md),
 [archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md),
-[step-18-public-testnet-demo.md](../completed/step-18-public-testnet-demo.md),
+[step-18-public-testnet-demo.md](step-18-public-testnet-demo.md),
 [archive/operator/testnet-claim-known-issue.md](../../archive/operator/testnet-claim-known-issue.md).
 
 ## Status (2026-06-28)

@@ -99,7 +99,7 @@ is shared across operators for a given guest ELF, not per-operator.
   `fixtures/testnet.json` after bootstrap. The example `clock_10_account_id` value is the testnet
   Clock01 id (`4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWNU`): the demo reads the clock every
   block via Clock01 so the create-time fold stays small (see
-  [step-24c-simplify-demo-flow.md](../completed/step-24c-simplify-demo-flow.md)). The field name
+  [step-24c-simplify-demo-flow.md](step-24c-simplify-demo-flow.md)). The field name
   is a legacy key; do not copy from `localnet.json`.
 - Demo claim policy: on testnet the provider `claim` is optional. A run is green through create,
   fundable, paid Store query, and close; claim is not reliably confirming on testnet. See

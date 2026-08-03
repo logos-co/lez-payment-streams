@@ -7,7 +7,7 @@ the test binary in that repo.
 Normative packet for agents. Index: [index.md](../index.md). Pins:
 [feature-branch-pins.md](../../reference/feature-branch-pins.md).
 
-Agents on Step 16+ should read [integration-contracts.md](../reference/integration-contracts.md) instead.
+Agents on Step 16+ should read [integration-contracts.md](../../reference/integration-contracts.md) instead.
 
 ### Step 14, Extend the Store wire format in `logos-delivery`
 

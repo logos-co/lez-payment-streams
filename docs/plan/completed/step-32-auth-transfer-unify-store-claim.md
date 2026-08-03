@@ -47,15 +47,16 @@ phase tables in the same PR as orchestrator changes.
 | **D7** | Dual-emit retired in D3 follow-up; artifact phase is `claim` only. |
 | **D8** | LEE only ([step-32-step0-validation.md](step-32-step0-validation.md)); remove `NSSA_WALLET_HOME_DIR` from `module-e2e.sh`. |
 
-**D3 gate (record in gate log):**
+**D3 gate (closed — see [step-32-testnet-gate-log.md](step-32-testnet-gate-log.md)):**
 
 ```bash
 E2E_CLAIM_OPTIONAL=0 make verify-store-testnet
 make verify-module-testnet    # VAULT_ID defaults to 0
 ```
 
-Pass: close on chain before claim; claim `ok` without `claim_optional_unconfirmed`;
-residual accrued cleared or `claim_balance` ok; `auth_init_*` ok. Optional appendix:
+Pass criteria used: close on chain before claim; claim `ok` without
+`claim_optional_unconfirmed`; residual accrued cleared or `claim_balance` ok;
+`auth_init_*` ok. Credited from Step 39 privacy testnet. Optional appendix (not required):
 `E2E_CLOSE_VIA=chainaction E2E_CLAIM_OPTIONAL=0 make verify-store-testnet`.
 
 ## Implementation sequence

@@ -19,8 +19,8 @@ Prerequisites:
 | Journey runtime target | Required before Step 20 |
 | --- | --- |
 | Local LEZ (script-orchestrated dual-host demo) | Steps 17 and 19 DoD satisfied; **Step 24c local gate** complete (`make verify-step17-back-to-back`) |
-| Testnet v0.2 (public LEZ, local dual-host Store) | Steps 17, 18, and 26 DoD satisfied; Store testnet sizing via Step 33 |
-| Testnet v0.2 + hosted public Store provider | Steps 17, 18, 26, and 23 DoD satisfied |
+| Testnet v0.2 (public LEZ, local dual-host Store) | Steps 17, 18, and 26 DoD satisfied; Store testnet sizing via Step 33; claim strictness via Step 32 D3 |
+| Testnet v0.2 + hosted public Store provider | Out of scope — Step 23 wontfix |
 | Any | Step 19 on `feat/payment-streams-onchain-part` (`345c8eef`); cite in packet ([feature-branch-pins.md](../../reference/feature-branch-pins.md)) |
 
 Orchestration policy: [N17](../../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06).

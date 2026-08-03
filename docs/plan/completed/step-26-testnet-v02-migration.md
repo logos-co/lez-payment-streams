@@ -3,8 +3,8 @@
 Completed packet. Index: [index.md](../index.md).
 Prerequisites: Step 18 (rc5 testnet integration, superseded); Step 24b/24c
 (rc5 guest + tooling, demo flow).
-Related: [step-27-claim-fix-verification.md](../completed/step-27-claim-fix-verification.md),
-[step-30-static-dependency-migration.md](../completed/step-30-static-dependency-migration.md),
+Related: [step-27-claim-fix-verification.md](step-27-claim-fix-verification.md),
+[step-30-static-dependency-migration.md](step-30-static-dependency-migration.md),
 [feature-branch-pins.md](../../reference/feature-branch-pins.md),
 [integration-decisions.md](../../reference/integration-decisions.md) (N10, N16).
 
@@ -14,7 +14,7 @@ Step 26 is complete. Payment streams integration runs on LEZ `v0.2.0`
 (git rev `a58fbce2…`). The operational pin, wallet wrapper ref, Qt patch
 rewrite, testnet-submit dispatch removal, and localnet baseline rebuild
 are all landed on `master`. The Store-mode E2E blocker (owner prefund)
-was resolved by [Step 27](../completed/step-27-claim-fix-verification.md);
+was resolved by [Step 27](step-27-claim-fix-verification.md);
 all three localnet verification gates are green.
 
 | Area | State |
@@ -34,7 +34,7 @@ all three localnet verification gates are green.
 
 Live testnet deployment (guest deploy, `program_id_hex` recording, read
 smoke) remains deferred as noted in the step scope; the Developer Journey
-testnet claim is owned by [Step 27](../completed/step-27-claim-fix-verification.md).
+testnet claim is owned by [Step 27](step-27-claim-fix-verification.md).
 
 ---
 
@@ -348,7 +348,7 @@ replacing the current dynamic
 This is a separable code-quality refactor, not gated on v0.2.0 or testnet,
 and is intentionally excluded from Step 26 to avoid coupling two independent
 risks (v0.2.0 pin compatibility + codegen-typed-wrapper migration) in one
-step. Tracked as [Step 30](../completed/step-30-static-dependency-migration.md); can start
+step. Tracked as [Step 30](step-30-static-dependency-migration.md); can start
 once Step 26's wrapper builds against Universal `main` and parallelizes with
 Steps 27-29. Step 30 is now complete.
 
@@ -409,7 +409,7 @@ live-testnet follow-up phase once `MODE=store CHAIN=testnet` is exercisable.
 - [x] N10 amended (QList-unreliability rationale marked Legacy-specific;
   JSON wrapper now persists for RISC0-serde reason)
 - [x] D6 revisit condition noted as met; static-dependency migration
-  deferred to [Step 30](../completed/step-30-static-dependency-migration.md)
+  deferred to [Step 30](step-30-static-dependency-migration.md)
   (now complete)
 - [x] Step 18 completed packets get "Superseded by Step 26" banner
 - [x] Archived rc5-asserting DoD scripts (`verify-step11a-dod.sh`,
@@ -431,10 +431,10 @@ chains (deployed separately), but client code must remain compatible.
 
 #### Related
 
-- [step-18-public-testnet-demo.md](../completed/step-18-public-testnet-demo.md) — prior testnet integration (historical; superseded banner added this step)
-- [step-18b-rc5-unify-handoff.md](../completed/step-18b-rc5-unify-handoff.md) — rc5 unification handoff (historical; superseded banner added this step)
-- [step-27-claim-fix-verification.md](../completed/step-27-claim-fix-verification.md) — depends on this step for claim verification
-- [step-28-user-journey-testnet.md](../completed/step-28-user-journey-testnet.md) — enables module mode on testnet
+- [step-18-public-testnet-demo.md](step-18-public-testnet-demo.md) — prior testnet integration (historical; superseded banner added this step)
+- [step-18b-rc5-unify-handoff.md](step-18b-rc5-unify-handoff.md) — rc5 unification handoff (historical; superseded banner added this step)
+- [step-27-claim-fix-verification.md](step-27-claim-fix-verification.md) — depends on this step for claim verification
+- [step-28-user-journey-testnet.md](step-28-user-journey-testnet.md) — enables module mode on testnet
 - [N10](../../reference/integration-decisions.md#n10-step-11b-module-writes-decisions) — JSON-over-LogosAPI rationale for the wallet Qt patch (Path 1 justification)
 - [N16](../../reference/integration-decisions.md#n16-step-18b-rc5-operational-pin-2026-06) — operational pin policy (amended this step)
 - [feature-branch-pins.md](../../reference/feature-branch-pins.md) — dependency versions

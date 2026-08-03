@@ -304,10 +304,8 @@ Stop and escalate (not port-gap):
 
 - Guest / FFI / protocol edits
 - Delivery wire changes
-- Changing claim-optional policy or defaults — including editing
-  `run_local_e2e.py` so testnet defaults to strict when
-  `PROVIDER_PRIVACY=1`, or any other change to the unconditional
-  `is_testnet` → `E2E_CLAIM_OPTIONAL=1` default
+- Changing claim-optional policy or defaults away from the post–Step 32 D3
+  strict default (`E2E_CLAIM_OPTIONAL=0`) without an explicit plan decision
 - Relaxing D39.13 to greenwash (setting `E2E_CLAIM_OPTIONAL=1` on a
   required privacy command to pass a flake)
 - Re-opening Phase 1–3 green rows to “re-verify” soft or public runs (D39.23)

@@ -15,7 +15,8 @@ layout — see E2E.md). Step 22 is the logos-docs packet
 ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370));
 automated verification recipes live in [E2E.md](../../journeys/E2E.md).
 
-Independent of Step 32 (Store claim gate): USER_JOURNEY and module×testnet E2E content only.
+Independent of Store claim gate work (Step 32, now complete): USER_JOURNEY and
+module×testnet E2E content only.
 
 #### Problem (historical)
 
@@ -154,13 +155,13 @@ Create [docs/journeys/E2E.md](../../journeys/E2E.md):
 - **Doc boundary:**
   - [verification-matrix.md](../../reference/verification-matrix.md) — SSOT for 2×2 Required tiers,
     cold start, maintainer notes, artifact locations. Trim or replace its per-cell **command** block
-    with “Recipes: [E2E.md](../journeys/E2E.md)” once E2E.md lands (avoid duplicating long command lists).
+    with “Recipes: [E2E.md](../../journeys/E2E.md)” once E2E.md lands (avoid duplicating long command lists).
   - **E2E.md** — SSOT for per-cell **run recipes** (prepare/bootstrap one-liners, `e2e.sh` / make
     invocations, expected exit code and key artifact phases).
 - Cells in this step: **module × local/testnet** — full recipes (merge RUN.md). **store × local** —
-    full recipe from RUN.md / matrix. **store × testnet** — stub section “pending Step 32 D3 gate”
-    with pointer to matrix notes on `E2E_CLAIM_OPTIONAL` until claim strictness is final; do not
-    block USER_JOURNEY or module E2E work on that cell.
+    full recipe from RUN.md / matrix. **store × testnet** — full recipe in E2E.md (Step 32 D3
+    closed; default `E2E_CLAIM_OPTIONAL=0`); do not block USER_JOURNEY or module E2E work on
+    that cell.
 
 #### Scripts and alignment (non-blocking for doc land)
 
