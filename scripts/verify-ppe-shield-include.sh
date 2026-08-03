@@ -19,6 +19,7 @@ command -v wallet >/dev/null || ps_fatal "wallet not on PATH (pinned LEZ release
 command -v python3 >/dev/null || ps_fatal "python3 required"
 command -v curl >/dev/null || ps_fatal "curl required"
 
+# Before ps_chain_wallet_home / module dirs (defaults to local without this).
 export CHAIN="${CHAIN:-testnet}"
 export RISC0_DEV_MODE=0
 

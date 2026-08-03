@@ -1,6 +1,7 @@
 # Step 39 — testnet privacy E2E after native guest deploy
 
-Index: [index.md](../index.md). Status: **active**.
+Index: [index.md](../index.md). Status: **active** (agent gates green;
+awaiting human close — D39.15).
 
 Goal: freeze the current native-token guest, redeploy it to public testnet
 (agent-run), and close privacy v1 with real proving on public testnet:
@@ -35,10 +36,10 @@ Do not reopen Phase 1–3 green rows (D39.23).
 | 3 | Credential / funding checklist (Phase 1); confirm Y ≠ fixture `de17c0db…` (or Y-equal path) | Yes (done) |
 | 4 | `make deploy-testnet`; fixture sync (not full re-bootstrap); prefix checks | Yes (done) |
 | 5 | Public testnet with `SKIP_BUILD=1` (module then Store) | Yes (done) |
-| 5b | Harness: wallet-CLI shield/dust (D39.22); local module full privacy with `RISC0_DEV_MODE=0` (D39.24) | Yes |
-| 6 | Module full privacy testnet (`E2E_CLAIM_OPTIONAL=0`, `RISC0_DEV_MODE=0`) | Yes (warm-up) |
-| 7 | Store full privacy testnet (`E2E_CLAIM_OPTIONAL=0`, `RISC0_DEV_MODE=0`) | Yes (primary) |
-| 8 | Phase 5 docs minimum; gate-log summary that required gates are green | Yes (agent) |
+| 5b | Harness: wallet-CLI shield/dust (D39.22); local module full privacy with `RISC0_DEV_MODE=0` (D39.24) | Yes (done) |
+| 6 | Module full privacy testnet (`E2E_CLAIM_OPTIONAL=0`, `RISC0_DEV_MODE=0`) | Yes (done) |
+| 7 | Store full privacy testnet (`E2E_CLAIM_OPTIONAL=0`, `RISC0_DEV_MODE=0`) | Yes (done) |
+| 8 | Phase 5 docs minimum; gate-log summary that required gates are green | Yes (done) |
 | 9 | Human review of gate log + artifacts; then move packet to completed | Yes (human) |
 | — | Isolation cells; new Make aliases | Optional / deferred |
 
@@ -46,12 +47,22 @@ Exact env and commands: [Verification](#verification).
 
 ## Problem
 
-Local privacy profiles are green.
-Testnet fixtures still pin ImageID `de17c0db…` (deploy 2026-07-15).
-Local fixtures currently show a newer tip (`072a26cc…` in `fixtures/localnet.json`)
-as an example of drift, not a permanent expected id.
-Authoritative ImageID is always `make program-id` after `make build` at the
+Local privacy profiles were green while testnet fixtures still pinned ImageID
+`de17c0db…` (deploy 2026-07-15). Step 39 froze, redeployed Docker ELF ImageID
+`072a26cc…`, synced fixtures, and closed required privacy gates on that tip.
+Authoritative ImageID remains `make program-id` after `make build` at the
 freeze commit (D39.10).
+
+## Outcome (agent-reported)
+
+| Gate | Artifact | Notes |
+| --- | --- | --- |
+| Module full privacy testnet | `module-e2e-20260722T215542.log` | `RISC0_DEV_MODE=0`; claim vault_drop=400 |
+| Store full privacy testnet | `e2e-20260724T144726.log` | `RISC0_DEV_MODE=0`; `E2E_CLAIM_OPTIONAL=0`; claim_balance vault_drop=400; ~106 min CPU |
+| Phase 5 docs | E2E.md + verification-matrix + gate-log summary | D39.14 |
+
+Full run history:
+[step-39-testnet-gate-log.md](../completed/step-39-testnet-gate-log.md).
 
 ## Why a new step (not reopen Step 38)
 
@@ -133,16 +144,17 @@ Procedural, not a git tag or CI lock:
 4. Record ImageID Y from `make program-id` and ELF byte size.
 
 Redeploy is mandatory when Y ≠ current
-`fixtures/testnet-module.json` / `fixtures/testnet.json` `program_id_hex`
-(today `de17c0db…`). Expected: Y differs because guest commit `a59a66d`
-(clock normalization) postdates freeze `6772238b`.
+`fixtures/testnet-module.json` / `fixtures/testnet.json` `program_id_hex`.
+At Step 39 open that tip was `de17c0db…`; after freeze/deploy both fixtures
+pin ImageID Y `072a26cc…` (guest `a59a66d` clock normalization after earlier
+freeze `6772238b`).
 
 If Y equals the fixture (D39.16): skip redeploy, log “ImageID unchanged;
 redeploy no-op” in the gate log, still run fixture verify + prefix checks,
 then continue to Phase 3. Do not edit the guest to force a new ImageID.
 
-`072a26cc…` in `fixtures/localnet.json` is an example of local tip drift only.
-Never treat it as the deploy target without running `make program-id`.
+Never treat a localnet tip ImageID as the deploy target without running
+`make program-id` at the freeze commit.
 
 ### Build path (D39.10)
 
@@ -506,10 +518,10 @@ Agent-reported (gate log + artifacts):
   green (D39.24).
 - [x] Module full privacy testnet green with real proving (`RISC0_DEV_MODE=0`)
   and `E2E_CLAIM_OPTIONAL=0`.
-- [ ] Store full privacy testnet green with real proving (`RISC0_DEV_MODE=0`),
+- [x] Store full privacy testnet green with real proving (`RISC0_DEV_MODE=0`),
   `E2E_CLAIM_OPTIONAL=0`, and vault_holding drop confirmation.
-- [ ] E2E.md + verification-matrix updated to Phase 5 minimum (D39.14).
-- [ ] Gate-log summary that required gates are green (or incomplete with risk).
+- [x] E2E.md + verification-matrix updated to Phase 5 minimum (D39.14).
+- [x] Gate-log summary that required gates are green (or incomplete with risk).
 
 Human-only (D39.15):
 
@@ -523,9 +535,9 @@ Human-only (D39.15):
 - [x] Phase 1 preflight + freeze build.
 - [x] Phase 2 deploy + fixture sync + prefix checks.
 - [x] Phase 3 public testnet.
-- [ ] Phase 3b wallet-CLI shield + local real-prove smoke (D39.22–D39.24).
-- [ ] Phase 4 module full then Store full (real proving).
-- [ ] Phase 5 docs + agent gate-log summary.
+- [x] Phase 3b wallet-CLI shield + local real-prove smoke (D39.22–D39.24).
+- [x] Phase 4 module full then Store full (real proving).
+- [x] Phase 5 docs + agent gate-log summary.
 - [ ] Human close (completed or write-off).
 - [x] Decisions D39.22–D39.24 locked in packet (2026-07-22).
 
@@ -541,6 +553,8 @@ Human-only (D39.15):
 | Missing NVIDIA / CUDA | Continue on CPU (D39.26); gate on includable PPE smoke, not `nvidia-smi`. |
 | Dual-host / dust / guest env | Warm-up module first; port-gap fixes in scope (D39.6). |
 | Shared fixture wallet after module | Fresh vault_id; re-fund before Store. |
+| Recycled private ids after seed reclones | `prepare-testnet-privacy-seed.sh` + refuse list; public funder SSOT = `testnet-module.json`. |
+| CLOCK_50 tick drains Store unaccrued | Do not advance CLOCK_50 before fundable/query; advance before close for claim. |
 | Deploy / credential failure | Agent tries; flag in gate log and stop (D39.9). |
 | Strict claim flake | Escalate; no optional-claim bypass (D39.13); human write-off only (D39.15). |
 | Y equals fixture | Redeploy no-op path (D39.16); still run privacy gates. |

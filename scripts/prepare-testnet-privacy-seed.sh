@@ -18,6 +18,9 @@ command -v logoscore >/dev/null || ps_fatal "logoscore not on PATH"
 command -v wallet >/dev/null || ps_fatal "wallet not on PATH (pinned LEZ release)"
 command -v python3 >/dev/null || ps_fatal "python3 required"
 
+# Before ps_chain_wallet_home / module dirs (defaults to local without this).
+export CHAIN="${CHAIN:-testnet}"
+
 SEED_HOME="$(ps_chain_wallet_home)"
 SEED_CFG="$SEED_HOME/wallet_config.json"
 SEED_STOR="$SEED_HOME/storage.json"
@@ -44,7 +47,6 @@ WC="$WORK/wallet_config.json"
 WS="$WORK/storage.json"
 
 ps_export_wallet_home "$WORK"
-export CHAIN="${CHAIN:-testnet}"
 
 ps_log_info "Syncing seed copy to tip (wallet account sync-private)"
 # sync-private advances last_synced_block and discovers notes for known keys.

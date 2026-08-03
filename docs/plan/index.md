@@ -29,7 +29,8 @@ Static dependency migration: Step 30 (complete; D6 revisit condition closed).
 Store fresh vault per run: Step 33 (complete).
 AT-init unify + Store claim phase: Step 32 (active; D3 testnet gate pending).
 Local Store privacy profiles: Step 38 (complete).
-Testnet privacy E2E after native guest deploy: Step 39 (active).
+Testnet privacy E2E after native guest deploy: Step 39 (active — agent gates
+green; human close pending).
 See [N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 
 ## Program scope
@@ -114,7 +115,7 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | 32 | AT-init unify + Store claim phase | Active (signed off; D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
 | 34 | User Journey manual walkthrough (testnet CLI) | Active -- [step-34-user-journey-manual-walkthrough.md](upcoming/step-34-user-journey-manual-walkthrough.md) |
 | 35 | Developer Journey generalization (protocol-agnostic eligibility guide) | Active -- [step-35-developer-journey-generalization.md](upcoming/step-35-developer-journey-generalization.md) |
-| 39 | Testnet privacy E2E after native guest deploy | Active — module full then Store full; real proving (`RISC0_DEV_MODE=0`); agent deploy + report; human close -- [step-39-testnet-privacy-e2e.md](upcoming/step-39-testnet-privacy-e2e.md) |
+| 39 | Testnet privacy E2E after native guest deploy | Active — agent Phase 1–5 green (module + Store full privacy, real prove); human close (D39.15) -- [step-39-testnet-privacy-e2e.md](upcoming/step-39-testnet-privacy-e2e.md) |
 
 Ideas not yet steps: [raw-todos/](raw-todos/).
 

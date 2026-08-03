@@ -96,17 +96,11 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`, shield p
 | 2026-07-22 | c905417+ | local module full privacy (real smoke 2) | module-e2e-20260722T183436.log | partial | RISC0_DEV_MODE=0; Clock50 module; create_stream Validated; close InvalidPrivacyPreservingProof (window crossed); accrual needs CLOCK_50 tick wait |
 | 2026-07-22 | 21333c2 | local module full privacy (real smoke 3) | module-e2e-20260722T191735.log | partial | create+close Validated under CLOCK_50; claim InvalidPrivacyPreservingProof (stale clock window after close); accrual ok |
 | 2026-07-22 | d86146a | local module full privacy (real smoke 4) | module-e2e-20260722T200257.log | pass | D39.24; RISC0_DEV_MODE=0; CLOCK_50; claim vault_drop=400; all PPE Validated |
-
 | 2026-07-22 | 8787afb | module full privacy testnet (4th, real) | module-e2e-20260722T205804.log | fail | RISC0_DEV_MODE=0; wallet shield+vault+create+close Validated; accrual fail — CLOCK_50 stuck at 32000 for 10min wait (need ~50 testnet blocks); claim skipped zero_accrued |
-
 | 2026-07-22 | 9491316 | module full privacy testnet (5th, real) | module-e2e-20260722T215542.log | pass | D39.4/Phase 4 warm-up; RISC0_DEV_MODE=0; CLOCK_50; claim vault_drop=400; wallet shield |
-
 | 2026-07-22 | 2d45928 | store full privacy testnet (1st, real) | e2e-20260722T234458.log | fail | AT-init fresh funder 5pLi93wd…; wallet init did not yield AT-owned; dual-daemon key handoff |
-
 | 2026-07-22 | 867f64e | store full privacy testnet (2nd, real) | e2e-20260722T235004.log | fail | initializeVault FFI 7; provider stale save wiped private keys from shared storage |
-
 | 2026-07-23 | b364840 | store full privacy testnet (2nd) | e2e-20260722T235004.log | fail | initializeVault FFI 7; shared storage wipe |
-
 | 2026-07-23 | — | dual-wallet isolation smoke | verify-dual-wallet-isolation.sh | pass | split storage keeps A private; shared wipe reproduced |
 | 2026-07-23 | 6cb8507 | store full privacy testnet (3rd, real) | e2e-20260723T001708.log | fail | split wallets OK; shields green; initializeVault FFI 7 — LEZ close no-op left stale wallet after CLI |
 | 2026-07-23 | — | wallet-CLI handoff smoke | verify-wallet-cli-handoff.sh | pass | stop/restart keeps Private; close METHOD_FAILED |
@@ -121,91 +115,36 @@ Notes: ImageID Y, `RISC0_DEV_MODE`, `E2E_CLAIM_OPTIONAL`, `SKIP_BUILD`, shield p
 | 2026-07-23 | 3abcc0a | store full privacy testnet (7th, real) | e2e-20260723T121329.log | fail | CLOCK_50 Store wait raise landed; owner shield amount=550 to reused DaV7bT45… timed out 1200s — pin wallet returned TX `8d1b947d…` then hung on inclusion; `getTransaction` still null after fail (orphan PPE). No r0vm CPU after submit. |
 | 2026-07-23 | — | prepare-testnet-privacy-seed | (seed storage) | pass | Sync tip + burn recycled private slots (DaV7/FqxTy/…); next create `T7qmBdn6…` |
 | 2026-07-23 | — | PPE include smoke amount=1 | verify-ppe-shield-include.sh | pass | pin wallet; `Fhvzd6Cs…`; TX `deacd1b4…` included ~3 min; then re-burned that id on seed |
+| 2026-07-23 | e9703a2 | harness | (scripts) | pass | Seed sync/burn; orphan fail-fast; recycled-id refuse; amount=1 smoke script |
+| 2026-07-24 | e9703a2 | PPE include smoke amount=1 | verify-ppe-shield-include.sh | pass | TX `0f8d8704…` included ~4 min; recipient `3Z9fny…` (then burned) |
+| 2026-07-24 | e9703a2+ | store full privacy testnet (8th) | e2e-20260724T131520.log | fail | AT-init on polluted fixture owner `DaV7…`; funder SSOT → testnet-module.json |
+| 2026-07-24 | e9703a2+ | store full privacy testnet (9th) | e2e-20260724T132137.log | fail | CLOCK_50 advance before fundable drained allocation 400; removed advance from wait_stream_fundable |
+| 2026-07-24 | e9703a2+ | store full privacy testnet (10th) | e2e-20260724T140412.log | fail | Store query green; same CLOCK_50 epoch at close → claim zero_accrued; tick before close |
+| 2026-07-24 | e9703a2+ | store full privacy testnet (11th, real) | e2e-20260724T144726.log | pass | DoD; RISC0_DEV_MODE=0; E2E_CLAIM_OPTIONAL=0; SKIP_BUILD=1; ImageID Y=072a26cc…; wallet shield; owner `4AVejeor…` / provider `AJWwStrw…` / funder `DkT97…`; claim_balance vault_drop=400; ~106 min CPU |
 
-## Hand-off (2026-07-23 late morning)
+## Agent summary (2026-07-24)
 
-### Status
+Required Phase 4 gates are green under real proving (`RISC0_DEV_MODE=0`) and
+strict claim (`E2E_CLAIM_OPTIONAL=0`):
 
-| Gate | State |
+| Gate | Artifact |
 | --- | --- |
 | Phases 1–3 | green (do not reopen; D39.23) |
-| Phase 4 module full privacy testnet | green — `module-e2e-20260722T215542.log` |
-| Phase 4 Store full privacy testnet | blocked — 7th run fail `e2e-20260723T121329.log` (prior partial `e2e-20260723T110411.log`) |
-| Phase 5 docs | not started |
-| D39.15 packet → completed | human only |
+| Module full privacy testnet | `module-e2e-20260722T215542.log` |
+| Store full privacy testnet | `e2e-20260724T144726.log` (vault_drop=400) |
+| Phase 5 docs | E2E.md + verification-matrix + this summary |
 
-Store 6th real run (~41 min, CPU prove) got shields, vault, createStream,
-paid Store query, rejection path, and close green on fresh private owner
-`DaV7bT45…` / provider `FqxTyJhY…`.
-Claim did not meet D39.13: `clock50_advance_before_accrual` failed
-(CLOCK_50 stuck at `block_id=32850` for the full wait), then claim skipped
-`zero_accrued`. Harness previously treated that as `ok` — now fails hard
-under `E2E_CLAIM_OPTIONAL=0`.
+Store harness notes (working tree on `e9703a2` tip, for human commit review):
 
-### Current blocker
-
-Was orphan PPE on recycled private ids (7th run). Mitigations landed:
-`prepare-testnet-privacy-seed.sh` (sync + burn), harness fail-fast orphan
-detection, recycled-id refuse in Store privacy setup, D39.26 amount=1
-include smoke green (`deacd1b4…`). CLOCK_50 Store wait raise remains.
-
-Next: one Store full privacy re-run with fresh ids (ETA still ~45–90 min
-CPU). Do not start that run under a 30-minute wall-clock budget.
-Keep `E2E_CLAIM_OPTIONAL=0` (D39.13).
-
-### Do not re-block on GPU (D39.26)
-
-Missing NVIDIA/CUDA is not a Phase 4 stop. Gate on includable PPE smoke
-(`wallet auth-transfer send` → `getTransaction` non-null under
-`RISC0_DEV_MODE=0` / unset). CPU prove is valid (~2–4 min per AT shield on
-this laptop; GPU util may stay 0). Soft stubs remain forbidden on public
-privacy gates (D39.4).
-
-### Fixed earlier (keep)
-
-1. Dual logoscore shared `storage.json` → peer save wiped keys (FFI 7).
-   Split clone into `.scaffold/e2e/{user,provider}/wallet/` (`6cb8507`).
-2. LEZ `close()` no-op after wallet CLI → exclusive user-daemon
-   stop/restart + remount delivery; provider storage untouched.
-3. Timeout handler `TypeError` (bytes/str) on `TimeoutExpired` in
-   `wallet_auth_transfer_send` — fixed in `run_local_e2e.py`.
-4. Under `E2E_CLAIM_OPTIONAL=0`, `zero_accrued` claim skip and failed
-   CLOCK_50 advance before accrual now raise `E2EError`.
-
-Isolation smokes: `verify-dual-wallet-isolation.sh`,
-`verify-wallet-cli-handoff.sh`, `verify-store-host-restart.sh`.
-Set both `LEE_WALLET_HOME_DIR` and `NSSA_WALLET_HOME_DIR`.
-
-### Resume (next agent)
-
-1. ~~Commit uncommitted harness + docs if clean~~ done 2026-07-23
-   (post-hand-off commit on `master`; was `bcc6915` + local edits).
-2. ~~Restore public fixture~~ done 2026-07-23 (gitignored
-   `fixtures/testnet.json`): owner `DkT97NZP…`, provider `FQ8fd3P5…`,
-   `allocation` 400, ImageID Y, clocks from `fixtures/testnet-module.json`;
-   privacy-run `DaV7bT45…` / stream PDAs cleared.
-3. ~~Diagnose CLOCK_50 advance under Store real-prove~~ done 2026-07-23
-   (Store wait raise). ~~Orphan PPE / recycled ids~~ mitigations done
-   2026-07-23 afternoon: seed prepare + amount=1 include smoke + harness
-   fail-fast. Then re-run Store full privacy only (ETA ~45–90 min):
-
-```bash
-./scripts/prepare-testnet-privacy-seed.sh
-./scripts/verify-ppe-shield-include.sh      # amount=1 must PASS
-PS_PRIVACY_SEED_BURN_COUNT=1 ./scripts/prepare-testnet-privacy-seed.sh
-./scripts/fund-testnet-accounts.sh
-PATH=../logos-logoscore-cli/result/bin:$PATH \
-  SKIP_BUILD=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 \
-  MODE=store CHAIN=testnet OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 \
-  ./scripts/e2e.sh testnet run
-```
-
-Pass requires `claim` with vault_holding drop (`claim_balance` /
-`vault_drop`), not skip.
-4. Phase 5: E2E.md + verification-matrix minimum; gate-log summary.
-5. Human alone: D39.15 move packet to completed.
-
+- Default `CHAIN=testnet` before wallet-home resolve in seed/PPE scripts.
+- Public funder from `fixtures/testnet-module.json` (privacy runs must not
+  reuse mutated `testnet.json` private owner as funder).
+- No CLOCK_50 advance before Store fundable/query; one tick before close so
+  claim sees accrued.
+- Seed prepare + recycled-id refuse for wiped-seed replays.
 
 ## Human close (D39.15)
 
-_pending — human only: review above, then move packet to completed or write off._
+_pending — human only: review gate log + artifacts, commit harness/docs if
+desired, then move the Step 39 packet to `docs/plan/completed/` (and close the
+raw TODO / refresh index), or append an explicit write-off._

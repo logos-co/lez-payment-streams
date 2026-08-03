@@ -78,6 +78,9 @@ Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-r
   until Step 32 D3 gate passes; strict runs use `E2E_CLAIM_OPTIONAL=0`.
   Artifact parsers treat phase `claim` as canonical (`demo_claim` is a
   transitional alias).
+  Exception: Step 39 privacy testnet gates always use `E2E_CLAIM_OPTIONAL=0`
+  with real proving (`RISC0_DEV_MODE=0`); see optional rows below and
+  [step-39-testnet-gate-log.md](../plan/completed/step-39-testnet-gate-log.md).
 
 ## Commands (canonical)
 
@@ -132,3 +135,10 @@ Maintainer-only (not integrator gates): `make verify-store-local-lifecycle` or
   `MODE=store CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run`
   (or `make verify-store-local-full-privacy`).
   Store: `e2e-*.log` (`store_query_success`, `store_query_missing_proof`, `claim`, …).
+  Module full-privacy testnet optional gate (Step 39; real prove, strict claim):
+  `SKIP_BUILD=1 MODULE_E2E_SKIP_FUND=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 MODE=module CHAIN=testnet OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh testnet run`
+  (wallet-CLI shield; gate log
+  [step-39-testnet-gate-log.md](../plan/completed/step-39-testnet-gate-log.md)).
+  Store full-privacy testnet optional gate (Step 39; real prove, strict claim,
+  vault_holding drop):
+  `SKIP_BUILD=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 MODE=store CHAIN=testnet OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh testnet run`.

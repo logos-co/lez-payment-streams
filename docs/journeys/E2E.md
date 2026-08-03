@@ -216,6 +216,24 @@ Note: `module-e2e.sh` still passes the payee as `closeStream` `authority` until
 [e2e-close-payer-authority.md](../plan/raw-todos/e2e-close-payer-authority.md) lands.
 [USER_JOURNEY.md](USER_JOURNEY.md) documents payer-only close (omit `authority`).
 
+## Module × testnet (full privacy)
+
+Optional matrix tier (Step 39 Phase 4 warm-up). Real proving on public testnet.
+Shield and dust use wallet CLI `auth-transfer send` (D39.22), not logoscore IPC.
+Strict claim (`E2E_CLAIM_OPTIONAL=0`). Prefund first:
+
+```bash
+./scripts/fund-testnet-accounts.sh
+SKIP_BUILD=1 MODULE_E2E_SKIP_FUND=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 \
+  MODE=module CHAIN=testnet OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 \
+  ./scripts/e2e.sh testnet run
+```
+
+Expected: exit 0; `module-e2e-*.log` with wallet shield path and `claim_balance`
+vault_holding drop. Soft stubs (`RISC0_DEV_MODE=1`) are rejected by the public
+sequencer — not DoD. DoD green: `module-e2e-20260722T215542.log` (gate log
+[step-39-testnet-gate-log.md](../plan/completed/step-39-testnet-gate-log.md)).
+
 ## Store × localnet (Developer Journey)
 
 Required tier. Dual-host Store query with eligibility proof. Public vault owner
@@ -262,6 +280,34 @@ Teardown keeps default `E2E_CLAIM_OPTIONAL=1` until Step 32 D3 gate passes; stri
 [step-32-testnet-gate-log.md](../plan/completed/step-32-testnet-gate-log.md).
 
 Gate history: [step-33-testnet-gate-log.md](../plan/completed/step-33-testnet-gate-log.md).
+
+Privacy testnet gates below are the exception: they require `E2E_CLAIM_OPTIONAL=0`
+and `RISC0_DEV_MODE=0` (D39.4 / D39.13). Do not greenwash those with the public
+Store default of claim-optional `1`.
+
+## Store × testnet (full privacy)
+
+Optional matrix tier (Step 39 Phase 4 primary). Real proving; wallet-CLI shield
+(D39.22); strict claim with vault_holding drop. Prefund public accounts via
+`./scripts/fund-testnet-accounts.sh` (uses `fixtures/testnet-module.json`).
+When recloning the testnet seed wallet, run
+`./scripts/prepare-testnet-privacy-seed.sh` (and amount=1
+`./scripts/verify-ppe-shield-include.sh` when proving path is in doubt) so
+private ids are not recycled.
+
+```bash
+./scripts/fund-testnet-accounts.sh
+SKIP_BUILD=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 \
+  MODE=store CHAIN=testnet OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 \
+  ./scripts/e2e.sh testnet run
+```
+
+Expected: exit 0; `e2e-*.log` includes `store_query_success`,
+`store_query_missing_proof`, and `claim_balance` with `vault_drop` under
+`provider_private`. Long wall clock on CPU (shields + vault/stream PPE +
+CLOCK_50 waits + claim). DoD green:
+`e2e-20260724T144726.log` (gate log
+[step-39-testnet-gate-log.md](../plan/completed/step-39-testnet-gate-log.md)).
 
 ## Configuration
 

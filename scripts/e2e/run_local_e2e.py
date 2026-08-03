@@ -38,7 +38,39 @@ STORE_QUERY_RETRIES = 4
 DAEMON_START_WAIT_S = 6
 _TX_HASH_RE = re.compile(r"Transaction hash is ([0-9a-fA-F]{64})")
 # Known recycled private ids from wiped-seed replays (Step 39 gate log).
-_RECYCLED_PRIVATE_PREFIXES = ("DaV7bT45", "FqxTyJhY", "8vSpcfHE")
+_RECYCLED_PRIVATE_PREFIXES = ("DaV7bT45", "FqxTyJhY", "8vSpcfHE", "H7JEDimH", "2B8gB6jB", "42epagKp", "99AdxJCt")
+
+
+def resolve_testnet_public_funder(repo: Path, manifest: dict) -> str:
+    """Public pinata/AT funder for Store privacy on testnet.
+
+    Privacy runs overwrite fixtures/testnet.json owner_account_id with the
+    private vault owner. The next run must not treat that as the funder
+    (AT-init / pinata require a public account). SSOT matches
+    fund-testnet-accounts.sh and module-e2e: fixtures/testnet-module.json
+    owner_account_id, overridable via E2E_PUBLIC_FUNDER.
+    """
+    override = (os.environ.get("E2E_PUBLIC_FUNDER") or "").strip()
+    if override:
+        return override
+    module_path = repo / "fixtures" / "testnet-module.json"
+    if module_path.is_file():
+        try:
+            module = json.loads(module_path.read_text())
+        except json.JSONDecodeError as exc:
+            raise E2EError(f"invalid fixtures/testnet-module.json: {exc}") from exc
+        owner = str(module.get("owner_account_id") or "").strip()
+        if owner:
+            return owner
+    funder = str(manifest.get("funder_account_id") or "").strip()
+    if funder and not any(funder.startswith(p) for p in _RECYCLED_PRIVATE_PREFIXES):
+        return funder
+    raise E2EError(
+        "testnet OWNER_PRIVACY requires a public funder: set "
+        "fixtures/testnet-module.json owner_account_id or E2E_PUBLIC_FUNDER"
+    )
+
+
 # Provider verify rejects streams with zero unaccrued allocation; accrual runs between
 # prepare and verify, so proof must be minted immediately before storeQuery.
 def manifest_allocation_lo(manifest: dict, default: int = 200) -> int:
@@ -901,7 +933,12 @@ def wait_for_stream_fundable(
     max_attempts = max(1, int(wait_s / poll_s))
     last_check: dict[str, Any] = {}
     t0 = time.monotonic()
-    wait_clock50_advance_before_accrual(cfg_user, seq_url, artifact)
+    # Do not wait for a CLOCK_50 epoch advance here. Store eligibility needs
+    # unaccrued >= min; listStreams folds against CLOCK_50, and one epoch on
+    # slow testnet is ~50 * block_time seconds of accrual at rate=1 (often
+    # > allocation 400). Advancing before fundable drains the stream
+    # (Step 39 gate: advance-ok → fully accrued; advance-fail → fundable ok).
+    # CLOCK_50 ticks stay for prove-window align and post-close claim (D39.25).
     for attempt in range(max_attempts):
         sync_wallet(cfg_user, seq_url)
         logoscore_cmd(cfg_user, "call", "payment_streams_module", "rediscoverStreams", str(vault_id))
@@ -2487,7 +2524,7 @@ def _normalize_private_account_hex(cfg: Path, account_raw: str) -> tuple[str, st
 def setup_store_owner_privacy_accounts(
     cfg_user: Path,
     cfg_provider: Path,
-    _repo: Path,
+    repo: Path,
     manifest_path: Path,
     manifest: dict,
     artifact: Path,
@@ -2500,21 +2537,26 @@ def setup_store_owner_privacy_accounts(
     """
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
     is_testnet = os.environ.get("CHAIN", "local").strip().lower() == "testnet"
-    # Testnet: reuse the fixture public owner as funder (same as module-e2e /
-    # D39.18). Fresh create_account_public + wallet AT-init is brittle under
-    # dual logoscore daemons (keys often missing from storage for wallet CLI).
-    fixture_public_owner = str(manifest.get("owner_account_id") or "").strip()
-    if is_testnet and fixture_public_owner:
+    # Testnet: public funder from testnet-module.json (same SSOT as
+    # fund-testnet-accounts.sh / module-e2e). Do not use testnet.json
+    # owner_account_id — privacy runs overwrite that with the private vault
+    # owner, which breaks AT-init on the next Store privacy run.
+    if is_testnet:
+        funder_b58 = resolve_testnet_public_funder(repo, manifest)
+        if any(funder_b58.startswith(p) for p in _RECYCLED_PRIVATE_PREFIXES):
+            raise E2EError(
+                f"public funder resolves to recycled private id {funder_b58} — "
+                "restore fixtures/testnet-module.json owner or set E2E_PUBLIC_FUNDER"
+            )
         if provider_privacy_enabled():
             narrator.step(
                 "Creating private vault owner and private provider "
-                f"(testnet; funder={fixture_public_owner[:8]}…)"
+                f"(testnet; funder={funder_b58[:8]}…)"
             )
         else:
             narrator.step(
-                f"Creating private vault owner (testnet; funder={fixture_public_owner[:8]}…)"
+                f"Creating private vault owner (testnet; funder={funder_b58[:8]}…)"
             )
-        funder_b58 = fixture_public_owner
     else:
         if provider_privacy_enabled():
             narrator.step(
@@ -3825,6 +3867,20 @@ def demo_teardown(
     stream_alloc = manifest_allocation_lo(manifest)
     close_applied = False
     narrator.phase("Close")
+    # Store query must see unaccrued on the create CLOCK_50 epoch, so fundable
+    # does not advance the clock. Claim needs accrued > 0 at close — wait for
+    # one CLOCK_50 tick here before close (D39.25 / D39.13). One epoch on slow
+    # testnet often accrues the full allocation at rate=1; that is fine for claim.
+    if real_prove_enabled():
+        narrator.step(
+            "Waiting for CLOCK_50 tick before close so claim has accrued balance"
+        )
+        wait_clock50_advance_before_accrual(
+            cfg_user,
+            seq_url,
+            artifact,
+            label="clock50_advance_before_close",
+        )
     narrator.step(f"Closing stream {stream_id} on chain")
     if e2e_close_via() != "chainaction":
         try:

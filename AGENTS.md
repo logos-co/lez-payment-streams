@@ -60,14 +60,12 @@ Steps 36–38 complete (product + local Store privacy):
 [step-38-store-privacy-e2e.md](docs/plan/completed/step-38-store-privacy-e2e.md).
 
 Active: [Step 39](docs/plan/upcoming/step-39-testnet-privacy-e2e.md) —
-native guest freeze, agent-run testnet redeploy, then module full privacy
-warm-up and Store full privacy (real proving on public testnet,
-`RISC0_DEV_MODE=0`). Agent reports greens in the gate log; human alone moves
-the packet to completed (D39.15).
+agent Phase 1–5 green (module + Store full privacy on ImageID `072a26cc…`,
+`RISC0_DEV_MODE=0`, `E2E_CLAIM_OPTIONAL=0`). Human alone moves the packet to
+completed (D39.15).
 Gate log: [step-39-testnet-gate-log.md](docs/plan/completed/step-39-testnet-gate-log.md).
-Implementer quick path: top of the Step 39 packet.
-Do not stop Phase 4 on missing NVIDIA/CUDA (D39.26) — CPU prove is valid;
-gate on includable PPE smoke, not `nvidia-smi`.
+Do not reopen Phase 1–3 greens (D39.23). CPU prove is valid without NVIDIA
+(D39.26).
 
 ## Verification
 
