@@ -47,7 +47,7 @@ Do not apply local reset-first policy from
 [`archive/steps/user-eligibility-runbook.md`](../../archive/steps/user-eligibility-runbook.md) (Persistence across runs).
 
 Hosting a Store provider on the public Logos mesh (infra-operated node, dialable from the
-internet) is Step 23 (optional). Step 18 does not require it.
+internet) is Step 23 (wontfix). Step 18 does not require it.
 
 #### Lifecycle separation (core design decision)
 
@@ -484,7 +484,7 @@ Before merging `feat/step18-public-testnet` to `master`:
 
 Not in scope: public internet Store provider (Step 23); replacing Step 17 local CI gate;
 automatic testnet faucet unless the network ships a supported funding API; Basecamp UI
-(Step 21, parked). Demo orchestration stays external scripts ([N17](../../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06); Step 25 won't fix).
+(Step 21, wontfix). Demo orchestration stays external scripts ([N17](../../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06); Step 25 wontfix).
 
 Follow-on: Step 19 (LIP on-chain, done). Step 20 testnet journey rows use this step when
 unblocked; local journey does not require Step 18. Optional Step 23 (hosted provider).

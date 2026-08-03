@@ -28,22 +28,28 @@ Product gates: [verification-matrix.md](../reference/verification-matrix.md).
 | 18b | rc5 LEZ pin unify | Complete -- [step-18b-rc5-unify-handoff.md](../plan/completed/step-18b-rc5-unify-handoff.md) |
 | 18 | Public sequencer E2E | Complete -- [step-18-public-testnet-demo.md](../plan/completed/step-18-public-testnet-demo.md), [steps/public-sequencer-store-runbook.md](steps/public-sequencer-store-runbook.md) |
 | 19 | LIP-155 on-chain spec | Complete -- [step-19](../plan/completed/step-19-lip155-onchain-spec.md) |
-| 20 | Developer Journey | **Active** -- see [plan/index.md](../plan/index.md) |
-| 21 | User Journey: Basecamp UI plugin (optional) | Optional -- see [plan/index.md](../plan/index.md) |
-| 22 | User Journey: doc packet (CLI-based) | **Active** -- see [plan/index.md](../plan/index.md) |
-| 23 | Public Store provider | Optional -- see [plan/index.md](../plan/index.md) |
+| 20 | Developer Journey | Waiting -- [step-20-developer-journey.md](../plan/waiting/step-20-developer-journey.md); [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369) |
+| 21 | User Journey: Basecamp UI plugin | Wontfix -- [step-21-basecamp-ui.md](../plan/wontfix/step-21-basecamp-ui.md) |
+| 22 | User Journey: doc packet (CLI-based) | Complete -- [step-22-ui-journey.md](../plan/completed/step-22-ui-journey.md); [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370) |
+| 23 | Public Store provider | Wontfix -- [step-23-public-store-provider.md](../plan/wontfix/step-23-public-store-provider.md) |
 | 24 | LEZ `lee` harness @ 510 | Complete -- [step-24](../plan/completed/step-24-lee-harness-upgrade.md) |
 | 24b | Rust `lee` / guest unify on rc5 | Complete -- [step-24b-rc5-rust-lee-unify.md](../plan/completed/step-24b-rc5-rust-lee-unify.md) |
 | 24c | Simplify demo flow | Complete -- [step-24c-simplify-demo-flow.md](../plan/completed/step-24c-simplify-demo-flow.md) |
-| 25 | Demo coordination Logos module | Won't fix -- [step-25](../plan/cancelled/step-25-demo-coordination-module.md) |
+| 25 | Demo coordination Logos module | Wontfix -- [step-25](../plan/wontfix/step-25-demo-coordination-module.md) |
 | 26 | TestNet v0.2 migration | Complete -- [step-26-testnet-v02-migration.md](../plan/completed/step-26-testnet-v02-migration.md) |
 | 27 | Claim fix and verification | Complete -- [step-27-claim-fix-verification.md](../plan/completed/step-27-claim-fix-verification.md) |
 | 28 | User Journey on TestNet v0.2 | Complete -- [step-28-user-journey-testnet.md](../plan/completed/step-28-user-journey-testnet.md) |
 | 29 | E2E script UX enhancement | Complete -- [step-29-e2e-script-ux.md](../plan/completed/step-29-e2e-script-ux.md) |
 | 30 | Static dependency migration | Complete -- [step-30-static-dependency-migration.md](../plan/completed/step-30-static-dependency-migration.md) |
 | 31 | Delivery fork rebase + wallet bump | Complete -- [step-31-dependencies-upgrade.md](../plan/completed/step-31-dependencies-upgrade.md) |
-| 32 | AT-init unify + Store claim phase | Active -- [step-32-auth-transfer-unify-store-claim.md](../plan/upcoming/step-32-auth-transfer-unify-store-claim.md) |
+| 32 | AT-init unify + Store claim phase | Active (D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](../plan/upcoming/step-32-auth-transfer-unify-store-claim.md) |
 | 33 | Store E2E fresh vault + testnet sizing | Complete -- [step-33-store-e2e-fresh-vault.md](../plan/completed/step-33-store-e2e-fresh-vault.md) |
+| 34 | User Journey manual walkthrough (testnet CLI) | Complete -- [step-34-user-journey-manual-walkthrough.md](../plan/completed/step-34-user-journey-manual-walkthrough.md) |
+| 35 | Developer Journey generalization | Complete -- [step-35-developer-journey-generalization.md](../plan/completed/step-35-developer-journey-generalization.md) |
+| 36 | Payer funder unlinkability | Complete -- [step-36-payer-funder-unlinkability.md](../plan/completed/step-36-payer-funder-unlinkability.md) |
+| 37 | Payee receiver privacy | Complete -- [step-37-payee-receiver-privacy.md](../plan/completed/step-37-payee-receiver-privacy.md) |
+| 38 | Store E2E privacy profiles | Complete -- [step-38-store-privacy-e2e.md](../plan/completed/step-38-store-privacy-e2e.md) |
+| 39 | Testnet privacy E2E after native guest deploy | Active (human close pending) -- [step-39-testnet-privacy-e2e.md](../plan/upcoming/step-39-testnet-privacy-e2e.md) |
 
 ## Completed steps -- summary
 
@@ -97,19 +103,12 @@ Packet: [step-19-lip155-onchain-spec.md](../plan/completed/step-19-lip155-onchai
 
 Packet: [step-24-lee-harness-upgrade.md](../plan/completed/step-24-lee-harness-upgrade.md).
 
-### Step 18 -- testnet integration (paused 2026-06)
+### Step 18 -- testnet integration (complete; superseded for v0.2)
 
-Continue with fully local demo (Step 17). Resume Step 18 when guest deploy size gate clears.
-Guest `.bin` ~576 KiB vs public tx cap ~512 KiB; local `make deploy` unaffected.
-Scaffolding on `feat/step18-public-testnet`. Do not block Step 20 on testnet.
-
-### Step 18 -- testnet integration (Part B active)
-
-Public sequencer at `https://testnet.lez.logos.co/` (lez jsonrpsee).
-Org guest deploy complete for ELF 576576 B; `program_id_hex`
-`79b1dd5c441caede8f9f82c30de637aba465f94cc43817b1105c8c48c77d0fc9`.
-Remaining: read smoke, per-operator bootstrap, `make verify-step18`. Packet:
+Historical public-sequencer E2E on rc5 tooling. Packet:
 [step-18-public-testnet-demo.md](../plan/completed/step-18-public-testnet-demo.md).
+TestNet v0.2 migration and current gates are Steps 26–28 / 33; see
+[verification-matrix.md](../reference/verification-matrix.md).
 
 ## Verify scripts (logoscore path)
 
@@ -120,11 +119,11 @@ The 2x2 matrix (flow x chain) is documented in
 
 | Entry | Cell | Step |
 | --- | --- | --- |
-| `make verify-module-local` | User Journey (module only) × localnet | 11 / 24c |
-| `make verify-step17` | Developer Journey (Store) × localnet | 17 |
+| `make verify-module-local` | User Journey (module only) × localnet | 11 / 24c / 28 |
+| `make verify-module-testnet` | User Journey (module only) × testnet | 28 |
+| `make verify-store-local` / `verify-step17` | Developer Journey (Store) × localnet | 17 |
 | `make verify-step17-back-to-back` | Developer Journey × localnet (continuation on same ledger) | 17 + 24c |
-| `make verify-step18` | Developer Journey (Store) × testnet (advanced) | 18 |
-| User Journey × testnet | future work (unsupported) | -- |
+| `make verify-store-testnet` / `verify-step18` | Developer Journey (Store) × testnet | 18 / 26 / 33 |
 
 `make verify-step17` to [scripts/e2e.sh](../../scripts/e2e.sh) `local run` to
 [scripts/e2e/run_local_e2e.py](../../scripts/e2e/run_local_e2e.py)

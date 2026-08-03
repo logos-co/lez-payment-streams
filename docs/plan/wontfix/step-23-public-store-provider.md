@@ -1,15 +1,16 @@
 # Step 23 — plan excerpt
 
-Active-work packet for agents. Index: [index.md](../index.md).
+Wontfix — not planned near-term; may move back to `upcoming/` if resurrected.
+Index: [index.md](../index.md).
 
-Optional track. Execute only if the program ships a **hosted** paid-Store provider on the public
-Logos network (infra-operated node). Step 18 already proves eligibility against **public LEZ**
+Originally an optional track for a **hosted** paid-Store provider on the public
+Logos network (infra-operated node). Steps 18 / 26 already prove eligibility against **public LEZ**
 with **local** user and provider `logoscore` hosts.
 
 ### Step 23, Public Store provider (payment-stream eligibility)
 
-Prerequisite: Step 18 definition of done (public sequencer fixture + local dual-host E2E on
-testnet chain state). Step 17 remains the local-LEZ regression gate.
+Prerequisite: Steps 18 and 26 definition of done (public sequencer fixture + local dual-host
+E2E on TestNet v0.2). Step 17 remains the local-LEZ regression gate.
 
 Architectural context:
 
@@ -82,4 +83,4 @@ the explicit provider multiaddr for paid queries in the MVP.
 - Advertisement and manifest `provider_account_id` stay consistent across doc, chain, and proofs.
 
 Not in scope: merging delivery forks to upstream `master`; changing Step 18 (local provider on
-testnet chain); User Journey UI (optional Step 21).
+testnet chain); User Journey UI (wontfix Step 21).

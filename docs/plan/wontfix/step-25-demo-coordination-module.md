@@ -1,6 +1,7 @@
-# Step 25 — demo coordination Logos module (won't fix)
+# Step 25 — demo coordination Logos module (wontfix)
 
-Status: **Won't fix** (2026-06). Index: [index.md](../index.md).
+Wontfix — not planned near-term; may move back to `upcoming/` if resurrected.
+Index: [index.md](../index.md). Closed 2026-06.
 
 Decision: [N17](../../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06).
 Active demo and developer journey use **external orchestration** (Step 17 scripts), not an

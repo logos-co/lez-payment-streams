@@ -1,22 +1,18 @@
 # Step 35 — plan excerpt
 
-Active-work packet for agents. Index: [index.md](../index.md).
+Completed. Index: [index.md](../index.md).
 
-Active — rewrite `DEVELOPER_JOURNEY.md` from a Store end-to-end verification runbook
+Rewrote `DEVELOPER_JOURNEY.md` from a Store end-to-end verification runbook
 into a protocol-agnostic guide for adding LIP-155 payment-stream eligibility to a
-request-response protocol, with Store as the worked example. The runnable Store recipes
-already live in [E2E.md](../../journeys/E2E.md); this step repurposes the journey doc and
-deduplicates.
+request-response protocol, with Store as the worked example. Runnable Store recipes
+live in [E2E.md](../../journeys/E2E.md).
 
-## Problem
+## Problem (historical)
 
-`DEVELOPER_JOURNEY.md` today duplicates the runnable Store verification
+`DEVELOPER_JOURNEY.md` duplicated the runnable Store verification
 (`make verify-store-*`, JSONL phases, env-var table, failure modes) that
-[E2E.md](../../journeys/E2E.md) now holds as SSOT. The doc reads as an operator validation
-runbook, not a journey for an integrator adding eligibility to their own protocol. The
-integration is already layered (RFC 73 abstract pattern; opaque hook bytes; reusable
-on-chain program and module) so a generalized guide is feasible without a second
-implemented protocol.
+[E2E.md](../../journeys/E2E.md) holds as SSOT. The doc read as an operator validation
+runbook, not a journey for an integrator adding eligibility to their own protocol.
 
 ## Architectural context
 
@@ -60,15 +56,14 @@ protocol-specific.
 
 ## Deliverables
 
-- [ ] Rewrite [docs/journeys/DEVELOPER_JOURNEY.md](../../journeys/DEVELOPER_JOURNEY.md) as
+- [x] Rewrite [docs/journeys/DEVELOPER_JOURNEY.md](../../journeys/DEVELOPER_JOURNEY.md) as
   the protocol-agnostic eligibility integration guide per the structure below.
-- [ ] Move E2E-useful content out of DEVELOPER_JOURNEY.md into
+- [x] Move E2E-useful content out of DEVELOPER_JOURNEY.md into
   [E2E.md](../../journeys/E2E.md): the environment-variable reference, the failure-modes
   table, and the configuration-details block.
-- [ ] Update [docs/plan/index.md](../index.md) upcoming table and program outcomes with
-  Step 35.
-- [ ] Update [AGENTS.md](../../AGENTS.md) active-work pointer with Step 35.
-- [ ] Fix the `E2E_CLAIM_OPTIONAL` link in
+- [x] Update [docs/plan/index.md](../index.md) with Step 35.
+- [x] Update [AGENTS.md](../../AGENTS.md) with Step 35.
+- [x] Fix the `E2E_CLAIM_OPTIONAL` link in
   [docs/store-integration/README.md](../../store-integration/README.md) to point at E2E.md.
 
 ### DEVELOPER_JOURNEY.md structure
@@ -105,11 +100,11 @@ absolute URLs.
 
 ## Definition of done
 
-- [ ] DEVELOPER_JOURNEY.md rewritten; no runnable Store commands remain (cross-link only).
-- [ ] E2E.md holds the env-var reference and failure-modes table.
-- [ ] index.md and AGENTS.md list Step 35.
-- [ ] store-integration/README.md `E2E_CLAIM_OPTIONAL` link points at E2E.md.
-- [ ] Completed step packets (17-33) not edited.
+- [x] DEVELOPER_JOURNEY.md rewritten; no runnable Store commands remain (cross-link only).
+- [x] E2E.md holds the env-var reference and failure-modes table.
+- [x] index.md and AGENTS.md list Step 35.
+- [x] store-integration/README.md `E2E_CLAIM_OPTIONAL` link points at E2E.md.
+- [x] Completed step packets (17-33) not edited.
 
 ## Not in scope
 

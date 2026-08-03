@@ -1,6 +1,7 @@
 # Step 32 — Authenticated transfer unify and Store claim phase
 
-Index: [index.md](../index.md). Status: **signed off** — implementation PR may start.
+Index: [index.md](../index.md). Status: **active** — shared AT ensure and close-then-claim
+are in tree; D3 Store testnet gate still pending (empty pass table in gate log).
 
 Evidence logs: [step-32-step0-validation.md](../completed/step-32-step0-validation.md) (O1/O2),
 [step-32-testnet-gate-log.md](../completed/step-32-testnet-gate-log.md) (D3 runs).

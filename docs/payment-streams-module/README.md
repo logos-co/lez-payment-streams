@@ -17,8 +17,9 @@ make verify-module-testnet
 ```
 
 Success: exit code 0 and JSON-lines under `.scaffold/e2e/artifacts/` (`module-e2e-*.log`) with phases
-`vault_init`, `deposit`, `create_stream`, `claim`, `module_e2e_complete`. Localnet module E2E uses
-`e2e/user/wallet-local`; testnet uses `e2e/testnet-wallet`. Layout:
+`vault_init`, `deposit`, `create_stream`, `close_stream`, `claim`, `module_e2e_complete`
+(close then claim). Localnet module E2E uses `e2e/user/wallet-local`; testnet uses
+`e2e/testnet-wallet`. Layout:
 [naming-conventions.md](../reference/naming-conventions.md#scaffold-layout).
 
 Recipes: [journeys/E2E.md](../journeys/E2E.md).

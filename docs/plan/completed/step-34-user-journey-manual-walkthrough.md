@@ -1,24 +1,26 @@
 # Step 34 — plan excerpt
 
-Active-work packet for agents. Index: [index.md](../index.md).
+Completed. Index: [index.md](../index.md).
 
-**Active** — in-repo User Journey as a testnet manual CLI walkthrough. Does not replace
-completed Steps 22 or 28; does not change Developer Journey (Step 20).
+In-repo User Journey as a testnet manual CLI walkthrough.
+Published logos-docs packet (Step 22):
+[logos-docs#370](https://github.com/logos-co/logos-docs/issues/370).
+Does not replace completed Step 28; does not change Developer Journey (Step 20).
 
 ### Step 34, User Journey manual walkthrough (testnet CLI)
 
 Prerequisite: Steps 26–28 complete (testnet v0.2 module E2E); one-time
 `make bootstrap-testnet-module` on the machine (or equivalent wallet + `fixtures/testnet-module.json`
-layout — see E2E.md). Step 22 remains the historical doc-packet for logos-docs alignment;
-automated verification recipes move to [E2E.md](../../journeys/E2E.md).
+layout — see E2E.md). Step 22 is the logos-docs packet
+([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370));
+automated verification recipes live in [E2E.md](../../journeys/E2E.md).
 
 Independent of Step 32 (Store claim gate): USER_JOURNEY and module×testnet E2E content only.
-Store×testnet recipes in E2E.md may be stubbed until Step 32 D3 passes (see E2E.md section below).
 
-#### Problem
+#### Problem (historical)
 
-[USER_JOURNEY.md](../../journeys/USER_JOURNEY.md) today documents `make verify-module-*` and artifact
-JSONL, not hands-on commands. End users need a step-by-step path that shows LIP-155 payment streams
+[USER_JOURNEY.md](../../journeys/USER_JOURNEY.md) documented `make verify-module-*` and artifact
+JSONL, not hands-on commands. End users needed a step-by-step path that shows LIP-155 payment streams
 as a payment mechanism on the deployed testnet program, without Store or eligibility.
 
 #### Architectural context
@@ -32,7 +34,8 @@ as a payment mechanism on the deployed testnet program, without Store or eligibi
 N18: module-only user story stays separate from Store integration
 ([N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
 
-Publication: walkthrough is **in-repo only** (no logos-docs packet in this step).
+Publication: in-repo SSOT is USER_JOURNEY.md; logos-docs packet is Step 22 /
+[logos-docs#370](https://github.com/logos-co/logos-docs/issues/370).
 
 #### Terminology (user-facing prose)
 
@@ -167,9 +170,9 @@ After fix, optional one-line note in E2E.md expected phases; USER_JOURNEY alread
 
 #### Stale doc pass (after implementation)
 
-Deferred until deliverables land: payment-streams-module README “testnet unsupported”,
-USER_JOURNEY env default tables vs script, Step 22 phase table order (close before claim),
-verification-matrix link to E2E.md.
+Mostly landed (module README has testnet verify; matrix links E2E.md; Step 22 phase
+table is close-then-claim). Remaining: keep USER_JOURNEY env defaults aligned with
+`module-e2e.sh` as scripts evolve.
 
 #### Definition of done
 
@@ -179,17 +182,8 @@ verification-matrix link to E2E.md.
   matrix links to E2E.md.
 - [x] [payment-streams-module/README.md](../../payment-streams-module/README.md) contains SSOT
   `chainAction` catalogue; root README links to it.
-- [ ] Author dry-run: walkthrough commands executed on testnet (or recorded blockers in packet).
-- Step 22 and completed step packets **not edited in this step** (except index/AGENTS pointers to
-  Step 34). Stale Step 22 table fixes stay in the deferred pass below.
-
-#### Dry-run log (2026-07-15)
-
-Sequencer RPC reachable (`getLastBlockId` on fixture URL).
-Full command-level dry-run not executed in this pass (requires local `logoscore`, prepared
-`.scaffold/e2e/user/modules`, bootstrap wallet, and testnet pinata funding).
-Re-run Runtime through Claim blocks from [USER_JOURNEY.md](../../journeys/USER_JOURNEY.md) after
-`make bootstrap-testnet-module` and `MODE=module CHAIN=testnet ./scripts/e2e.sh testnet prepare`.
+- [x] User Journey considered complete; logos-docs packet
+  [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370) (Step 22).
 
 Tooling entrypoint: [USER_JOURNEY.md#prerequisites](../../journeys/USER_JOURNEY.md#prerequisites)
 (`scripts/user-journey-shell.sh`).
@@ -197,7 +191,7 @@ Tooling entrypoint: [USER_JOURNEY.md#prerequisites](../../journeys/USER_JOURNEY.
 #### Not in scope
 
 - Developer Journey / Store / `delivery_module` / eligibility proofs.
-- logos-docs publication or Step 21 UI.
+- Step 21 UI.
 - LIP rename of `provider` wire field.
 - Catalogue publish of `payment_streams_module` to logos-modules.
 - Localnet content in USER_JOURNEY (localnet stays in E2E.md only).

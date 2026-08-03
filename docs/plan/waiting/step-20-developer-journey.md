@@ -1,26 +1,34 @@
 # Step 20 — plan excerpt
 
-Active-work packet for agents. Index: [index.md](../index.md).
+Waiting — external input. Index: [index.md](../index.md).
+
+logos-docs packet:
+[logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)
+(Build a Store Query Module with LIP-155 Eligibility).
+Progress on this step waits on the logos-docs journey process (draft / SME / Red Team).
 
 ### Step 20, Developer Journey doc packet
 
-**Next active integration deliverable** (local LEZ). Step 18 testnet remains paused; defer
-testnet and hosted-provider journey rows until Step 18 (and Step 23 where applicable) unblock.
+Waiting on [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369).
+In-repo Store verification is green via Steps 26–33 / the verification matrix
+(`make verify-store-testnet`). Hosted public Store provider is wontfix Step 23
+(may return to upcoming later).
 
 Prerequisites:
 
 | Journey runtime target | Required before Step 20 |
 | --- | --- |
 | Local LEZ (script-orchestrated dual-host demo) | Steps 17 and 19 DoD satisfied; **Step 24c local gate** complete (`make verify-step17-back-to-back`) |
-| Testnet v0.2 (public LEZ, local dual-host Store) | Steps 17, 18 DoD satisfied (Step 18 Part B on rc5 tooling) |
-| Testnet v0.2 + hosted public Store provider | Steps 17, 18, and 23 DoD satisfied |
+| Testnet v0.2 (public LEZ, local dual-host Store) | Steps 17, 18, and 26 DoD satisfied; Store testnet sizing via Step 33 |
+| Testnet v0.2 + hosted public Store provider | Steps 17, 18, 26, and 23 DoD satisfied |
 | Any | Step 19 on `feat/payment-streams-onchain-part` (`345c8eef`); cite in packet ([feature-branch-pins.md](../../reference/feature-branch-pins.md)) |
 
 Orchestration policy: [N17](../../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06).
 Track split: [N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)
-(Step 20 = **Developer Journey** only; Step 22 = **User Journey** doc packet, active and CLI-based —
-not part of this step. Optional Step 21 = User Journey UI).
-No in-process demo coordinator module (Step 25 won't fix).
+(Step 20 = **Developer Journey** only; Step 22 = **User Journey** doc packet, complete —
+[logos-docs#370](https://github.com/logos-co/logos-docs/issues/370) — not part of this step.
+Step 21 = User Journey UI, wontfix).
+No in-process demo coordinator module (Step 25 wontfix).
 
 Architectural context:
 Logos documentation intake uses a doc packet issue in `logos-co/logos-docs` (template
@@ -31,7 +39,7 @@ published instructions ([`logos-docs/CONTRIBUTING.md`](https://github.com/logos-
 This step is the **Developer Journey** ([N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
 the documentation deliverable for **integrators** showing payment streams **composed with
 Logos Delivery Store** (LIP-155 eligibility on Store requests — one protocol use case). It is not
-the payment-streams-only Basecamp UI (optional Step 21).
+the payment-streams-only Basecamp UI (wontfix Step 21).
 
 Paid Store + eligibility uses **`payment_streams_module`**, **`delivery_module`**, and
 **`logos_execution_zone`**, not Basecamp clicks. Demo coordination is a **host-side script**
@@ -74,10 +82,11 @@ Definition of done:
 - Red Team completes when org process requires `quality:verified` on the published doc (tracked on
   logos-docs project board, not via a script in this repo).
 
-Not in scope: Step 25 demo coordinator module; User Journey UI (optional Step 21);
-hosted provider ops (Step 23) unless the Developer Journey targets that deployment model; new backend
-features.
+Not in scope: Step 25 demo coordinator module; User Journey UI (wontfix Step 21);
+hosted provider ops (wontfix Step 23) unless the Developer Journey targets that deployment
+model; new backend features.
 
-Pattern references:
+Packet / pattern references:
+[logos-docs#369](https://github.com/logos-co/logos-docs/issues/369),
 [logos-docs#311](https://github.com/logos-co/logos-docs/issues/311),
 [logos-docs#307](https://github.com/logos-co/logos-docs/issues/307).

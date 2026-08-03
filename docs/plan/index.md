@@ -12,26 +12,29 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | Path | Contents |
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
-| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 24, 26-31, 33) |
-| [upcoming/](upcoming/) | Steps 20, 22, 32, 34, 35, 39 (active); optional 21 (UI), 23 |
-| [cancelled/](cancelled/) | Step 25 won't fix |
+| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-31, 33-38) |
+| [upcoming/](upcoming/) | Steps 32, 39 (active) |
+| [waiting/](waiting/) | Waiting on external input — Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) |
+| [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 21, 23, 25 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |
 
-Developer Journey (Store integration): Step 20 + Step 17 scripts.
-User Journey: Step 22 (active, CLI-based doc packet); Step 34 (active, in-repo manual walkthrough).
-User Journey UI (optional): Step 21 (Basecamp plugin) — if shipped, Step 22 may include UI content.
-TestNet v0.2 migration: Steps 26-28 (complete).
-E2E narrative UX: Step 29 (complete).
-Delivery fork rebase + wallet bump: Step 31 (complete).
-Static dependency migration: Step 30 (complete; D6 revisit condition closed).
-Store fresh vault per run: Step 33 (complete).
-AT-init unify + Store claim phase: Step 32 (active; D3 testnet gate pending).
-Local Store privacy profiles: Step 38 (complete).
-Testnet privacy E2E after native guest deploy: Step 39 (active — agent gates
-green; human close pending).
-See [N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
+`waiting/` — blocked on external input.
+`wontfix/` — decided against near-term; may move to `upcoming/` if resurrected.
+
+Journeys ([N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
+
+| Journey | Status | Steps / links |
+| --- | --- | --- |
+| Developer Journey (Store integration) | Waiting | Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) + Step 17 scripts |
+| Developer Journey generalization | Complete | Step 35 |
+| User Journey (CLI / module) | Complete | [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370); Steps 22, 28, 34; [USER_JOURNEY.md](../journeys/USER_JOURNEY.md) |
+| User Journey UI (Basecamp) | Wontfix | Step 21 |
+
+Engineering: Steps 26–31, 33 complete; Step 32 active (D3 gate pending);
+Steps 36–38 complete; Step 39 active (human close pending).
+Public hosted Store provider: Step 23 (wontfix).
 
 ## Program scope
 
@@ -52,12 +55,12 @@ paid Store mode on the provider.
 | --- | --- |
 | Runnable integration demo (CLI, Store + eligibility) | 17 (local LEZ), 18 (testnet, historical) |
 | LIP-155 on-chain spec (branch pin) | 19 (complete) |
-| Developer Journey: integrators, Store integration | 20 (**next**) |
-| Developer Journey: protocol-agnostic eligibility guide | 35 (active) |
-| User Journey: CLI doc packet | 22 (active) |
-| User Journey: testnet manual walkthrough | 34 (active) |
-| User Journey UI: Basecamp plugin (optional) | 21 (optional) |
-| Public hosted Store provider | 23 (optional) |
+| Developer Journey: integrators, Store integration ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) | 20 (waiting) |
+| Developer Journey: protocol-agnostic eligibility guide | 35 (complete) |
+| User Journey: CLI doc packet ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)) | 22 (complete) |
+| User Journey: testnet manual walkthrough | 34 (complete) |
+| User Journey UI: Basecamp plugin | 21 (wontfix) |
+| Public hosted Store provider | 23 (wontfix) |
 | LEZ in-process harness (`program_tests`, rc5 `lee`) | 24 + 24b (complete) |
 | Deterministic demo lifecycle | 24c (complete) |
 | TestNet v0.2 migration | 26 (complete) |
@@ -73,8 +76,8 @@ paid Store mode on the provider.
 | Store E2E privacy profiles (full privacy mode) | 38 (complete) |
 | Testnet privacy E2E after native guest deploy | 39 (active; module full then Store full; real proving) |
 
-Step 25 (in-process demo coordinator module) is **won't fix**
-([cancelled packet](cancelled/step-25-demo-coordination-module.md)).
+Step 25 (in-process demo coordinator module) is wontfix
+([packet](wontfix/step-25-demo-coordination-module.md)).
 
 ### Store query dependency
 
@@ -91,11 +94,14 @@ Dual-host demo coordination stays in host scripts
 | --- | --- | --- |
 | 26 | TestNet v0.2 migration | [step-26-testnet-v02-migration.md](completed/step-26-testnet-v02-migration.md) |
 | 27 | Claim fix and verification | [step-27-claim-fix-verification.md](completed/step-27-claim-fix-verification.md) |
+| 22 | User Journey doc packet ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)) | [step-22-ui-journey.md](completed/step-22-ui-journey.md) |
 | 28 | User Journey on TestNet v0.2 | [step-28-user-journey-testnet.md](completed/step-28-user-journey-testnet.md) |
 | 29 | E2E script UX enhancement | [step-29-e2e-script-ux.md](completed/step-29-e2e-script-ux.md) |
 | 30 | Static dependency migration | [step-30-static-dependency-migration.md](completed/step-30-static-dependency-migration.md) |
 | 31 | Delivery fork rebase + wallet bump | [step-31-dependencies-upgrade.md](completed/step-31-dependencies-upgrade.md) |
 | 33 | Store E2E fresh vault + testnet sizing | [step-33-store-e2e-fresh-vault.md](completed/step-33-store-e2e-fresh-vault.md) |
+| 34 | User Journey manual walkthrough (testnet CLI) | [step-34-user-journey-manual-walkthrough.md](completed/step-34-user-journey-manual-walkthrough.md) |
+| 35 | Developer Journey generalization | [step-35-developer-journey-generalization.md](completed/step-35-developer-journey-generalization.md) |
 | 36 | Payer funder unlinkability via LEZ private execution | [step-36-payer-funder-unlinkability.md](completed/step-36-payer-funder-unlinkability.md) |
 | 37 | Payee receiver privacy via LEZ private execution | [step-37-payee-receiver-privacy.md](completed/step-37-payee-receiver-privacy.md) |
 | 38 | Store E2E privacy profiles (full privacy mode) | [step-38-store-privacy-e2e.md](completed/step-38-store-privacy-e2e.md) |
@@ -108,14 +114,26 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 
 | Step | Focus | Status |
 | --- | --- | --- |
-| 20 | Developer Journey: Store integration | Active -- [step-20-developer-journey.md](upcoming/step-20-developer-journey.md) |
-| 21 | User Journey: Basecamp UI plugin (optional) | Optional -- [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
-| 22 | User Journey: doc packet (CLI-based) | Active -- [step-22-ui-journey.md](upcoming/step-22-ui-journey.md) |
-| 23 | Public Store provider | Optional -- [step-23-public-store-provider.md](upcoming/step-23-public-store-provider.md) |
-| 32 | AT-init unify + Store claim phase | Active (signed off; D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
-| 34 | User Journey manual walkthrough (testnet CLI) | Active -- [step-34-user-journey-manual-walkthrough.md](upcoming/step-34-user-journey-manual-walkthrough.md) |
-| 35 | Developer Journey generalization (protocol-agnostic eligibility guide) | Active -- [step-35-developer-journey-generalization.md](upcoming/step-35-developer-journey-generalization.md) |
+| 32 | AT-init unify + Store claim phase | Active (implementation in tree; D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
 | 39 | Testnet privacy E2E after native guest deploy | Active — agent Phase 1–5 green (module + Store full privacy, real prove); human close (D39.15) -- [step-39-testnet-privacy-e2e.md](upcoming/step-39-testnet-privacy-e2e.md) |
+
+## Waiting steps
+
+Blocked on external input. Resume when the blocker clears (then keep in `waiting/` or move to `upcoming/` / `completed/` as appropriate).
+
+| Step | Focus | Blocker |
+| --- | --- | --- |
+| 20 | Developer Journey: Store integration | [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369) — [step-20-developer-journey.md](waiting/step-20-developer-journey.md) |
+
+## Wontfix steps
+
+Not planned near-term. May move to `upcoming/` if resurrected.
+
+| Step | Focus | Packet |
+| --- | --- | --- |
+| 21 | User Journey: Basecamp UI plugin | [step-21-basecamp-ui.md](wontfix/step-21-basecamp-ui.md) |
+| 23 | Public Store provider | [step-23-public-store-provider.md](wontfix/step-23-public-store-provider.md) |
+| 25 | Demo coordination Logos module | [step-25-demo-coordination-module.md](wontfix/step-25-demo-coordination-module.md) |
 
 Ideas not yet steps: [raw-todos/](raw-todos/).
 
@@ -150,7 +168,7 @@ when creating the branch. Both delivery repos must use the same string.
 | `logos-delivery` / `liblogosdelivery` | Store protocol + eligibility hooks (14-15) |
 | `logos-delivery-module` | `delivery_module` + routing (16) |
 | `scripts/e2e.sh`, `scripts/e2e/run_local_e2e.py` | Developer Journey: dual-host Store integration orchestration (Step 17, Step 20) |
-| `payment_streams_ui` (optional) | User Journey: Basecamp UI over `payment_streams_module` only (Step 21) |
+| `payment_streams_ui` (wontfix) | User Journey: Basecamp UI over `payment_streams_module` only (Step 21) |
 | `lgs` / `logoscore` / `lgpm` / `lm` | Localnet, host, install, introspection |
 
 Detail: [`logos-architecture-overview.md`](../archive/reference/logos-architecture-overview.md).
@@ -176,7 +194,8 @@ Cross-step APIs without reading full D/N:
 
 1. [`AGENTS.md`](../../AGENTS.md)
 2. [`../reference/integration-contracts.md`](../reference/integration-contracts.md)
-3. Step packet: [`upcoming/step-N.md`](upcoming/) or [`completed/step-N.md`](completed/)
+3. Step packet: [`upcoming/`](upcoming/), [`waiting/`](waiting/), [`wontfix/`](wontfix/),
+   or [`completed/step-N.md`](completed/)
 4. [`logos-architecture-overview.md`](../archive/reference/logos-architecture-overview.md)
    when boundaries are unclear
 

@@ -22,7 +22,7 @@ Makefile targets use the Journey names directly where applicable.
 
 | Term | Meaning |
 | --- | --- |
-| N18 | Developer Journey (Step 20) vs User Journey (Step 22, active) vs optional User Journey UI (Step 21). |
+| N18 | Developer Journey (Step 20, waiting — logos-docs#369) vs User Journey (Step 22, complete — logos-docs#370) vs User Journey UI (Step 21, wontfix). |
 
 ## Logos and protocol names
 

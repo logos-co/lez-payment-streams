@@ -1,8 +1,9 @@
 # Step 21 — plan excerpt
 
-Active-work packet for agents. Index: [index.md](../index.md).
+Wontfix — not planned near-term; may move back to `upcoming/` if resurrected.
+Index: [index.md](../index.md).
 
-**Optional stretch** after Step 20 — time-boxed; not required for integration milestone closure.
+Originally an optional stretch after Step 20 — not required for integration milestone closure.
 Track split: [N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 
 ### Step 21, Payment streams Basecamp UI
@@ -24,7 +25,7 @@ Architectural context:
 
 - `type: ui_qml` plugin with C++ backend calling **`payment_streams_module`** and
   **`logos_execution_zone`** via LogosAPI only — no `delivery_module`, no script orchestrator,
-  no demo coordinator (Step 25 won't fix).
+  no demo coordinator (Step 25 wontfix).
 - Thin wrapper: buttons/forms map to existing LogosAPI (`chainAction`, reads, `listMyStreams`,
   `rediscoverStreams`) per [integration-contracts.md](../../reference/integration-contracts.md).
 - **Single Basecamp / single `logoscore`** for typical flows; counterparty service is **out of
@@ -60,5 +61,6 @@ Definition of done:
 Not in scope: Step 17 E2E replay in UI; `delivery_module`; eligibility prepare/verify for Store;
 Step 20 Developer Journey content (cross-link only).
 
-Follow-on: Step 22 (User Journey doc packet) — Step 22 is active and CLI-based;
-if Step 21 ships, Step 22 may be updated with UI content.
+Follow-on: Step 22 (User Journey doc packet, complete —
+[logos-docs#370](https://github.com/logos-co/logos-docs/issues/370));
+if Step 21 ships, the journey may be updated with UI content.
