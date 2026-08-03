@@ -293,7 +293,7 @@ cmd_run() {
     export SEED_ALLOCATION="${SEED_ALLOCATION:-400}"
     export SEED_DEPOSIT_AMOUNT="${SEED_DEPOSIT_AMOUNT:-500}"
     export E2E_CREATE_VIA="${E2E_CREATE_VIA:-chainaction}"
-    export E2E_CLAIM_OPTIONAL="${E2E_CLAIM_OPTIONAL:-1}"
+    export E2E_CLAIM_OPTIONAL="${E2E_CLAIM_OPTIONAL:-0}"
     ps_log_info "Store testnet sizing: SEED_ALLOCATION=$SEED_ALLOCATION SEED_DEPOSIT_AMOUNT=$SEED_DEPOSIT_AMOUNT (override via env; optional VAULT_ID)"
   fi
   export WALLET_CONFIG="$(ps_default_wallet_config)"

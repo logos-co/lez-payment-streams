@@ -12,8 +12,8 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | Path | Contents |
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
-| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-31, 33-38) |
-| [upcoming/](upcoming/) | Steps 32, 39 (active) |
+| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-38) |
+| [upcoming/](upcoming/) | Step 39 (active) |
 | [waiting/](waiting/) | Waiting on external input — Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 21, 23, 25 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
@@ -32,8 +32,8 @@ Journeys ([N18](../reference/integration-decisions.md#n18-integration-demo-vs-pa
 | User Journey (CLI / module) | Complete | [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370); Steps 22, 28, 34; [USER_JOURNEY.md](../journeys/USER_JOURNEY.md) |
 | User Journey UI (Basecamp) | Wontfix | Step 21 |
 
-Engineering: Steps 26–31, 33 complete; Step 32 active (D3 gate pending);
-Steps 36–38 complete; Step 39 active (human close pending).
+Engineering: Steps 26–33 complete; Steps 36–38 complete;
+Step 39 active (human close pending).
 Public hosted Store provider: Step 23 (wontfix).
 
 ## Program scope
@@ -69,7 +69,7 @@ paid Store mode on the provider.
 | E2E script UX enhancement | 29 (complete) |
 | Static dependency migration | 30 (complete) |
 | Delivery fork rebase + wallet module bump | 31 (complete) |
-| AT-init unify + Store claim phase | 32 (active; D3 gate pending) |
+| AT-init unify + Store claim phase | 32 (complete) |
 | Store E2E fresh vault + testnet sizing | 33 (complete) |
 | Payer funder unlinkability via LEZ private execution | 36 (complete) |
 | Payee receiver privacy via LEZ private execution | 37 (complete) |
@@ -99,6 +99,7 @@ Dual-host demo coordination stays in host scripts
 | 29 | E2E script UX enhancement | [step-29-e2e-script-ux.md](completed/step-29-e2e-script-ux.md) |
 | 30 | Static dependency migration | [step-30-static-dependency-migration.md](completed/step-30-static-dependency-migration.md) |
 | 31 | Delivery fork rebase + wallet bump | [step-31-dependencies-upgrade.md](completed/step-31-dependencies-upgrade.md) |
+| 32 | AT-init unify + Store claim phase | [step-32-auth-transfer-unify-store-claim.md](completed/step-32-auth-transfer-unify-store-claim.md) |
 | 33 | Store E2E fresh vault + testnet sizing | [step-33-store-e2e-fresh-vault.md](completed/step-33-store-e2e-fresh-vault.md) |
 | 34 | User Journey manual walkthrough (testnet CLI) | [step-34-user-journey-manual-walkthrough.md](completed/step-34-user-journey-manual-walkthrough.md) |
 | 35 | Developer Journey generalization | [step-35-developer-journey-generalization.md](completed/step-35-developer-journey-generalization.md) |
@@ -114,7 +115,6 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 
 | Step | Focus | Status |
 | --- | --- | --- |
-| 32 | AT-init unify + Store claim phase | Active (implementation in tree; D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](upcoming/step-32-auth-transfer-unify-store-claim.md) |
 | 39 | Testnet privacy E2E after native guest deploy | Active — agent Phase 1–5 green (module + Store full privacy, real prove); human close (D39.15) -- [step-39-testnet-privacy-e2e.md](upcoming/step-39-testnet-privacy-e2e.md) |
 
 ## Waiting steps

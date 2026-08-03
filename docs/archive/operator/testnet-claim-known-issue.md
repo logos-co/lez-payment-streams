@@ -51,20 +51,18 @@ re-run bootstrap rather than repeating ad-hoc `wallet auth-transfer init`.
 Historical note: the pre-v0.2.0 diagnostic was to capture the sequencer
 reject reason for `Instruction::Claim` and compare message bytes to close.
 
-## Demo policy claim is optional
+## Demo policy claim (historical; superseded by Step 32 D3)
 
-`scripts/e2e/run_local_e2e.py` `demo_teardown` treats claim as optional.
-After close, if the stream has residual accrued it attempts the claim via the
-direct-submit seed path, polls for confirmation, and on testnet logs
-`demo_claim` with `optional=True`, `claimed=False`,
-`reason=claim_optional_unconfirmed` instead of failing the run.
+Through mid-2026, Store testnet teardown treated claim as optional
+(`E2E_CLAIM_OPTIONAL` default `1`) and dual-emitted a transitional `demo_claim`
+artifact phase. Step 32 D3 closed that policy: default is now
+`E2E_CLAIM_OPTIONAL=0` (strict), and the artifact phase is `claim` only.
 
-- Default: claim is optional on testnet (`CHAIN=testnet`), required on localnet.
-- Override: set `E2E_CLAIM_OPTIONAL=1` to force optional on localnet, or
-  `E2E_CLAIM_OPTIONAL=0` to require a confirmed claim on testnet.
+- Default: claim required on localnet and testnet.
+- Override: set `E2E_CLAIM_OPTIONAL=1` to soft-pass an unconfirmed claim
+  (`reason=claim_optional_unconfirmed`).
 
-A run is green when create, fundable, paid Store query, and close succeed;
-an unconfirmed claim does not fail the run.
+See [step-32-testnet-gate-log.md](../../plan/completed/step-32-testnet-gate-log.md).
 
 ## Funding must be sufficient without claim
 

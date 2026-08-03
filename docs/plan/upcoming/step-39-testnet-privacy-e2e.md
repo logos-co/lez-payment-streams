@@ -86,8 +86,8 @@ gates. Do not reopen Step 38.
 | D39.10 | Freeze + ImageID rule | See [Freeze and deploy identity](#freeze-and-deploy-identity). |
 | D39.11 | Fixture sync | See [Fixture sync vs re-bootstrap](#fixture-sync-vs-re-bootstrap). |
 | D39.12 | Testnet env defaults | See [Testnet command defaults](#testnet-command-defaults). |
-| D39.13 | Claim strictness | Strict for required privacy gates: `E2E_CLAIM_OPTIONAL=0`. Vault_holding drop / claim_balance must pass. Do not reopen optional claim to close DoD. Public Phase 3 keeps default `1` even while Step 32 D3 has no pass row yet — that is intentional, not a Step 39 blocker. |
-| D39.14 | Phase 5 minimum | Two required privacy recipes in E2E.md + optional matrix rows + gate-log link. Do not mirror local isolation cells. Distinguish privacy `E2E_CLAIM_OPTIONAL=0` from public Store default `1`. Make aliases deferred. |
+| D39.13 | Claim strictness | Strict for required privacy gates: `E2E_CLAIM_OPTIONAL=0`. Vault_holding drop / claim_balance must pass. Do not reopen optional claim to close DoD. (Amended 2026-08-03: Step 32 D3 closed; public Store default is also `0`.) |
+| D39.14 | Phase 5 minimum | Two required privacy recipes in E2E.md + optional matrix rows + gate-log link. Do not mirror local isolation cells. Privacy gates keep explicit `E2E_CLAIM_OPTIONAL=0`. Make aliases deferred. |
 | D39.15 | Close path | Agent never moves the packet to completed. Agent reports greens (or incomplete) in the gate log. Human alone decides completed or write-off. |
 | D39.16 | Y-equal contingency | If freeze ImageID Y equals fixture `de17c0db…`, skip redeploy, log no-op, still verify fixtures + prefix checks, proceed. Do not invent a guest edit to force a new ImageID. (Post-`6772238b` guest commit `a59a66d` makes Y≠fixture the expected path.) |
 | D39.17 | Phase 1 local purpose | Harness regression only (`SKIP_BUILD=1` against existing local guest). Not identity parity with freeze ImageID Y. |
@@ -261,13 +261,12 @@ defaulting `SKIP_BUILD=1` after prepare).
 
 | Gate | `E2E_CLAIM_OPTIONAL` | Fire-and-forget |
 | --- | --- | --- |
-| Phase 3 public module/Store | default `1` (Step 32 D3) | unset (`E2E_ALLOW_FIRE_AND_FORGET` off) |
-| Phase 4 required privacy | `0` (strict) | unset (off) |
+| Phase 3 public module/Store | default `0` (Step 32 D3 closed) | unset (`E2E_ALLOW_FIRE_AND_FORGET` off) |
+| Phase 4 required privacy | `0` (strict; set explicitly) | unset (off) |
 
 Reason: Store/module privacy confirm private claim via `vault_holding` drop.
-With testnet default `E2E_CLAIM_OPTIONAL=1`, an unconfirmed claim is treated as
-pass — that would fake Step 39 DoD. Required privacy runs must set
-`E2E_CLAIM_OPTIONAL=0` so `claim_balance` / vault_holding drop is enforced.
+Required privacy runs set `E2E_CLAIM_OPTIONAL=0` so `claim_balance` /
+vault_holding drop is enforced (do not soft-pass with `=1`).
 
 If strict claim flakes, record the artifact and escalate in the gate log.
 Do not set `E2E_CLAIM_OPTIONAL=1` to greenwash. Close only after a real pass
@@ -337,9 +336,10 @@ Module uses `fixtures/testnet-module.json`; Store uses `fixtures/testnet.json`
 
 ### Claim optional and Step 32 D3 (D39.13)
 
-Step 32 D3 may still have an empty gate-log runs table. That does not block
-Step 39. Phase 3 public Store keeps default `E2E_CLAIM_OPTIONAL=1`. Phase 4
-privacy overrides to `0` on the command line only. No dependency conflict.
+Step 32 D3 closed 2026-08-03 using Step 39 Phase 4 Store/module full privacy
+testnet (`E2E_CLAIM_OPTIONAL=0`) as evidence; public Store default is now `0`.
+Phase 4 privacy gates still set `E2E_CLAIM_OPTIONAL=0` explicitly on the command
+line.
 
 ## Closed clarifications (do not re-open)
 
@@ -418,8 +418,8 @@ Done.
     (E2E.md also allows `MODULE_E2E_SKIP_FUND=1` after
     `./scripts/fund-testnet-accounts.sh`).
 13. `SKIP_BUILD=1 make verify-store-testnet`
-    (default `E2E_CLAIM_OPTIONAL=1` — kept while Step 32 D3 is open; not a
-    Step 39 conflict; privacy strictness is Phase 4 only).
+    (default `E2E_CLAIM_OPTIONAL=0` after Step 32 D3; Phase 4 still sets `0`
+    explicitly on privacy commands).
 
 Stop if either fails.
 

@@ -11,8 +11,8 @@ This file is retained as a short redirect.
 | --- | --- |
 | [index.md](index.md) | Program scope, upcoming steps, delivery forks, components, onboarding |
 | [../../AGENTS.md](../../AGENTS.md) | Agent read order |
-| [completed/](completed/) | Normative excerpts (12-16), completed Steps 17-19, 22, 24, 24b, 24c, 26-31, 33-38 |
-| [upcoming/](upcoming/) | Steps 32, 39 (active) |
+| [completed/](completed/) | Normative excerpts (12-16), completed Steps 17-19, 22, 24, 24b, 24c, 26-38 |
+| [upcoming/](upcoming/) | Step 39 (active) |
 | [waiting/](waiting/) | Waiting on external input — Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 21, 23, 25 |
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |

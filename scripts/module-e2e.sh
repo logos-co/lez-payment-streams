@@ -1286,7 +1286,7 @@ if [[ "$ACCRUED" -ge "$MIN_ACCRUED" ]]; then
 else
   narr_fail "Insufficient accrual: $ACCRUED tokens (need $MIN_ACCRUED)"
   narr_hint "Check sequencer is advancing and CLOCK_50 has ticked since create (D39.25)"
-  if [[ "${E2E_CLAIM_OPTIONAL:-1}" == "0" ]]; then
+  if [[ "${E2E_CLAIM_OPTIONAL:-0}" == "0" ]]; then
     FAILURES=$((FAILURES + 1))
   fi
 fi

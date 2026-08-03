@@ -552,11 +552,6 @@ def emit_module_phase(artifact: Path, phase: str, ok: bool, extra: dict[str, Any
         f.write(json.dumps(row, separators=(",", ":")) + "\n")
 
 
-def emit_claim_with_demo_alias(artifact: Path, ok: bool, extra: dict[str, Any]) -> None:
-    emit_module_phase(artifact, "claim", ok, extra)
-    emit_module_phase(artifact, "demo_claim", ok, extra)
-
-
 def run(cmd: list[str], *, cwd: Path | None = None, env: dict | None = None, timeout: int = 600) -> subprocess.CompletedProcess:
     merged = os.environ.copy()
     if env:
@@ -4051,18 +4046,19 @@ def demo_teardown(
     accrued = stream_accrued_lo(cfg_user, vault_id, stream_id)
     if accrued <= 0:
         claim_extra = {"skipped": True, "reason": "zero_accrued", "stream_id": stream_id}
-        is_testnet = os.environ.get("CHAIN", "local").strip().lower() == "testnet"
-        claim_optional = os.environ.get(
-            "E2E_CLAIM_OPTIONAL", "1" if is_testnet else "0"
-        ).strip() not in ("0", "false", "False", "no", "NO")
-        # D39.13: privacy gates require claim_balance / vault_holding drop.
+        claim_optional = os.environ.get("E2E_CLAIM_OPTIONAL", "0").strip().lower() not in (
+            "0",
+            "false",
+            "no",
+        )
+        # Strict claim (default): zero accrued after close fails the run.
         if not claim_optional:
-            emit_claim_with_demo_alias(artifact, False, claim_extra)
+            emit_module_phase(artifact, "claim", False, claim_extra)
             raise E2EError(
                 "claim skipped zero_accrued under E2E_CLAIM_OPTIONAL=0 "
                 f"(stream_id={stream_id}); CLOCK_50 advance / accrual required"
             )
-        emit_claim_with_demo_alias(artifact, True, claim_extra)
+        emit_module_phase(artifact, "claim", True, claim_extra)
         return
 
     narrator.step(f"Claiming residual accrued ({accrued}) on closed stream {stream_id}")
@@ -4073,35 +4069,17 @@ def demo_teardown(
         try:
             release_logoscore_wallet(cfg_user, save=True)
             seed_claim_onchain(repo, manifest, vault_id, stream_id)
-            log_artifact(
-                artifact,
-                "demo_claim",
-                True,
-                skipped=False,
-                accrued_lo=accrued,
-                via="seed_claim_onchain",
-                stream_id=stream_id,
-            )
             claim_extra = {
                 "skipped": False,
                 "accrued_lo": accrued,
                 "via": "seed_claim_onchain",
                 "stream_id": stream_id,
             }
-            emit_claim_with_demo_alias(artifact, True, claim_extra)
+            emit_module_phase(artifact, "claim", True, claim_extra)
         except (E2EError, subprocess.TimeoutExpired) as exc:
-            log_artifact(
+            emit_module_phase(
                 artifact,
-                "demo_claim",
-                False,
-                skipped=False,
-                accrued_lo=accrued,
-                via="seed_claim_onchain",
-                error=str(exc),
-                stream_id=stream_id,
-            )
-            emit_claim_with_demo_alias(
-                artifact,
+                "claim",
                 False,
                 {
                     "skipped": False,
@@ -4143,15 +4121,13 @@ def demo_teardown(
                 return
             if poll_idx < claim_poll_attempts - 1:
                 time.sleep(20)
-        # Demo policy: claim is optional. The headline demo (create -> fundable ->
-        # paid Store query -> close) does not need claim to recycle funds, and the
-        # provider claim has not reliably confirmed on public testnet (see
-        # docs/testnet-claim-known-issue.md). On testnet, or whenever E2E_CLAIM_OPTIONAL
-        # is set, treat an unconfirmed claim as a pass instead of failing teardown.
-        is_testnet = os.environ.get("CHAIN", "local").strip().lower() == "testnet"
-        claim_optional = os.environ.get(
-            "E2E_CLAIM_OPTIONAL", "1" if is_testnet else "0"
-        ).strip().lower() not in ("0", "false", "no")
+        # Default is strict claim (E2E_CLAIM_OPTIONAL=0). Opt in to soft pass with
+        # E2E_CLAIM_OPTIONAL=1 when an unconfirmed seed claim should not fail teardown.
+        claim_optional = os.environ.get("E2E_CLAIM_OPTIONAL", "0").strip().lower() not in (
+            "0",
+            "false",
+            "no",
+        )
         if claim_optional:
             claim_extra = {
                 "skipped": True,
@@ -4161,7 +4137,7 @@ def demo_teardown(
                 "accrued_lo": accrued,
                 "stream_id": stream_id,
             }
-            emit_claim_with_demo_alias(artifact, True, claim_extra)
+            emit_module_phase(artifact, "claim", True, claim_extra)
             return
 
     claim_body = {
@@ -4206,21 +4182,11 @@ def demo_teardown(
         "via": "chainAction_claim",
         "provider_privacy": 1 if provider_privacy_enabled() else 0,
     }
-    log_artifact(
-        artifact,
-        "demo_claim",
-        ok_claim,
-        skipped=False,
-        accrued_lo=accrued,
-        tx_hash=tx_claim,
-        stream_id=stream_id,
-        provider_privacy=1 if provider_privacy_enabled() else 0,
-    )
-    emit_claim_with_demo_alias(artifact, ok_claim, claim_extra)
+    emit_module_phase(artifact, "claim", ok_claim, claim_extra)
     if not ok_claim:
-        raise E2EError(f"demo_claim failed: {parsed}")
+        raise E2EError(f"claim failed: {parsed}")
     if tx_claim:
-        await_chain_action_inclusion(seq_url, parsed, artifact, label="demo_claim")
+        await_chain_action_inclusion(seq_url, parsed, artifact, label="claim")
     # On-chain confirmation: public provider → balance rise; private provider →
     # vault_holding drop (destination is shielded; D37.9 / D38.8).
     claim_poll_attempts = int(os.environ.get("E2E_CLAIM_STATE_POLL_ATTEMPTS", "10"))
@@ -4259,13 +4225,15 @@ def demo_teardown(
     emit_module_phase(artifact, "claim_balance", claim_applied, bal_extra)
     log_vault_liquidity(cfg_user, manifest, artifact, phase="vault_liquidity_after_claim")
     if not claim_applied:
-        is_testnet = os.environ.get("CHAIN", "local").strip().lower() == "testnet"
-        claim_optional = os.environ.get(
-            "E2E_CLAIM_OPTIONAL", "1" if is_testnet else "0"
-        ).strip().lower() not in ("0", "false", "no")
+        claim_optional = os.environ.get("E2E_CLAIM_OPTIONAL", "0").strip().lower() not in (
+            "0",
+            "false",
+            "no",
+        )
         if claim_optional:
-            emit_claim_with_demo_alias(
+            emit_module_phase(
                 artifact,
+                "claim",
                 True,
                 {
                     "skipped": True,
@@ -4279,12 +4247,12 @@ def demo_teardown(
             return
         if provider_privacy_enabled():
             raise E2EError(
-                f"demo_claim tx accepted but vault_holding did not drop on chain "
+                f"claim tx accepted but vault_holding did not drop on chain "
                 f"after {claim_poll_attempts} polls (pre={pre_vault} post={post_vault} "
                 f"tx={tx_claim})"
             )
         raise E2EError(
-            f"demo_claim tx accepted but provider balance did not increase on chain "
+            f"claim tx accepted but provider balance did not increase on chain "
             f"after {claim_poll_attempts} polls (pre={pre_provider} post={post_provider} "
             f"tx={tx_claim})"
         )

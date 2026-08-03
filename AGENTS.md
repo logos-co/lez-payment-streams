@@ -11,8 +11,11 @@ Paid Store queries carry LIP-155 `EligibilityProof` (RFC 73 on Store tag `30`); 
 LEZ state before serving. Rust/FFI holds policy; `payment_streams_module` orchestrates wallet I/O;
 delivery forks add wire fields and hooks.
 
-Universal payment protocol vs Store integration use case. Developer Journey (Store integration);
-optional User Journey (payment streams UI) is protocol-only, not Store.
+Universal payment protocol vs Store integration use case. Developer Journey (Store integration)
+is waiting on [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369).
+User Journey (CLI / module, protocol-only, not Store) is complete
+([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)).
+User Journey UI (Step 21) and public hosted Store (Step 23) are wontfix.
 
 Program index: [docs/plan/index.md](docs/plan/index.md).
 Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conventions.md).
@@ -21,36 +24,38 @@ Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conven
 
 ### Documentation and integration
 
-Developer Journey — Store integration. Packet:
-[docs/plan/upcoming/step-20-developer-journey.md](docs/plan/upcoming/step-20-developer-journey.md).
+Developer Journey — Store integration (waiting):
+[Step 20](docs/plan/waiting/step-20-developer-journey.md);
+[logos-docs#369](https://github.com/logos-co/logos-docs/issues/369).
 In-repo SSOT draft: [docs/store-integration/README.md](docs/store-integration/README.md).
-Developer Journey generalization — rewrite as a protocol-agnostic eligibility guide:
-[Step 35](docs/plan/upcoming/step-35-developer-journey-generalization.md) (active).
+Developer Journey generalization (protocol-agnostic eligibility guide):
+[Step 35](docs/plan/completed/step-35-developer-journey-generalization.md) (complete).
 
-User Journey — CLI doc packet: [Step 22](docs/plan/upcoming/step-22-ui-journey.md) (active, independent of UI).
-User Journey — testnet manual walkthrough: [Step 34](docs/plan/upcoming/step-34-user-journey-manual-walkthrough.md) (active).
-User Journey on TestNet v0.2: [Step 28](docs/plan/completed/step-28-user-journey-testnet.md) (complete).
+User Journey (complete — CLI / module, not Store):
+[logos-docs#370](https://github.com/logos-co/logos-docs/issues/370);
+[Step 22](docs/plan/completed/step-22-ui-journey.md) (logos-docs packet);
+[Step 34](docs/plan/completed/step-34-user-journey-manual-walkthrough.md) (in-repo walkthrough);
+[Step 28](docs/plan/completed/step-28-user-journey-testnet.md) (module×testnet E2E).
+In-repo SSOT: [docs/journeys/USER_JOURNEY.md](docs/journeys/USER_JOURNEY.md).
+Wontfix: [Step 21](docs/plan/wontfix/step-21-basecamp-ui.md) (Basecamp UI),
+[Step 23](docs/plan/wontfix/step-23-public-store-provider.md) (public Store provider),
+[Step 25](docs/plan/wontfix/step-25-demo-coordination-module.md) (demo coordinator).
 Raw TODOs (unscheduled ideas): [docs/plan/raw-todos/](docs/plan/raw-todos/).
-User Journey UI (optional) — Basecamp plugin: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md).
 
 ### E2E and migration (Steps 26-33)
 
-Steps 26-31 and 33 are complete
+Steps 26–33 are complete
 ([26](docs/plan/completed/step-26-testnet-v02-migration.md),
 [27](docs/plan/completed/step-27-claim-fix-verification.md),
 [28](docs/plan/completed/step-28-user-journey-testnet.md),
 [29](docs/plan/completed/step-29-e2e-script-ux.md),
 [30](docs/plan/completed/step-30-static-dependency-migration.md),
 [31](docs/plan/completed/step-31-dependencies-upgrade.md),
+[32](docs/plan/completed/step-32-auth-transfer-unify-store-claim.md),
 [33](docs/plan/completed/step-33-store-e2e-fresh-vault.md)).
-Active engineering packet:
-
-| Step | Focus | Can Start |
-|------|-------|-----------|
-| [32](docs/plan/upcoming/step-32-auth-transfer-unify-store-claim.md) | AT-init unify + Store claim phase (D3 testnet gate pending) | **Now** — maintainer gate in [step-32-testnet-gate-log.md](docs/plan/completed/step-32-testnet-gate-log.md) |
-
-Optional: [step-23-public-store-provider.md](docs/plan/upcoming/step-23-public-store-provider.md).
-Cancelled: [step-25-demo-coordination-module.md](docs/plan/cancelled/step-25-demo-coordination-module.md).
+Step 32 D3 closed via Step 39 strict-claim Store/module testnet evidence; default
+`E2E_CLAIM_OPTIONAL=0`; `demo_claim` alias removed
+([gate log](docs/plan/completed/step-32-testnet-gate-log.md)).
 
 ### Privacy-preserving payment streams (Steps 36-39)
 
@@ -83,7 +88,7 @@ Maintainer lifecycle regression: `make verify-store-local-lifecycle` /
 | Verify | verification-matrix → scripts/README |
 | Store wire | integration-contracts → integration-decisions D1/D2 |
 | Localnet failure | archive/operator/localnet-recovery.md |
-| Developer journey | step-20 packet + store-integration README |
+| Developer journey | waiting/step-20 packet + store-integration README; logos-docs#369 |
 | Rust / guest | docs/on-chain/README.md |
 
 ## Always-on references

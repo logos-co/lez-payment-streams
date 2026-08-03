@@ -1,10 +1,13 @@
 # Step 32 — Authenticated transfer unify and Store claim phase
 
-Index: [index.md](../index.md). Status: **active** — shared AT ensure and close-then-claim
-are in tree; D3 Store testnet gate still pending (empty pass table in gate log).
+Completed. Index: [index.md](../index.md).
 
-Evidence logs: [step-32-step0-validation.md](../completed/step-32-step0-validation.md) (O1/O2),
-[step-32-testnet-gate-log.md](../completed/step-32-testnet-gate-log.md) (D3 runs).
+Shared AT ensure and close-then-claim landed; D3 closed with Step 39 Store/module
+full privacy testnet (`E2E_CLAIM_OPTIONAL=0`) as evidence; follow-up set strict
+claim default and dropped the `demo_claim` alias.
+
+Evidence logs: [step-32-step0-validation.md](step-32-step0-validation.md) (O1/O2),
+[step-32-testnet-gate-log.md](step-32-testnet-gate-log.md) (D3 runs).
 
 ## Summary
 
@@ -17,9 +20,9 @@ Evidence logs: [step-32-step0-validation.md](../completed/step-32-step0-validati
 4. **Lifecycle norm (all journeys):** close stream → claim residual on closed stream.
    See [integration-contracts.md](../../reference/integration-contracts.md#chain-teardown-step-24c-local-e2e).
 
-Prerequisites: [Step 27](../completed/step-27-claim-fix-verification.md),
-[Step 28](../completed/step-28-user-journey-testnet.md),
-[Step 24c](../completed/step-24c-simplify-demo-flow.md). Update [Step 29](../completed/step-29-e2e-script-ux.md)
+Prerequisites: [Step 27](step-27-claim-fix-verification.md),
+[Step 28](step-28-user-journey-testnet.md),
+[Step 24c](step-24c-simplify-demo-flow.md). Update [Step 29](step-29-e2e-script-ux.md)
 phase tables in the same PR as orchestrator changes.
 
 ## Scope
@@ -37,12 +40,12 @@ phase tables in the same PR as orchestrator changes.
 | --- | --- |
 | **D1** | One testnet wallet home: `.scaffold/e2e/testnet-wallet`. Manifest owner + provider must be signable from that storage (bundle). Single ensure per run. |
 | **D2** | Store: default `E2E_CLOSE_VIA=seed` for **both** close and claim (document name; no rename). Module: `chainAction` only. No `E2E_CLAIM_VIA`. Option B (`chainAction` default) only after D3 appendix. |
-| **D3** | Step 32 PR keeps Store testnet `E2E_CLAIM_OPTIONAL=1`. Maintainer gate after merge; **follow-up micro-PR blocked** until a **pass** row exists in [step-32-testnet-gate-log.md](../completed/step-32-testnet-gate-log.md) (strict default + drop `demo_claim` alias). |
+| **D3** | Closed 2026-08-03. Pass credited from Step 39 Store/module full privacy testnet (`E2E_CLAIM_OPTIONAL=0`) in [step-32-testnet-gate-log.md](step-32-testnet-gate-log.md). Follow-up: default `E2E_CLAIM_OPTIONAL=0`; drop `demo_claim` alias. |
 | **D4** | Post-close claim; module keeps balance deltas (provider up, vault holding down). Store mirrors `claim_balance` JSON when accrued at close > 0. Re-read accrued on chain before claim (not from `close_state` alone). |
 | **D5** | One paragraph under integration-contracts Chain teardown: E2E norm vs optional integrator open-stream claim. |
 | **D6** | Ensure via `fixture.sh` + Store run hook only; optional bootstrap one-liner deferred. |
-| **D7** | Dual-emit `demo_claim` + `claim` one release; remove `demo_claim` in D3 follow-up PR. |
-| **D8** | LEE only ([step-32-step0-validation.md](../completed/step-32-step0-validation.md)); remove `NSSA_WALLET_HOME_DIR` from `module-e2e.sh`. |
+| **D7** | Dual-emit retired in D3 follow-up; artifact phase is `claim` only. |
+| **D8** | LEE only ([step-32-step0-validation.md](step-32-step0-validation.md)); remove `NSSA_WALLET_HOME_DIR` from `module-e2e.sh`. |
 
 **D3 gate (record in gate log):**
 
@@ -68,20 +71,19 @@ residual accrued cleared or `claim_balance` ok; `auth_init_*` ok. Optional appen
    D7 alias; release/reopen wallets before standalone `wallet`.
 6. **Verify locally:** `make verify-module-local`, `make verify-store-local`.
 7. **Docs (step 5):** D5 paragraph, DEVELOPER_JOURNEY bundle + `E2E_CLOSE_VIA` note,
-   USER_JOURNEY order, matrix footnote (optional claim until D3 gate), Step 29,
+   USER_JOURNEY order, matrix footnote (strict claim after D3), Step 29,
    trim `testnet-claim-known-issue.md` Symptom C diagnostic.
-8. **Post-merge:** run D3 gate; append pass to gate log → **only then** follow-up PR:
-   `E2E_CLAIM_OPTIONAL=0` default, drop `demo_claim` alias. No follow-up without
-   a pass row in the gate log.
+8. **Post-merge / D3 follow-up (done 2026-08-03):** gate-log pass from Step 39;
+   `E2E_CLAIM_OPTIONAL=0` default; `demo_claim` alias removed.
 
-Do **not** block merge on D3 gate or D6 bootstrap migration.
+D6 bootstrap one-liner remains deferred.
 
 ## Shared AT ensure
 
 ### On-chain verify (replaces loose `program_owner` check)
 
 - Normalize `getAccount.program_owner`: **8 × uint32 LE limbs** → 64-char lowercase hex
-  (details and examples in [step-32-step0-validation.md](../completed/step-32-step0-validation.md)).
+  (details and examples in [step-32-step0-validation.md](step-32-step0-validation.md)).
 - Compare to AT **ImageID (hex bytes)** from `spel inspect` on pinned ELF. Resolve ELF:
   `$(ps_lez_cache)/artifacts/program_methods/authenticated_transfer.bin`, then
   `.../artifacts/lez/programs/authenticated_transfer.bin`, then git checkout fallback.
@@ -187,7 +189,7 @@ Module canonical shape: `{"phase","ok","extra"}` (`module-e2e.sh` `emit_phase`).
 | `auth_init_owner`, `auth_init_provider` | `account_id`, `already_initialized`, `via`, optional `tx_hash`, `error`, `verify` |
 | `close_state` | `vault_balance`, `total_allocated`, `stream_accrued`, `stream_unaccrued`, `stream_state` (module field names) |
 | `claim_balance` | `received`, `provider_pre`, `provider_post`, `vault_pre`, `vault_post`, `attempts` |
-| `claim` | same payload as today’s claim metadata; **D7:** duplicate line with phase `demo_claim` |
+| `claim` | claim metadata only (D7 alias `demo_claim` removed) |
 
 Store: append **one module-shaped line per phase** to `$ARTIFACT`; keep `log_artifact`
 during transition if needed. Parsers: **`claim` canonical**; dedupe alias by phase or
@@ -208,7 +210,7 @@ After `store_query_*`:
    governs **close and claim** seed submit; `chainaction` fallback unchanged).
 2. **Claim** — `claim`, optional `claim_balance`.
 
-Testnet: default `E2E_CLAIM_OPTIONAL=1` in Step 32 PR. Matrix footnote until D3 gate.
+Testnet: default `E2E_CLAIM_OPTIONAL=0` after D3 close.
 
 ## Module journey (User Journey)
 
@@ -249,7 +251,7 @@ the caller sets.
 | Module local | `make verify-module-local` | `auth_init_*`; `close_*` before `claim*`; all ok |
 | Module testnet | `make verify-module-testnet` | Same |
 | Store local | `make verify-store-local` | `store_query_*`; `close_state` before `claim*`; `auth_init_*` |
-| Store testnet | `make verify-store-testnet` | Default optional claim ok; strict runs use `E2E_CLAIM_OPTIONAL=0` |
+| Store testnet | `make verify-store-testnet` | Strict claim by default (`E2E_CLAIM_OPTIONAL=0`); opt soft with `=1` |
 
 **DoD highlights:** shared ensure with AT id verify; run-time ensure on testnet at
 least once with fresh init or new provider id; local gates green; D5 doc; D7 alias in

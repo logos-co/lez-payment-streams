@@ -257,7 +257,8 @@ make verify-store-local-lifecycle
 
 ## Store × testnet (Developer Journey)
 
-Required tier, but this recipe section stays minimal until Step 32 D3 gate passes.
+Required tier. Claim is strict by default after Step 32 D3
+(`E2E_CLAIM_OPTIONAL=0`).
 
 One-time Store bootstrap:
 
@@ -273,17 +274,15 @@ SKIP_BUILD=1 E2E_VERBOSITY=verbose MODE=store CHAIN=testnet ./scripts/e2e.sh tes
 
 Make alias: `make verify-store-testnet`.
 
-Expected when green: exit code 0 and `e2e-*.log` with paid Store query and claim-related phases.
-Teardown keeps default `E2E_CLAIM_OPTIONAL=1` until Step 32 D3 gate passes; strict runs use
-`E2E_CLAIM_OPTIONAL=0`. See
-[verification-matrix.md](../reference/verification-matrix.md) and
-[step-32-testnet-gate-log.md](../plan/completed/step-32-testnet-gate-log.md).
+Expected when green: exit code 0 and `e2e-*.log` with paid Store query and claim-related
+phases (`claim` / `claim_balance`; no `demo_claim` alias). Soft claim only if you set
+`E2E_CLAIM_OPTIONAL=1`. See [verification-matrix.md](../reference/verification-matrix.md)
+and [step-32-testnet-gate-log.md](../plan/completed/step-32-testnet-gate-log.md).
 
 Gate history: [step-33-testnet-gate-log.md](../plan/completed/step-33-testnet-gate-log.md).
 
-Privacy testnet gates below are the exception: they require `E2E_CLAIM_OPTIONAL=0`
-and `RISC0_DEV_MODE=0` (D39.4 / D39.13). Do not greenwash those with the public
-Store default of claim-optional `1`.
+Privacy testnet gates below also require `E2E_CLAIM_OPTIONAL=0` and
+`RISC0_DEV_MODE=0` (D39.4 / D39.13).
 
 ## Store × testnet (full privacy)
 
@@ -320,7 +319,7 @@ CLOCK_50 waits + claim). DoD green:
 - `PROVIDER_PRIVACY`: `0` (default) or `1` for private provider claim (module and Store; Step 37/38).
 - `PRIVACY`: alias for `OWNER_PRIVACY=1` when `OWNER_PRIVACY` is unset.
 - `SKIP_BUILD=1`: Skip `.lgx` rebuilds on subsequent runs.
-- `E2E_CLAIM_OPTIONAL`: Testnet claim strictness (default `1`; use `0` for strict).
+- `E2E_CLAIM_OPTIONAL`: Claim strictness (default `0` = required; set `1` for soft/optional).
 - `FIXTURE_MANIFEST`: Override fixture path.
 - `E2E_LIFECYCLE_VIA`: `chainaction` (default) or `seed` for user-callable LIP-155
   lifecycle ops in Store E2E (vault init/deposit, create, close, claim). Prefer
@@ -360,7 +359,8 @@ Console output level via `./scripts/e2e.sh --verbosity quiet|normal|verbose` or
 
 The script is a demo harness, not a production deployment pattern.
 Provider libp2p peer id for `registerProviderMapping` comes from the fixture.
-On testnet, `E2E_CLAIM_OPTIONAL` defaults to `1`; set `0` for strict claim confirmation.
+Claim is required by default (`E2E_CLAIM_OPTIONAL=0`); set `1` only to soft-pass an
+unconfirmed claim.
 Each Store run scans vault ids from 0 upward and uses the first unused id.
 `VAULT_ID=<id>` pins a vault.
 `E2E_REUSE_BASELINE_VAULT=1` selects the vault-0 reuse path for

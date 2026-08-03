@@ -93,10 +93,10 @@ vault owner account.
 ## Prerequisites
 
 - The close-then-claim contract from
-  [Step 32](../upcoming/step-32-auth-transfer-unify-store-claim.md) (signed off;
-  D3 testnet gate pending). Step 36 can start in parallel with Step 32 as long as
-  the close-then-claim instruction shape and account layout do not change.
-- [Step 33](../completed/step-33-store-e2e-fresh-vault.md) fresh-vault behavior only
+  [Step 32](step-32-auth-transfer-unify-store-claim.md) (complete; D3 closed).
+  Step 36 can start in parallel with Step 32 as long as the close-then-claim
+  instruction shape and account layout do not change.
+- [Step 33](step-33-store-e2e-fresh-vault.md) fresh-vault behavior only
   if the local E2E is exercised through the fresh-vault path.
 - `PAYMENT_STREAMS_GUEST_BIN` and the `logos_execution_zone` wallet module
   with the private-transaction surface (`send_generic_private_transaction`)

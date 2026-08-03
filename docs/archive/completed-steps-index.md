@@ -42,7 +42,7 @@ Product gates: [verification-matrix.md](../reference/verification-matrix.md).
 | 29 | E2E script UX enhancement | Complete -- [step-29-e2e-script-ux.md](../plan/completed/step-29-e2e-script-ux.md) |
 | 30 | Static dependency migration | Complete -- [step-30-static-dependency-migration.md](../plan/completed/step-30-static-dependency-migration.md) |
 | 31 | Delivery fork rebase + wallet bump | Complete -- [step-31-dependencies-upgrade.md](../plan/completed/step-31-dependencies-upgrade.md) |
-| 32 | AT-init unify + Store claim phase | Active (D3 gate pending) -- [step-32-auth-transfer-unify-store-claim.md](../plan/upcoming/step-32-auth-transfer-unify-store-claim.md) |
+| 32 | AT-init unify + Store claim phase | Complete -- [step-32-auth-transfer-unify-store-claim.md](../plan/completed/step-32-auth-transfer-unify-store-claim.md) |
 | 33 | Store E2E fresh vault + testnet sizing | Complete -- [step-33-store-e2e-fresh-vault.md](../plan/completed/step-33-store-e2e-fresh-vault.md) |
 | 34 | User Journey manual walkthrough (testnet CLI) | Complete -- [step-34-user-journey-manual-walkthrough.md](../plan/completed/step-34-user-journey-manual-walkthrough.md) |
 | 35 | Developer Journey generalization | Complete -- [step-35-developer-journey-generalization.md](../plan/completed/step-35-developer-journey-generalization.md) |

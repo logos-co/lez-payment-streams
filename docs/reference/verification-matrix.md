@@ -74,12 +74,10 @@ Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-r
 - Claim is required on both chains for the module (User Journey). The v0.2.0
   testnet upgrade resolved the previous claim reliability issue; see
   [archive/operator/testnet-claim-known-issue.md](../archive/operator/testnet-claim-known-issue.md).
-- Developer Journey Store testnet teardown keeps default `E2E_CLAIM_OPTIONAL=1`
-  until Step 32 D3 gate passes; strict runs use `E2E_CLAIM_OPTIONAL=0`.
-  Artifact parsers treat phase `claim` as canonical (`demo_claim` is a
-  transitional alias).
-  Exception: Step 39 privacy testnet gates always use `E2E_CLAIM_OPTIONAL=0`
-  with real proving (`RISC0_DEV_MODE=0`); see optional rows below and
+- Developer Journey Store claim is strict by default (`E2E_CLAIM_OPTIONAL=0`;
+  Step 32 D3 closed). Artifact phase is `claim` only (`demo_claim` alias removed).
+  Step 39 privacy testnet gates also use `E2E_CLAIM_OPTIONAL=0` with real proving
+  (`RISC0_DEV_MODE=0`); see optional rows below and
   [step-39-testnet-gate-log.md](../plan/completed/step-39-testnet-gate-log.md).
 
 ## Commands (canonical)

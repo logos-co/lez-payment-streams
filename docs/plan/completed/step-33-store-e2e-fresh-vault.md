@@ -5,7 +5,7 @@ Index: [index.md](../index.md). Status: **complete** — testnet gate in
 
 Prerequisites: [Step 24c](../completed/step-24c-simplify-demo-flow.md) (per-run stream,
 vault baseline model), [Step 28](../completed/step-28-user-journey-testnet.md) (module
-testnet patterns), [Step 32](../upcoming/step-32-auth-transfer-unify-store-claim.md) (AT ensure,
+testnet patterns), [Step 32](step-32-auth-transfer-unify-store-claim.md) (AT ensure,
 close-then-claim). Related UX: [Step 29](step-29-e2e-script-ux.md) (phase tables updated with
 orchestrator changes).
 
@@ -103,7 +103,7 @@ Implement these unless an open question explicitly overrides.
 | Testnet create path | **`E2E_CREATE_VIA=chainaction`** default for **`CHAIN=testnet`** only; local Store keeps seed default unless env set |
 | New vault init | Always **init + deposit** for chosen id (do not skip deposit because vault 0 exists elsewhere) |
 | Teardown | Close stream **0** on run vault; **leave vault on chain** (no vault delete) |
-| Testnet claim gate | Keep **`E2E_CLAIM_OPTIONAL=1`** until Step 32 D3 gate log says otherwise |
+| Testnet claim gate | Historical: kept `E2E_CLAIM_OPTIONAL=1` until Step 32 D3; now default `0` |
 | Owner funding | No new pinata in Store path; assume bootstrap / operator funded owner; preflight requires balance >= `SEED_DEPOSIT_AMOUNT` per run, and `2 * SEED_DEPOSIT_AMOUNT` (1000 lo) for the two-pass testnet gate |
 | Manifest writes | Continue updating **`FIXTURE_MANIFEST`** on disk for seed compatibility; strip **`stream_*`** after run start; update **`vault_id`** and vault PDAs each run |
 
