@@ -12,8 +12,8 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | Path | Contents |
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
-| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-38) |
-| [upcoming/](upcoming/) | Steps 39–40, 42–43 (active / upcoming) |
+| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-39) |
+| [upcoming/](upcoming/) | Steps 40, 42–43 |
 | [waiting/](waiting/) | Waiting on external input — Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)); Step 41 ([logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)) |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 21, 23, 25 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
@@ -29,8 +29,7 @@ Journeys ([N18](../reference/integration-decisions.md#n18-integration-demo-vs-pa
 | User Journey (CLI / module) | Complete | [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370); Steps 22, 28, 34; [USER_JOURNEY.md](../journeys/USER_JOURNEY.md) |
 | User Journey UI (Basecamp) | Wontfix | Step 21 |
 
-Engineering: Steps 26–33 complete; Steps 36–38 complete;
-Step 39 active (human close pending);
+Engineering: Steps 26–33 complete; Steps 36–39 complete;
 Step 40 upcoming (LIP-155 privacy workflow in the spec);
 Step 41 waiting (PR review on [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379));
 Steps 42–43 upcoming (Testnet v0.3 incentivisation research / spec).
@@ -74,7 +73,7 @@ paid Store mode on the provider.
 | Payer funder unlinkability via LEZ private execution | 36 (complete) |
 | Payee receiver privacy via LEZ private execution | 37 (complete) |
 | Store E2E privacy profiles (full privacy mode) | 38 (complete) |
-| Testnet privacy E2E after native guest deploy | 39 (active; module full then Store full; real proving) |
+| Testnet privacy E2E after native guest deploy | 39 (complete) |
 | LIP-155 privacy-preserving workflow in the specification | 40 (upcoming) |
 | Non-native token support in provider payment policies (F8, U9) | 41 (waiting; [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)) |
 | Discovery + payment policy advertisement (F6, F7, U8) | 42 (upcoming; Discovery support) |
@@ -115,6 +114,7 @@ Dual-host demo coordination stays in host scripts
 | 36 | Payer funder unlinkability via LEZ private execution | [step-36-payer-funder-unlinkability.md](completed/step-36-payer-funder-unlinkability.md) |
 | 37 | Payee receiver privacy via LEZ private execution | [step-37-payee-receiver-privacy.md](completed/step-37-payee-receiver-privacy.md) |
 | 38 | Store E2E privacy profiles (full privacy mode) | [step-38-store-privacy-e2e.md](completed/step-38-store-privacy-e2e.md) |
+| 39 | Testnet privacy E2E after native guest deploy | [step-39-testnet-privacy-e2e.md](completed/step-39-testnet-privacy-e2e.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
 [step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33),
@@ -124,7 +124,6 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 
 | Step | Focus | Status |
 | --- | --- | --- |
-| 39 | Testnet privacy E2E after native guest deploy | Active — agent Phase 1–5 green (module + Store full privacy, real prove); human close (D39.15) -- [step-39-testnet-privacy-e2e.md](upcoming/step-39-testnet-privacy-e2e.md) |
 | 40 | LIP-155 privacy-preserving workflow in the specification | Upcoming — planning; no LIP edits yet -- [step-40-lip155-privacy-workflow-spec.md](upcoming/step-40-lip155-privacy-workflow-spec.md) |
 | 42 | Discovery + payment policy advertisement | Upcoming — research/spec; Discovery support (F6, F7, U8) -- [step-42-discovery-payment-policy-advertisement.md](upcoming/step-42-discovery-payment-policy-advertisement.md) |
 | 43 | Shared payment pool model research | Upcoming — research/spec only (F9–F11, U10) -- [step-43-shared-payment-pool-research.md](upcoming/step-43-shared-payment-pool-research.md) |

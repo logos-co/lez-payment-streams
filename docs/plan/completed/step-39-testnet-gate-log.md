@@ -3,7 +3,7 @@
 Append-only record for native guest redeploy and required privacy gates on
 public testnet.
 SSOT:
-[step-39-testnet-privacy-e2e.md](../upcoming/step-39-testnet-privacy-e2e.md).
+[step-39-testnet-privacy-e2e.md](step-39-testnet-privacy-e2e.md).
 
 Locked highlights: real proving on public testnet privacy gates — `RISC0_DEV_MODE=0`
 (D39.4 amended 2026-07-22); soft proving only for Phase 1; module full then
@@ -145,6 +145,7 @@ Store harness notes (working tree on `e9703a2` tip, for human commit review):
 
 ## Human close (D39.15)
 
-_pending — human only: review gate log + artifacts, commit harness/docs if
-desired, then move the Step 39 packet to `docs/plan/completed/` (and close the
-raw TODO / refresh index), or append an explicit write-off._
+Closed 2026-08-05. Reviewed gate-log greens and artifacts
+`module-e2e-20260722T215542.log` (module full privacy) and
+`e2e-20260724T144726.log` (Store full privacy; `vault_drop=400`).
+Packet moved to `docs/plan/completed/`; raw TODO closed.

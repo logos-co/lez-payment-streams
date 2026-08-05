@@ -59,18 +59,15 @@ Step 32 D3 closed via Step 39 strict-claim Store/module testnet evidence; defaul
 
 ### Privacy-preserving payment streams (Steps 36-39)
 
-Steps 36–38 complete (product + local Store privacy):
+Steps 36–39 complete (product + local Store privacy + testnet privacy E2E):
 [step-36-payer-funder-unlinkability.md](docs/plan/completed/step-36-payer-funder-unlinkability.md),
 [step-37-payee-receiver-privacy.md](docs/plan/completed/step-37-payee-receiver-privacy.md),
-[step-38-store-privacy-e2e.md](docs/plan/completed/step-38-store-privacy-e2e.md).
-
-Active: [Step 39](docs/plan/upcoming/step-39-testnet-privacy-e2e.md) —
-agent Phase 1–5 green (module + Store full privacy on ImageID `072a26cc…`,
-`RISC0_DEV_MODE=0`, `E2E_CLAIM_OPTIONAL=0`). Human alone moves the packet to
-completed (D39.15).
-Gate log: [step-39-testnet-gate-log.md](docs/plan/completed/step-39-testnet-gate-log.md).
-Do not reopen Phase 1–3 greens (D39.23). CPU prove is valid without NVIDIA
-(D39.26).
+[step-38-store-privacy-e2e.md](docs/plan/completed/step-38-store-privacy-e2e.md),
+[step-39-testnet-privacy-e2e.md](docs/plan/completed/step-39-testnet-privacy-e2e.md).
+Gate log: [step-39-testnet-gate-log.md](docs/plan/completed/step-39-testnet-gate-log.md)
+(module + Store full privacy on ImageID `072a26cc…`, `RISC0_DEV_MODE=0`,
+`E2E_CLAIM_OPTIONAL=0`). Do not reopen Phase 1–3 greens (D39.23). CPU prove is
+valid without NVIDIA (D39.26).
 
 Upcoming (docs): [Step 40](docs/plan/upcoming/step-40-lip155-privacy-workflow-spec.md) —
 reflect privacy-preserving payer and provider workflows in LIP-155

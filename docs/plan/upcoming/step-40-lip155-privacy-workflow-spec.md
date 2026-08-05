@@ -12,7 +12,7 @@ Product evidence (do not reopen):
 [Step 36](../completed/step-36-payer-funder-unlinkability.md),
 [Step 37](../completed/step-37-payee-receiver-privacy.md),
 [Step 38](../completed/step-38-store-privacy-e2e.md),
-[Step 39](step-39-testnet-privacy-e2e.md) (human close may still be pending).
+[Step 39](../completed/step-39-testnet-privacy-e2e.md) (complete).
 
 Prior LIP work: [Step 19](../completed/step-19-lip155-onchain-spec.md).
 Canonical file: `docs/anoncomms/raw/payment-streams.md` in `logos-lips` /
@@ -173,11 +173,10 @@ Security section cannot hold the workflow.
 
 ## Prerequisites
 
-- Steps 36–38 complete (product + local Store privacy).
-- Step 39 agent gates green preferred before freezing normative wording from
-  “verified behavior”; human close of Step 39 is not a hard blocker for
-  drafting, but publication pin SHOULD cite a tip that matches verified
-  privacy v1.
+- Steps 36–39 complete (product + local Store privacy + testnet privacy E2E).
+- Prefer freezing normative wording from “verified behavior” against the
+  Step 39 tip (ImageID `072a26cc…`); publication pin SHOULD cite a tip that
+  matches verified privacy v1.
 - Step 19 pin / branch convention understood; Step 40 chooses whether to
   amend `feat/payment-streams-onchain-part`, open a new docs branch, or draft
   against current `main` LIP text.
@@ -213,7 +212,7 @@ outcome tables (what is public vs shielded). No `make verify-*` gate.
 - [step-19-lip155-onchain-spec.md](../completed/step-19-lip155-onchain-spec.md)
 - [step-36-payer-funder-unlinkability.md](../completed/step-36-payer-funder-unlinkability.md)
 - [step-37-payee-receiver-privacy.md](../completed/step-37-payee-receiver-privacy.md)
-- [step-39-testnet-privacy-e2e.md](step-39-testnet-privacy-e2e.md)
+- [step-39-testnet-privacy-e2e.md](../completed/step-39-testnet-privacy-e2e.md)
 - [step-41-non-native-token-policy-spec.md](../waiting/step-41-non-native-token-policy-spec.md)
   (parallel LIP track; reconcile branches in D41.2)
 - [feature-branch-pins.md](../../reference/feature-branch-pins.md)

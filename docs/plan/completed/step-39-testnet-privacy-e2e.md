@@ -1,7 +1,7 @@
 # Step 39 — testnet privacy E2E after native guest deploy
 
-Index: [index.md](../index.md). Status: **active** (agent gates green;
-awaiting human close — D39.15).
+Index: [index.md](../index.md). Status: **complete** (human close 2026-08-05;
+D39.15).
 
 Goal: freeze the current native-token guest, redeploy it to public testnet
 (agent-run), and close privacy v1 with real proving on public testnet:
@@ -9,15 +9,15 @@ module full privacy warm-up, then Store full privacy on that ImageID,
 without waiting for multi-token vaults.
 
 This step is agent-run deploy + verification only (D39.9).
-Product paths: [Step 36](../completed/step-36-payer-funder-unlinkability.md),
-[Step 37](../completed/step-37-payee-receiver-privacy.md).
-Local Store privacy: [Step 38](../completed/step-38-store-privacy-e2e.md) Phases A/B.
+Product paths: [Step 36](step-36-payer-funder-unlinkability.md),
+[Step 37](step-37-payee-receiver-privacy.md).
+Local Store privacy: [Step 38](step-38-store-privacy-e2e.md) Phases A/B.
 Promotes Phase C raw TODO
-([testnet-privacy-e2e-after-guest-deploy.md](../raw-todos/testnet-privacy-e2e-after-guest-deploy.md)).
+([testnet-privacy-e2e-after-guest-deploy.md](testnet-privacy-e2e-after-guest-deploy.md)).
 Do not reopen Steps 36–38 product DoD.
 
 Gate log (append runs here):
-[step-39-testnet-gate-log.md](../completed/step-39-testnet-gate-log.md).
+[step-39-testnet-gate-log.md](step-39-testnet-gate-log.md).
 
 ## Implementer plan of action
 
@@ -40,7 +40,7 @@ Do not reopen Phase 1–3 green rows (D39.23).
 | 6 | Module full privacy testnet (`E2E_CLAIM_OPTIONAL=0`, `RISC0_DEV_MODE=0`) | Yes (done) |
 | 7 | Store full privacy testnet (`E2E_CLAIM_OPTIONAL=0`, `RISC0_DEV_MODE=0`) | Yes (done) |
 | 8 | Phase 5 docs minimum; gate-log summary that required gates are green | Yes (done) |
-| 9 | Human review of gate log + artifacts; then move packet to completed | Yes (human) |
+| 9 | Human review of gate log + artifacts; then move packet to completed | Yes (done 2026-08-05) |
 | — | Isolation cells; new Make aliases | Optional / deferred |
 
 Exact env and commands: [Verification](#verification).
@@ -62,7 +62,7 @@ freeze commit (D39.10).
 | Phase 5 docs | E2E.md + verification-matrix + gate-log summary | D39.14 |
 
 Full run history:
-[step-39-testnet-gate-log.md](../completed/step-39-testnet-gate-log.md).
+[step-39-testnet-gate-log.md](step-39-testnet-gate-log.md).
 
 ## Why a new step (not reopen Step 38)
 
@@ -166,7 +166,7 @@ Deploy ELF is the Docker guest output used by Make:
 
 Do not deploy a non-docker / host-built guest. Record ELF size next to ImageID
 (same shape as
-[testnet-guest-program-id-sync-2026-07-15.md](../completed/testnet-guest-program-id-sync-2026-07-15.md)).
+[testnet-guest-program-id-sync-2026-07-15.md](testnet-guest-program-id-sync-2026-07-15.md)).
 
 ### Deploy failure semantics (D39.10)
 
@@ -203,7 +203,7 @@ Fixture sync (required), not a full vault/stream re-bootstrap by default:
    - Current tip docs: `README.md`, `docs/journeys/USER_JOURNEY.md`
 4. Leave historical completed notes that document the 2026-07-15 deploy as
    history (for example
-   [testnet-guest-program-id-sync-2026-07-15.md](../completed/testnet-guest-program-id-sync-2026-07-15.md)).
+   [testnet-guest-program-id-sync-2026-07-15.md](testnet-guest-program-id-sync-2026-07-15.md)).
 
 Keep existing fixture `owner_account_id` / `provider_account_id` when the
 testnet wallet already owns them.
@@ -523,9 +523,11 @@ Agent-reported (gate log + artifacts):
 
 Human-only (D39.15):
 
-- [ ] Human reviews gate log + artifacts and moves packet to
+- [x] Human reviews gate log + artifacts and moves packet to
   `docs/plan/completed/` (and closes raw TODO / refreshes index), or appends
   an explicit write-off for incomplete gates. Agent does not self-close.
+  Closed 2026-08-05 on artifacts
+  `module-e2e-20260722T215542.log` and `e2e-20260724T144726.log`.
 
 ## Deliverables
 
@@ -536,7 +538,7 @@ Human-only (D39.15):
 - [x] Phase 3b wallet-CLI shield + local real-prove smoke (D39.22–D39.24).
 - [x] Phase 4 module full then Store full (real proving).
 - [x] Phase 5 docs + agent gate-log summary.
-- [ ] Human close (completed or write-off).
+- [x] Human close (completed 2026-08-05).
 - [x] Decisions D39.22–D39.24 locked in packet (2026-07-22).
 
 ## Risk
@@ -560,12 +562,12 @@ Human-only (D39.15):
 
 ## Related
 
-- [step-36-payer-funder-unlinkability.md](../completed/step-36-payer-funder-unlinkability.md)
-- [step-37-payee-receiver-privacy.md](../completed/step-37-payee-receiver-privacy.md)
-- [step-38-store-privacy-e2e.md](../completed/step-38-store-privacy-e2e.md)
-- [testnet-privacy-e2e-after-guest-deploy.md](../raw-todos/testnet-privacy-e2e-after-guest-deploy.md)
-- [testnet-guest-program-id-sync-2026-07-15.md](../completed/testnet-guest-program-id-sync-2026-07-15.md)
-- [step-39-testnet-gate-log.md](../completed/step-39-testnet-gate-log.md)
+- [step-36-payer-funder-unlinkability.md](step-36-payer-funder-unlinkability.md)
+- [step-37-payee-receiver-privacy.md](step-37-payee-receiver-privacy.md)
+- [step-38-store-privacy-e2e.md](step-38-store-privacy-e2e.md)
+- [testnet-privacy-e2e-after-guest-deploy.md](testnet-privacy-e2e-after-guest-deploy.md)
+- [testnet-guest-program-id-sync-2026-07-15.md](testnet-guest-program-id-sync-2026-07-15.md)
+- [step-39-testnet-gate-log.md](step-39-testnet-gate-log.md)
 - [E2E.md](../../journeys/E2E.md),
   [verification-matrix.md](../../reference/verification-matrix.md)
 - LEZ testnet tutorial `token-transfer.md` (wallet `auth-transfer send`

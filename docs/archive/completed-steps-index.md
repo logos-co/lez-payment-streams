@@ -49,7 +49,7 @@ Product gates: [verification-matrix.md](../reference/verification-matrix.md).
 | 36 | Payer funder unlinkability | Complete -- [step-36-payer-funder-unlinkability.md](../plan/completed/step-36-payer-funder-unlinkability.md) |
 | 37 | Payee receiver privacy | Complete -- [step-37-payee-receiver-privacy.md](../plan/completed/step-37-payee-receiver-privacy.md) |
 | 38 | Store E2E privacy profiles | Complete -- [step-38-store-privacy-e2e.md](../plan/completed/step-38-store-privacy-e2e.md) |
-| 39 | Testnet privacy E2E after native guest deploy | Active (human close pending) -- [step-39-testnet-privacy-e2e.md](../plan/upcoming/step-39-testnet-privacy-e2e.md) |
+| 39 | Testnet privacy E2E after native guest deploy | Complete -- [step-39-testnet-privacy-e2e.md](../plan/completed/step-39-testnet-privacy-e2e.md) |
 | 40 | LIP-155 privacy-preserving workflow in the specification | Upcoming -- [step-40-lip155-privacy-workflow-spec.md](../plan/upcoming/step-40-lip155-privacy-workflow-spec.md) |
 
 ## Completed steps -- summary
