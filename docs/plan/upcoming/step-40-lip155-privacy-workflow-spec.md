@@ -1,7 +1,8 @@
 # Step 40 — LIP-155 privacy-preserving workflow in the specification
 
-Index: [index.md](../index.md). Status: **upcoming** (planning;
-spec text not started in this step yet).
+Index: [index.md](../index.md). Status: **upcoming** (decision log closed;
+LIP tip review / light edit on `docs/payment-streams-private-execution`,
+then human close per D40.5).
 
 Goal: update LIP-155 so the privacy-preserving payer and provider workflows
 verified by Steps 36–39 are reflected at the same abstraction level as the
@@ -75,8 +76,9 @@ Candidate content (to refine in the decision log before editing):
 State that payer funder unlinkability and provider receiving privacy are
 independent product choices:
 
-- A vault MAY be `Public` or `PseudonymousFunder`.
-- Independently, a provider MAY claim to a public or private receiving account.
+A vault MAY be `Public` or `PseudonymousFunder`.
+Independently, a provider MAY use a public or private account identifier as
+`provider_id` (claim destination is that id; see D40.3).
 
 A reader should not infer that shielded vaults imply shielded claims, or the
 reverse.
@@ -102,18 +104,26 @@ Retain and, if needed, tighten existing wallet policy:
 
 ### 3. Provider receiving privacy workflow (payee)
 
-At protocol level, narrate the intended path when receiving-address
-unlinkability is desired:
+At protocol level, narrate selective privacy. Receiving privacy is optional;
+the provider chooses it by which account id it publishes as `provider_id`.
+Claim always credits `StreamConfig.provider`; there is no separate payout
+address.
 
-1. Stream `provider_id` remains the in-protocol claim authorizer (public in
-   stream state; globally linkable across streams that share it).
-2. Provider claims accrued funds through shielded transactions to receiving
-   addresses not tied to its primary public key.
+When receiving privacy is intended:
+
+1. Provider publishes a private (nullifier-derived) account identifier as
+   stream `provider_id` (public in stream state; globally linkable across
+   streams that share it).
+2. Provider MUST claim accrued funds through shielded transactions that
+   credit that same account.
 3. Claim amount remains observable via public vault holding / stream accrual
    state; shielding hides destination identity, not amount.
 
-Clarify SHOULD vs MUST for receiver privacy to match product intent
-(today the LIP uses SHOULD for shielded claim).
+When receiving privacy is not intended, the provider uses a public account
+identifier as `provider_id` and claims transparently.
+A public claim that somehow targets an NPK-derived `provider_id` is not a
+supported opt-out (destination is fixed to `provider_id`; use a public id at
+create time instead).
 
 ### 4. What shielding does not provide
 
@@ -157,19 +167,23 @@ implementation docs):
 | Exact private-account identifier allocation strategy | module / User Journey hygiene notes |
 | Store tag-30 wire or N8 byte layouts | existing Off-chain / LEZ bytes sections |
 
-## Suggested LIP edit surfaces (no edits in this planning pass)
+## Suggested LIP edit surfaces
+
+Working tip: `docs/payment-streams-private-execution` on today’s `master`
+(review / light edit; already expands Security and adds Private execution
+mapping). Parallel with [Step 41](../waiting/step-41-non-native-token-policy-spec.md)
+`#379`; neither blocks the other.
 
 | Section | Likely change |
 | --- | --- |
 | Security and privacy → Privacy goals | Keep; make independence of the two goals explicit. |
-| Security and privacy → Funder unlinkability | Expand to a short workflow (pre-shield → init → shielded ops). |
-| Security and privacy → Receiver privacy | Expand to a short workflow; resolve SHOULD/MUST. |
-| Security and privacy → LEZ visibility | Keep; add one sentence on independent claim destination privacy. |
-| LEZ integration → Account types / Deposit path | High-level PP composition note if still transparent-only. |
+| Security and privacy → Funder unlinkability | Keep / tighten short workflow (pre-shield → init → shielded ops). |
+| Security and privacy → Provider receiving privacy | Selective privacy; conditional MUST when private `provider_id` (D40.3). |
+| Security and privacy → LEZ visibility / Residual linkage | Keep shape for now (D40.4). |
+| LEZ integration → Private execution mapping | Keep subsection for now (D40.4); trim only if review finds excess impl detail. |
 | On-chain vault initialize | Ensure privacy-tier attach language still points at Security. |
 
-Do not open a parallel “Privacy Protocol” chapter unless a decision says the
-Security section cannot hold the workflow.
+Do not open a parallel “Privacy Protocol” chapter (D40.4).
 
 ## Prerequisites
 
@@ -177,35 +191,36 @@ Security section cannot hold the workflow.
 - Prefer freezing normative wording from “verified behavior” against the
   Step 39 tip (ImageID `072a26cc…`); publication pin SHOULD cite a tip that
   matches verified privacy v1.
-- Step 19 pin / branch convention understood; Step 40 chooses whether to
-  amend `feat/payment-streams-onchain-part`, open a new docs branch, or draft
-  against current `main` LIP text.
+- LIP work on `docs/payment-streams-private-execution` rebased onto current
+  `logos-lips` / `rfc-index` `master` (D40.2).
 
-## Decision log (open — discuss before editing)
+## Decision log
 
-| Id | Topic | Tentative |
+| Id | Topic | Status |
 | --- | --- | --- |
-| D40.1 | Packet ownership | New Step 40; do not reopen Step 19. |
-| D40.2 | Spec target branch | TBD (new docs branch vs amend existing LIP tip). |
-| D40.3 | Receiver privacy strength | Keep SHOULD, or raise selected claim-path sentences to MUST when receiving privacy is intended. |
-| D40.4 | Workflow placement | Prefer expand Security and privacy; avoid a new top-level chapter. |
-| D40.5 | Merge to `main` / lip.logos.co | Optional follow-up, same as Step 19, unless decided otherwise. |
-| D40.6 | Integration-repo pin update | Required when LIP rev lands; cite in feature-branch-pins. |
-| D40.7 | Journey doc follow-up | Out of scope unless a single cite is needed; do not rewrite USER_JOURNEY in this step. |
+| D40.1 | Packet ownership | Closed — new Step 40; do not reopen Step 19. |
+| D40.2 | Spec target branch | Closed — `docs/payment-streams-private-execution` on today’s `master`; parallel with `#379` (neither blocks; later rebase if the other merges first). |
+| D40.3 | Receiver privacy strength | Closed — selective privacy. Optional. Private `provider_id` ⇒ claim MUST be shielded to that account (destination = `StreamConfig.provider`). Public `provider_id` ⇒ transparent claim. No separate public payout for an NPK-derived `provider_id`. |
+| D40.4 | Workflow placement | Closed for now — keep Security expand + LEZ `Private execution mapping`; no new top-level chapter. Revisit depth only if review finds excess impl detail. |
+| D40.5 | Publication / step close | Closed — Step 40 DoD is human review that the LIP change is finished (merged to `master`, or otherwise accepted as the cited tip). Agent does not self-close. |
+| D40.6 | Integration-repo pin update | Closed — required when the LIP rev is the cited tip; cite in feature-branch-pins. |
+| D40.7 | Journey doc follow-up | Closed — out of scope unless a single cite is needed; do not rewrite USER_JOURNEY in this step. |
 
 ## Definition of done
 
-- LIP-155 text updated on the chosen branch/rev so a LEZ-familiar reader can
-  follow both privacy-preserving workflows without reading Steps 36–39.
-- Depth matches existing Security / LEZ sections (no FFI/module/E2E detail).
-- Decision log closed for D40.1–D40.6 (D40.7 optional).
-- This integration repo pins the new rev when the LIP change lands.
+- LIP-155 text on the chosen branch reflects both privacy-preserving workflows
+  at Security / LEZ depth (D40.3–D40.4), without FFI/module/E2E detail.
+- Decision log closed for D40.1–D40.7.
+- Human review (D40.5) confirms the tip is finished (on `master` or otherwise
+  the accepted citation tip); then this packet moves to `completed/`.
+- This integration repo pins the new rev when it is the citation tip (D40.6).
 - No code or E2E changes required for close.
 
 ## Verification
 
 Docs-only: link integrity in the LIP file; peer read against Steps 36–37
 outcome tables (what is public vs shielded). No `make verify-*` gate.
+Human close per D40.5.
 
 ## Related
 
