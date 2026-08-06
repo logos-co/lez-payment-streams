@@ -69,9 +69,9 @@ Gate log: [step-39-testnet-gate-log.md](docs/plan/completed/step-39-testnet-gate
 `E2E_CLAIM_OPTIONAL=0`). Do not reopen Phase 1–3 greens (D39.23). CPU prove is
 valid without NVIDIA (D39.26).
 
-Upcoming (docs): [Step 40](docs/plan/upcoming/step-40-lip155-privacy-workflow-spec.md) —
-reflect privacy-preserving payer and provider workflows in LIP-155
-(no code; do not edit the LIP until the step’s decision log is closed).
+Waiting (docs): [Step 40](docs/plan/waiting/step-40-lip155-privacy-workflow-spec.md) —
+reflect privacy-preserving payer and provider workflows in LIP-155;
+waiting review on [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397).
 
 ### Testnet v0.3 incentivisation research (Steps 41-43)
 

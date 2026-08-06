@@ -1,8 +1,11 @@
 # Step 40 — LIP-155 privacy-preserving workflow in the specification
 
-Index: [index.md](../index.md). Status: **upcoming** (decision log closed;
-LIP tip review / light edit on `docs/payment-streams-private-execution`,
-then human close per D40.5).
+Index: [index.md](../index.md). Status: **waiting** (PR review).
+
+Blocker: [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)
+on branch `docs/payment-streams-private-execution`.
+LIP tip edits for user unlinkability and provider unlinkability are on that
+branch; step close waits on review and publication under D40.5.
 
 Goal: update LIP-155 so the privacy-preserving payer and provider workflows
 verified by Steps 36–39 are reflected at the same abstraction level as the
@@ -18,7 +21,7 @@ Product evidence (do not reopen):
 Prior LIP work: [Step 19](../completed/step-19-lip155-onchain-spec.md).
 Canonical file: `docs/anoncomms/raw/payment-streams.md` in `logos-lips` /
 local `rfc-index` (cite [feature-branch-pins.md](../../reference/feature-branch-pins.md)
-once a Step 40 branch/rev is chosen).
+once the reviewed tip is the citation rev).
 
 ## Problem
 
@@ -169,9 +172,9 @@ implementation docs):
 
 ## Suggested LIP edit surfaces
 
-Working tip: `docs/payment-streams-private-execution` on today’s `master`
-(review / light edit; already expands Security and adds Private execution
-mapping). Parallel with [Step 41](../waiting/step-41-non-native-token-policy-spec.md)
+Working tip: [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)
+on `docs/payment-streams-private-execution` (ready for review).
+Parallel with [Step 41](step-41-non-native-token-policy-spec.md)
 `#379`; neither blocks the other.
 
 | Section | Likely change |
@@ -199,7 +202,7 @@ Do not open a parallel “Privacy Protocol” chapter (D40.4).
 | Id | Topic | Status |
 | --- | --- | --- |
 | D40.1 | Packet ownership | Closed — new Step 40; do not reopen Step 19. |
-| D40.2 | Spec target branch | Closed — `docs/payment-streams-private-execution` on today’s `master`; parallel with `#379` (neither blocks; later rebase if the other merges first). |
+| D40.2 | Spec target branch | Closed — `docs/payment-streams-private-execution` / [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397); parallel with `#379` (neither blocks; later rebase if the other merges first). |
 | D40.3 | Receiver privacy strength | Closed — selective privacy. Optional. Private `provider_id` ⇒ claim MUST be shielded to that account (destination = `StreamConfig.provider`). Public `provider_id` ⇒ transparent claim. No separate public payout for an NPK-derived `provider_id`. |
 | D40.4 | Workflow placement | Closed for now — keep Security expand + LEZ `Private execution mapping`; no new top-level chapter. Revisit depth only if review finds excess impl detail. |
 | D40.5 | Publication / step close | Closed — Step 40 DoD is human review that the LIP change is finished (merged to `master`, or otherwise accepted as the cited tip). Agent does not self-close. |
@@ -228,6 +231,7 @@ Human close per D40.5.
 - [step-36-payer-funder-unlinkability.md](../completed/step-36-payer-funder-unlinkability.md)
 - [step-37-payee-receiver-privacy.md](../completed/step-37-payee-receiver-privacy.md)
 - [step-39-testnet-privacy-e2e.md](../completed/step-39-testnet-privacy-e2e.md)
-- [step-41-non-native-token-policy-spec.md](../waiting/step-41-non-native-token-policy-spec.md)
+- [step-41-non-native-token-policy-spec.md](step-41-non-native-token-policy-spec.md)
   (parallel LIP track; reconcile branches in D41.2)
+- [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)
 - [feature-branch-pins.md](../../reference/feature-branch-pins.md)
