@@ -76,12 +76,12 @@ waiting review on [logos-lips#397](https://github.com/logos-co/logos-lips/pull/3
 ### Testnet v0.3 incentivisation research (Steps 41-43)
 
 Roadmap: [incentivisation_v0.3](https://roadmap.logos.co/anoncomms/roadmap/testnet_v0.3/incentivisation_v0.3).
-Client/provider shielding already map to Steps 36–40.
-Remaining research/spec packets (docs and LIP only in-step):
+Client/provider shielding map to Steps 36–40.
+Step 41 complete (multi-token provider policy on LIP-155, F8/U9):
+[step-41-non-native-token-policy-spec.md](docs/plan/completed/step-41-non-native-token-policy-spec.md)
+([logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`).
+Remaining research/spec packets:
 
-- [Step 41](docs/plan/waiting/step-41-non-native-token-policy-spec.md) —
-  non-native token policy (F8, U9); waiting review on
-  [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379).
 - [Step 42](docs/plan/upcoming/step-42-discovery-payment-policy-advertisement.md) —
   discovery + payment policy advertisement (F6, F7, U8); Discovery support.
 - [Step 43](docs/plan/upcoming/step-43-shared-payment-pool-research.md) —

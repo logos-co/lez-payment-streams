@@ -25,6 +25,19 @@ Integration treats the on-chain LIP as done on the spec feature branch (merge to
 Local clone: `lez-related/rfc-index`. Step 20 doc packets should link this branch/rev until
 `main` catches up.
 
+## Multi-token provider policy (Step 41, complete)
+
+U9 / F8: `StreamProviderPolicy.accepted_tokens`, `TokenStreamPolicy`, vault `token_id`,
+and LEZ binding published on `logos-lips` `master`.
+
+| Artifact | Ref | Locked rev |
+| --- | --- | --- |
+| `logos-lips` / `rfc-index` `docs/anoncomms/raw/payment-streams.md` (multi-token sections) | `master` | `f09f9e9e` ([logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)) |
+
+Step 19 on-chain pin (`feat/payment-streams-onchain-part`) remains the baseline for
+demo program scope until explicitly rebased; multi-token policy prose cites `master`
+at the rev above.
+
 ## Delivery integration branches (Steps 14–18)
 
 Branch from upstream `master` in each delivery repo; avoid release-tag baselines and the

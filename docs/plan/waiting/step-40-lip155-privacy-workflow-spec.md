@@ -174,8 +174,8 @@ implementation docs):
 
 Working tip: [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)
 on `docs/payment-streams-private-execution` (ready for review).
-Parallel with [Step 41](step-41-non-native-token-policy-spec.md)
-`#379`; neither blocks the other.
+Parallel with [Step 41](../completed/step-41-non-native-token-policy-spec.md)
+(complete — [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)); neither blocks the other.
 
 | Section | Likely change |
 | --- | --- |
@@ -231,7 +231,7 @@ Human close per D40.5.
 - [step-36-payer-funder-unlinkability.md](../completed/step-36-payer-funder-unlinkability.md)
 - [step-37-payee-receiver-privacy.md](../completed/step-37-payee-receiver-privacy.md)
 - [step-39-testnet-privacy-e2e.md](../completed/step-39-testnet-privacy-e2e.md)
-- [step-41-non-native-token-policy-spec.md](step-41-non-native-token-policy-spec.md)
+- [step-41-non-native-token-policy-spec.md](../completed/step-41-non-native-token-policy-spec.md)
   (parallel LIP track; reconcile branches in D41.2)
 - [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)
 - [feature-branch-pins.md](../../reference/feature-branch-pins.md)

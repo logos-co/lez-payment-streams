@@ -11,9 +11,9 @@ This file is retained as a short redirect.
 | --- | --- |
 | [index.md](index.md) | Program scope, upcoming steps, delivery forks, components, onboarding |
 | [../../AGENTS.md](../../AGENTS.md) | Agent read order |
-| [completed/](completed/) | Normative excerpts (12-16), completed Steps 17-19, 22, 24, 24b, 24c, 26-39 |
+| [completed/](completed/) | Normative excerpts (12-16), completed Steps 17-19, 22, 24, 24b, 24c, 26-41 |
 | [upcoming/](upcoming/) | Steps 42–43 |
-| [waiting/](waiting/) | Waiting on external input — Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)); Step 40 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)); Step 41 ([logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)) |
+| [waiting/](waiting/) | Waiting on external input — Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)); Step 40 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)) |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 21, 23, 25 |
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |

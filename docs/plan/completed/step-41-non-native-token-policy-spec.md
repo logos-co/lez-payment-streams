@@ -1,11 +1,11 @@
 # Step 41 — non-native token support in provider payment policies
 
-Index: [index.md](../index.md). Status: waiting (PR review).
+Index: [index.md](../index.md). Status: **complete** (2026-08).
 
-Blocker: [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)
-on branch `docs/payment-streams-multi-token`.
-Agent LIP edits for F8 are on that tip; step close waits on review and
-publication under D41.4 (U9).
+Deliverable: [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) merged to
+`logos-lips` `master` as `f09f9e9e` (`docs(anoncomms): Non-native token support for
+payment streams`). U9 closed at program-pin bar (D41.4); optional `lip.logos.co`
+follow-up unchanged from Step 19.
 
 Goal: close the Testnet v0.3 incentivisation deliverable
 [Research non-native token support in provider payment policies](https://roadmap.logos.co/anoncomms/roadmap/testnet_v0.3/incentivisation_v0.3)
@@ -100,8 +100,8 @@ The tip under review includes:
 | D41.1 | Packet ownership | Closed — new Step 41; leave Step 19 closed. |
 | D41.2 | Spec target branch | Closed — finish `docs/payment-streams-multi-token` / `#379`; reconcile with Step 40 privacy branch before or after merge. |
 | D41.3 | Native vs `accepted_tokens` shape | Closed — unify; native and non-native minima live in `TokenStreamPolicy` / `accepted_tokens` only. |
-| D41.4 | Publication bar for U9 | Open — leave draft + merge to `master` (or program pin of the published tip); optional `lip.logos.co` follow-up like Step 19. |
-| D41.5 | Integration-repo pin update | Open — required when the multi-token rev is the cited tip; cite in feature-branch-pins. |
+| D41.4 | Publication bar for U9 | Closed — merged to `master` at `f09f9e9e` (#379); optional `lip.logos.co` follow-up like Step 19. |
+| D41.5 | Integration-repo pin update | Closed — cite `f09f9e9e` on `master` for multi-token policy ([feature-branch-pins.md](../../reference/feature-branch-pins.md)). |
 | D41.6 | Implementation follow-up | Optional — later step if product prioritizes guest/module multi-token. |
 | D41.7 | Wrapped-native | Optional — remain in raw TODO until this step or a later step adopts it. |
 
@@ -123,8 +123,8 @@ in the LIP file. Docs review is sufficient (no `make verify-*` gate).
 ## Related
 
 - [step-19-lip155-onchain-spec.md](../completed/step-19-lip155-onchain-spec.md)
-- [step-40-lip155-privacy-workflow-spec.md](step-40-lip155-privacy-workflow-spec.md)
-  (parallel LIP branch; see D41.2)
+- [step-40-lip155-privacy-workflow-spec.md](../waiting/step-40-lip155-privacy-workflow-spec.md)
+  (parallel LIP branch; merged independently)
 - [wrapped-native-token-unification.md](../raw-todos/wrapped-native-token-unification.md)
 - [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)
 - [incentivisation_v0.3](https://roadmap.logos.co/anoncomms/roadmap/testnet_v0.3/incentivisation_v0.3)
