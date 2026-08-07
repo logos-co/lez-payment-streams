@@ -13,7 +13,7 @@ spel-framework = { path = "../vendor/spel-framework" }
 
 [[bin]]
 name = "generate_idl"
-path = "src/bin/generate_idl.rs"
+path = "src/generate_idl.rs"
 
 [[bin]]
 name = "lez_payment_streams_cli"

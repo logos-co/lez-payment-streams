@@ -41,14 +41,14 @@ installed. Path layout: [naming-conventions.md](../docs/reference/naming-convent
 # Module verification — Required, localnet
 MODE=module CHAIN=local ./scripts/e2e.sh local run
 
-# Owner privacy — PseudonymousFunder lifecycle (private owner, public provider)
+# Owner privacy — PseudonymousFunding lifecycle (private owner, public provider)
 MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
 # PRIVACY=1 is still accepted as an alias for OWNER_PRIVACY=1
 
 # Store integration — Required, localnet (MODE=store is default)
 ./scripts/e2e.sh local run
 
-# Store owner privacy — PseudonymousFunder vault (Step 38 Phase A)
+# Store owner privacy — PseudonymousFunding vault (Step 38 Phase A)
 MODE=store CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
 
 # Store provider privacy — private provider claim (Step 38 Phase B)
@@ -88,7 +88,7 @@ rely on the submit acknowledgement. This applies to `MODE=store`
 | --- | --- | --- |
 | `MODE` | `store` | `module` = module verification; `store` = Store integration |
 | `CHAIN` | set by subcommand | `local` or `testnet` |
-| `OWNER_PRIVACY` | `0` | `1` = PseudonymousFunder vault owner (module and Store; Steps 36/38) |
+| `OWNER_PRIVACY` | `0` | `1` = PseudonymousFunding vault owner (module and Store; Steps 36/38) |
 | `PROVIDER_PRIVACY` | `0` | `1` = private provider / shielded claim (module and Store; Steps 37/38) |
 | `PRIVACY` | `0` | Alias for `OWNER_PRIVACY=1` when `OWNER_PRIVACY` is unset |
 | `SKIP_BUILD` | `0` on prepare | Skip `.lgx` build when `1` |

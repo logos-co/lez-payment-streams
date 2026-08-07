@@ -691,7 +691,7 @@ mod pp_program_tests {
                     owner_id,
                     vault_b_id,
                     None,
-                    Some(VaultPrivacyTier::PseudonymousFunder),
+                    Some(VaultPrivacyTier::PseudonymousFunding),
                 ))
                 .unwrap(),
             )

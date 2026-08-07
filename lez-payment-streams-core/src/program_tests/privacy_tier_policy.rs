@@ -1,8 +1,8 @@
-//! Harness-side policy checks for [`crate::VaultPrivacyTier::PseudonymousFunder`] public transitions.
+//! Harness-side policy checks for [`crate::VaultPrivacyTier::PseudonymousFunding`] public transitions.
 //!
 //! These tests deliberately exercise wallet / harness enforcement rather than guest logic.
 //! The guest stores `VaultPrivacyTier` in `VaultConfig`, but shielded-only submission policy for
-//! `PseudonymousFunder` vaults is enforced outside the guest because the guest cannot observe
+//! `PseudonymousFunding` vaults is enforced outside the guest because the guest cannot observe
 //! whether execution was transparent or shielded.
 
 use lee::error::LeeError;
@@ -15,7 +15,7 @@ use crate::Instruction;
 use crate::{
     test_helpers::{
         assert_public_payment_streams_instruction_allowed, create_keypair, derive_stream_pda,
-        force_clock_account_monotonic, state_with_initialized_vault_pseudonymous_funder_preseeded,
+        force_clock_account_monotonic, state_with_initialized_vault_pseudonymous_funding_preseeded,
         state_with_initialized_vault_with_privacy_tier, transfer_native_balance_for_tests,
         transition_public_payment_streams_tx_respecting_privacy_tier,
     },
@@ -25,14 +25,14 @@ use crate::{
 use super::common::{signed_create_stream, DEFAULT_CLOCK_INITIAL_TS, TEST_PUBLIC_TX_TIMESTAMP};
 
 #[test]
-fn harness_public_touch_pseudonymous_funder_vault_fails() {
+fn harness_public_touch_pseudonymous_funding_vault_fails() {
     let fx = state_with_initialized_vault_with_privacy_tier(
         1_000 as lee_core::account::Balance,
-        VaultPrivacyTier::PseudonymousFunder,
+        VaultPrivacyTier::PseudonymousFunding,
     );
     assert_eq!(
         assert_public_payment_streams_instruction_allowed(&fx.state, fx.vault_config_account_id,),
-        Err("public instruction disallowed for PseudonymousFunder vault")
+        Err("public instruction disallowed for PseudonymousFunding vault")
     );
 }
 
@@ -50,7 +50,7 @@ fn harness_public_touch_public_tier_vault_succeeds() {
 }
 
 #[test]
-fn wrapped_public_deposit_before_transition_pseudonymous_funder_fails() {
+fn wrapped_public_deposit_before_transition_pseudonymous_funding_fails() {
     use crate::test_helpers::{
         build_signed_public_tx, transition_public_payment_streams_tx_respecting_privacy_tier,
     };
@@ -59,7 +59,7 @@ fn wrapped_public_deposit_before_transition_pseudonymous_funder_fails() {
 
     let mut fx = state_with_initialized_vault_with_privacy_tier(
         1_000 as lee_core::account::Balance,
-        VaultPrivacyTier::PseudonymousFunder,
+        VaultPrivacyTier::PseudonymousFunding,
     );
     let tx = build_signed_public_tx(
         fx.program_id,
@@ -90,9 +90,9 @@ fn wrapped_public_deposit_before_transition_pseudonymous_funder_fails() {
 }
 
 #[test]
-fn public_create_stream_pseudonymous_funder_vault_fails() {
+fn public_create_stream_pseudonymous_funding_vault_fails() {
     let (_, provider_account_id) = create_keypair(SEED_PROVIDER);
-    let mut fx = state_with_initialized_vault_pseudonymous_funder_preseeded(
+    let mut fx = state_with_initialized_vault_pseudonymous_funding_preseeded(
         2_000 as lee_core::account::Balance,
         &[(provider_account_id, 0 as lee_core::account::Balance)],
     );

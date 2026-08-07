@@ -4855,7 +4855,7 @@ def main() -> int:
                 narrator.phase("Vault Ensure")
                 if owner_privacy_enabled():
                     narrator.step(
-                        "Initializing PseudonymousFunder vault and depositing via chainAction"
+                        "Initializing PseudonymousFunding vault and depositing via chainAction"
                     )
                 else:
                     narrator.step(

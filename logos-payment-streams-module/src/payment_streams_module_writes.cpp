@@ -28,7 +28,7 @@ namespace {
 
 constexpr int kAccountIdHexLen = 64;
 constexpr uint8_t kPrivacyTierPublic = 0;
-constexpr uint8_t kPrivacyTierPseudonymousFunder = 1;
+constexpr uint8_t kPrivacyTierPseudonymousFunding = 1;
 constexpr uint8_t kPrivacyTierReadFromChain = 255;
 constexpr uint32_t kFfiSuccess = 0u;
 // Private submit runs the privacy-preserving prover. Default LogosAPIClient
@@ -312,10 +312,10 @@ bool vaultPrivacyTierForSubmit(LogosExecutionZone& wallet,
                                QString* errorOut) {
     if (initPrivacyTier != kPrivacyTierReadFromChain) {
         *tierOut = initPrivacyTier;
-        if (decodedOut != nullptr && initPrivacyTier == kPrivacyTierPseudonymousFunder) {
+        if (decodedOut != nullptr && initPrivacyTier == kPrivacyTierPseudonymousFunding) {
             std::memset(decodedOut, 0, sizeof(PsFfiDecodedVaultConfig));
             std::memcpy(decodedOut->owner, vaultOwner, 32);
-            decodedOut->privacy_tier = kPrivacyTierPseudonymousFunder;
+            decodedOut->privacy_tier = kPrivacyTierPseudonymousFunding;
             decodedOut->vault_id = vaultId;
         }
         return true;
@@ -375,7 +375,7 @@ QStringList slotResolutionsForSubmit(LogosExecutionZone& wallet,
     for (int i = 0; i < accountHexIds.size(); ++i) {
         const QString& accountHex = accountHexIds.at(i);
         if (walletHoldsPrivateAccount(wallet, accountHex) ||
-            (privacyTier == kPrivacyTierPseudonymousFunder && pfOwnerSlotByLayout(layout, i))) {
+            (privacyTier == kPrivacyTierPseudonymousFunding && pfOwnerSlotByLayout(layout, i))) {
             resolutions.append(QStringLiteral("private"));
         } else if (i < signingFlags.size() && signingFlags.at(i)) {
             resolutions.append(QStringLiteral("public_sign"));
@@ -1042,8 +1042,8 @@ QString PaymentStreamsModuleImpl::initializeVault(const QVariant& signerAccountI
     uint8_t tierByte = kPrivacyTierPublic;
     if (privacyTier.isValid() && !privacyTier.isNull()) {
         const quint64 tierVal = variantToU64(privacyTier, &ok);
-        if (!ok || (tierVal != kPrivacyTierPublic && tierVal != kPrivacyTierPseudonymousFunder)) {
-            return makeErrorJson(QStringLiteral("privacy_tier must be 0 (Public) or 1 (PseudonymousFunder)"));
+        if (!ok || (tierVal != kPrivacyTierPublic && tierVal != kPrivacyTierPseudonymousFunding)) {
+            return makeErrorJson(QStringLiteral("privacy_tier must be 0 (Public) or 1 (PseudonymousFunding)"));
         }
         tierByte = static_cast<uint8_t>(tierVal);
     }

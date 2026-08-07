@@ -41,12 +41,12 @@ fn test_vault_config_roundtrip_serialization_succeeds() {
 }
 
 #[test]
-fn test_vault_config_roundtrip_pseudonymous_funder_tier_succeeds() {
+fn test_vault_config_roundtrip_pseudonymous_funding_tier_succeeds() {
     let vault_config = VaultConfig::new(
         AccountId::new([44; 32]),
         VaultId::from(35u64),
         None::<VersionId>,
-        Some(VaultPrivacyTier::PseudonymousFunder),
+        Some(VaultPrivacyTier::PseudonymousFunding),
     );
     let serialized = borsh::to_vec(&vault_config).unwrap();
     let deserialized = borsh::from_slice::<VaultConfig>(&serialized).unwrap();

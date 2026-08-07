@@ -276,7 +276,7 @@ pub unsafe extern "C" fn payment_streams_ffi_authenticated_transfer_program_id_b
 
 /// Serializes an `initialize_vault` instruction for wallet JSON `instruction` (LE instruction bytes).
 ///
-/// `privacy_tier`: `0` = [`VaultPrivacyTier::Public`], `1` = [`VaultPrivacyTier::PseudonymousFunder`].
+/// `privacy_tier`: `0` = [`VaultPrivacyTier::Public`], `1` = [`VaultPrivacyTier::PseudonymousFunding`].
 /// Any other value yields [`PaymentStreamsFfiStatus::Malformed`].
 ///
 /// # Safety

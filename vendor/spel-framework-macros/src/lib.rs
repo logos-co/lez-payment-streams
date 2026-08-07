@@ -2010,6 +2010,13 @@ fn generate_idl_json(
 
 // ─── generate_idl! macro implementation ──────────────────────────────────
 
+fn canonicalize_path_str(path: &str) -> String {
+    std::path::Path::new(path)
+        .canonicalize()
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| path.to_string())
+}
+
 fn expand_generate_idl(file_path: &str, span_token: &syn::LitStr) -> syn::Result<TokenStream2> {
     // Try the path as-is first, then relative to CARGO_MANIFEST_DIR
     let resolved_path = if std::path::Path::new(file_path).exists() {
@@ -2020,6 +2027,7 @@ fn expand_generate_idl(file_path: &str, span_token: &syn::LitStr) -> syn::Result
     } else {
         file_path.to_string()
     };
+    let resolved_path = canonicalize_path_str(&resolved_path);
 
     // Read the source file
     let content = std::fs::read_to_string(&resolved_path).map_err(|e| {
@@ -2134,6 +2142,7 @@ fn expand_generate_idl(file_path: &str, span_token: &syn::LitStr) -> syn::Result
         .iter()
         .filter_map(|p| p.to_str().map(|s| s.to_string()))
         .map(|path| {
+            let path = canonicalize_path_str(&path);
             let lit = syn::LitStr::new(&path, proc_macro2::Span::call_site());
             quote! { const _: &str = include_str!(#lit); }
         })

@@ -3,7 +3,7 @@
 namespace payment_streams_privacy {
 
 QString depositSignerMismatchMessage() {
-    return QStringLiteral("deposit signer must equal VaultConfig.owner for PseudonymousFunder vaults");
+    return QStringLiteral("deposit signer must equal VaultConfig.owner for PseudonymousFunding vaults");
 }
 
 bool resolutionsContainPrivate(const QStringList& resolutions) {
@@ -21,7 +21,7 @@ VaultSubmitDecision decideVaultSubmitPath(uint8_t privacyTier,
         decision.error = depositSignerMismatchMessage();
         return decision;
     }
-    if (anyPrivateSlot || privacyTier == kTierPseudonymousFunder) {
+    if (anyPrivateSlot || privacyTier == kTierPseudonymousFunding) {
         decision.path = VaultSubmitPath::Private;
         return decision;
     }

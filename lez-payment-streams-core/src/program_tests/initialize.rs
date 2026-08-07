@@ -129,7 +129,7 @@ fn test_initialize_vault_wrong_signer_witness_fails() {
 }
 
 #[test]
-fn test_initialize_vault_pseudonymous_funder_succeeds() {
+fn test_initialize_vault_pseudonymous_funding_succeeds() {
     let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
     let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
     let initial_accounts_data = vec![(owner_account_id, owner_genesis_balance)];
@@ -150,7 +150,7 @@ fn test_initialize_vault_pseudonymous_funder_succeeds() {
 
     let tx = build_signed_public_tx(
         program_id,
-        Instruction::initialize_vault(vault_id, VaultPrivacyTier::PseudonymousFunder),
+        Instruction::initialize_vault(vault_id, VaultPrivacyTier::PseudonymousFunding),
         &account_ids,
         &[Nonce(0)],
         &[&owner_private_key],
@@ -161,7 +161,7 @@ fn test_initialize_vault_pseudonymous_funder_succeeds() {
     let vc =
         borsh::from_slice::<VaultConfig>(&state.get_account_by_id(vault_config_account_id).data)
             .expect("vault config");
-    assert_eq!(vc.privacy_tier, VaultPrivacyTier::PseudonymousFunder);
+    assert_eq!(vc.privacy_tier, VaultPrivacyTier::PseudonymousFunding);
 }
 
 #[cfg(feature = "pp-program-tests")]
@@ -247,7 +247,7 @@ mod pp_program_tests {
             pre_states,
             Program::serialize_instruction(Instruction::initialize_vault(
                 vault_b_id,
-                VaultPrivacyTier::PseudonymousFunder,
+                VaultPrivacyTier::PseudonymousFunding,
             ))
             .expect("initialize_vault instruction serializes"),
             vec![
@@ -290,7 +290,7 @@ mod pp_program_tests {
         assert_eq!(vault_config_after.vault_id, vault_b_id);
         assert_eq!(
             vault_config_after.privacy_tier,
-            VaultPrivacyTier::PseudonymousFunder
+            VaultPrivacyTier::PseudonymousFunding
         );
         assert_eq!(vault_config_after.total_allocated, 0);
         assert_eq!(vault_config_after.next_stream_id, 0);

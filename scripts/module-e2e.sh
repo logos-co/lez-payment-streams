@@ -4,7 +4,7 @@
 # Exercises payment_streams_module chainAction end-to-end through logoscore:
 # vault init, deposit, stream create, optional pause/resume/top-up, accrual,
 # close, then claim residual on the closed stream.
-# OWNER_PRIVACY=1 defaults pause/resume and top-up on (Step 36 PseudonymousFunder).
+# OWNER_PRIVACY=1 defaults pause/resume and top-up on (Step 36 PseudonymousFunding).
 # PROVIDER_PRIVACY=1 enables private provider / shielded claim (Step 37; independent).
 # PRIVACY=1 remains an alias for OWNER_PRIVACY=1.
 # No delivery_module, no Store, no eligibility. This is the module-only cell of
@@ -1139,7 +1139,7 @@ fi
 
 narr_step "Alice creates vault $VAULT_ID"
 if ps_is_owner_privacy_e2e; then
-  call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"privacy_tier\":1}")" "" "Vault $VAULT_ID created on chain (PseudonymousFunder)" verify_vault_init
+  call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"privacy_tier\":1}")" "" "Vault $VAULT_ID created on chain (PseudonymousFunding)" verify_vault_init
 else
   call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID}")" "" "Vault $VAULT_ID created on chain" verify_vault_init
 fi

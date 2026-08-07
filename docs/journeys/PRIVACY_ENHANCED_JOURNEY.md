@@ -3,7 +3,7 @@
 Status: draft — payer section reflects Step 36; payee section reflects Step 37.
 
 This document describes the privacy-enhanced payment-streams flow where the payer
-uses a `PseudonymousFunder` vault and/or the payee claims to a shielded address.
+uses a `PseudonymousFunding` vault and/or the payee claims to a shielded address.
 Owner privacy and provider privacy are independent choices; either may be used
 alone or together. Automated module checks use `OWNER_PRIVACY=1` and
 `PROVIDER_PRIVACY=1` (see [E2E.md](E2E.md)); `PRIVACY=1` is only an alias for
@@ -31,7 +31,7 @@ because `vault_holding` is a public PDA, but the identities are shielded.
 
 | Aspect | Public User Journey | Privacy-enhanced Journey |
 | --- | --- | --- |
-| Vault owner | Public account id | NPK-derived private account id (`PseudonymousFunder`) |
+| Vault owner | Public account id | NPK-derived private account id (`PseudonymousFunding`) |
 | Funding source | Public account | Vault owner private account (same account id) |
 | Submit path | `submitGenericPublic` | `submitGenericPrivate` for all vault-touching operations |
 | Owner signature | `sign_public_payload` (public key) | `sign_private_payload` (private account NSK) |
@@ -82,9 +82,9 @@ Local owner-privacy E2E (`OWNER_PRIVACY=1` / `make verify-module-local-privacy`)
 sets `RISC0_DEV_MODE=1` so private submits use stub receipts. Without it,
 proving can exceed the module IPC timeout even on localnet.
 
-### Step 3 — Initialize a PseudonymousFunder vault
+### Step 3 — Initialize a PseudonymousFunding vault
 
-Create the vault with `privacy_tier = PseudonymousFunder` and the vault owner
+Create the vault with `privacy_tier = PseudonymousFunding` and the vault owner
 set to the NPK-derived account id from Step 1.
 
 Example `chainAction` JSON:
@@ -95,7 +95,7 @@ logoscore call payment_streams_module chainAction initializeVault \
 ```
 
 The `signer` field is the vault owner private account id. The `privacy_tier`
-field is `1` for `PseudonymousFunder` and `0` for `Public`. The field shape is
+field is `1` for `PseudonymousFunding` and `0` for `Public`. The field shape is
 resolved as D36.3: overload the existing `signer` field with the private account
 id.
 
@@ -126,7 +126,7 @@ logoscore call payment_streams_module chainAction createStream \
 ### Step 6 — Lifecycle operations
 
 Pause, resume, and top-up route through `submitGenericPrivate` automatically
-when the vault has `PseudonymousFunder` tier. The `signer` is the vault owner
+when the vault has `PseudonymousFunding` tier. The `signer` is the vault owner
 private account id.
 
 ### Step 7 — Eligibility proof signing

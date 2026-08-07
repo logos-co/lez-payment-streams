@@ -585,7 +585,7 @@ export WALLET_CONFIG="${WALLET_CONFIG:-$(ps_default_wallet_config)}"
 export WALLET_STORAGE="${WALLET_STORAGE:-$(ps_default_wallet_storage)}"
 
 # Privacy profile flags (independent owner vs provider choice).
-# OWNER_PRIVACY=1 — PseudonymousFunder vault owner (Step 36).
+# OWNER_PRIVACY=1 — PseudonymousFunding vault owner (Step 36).
 # PROVIDER_PRIVACY=1 — private provider / shielded claim (Step 37).
 # PRIVACY=1 remains an alias for OWNER_PRIVACY=1.
 ps_normalize_privacy_flags() {

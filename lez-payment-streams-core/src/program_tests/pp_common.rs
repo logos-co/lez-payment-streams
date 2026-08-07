@@ -176,13 +176,13 @@ pub(crate) fn vault_fixture_public_tier_funded_via_deposit() -> VaultFixture {
     fx
 }
 
-/// [`VaultPrivacyTier::PseudonymousFunder`] vault funded via a test-only native transfer: public
+/// [`VaultPrivacyTier::PseudonymousFunding`] vault funded via a test-only native transfer: public
 /// `Deposit` is refused for this tier at the harness, so tests bypass it to reach a funded PP
 /// `withdraw`.
-pub(crate) fn vault_fixture_pseudonymous_funder_funded_via_native_transfer() -> VaultFixture {
+pub(crate) fn vault_fixture_pseudonymous_funding_funded_via_native_transfer() -> VaultFixture {
     let mut fx = state_with_initialized_vault_with_privacy_tier(
         1_000 as Balance,
-        VaultPrivacyTier::PseudonymousFunder,
+        VaultPrivacyTier::PseudonymousFunding,
     );
     transfer_native_balance_for_tests(
         &mut fx.state,
@@ -453,7 +453,7 @@ pub(crate) fn pp_owner_setup() -> PpOwnerSetup {
                 owner_id,
                 vault_b_id,
                 None,
-                Some(VaultPrivacyTier::PseudonymousFunder),
+                Some(VaultPrivacyTier::PseudonymousFunding),
             ))
             .unwrap(),
         )

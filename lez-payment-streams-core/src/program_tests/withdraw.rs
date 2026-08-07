@@ -823,7 +823,7 @@ mod pp_program_tests {
         account_meta, decrypt_account, encapsulate, identity_authorized_update, identity_public,
         identity_unauthorized, owner_vpk, pp3_recipient_npk, pp3_recipient_vpk, pp_owner_setup,
         private_account_id, run_pp_withdraw_to_private_recipient,
-        vault_fixture_pseudonymous_funder_funded_via_native_transfer,
+        vault_fixture_pseudonymous_funding_funded_via_native_transfer,
         vault_fixture_public_tier_funded_via_deposit, OWNER_NSK, PP3_OWNER_FUND_AMOUNT,
         PP3_RECIPIENT_EPK_SCALAR, PP3_SIGNER_EPK_SCALAR, PP3_WITHDRAW_AMOUNT,
     };
@@ -890,7 +890,7 @@ mod pp_program_tests {
         let withdraw_amount = 100 as Balance;
         let block_withdraw = 3 as BlockId;
 
-        let mut fx = vault_fixture_pseudonymous_funder_funded_via_native_transfer();
+        let mut fx = vault_fixture_pseudonymous_funding_funded_via_native_transfer();
         let holding_before = fx
             .state
             .get_account_by_id(fx.vault_holding_account_id)
@@ -916,7 +916,7 @@ mod pp_program_tests {
             &fx.state.get_account_by_id(fx.vault_config_account_id).data,
         )
         .expect("vault");
-        assert_eq!(cfg.privacy_tier, VaultPrivacyTier::PseudonymousFunder);
+        assert_eq!(cfg.privacy_tier, VaultPrivacyTier::PseudonymousFunding);
         assert_eq!(cfg.total_allocated, 0u128);
     }
 

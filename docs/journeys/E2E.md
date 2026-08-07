@@ -96,7 +96,7 @@ MODULE_E2E_TOPUP=1 SKIP_BUILD=1 MODE=module CHAIN=local ./scripts/e2e.sh local r
 
 Optional privacy profile overlay on the User Journey module cell.
 Owner privacy and provider privacy are independent choices; this cell covers
-payer unlinkability only (`PseudonymousFunder` vault, public provider).
+payer unlinkability only (`PseudonymousFunding` vault, public provider).
 
 ```bash
 SKIP_BUILD=1 MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
@@ -132,7 +132,7 @@ SKIP_BUILD=1 MODE=module CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./script
 ## Store × localnet (owner privacy)
 
 Optional privacy profile overlay on the Developer Journey Store cell (Step 38
-Phase A). Private vault owner (`PseudonymousFunder`); public provider.
+Phase A). Private vault owner (`PseudonymousFunding`); public provider.
 
 ```bash
 SKIP_BUILD=1 MODE=store CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
@@ -315,7 +315,7 @@ CLOCK_50 waits + claim). DoD green:
 - `PAYMENT_STREAMS_GUEST_BIN`: Path to compiled guest ELF.
 - `MODE`: `store` (default) or `module` (single-host module E2E only).
 - `CHAIN`: `local` or `testnet`.
-- `OWNER_PRIVACY`: `0` (default) or `1` for PseudonymousFunder vault owner (module and Store).
+- `OWNER_PRIVACY`: `0` (default) or `1` for PseudonymousFunding vault owner (module and Store).
 - `PROVIDER_PRIVACY`: `0` (default) or `1` for private provider claim (module and Store; Step 37/38).
 - `PRIVACY`: alias for `OWNER_PRIVACY=1` when `OWNER_PRIVACY` is unset.
 - `SKIP_BUILD=1`: Skip `.lgx` rebuilds on subsequent runs.

@@ -237,6 +237,24 @@ minimal dynamic-dispatch fallback through `modules().api` (Qt
 `LogosAPIClient`); see the Step 30 findings for the per-method rationale. The
 dynamic-dispatch rationale above is retained as Legacy-specific history.
 
+### D7, Vault privacy tier naming (`PseudonymousFunding`)
+
+Rename the on-chain / IDL variant from `PseudonymousFunder` to `PseudonymousFunding`
+(wire discriminant `1` unchanged; type `VaultPrivacyTier` and `Public` unchanged).
+
+Rationale: the old label implied a Funder protocol role that LIP-155 does not define.
+The tier is a vault property describing pseudonymous funding-path intent
+(private owner account, shielded vault operations, deposit debit rules),
+not user or provider outcome prose.
+LIP-155 goal language stays `user unlinkability` and `provider unlinkability`.
+
+ImageID probe (2026-08): guest rebuild after the rename left ImageID
+`072a26cc9865e95679012e53f2b1861b71f488b5e90da93611459afbc7adcfc7` unchanged;
+no redeploy or gate re-run required for the rename alone.
+
+Historical completed step packets and gate logs keep contemporary `PseudonymousFunder`
+wording as a record of what was verified when they ran.
+
 ### N1, Off-chain canonical-payload signing
 
 Neither `wallet_ffi` nor `logos_execution_zone` currently exposes

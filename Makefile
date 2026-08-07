@@ -75,7 +75,11 @@ build: ## Build the guest binary
 	@ls -la $(PROGRAM_BIN) 2>/dev/null || true
 
 idl: ## Generate IDL JSON from program source
-	cargo run --manifest-path examples/Cargo.toml --bin generate_idl > $(IDL_FILE)
+	@set -euo pipefail; \
+	tmp=$$(mktemp); \
+	trap 'rm -f "$$tmp"' EXIT; \
+	cargo run --manifest-path examples/Cargo.toml --bin generate_idl > "$$tmp"; \
+	mv "$$tmp" $(IDL_FILE)
 	@echo "✅ IDL written to $(IDL_FILE)"
 
 cli: ## Run the IDL-driven CLI (ARGS="...")
@@ -145,7 +149,7 @@ verify-module-local: ## Flow A (module only) local happy path (MODE=module scrip
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
 	MODE=module CHAIN=local ./scripts/e2e.sh local run
 
-verify-module-local-privacy: ## Owner privacy (OWNER_PRIVACY=1) PseudonymousFunder lifecycle on localnet
+verify-module-local-privacy: ## Owner privacy (OWNER_PRIVACY=1) PseudonymousFunding lifecycle on localnet
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
 	MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
 
@@ -161,7 +165,7 @@ verify-store-local: ## Store integration local dual-host E2E (scripts/e2e.sh loc
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
 	MODE=store CHAIN=local ./scripts/e2e.sh local run
 
-verify-store-local-owner-privacy: ## Store local OWNER_PRIVACY=1 (PseudonymousFunder vault, public provider)
+verify-store-local-owner-privacy: ## Store local OWNER_PRIVACY=1 (PseudonymousFunding vault, public provider)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
 	MODE=store CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
 

@@ -27,7 +27,7 @@ once the reviewed tip is the citation rev).
 
 Steps 36–39 productized and verified:
 
-1. Payer funder unlinkability (`PseudonymousFunder` vaults, pre-shield, shielded
+1. Payer funder unlinkability (`PseudonymousFunding` vaults, pre-shield, shielded
    vault and stream operations).
 2. Provider receiving privacy (shielded claims to private receiving accounts).
 
@@ -79,7 +79,7 @@ Candidate content (to refine in the decision log before editing):
 State that payer funder unlinkability and provider receiving privacy are
 independent product choices:
 
-A vault MAY be `Public` or `PseudonymousFunder`.
+A vault MAY be `Public` or `PseudonymousFunding`.
 Independently, a provider MAY use a public or private account identifier as
 `provider_id` (claim destination is that id; see D40.3).
 
@@ -93,7 +93,7 @@ desired:
 
 1. User obtains a shielded balance under the vault-owner identity
    (pre-shield; outside the payment-streams program).
-2. User initializes a `PseudonymousFunder` vault whose owner is that
+2. User initializes a `PseudonymousFunding` vault whose owner is that
    nullifier-derived identity.
 3. All subsequent vault and stream operations that touch that vault run as
    shielded transactions.
@@ -102,7 +102,7 @@ desired:
 
 Retain and, if needed, tighten existing wallet policy:
 
-- Wallets MUST refuse transparent touches of `PseudonymousFunder` vaults.
+- Wallets MUST refuse transparent touches of `PseudonymousFunding` vaults.
 - The guest records the tier and does not enforce execution mode.
 
 ### 3. Provider receiving privacy workflow (payee)

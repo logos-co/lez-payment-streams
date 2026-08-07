@@ -246,13 +246,13 @@ mod tests {
         verify_stream_proposal_vault_proof(&decoded, &owner_account).expect("still verifies");
     }
 
-    /// Step 36 / D36.4: PseudonymousFunder eligibility uses the vault owner NSK as an
+    /// Step 36 / D36.4: PseudonymousFunding eligibility uses the vault owner NSK as an
     /// NSSA `PrivateKey` and puts the NPK in `VaultProof.owner_public_key`. Provider-side
     /// verification is `verify_stream_proposal_vault_signature` (same helper as public vaults).
     /// On-chain vault owner binding uses the NPK-derived private account id, not
     /// `AccountId::from(NPK)`, so this test checks the signature path only.
     #[test]
-    fn pseudonymous_funder_vault_proof_signature_verifies_with_nsk() {
+    fn pseudonymous_funding_vault_proof_signature_verifies_with_nsk() {
         let nullifier_secret_key = PrivateKey::new_os_random();
         let nullifier_public_key =
             *PublicKey::new_from_private_key(&nullifier_secret_key).value();

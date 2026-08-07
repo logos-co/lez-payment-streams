@@ -72,7 +72,7 @@ mod tests {
 
         let samples = vec![
             Instruction::initialize_vault(7, VaultPrivacyTier::Public),
-            Instruction::initialize_vault(8, VaultPrivacyTier::PseudonymousFunder),
+            Instruction::initialize_vault(8, VaultPrivacyTier::PseudonymousFunding),
             Instruction::Deposit {
                 vault_id: 1,
                 amount: 42,

@@ -10,7 +10,7 @@ use crate::{StreamId, VaultId, VersionId};
 
 /// Execution-mode intent stored on [`VaultConfig`], immutable at creation.
 /// The guest stores this field but cannot determine execution mode at runtime;
-/// the wallet enforces shielded-only policy for [`VaultPrivacyTier::PseudonymousFunder`] vaults.
+/// the wallet enforces shielded-only policy for [`VaultPrivacyTier::PseudonymousFunding`] vaults.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
 )]
@@ -19,7 +19,7 @@ use crate::{StreamId, VaultId, VersionId};
 #[repr(u8)]
 pub enum VaultPrivacyTier {
     Public = 0,
-    PseudonymousFunder = 1,
+    PseudonymousFunding = 1,
 }
 
 impl From<VaultPrivacyTier> for u8 {
@@ -34,7 +34,7 @@ impl TryFrom<u8> for VaultPrivacyTier {
     fn try_from(byte: u8) -> Result<Self, Self::Error> {
         match byte {
             0 => Ok(Self::Public),
-            1 => Ok(Self::PseudonymousFunder),
+            1 => Ok(Self::PseudonymousFunding),
             _ => Err("unknown vault privacy tier"),
         }
     }

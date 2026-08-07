@@ -322,16 +322,16 @@ pub(crate) fn state_with_initialized_vault_with_privacy_tier(
     )
 }
 
-/// [`VaultPrivacyTier::PseudonymousFunder`] vault with extra genesis rows (for example a stream
+/// [`VaultPrivacyTier::PseudonymousFunding`] vault with extra genesis rows (for example a stream
 /// provider at balance zero).
-pub(crate) fn state_with_initialized_vault_pseudonymous_funder_preseeded(
+pub(crate) fn state_with_initialized_vault_pseudonymous_funding_preseeded(
     owner_balance: Balance,
     extra_genesis_accounts: &[(AccountId, Balance)],
 ) -> VaultFixture {
     state_with_initialized_vault_with_preseeded_genesis_accounts_and_privacy(
         owner_balance,
         extra_genesis_accounts,
-        VaultPrivacyTier::PseudonymousFunder,
+        VaultPrivacyTier::PseudonymousFunding,
     )
 }
 
@@ -386,7 +386,7 @@ fn state_with_initialized_vault_with_preseeded_genesis_accounts_and_privacy(
 }
 
 /// Host or harness policy helper: refuse public payment-stream transitions that touch a vault
-/// configured as [`VaultPrivacyTier::PseudonymousFunder`].
+/// configured as [`VaultPrivacyTier::PseudonymousFunding`].
 ///
 /// The guest does not enforce this; wallets or tests call this before
 /// [`V03State::transition_from_public_transaction`].
@@ -397,14 +397,14 @@ pub(crate) fn assert_public_payment_streams_instruction_allowed(
     let acc = state.get_account_by_id(vault_config_account_id);
     let cfg = borsh::from_slice::<VaultConfig>(acc.data.as_ref())
         .map_err(|_| "invalid vault config bytes")?;
-    if cfg.privacy_tier == VaultPrivacyTier::PseudonymousFunder {
-        return Err("public instruction disallowed for PseudonymousFunder vault");
+    if cfg.privacy_tier == VaultPrivacyTier::PseudonymousFunding {
+        return Err("public instruction disallowed for PseudonymousFunding vault");
     }
     Ok(())
 }
 
 /// Like [`V03State::transition_from_public_transaction`], but refuses first when the touched vault
-/// is [`VaultPrivacyTier::PseudonymousFunder`] (harness or product policy, not guest-enforced).
+/// is [`VaultPrivacyTier::PseudonymousFunding`] (harness or product policy, not guest-enforced).
 pub(crate) fn transition_public_payment_streams_tx_respecting_privacy_tier(
     state: &mut V03State,
     vault_config_account_id: AccountId,
@@ -418,7 +418,7 @@ pub(crate) fn transition_public_payment_streams_tx_respecting_privacy_tier(
 }
 
 /// Test-only native transfer from `owner_id` to `vault_holding_id` without a `Deposit`
-/// instruction. Used when public `Deposit` is blocked for [`VaultPrivacyTier::PseudonymousFunder`]
+/// instruction. Used when public `Deposit` is blocked for [`VaultPrivacyTier::PseudonymousFunding`]
 /// but a PP `withdraw` test still needs funded vault holding liquidity.
 pub(crate) fn transfer_native_balance_for_tests(
     state: &mut V03State,

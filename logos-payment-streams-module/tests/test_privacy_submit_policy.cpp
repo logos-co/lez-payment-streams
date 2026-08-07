@@ -6,7 +6,7 @@
 
 using payment_streams_privacy::decideVaultSubmitPath;
 using payment_streams_privacy::depositSignerMismatchMessage;
-using payment_streams_privacy::kTierPseudonymousFunder;
+using payment_streams_privacy::kTierPseudonymousFunding;
 using payment_streams_privacy::kTierPublic;
 using payment_streams_privacy::providerBase58ForPeer;
 using payment_streams_privacy::providerIdHexFromMappedBase58;
@@ -24,8 +24,8 @@ static const QString kPrivateProviderB58 = QStringLiteral("PrivProvAccountBase58
 static const QString kProviderHex = QStringLiteral(
     "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
 
-LOGOS_TEST(pseudonymous_funder_routes_to_private_submit) {
-    const auto d = decideVaultSubmitPath(kTierPseudonymousFunder, false, false, kOwnerHex, kOwnerHex);
+LOGOS_TEST(pseudonymous_funding_routes_to_private_submit) {
+    const auto d = decideVaultSubmitPath(kTierPseudonymousFunding, false, false, kOwnerHex, kOwnerHex);
     LOGOS_ASSERT_TRUE(d.ok);
     LOGOS_ASSERT_EQ(static_cast<int>(d.path), static_cast<int>(VaultSubmitPath::Private));
 }
@@ -49,25 +49,25 @@ LOGOS_TEST(public_slots_without_private_stay_on_public_submit) {
     LOGOS_ASSERT_EQ(static_cast<int>(d.path), static_cast<int>(VaultSubmitPath::Public));
 }
 
-LOGOS_TEST(pseudonymous_funder_never_selects_public_submit) {
-    const auto matched = decideVaultSubmitPath(kTierPseudonymousFunder, true, true, kOwnerHex, kOwnerHex);
+LOGOS_TEST(pseudonymous_funding_never_selects_public_submit) {
+    const auto matched = decideVaultSubmitPath(kTierPseudonymousFunding, true, true, kOwnerHex, kOwnerHex);
     LOGOS_ASSERT_TRUE(matched.ok);
     LOGOS_ASSERT_TRUE(matched.path != VaultSubmitPath::Public);
 
     const auto noPrivateSlots =
-        decideVaultSubmitPath(kTierPseudonymousFunder, false, false, kOtherHex, kOwnerHex);
+        decideVaultSubmitPath(kTierPseudonymousFunding, false, false, kOtherHex, kOwnerHex);
     LOGOS_ASSERT_TRUE(noPrivateSlots.ok);
     LOGOS_ASSERT_TRUE(noPrivateSlots.path != VaultSubmitPath::Public);
 }
 
 LOGOS_TEST(deposit_signer_mismatch_is_rejected) {
-    const auto d = decideVaultSubmitPath(kTierPseudonymousFunder, true, true, kOtherHex, kOwnerHex);
+    const auto d = decideVaultSubmitPath(kTierPseudonymousFunding, true, true, kOtherHex, kOwnerHex);
     LOGOS_ASSERT_FALSE(d.ok);
     LOGOS_ASSERT_EQ(d.error, depositSignerMismatchMessage());
 }
 
 LOGOS_TEST(deposit_signer_match_allows_private_submit) {
-    const auto d = decideVaultSubmitPath(kTierPseudonymousFunder, true, true, kOwnerHex, kOwnerHex);
+    const auto d = decideVaultSubmitPath(kTierPseudonymousFunding, true, true, kOwnerHex, kOwnerHex);
     LOGOS_ASSERT_TRUE(d.ok);
     LOGOS_ASSERT_EQ(static_cast<int>(d.path), static_cast<int>(VaultSubmitPath::Private));
 }
