@@ -10,4 +10,5 @@ Short write-ups for ideas that are not yet full plan steps. Agents may promote i
 | [rebase-eligibility-fork-onto-delivery-module-master.md](rebase-eligibility-fork-onto-delivery-module-master.md) | Rebase eligibility fork when needing other `master` changes (not PR #76 alone) |
 | [upgrade-interactive-wallet-to-lez-pin.md](upgrade-interactive-wallet-to-lez-pin.md) | Align default `wallet` on PATH with scaffold LEZ pin (deferred past Step 39) |
 | [upstream-wallet-and-patch-inventory.md](upstream-wallet-and-patch-inventory.md) | Reduce patched wallet use; inventory for upstream maintainers |
+| [upstream-spel-generate-idl-canonical-paths.md](upstream-spel-generate-idl-canonical-paths.md) | Upstream PR for `generate_idl!` absolute `include_str!` paths; drop vendor patch |
 | [wrapped-native-token-unification.md](wrapped-native-token-unification.md) | Optional WETH-style wrap so streams use Token path only |
