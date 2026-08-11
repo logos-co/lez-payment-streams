@@ -870,7 +870,8 @@ if ps_is_local; then
       owner_target=$((DEPOSIT + 50))
       owner_attempts=0
       owner_max=$((owner_target / 150 + 3))
-      owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null || echo 0)"
+      owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null | tr -d '[:space:]' || true)"
+      owner_bal="${owner_bal:-0}"
       while (( owner_bal < owner_target )); do
         owner_attempts=$((owner_attempts + 1))
         if (( owner_attempts > owner_max )); then
@@ -879,7 +880,8 @@ if ps_is_local; then
         fi
         timeout 30 lgs wallet topup --address "Public/$OWNER" >/dev/null 2>&1 || true
         sync_wallet
-        owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null || echo 0)"
+        owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null | tr -d '[:space:]' || true)"
+        owner_bal="${owner_bal:-0}"
       done
       narr_verbose "Owner balance $owner_bal (target $owner_target) after $owner_attempts faucet claim(s)"
       # D37.11: public provider needs gas; private provider gets dust shield (no Public pinata).
@@ -1096,6 +1098,12 @@ verify_close_stream() {
   [[ "${st:-}" == "2" ]]   # Closed
 }
 
+verify_withdraw() {
+  local bal
+  read -r bal _ <<< "$(read_vault "$OWNER" "$VAULT_ID")"
+  [[ -n "${bal:-}" && -n "${PRE_WITHDRAW_VAULT_BAL:-}" && "$bal" -le $((PRE_WITHDRAW_VAULT_BAL - WITHDRAW_AMOUNT)) ]]
+}
+
 # Claim credits the provider. Public provider: getAccount balance rises.
 # Private provider (PROVIDER_PRIVACY=1): destination is shielded; confirm the
 # public vault_holding drop instead (D37.9 / amount-visible constraint).
@@ -1308,8 +1316,13 @@ if [[ "$MODULE_E2E_SKIP_CLOSE" == "1" ]]; then
 else
   if [[ "$MODULE_E2E_WITHDRAW" == "1" ]]; then
     narr_phase "Withdraw"
-    narr_step "Alice withdraws ${WITHDRAW_AMOUNT} token(s) from vault $VAULT_ID"
-    call_ps withdraw 1 withdraw "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$WITHDRAW_AMOUNT,\"amount_hi\":0,\"withdraw_to\":\"$OWNER\"}")" "" "Withdraw transaction included on chain"
+    # withdraw_to must differ from owner: LEZ rejects duplicate account ids in one ix.
+    narr_step "Alice withdraws ${WITHDRAW_AMOUNT} token(s) from vault $VAULT_ID to provider"
+    PRE_WITHDRAW_VAULT_BAL=""
+    if PRE_WD="$(poll_read read_vault "$OWNER" "$VAULT_ID")"; then
+      read -r PRE_WITHDRAW_VAULT_BAL _ <<< "$PRE_WD"
+    fi
+    call_ps withdraw 1 withdraw "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$WITHDRAW_AMOUNT,\"amount_hi\":0,\"withdraw_to\":\"$PROVIDER\"}")" "" "Withdraw transaction included on chain" verify_withdraw
   fi
 
   narr_phase "Close"

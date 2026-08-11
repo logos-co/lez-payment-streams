@@ -19,14 +19,24 @@ Feature branch: `feat/step-47-unify-role-terminology`.
 
 ## Required rename smoke (D47.9)
 
-Flags (fresh build; `SKIP_BUILD` unset):
+Flags (fresh build; `SKIP_BUILD` unset for the rebuild/install leg that
+produced the `.lgx` under test; subsequent script-only re-runs used the same
+install):
 
 ```bash
 MODE=module CHAIN=local \
   MODULE_E2E_TOPUP=1 MODULE_E2E_PAUSE_RESUME=1 \
   MODULE_E2E_WITHDRAW=1 CLOSE_ROLE=provider \
   ./scripts/e2e.sh local run
+# or: ./scripts/module-e2e.sh with the same env
 ```
 
 Pre–Step 44: `CLOSE_ROLE=provider` exercises the six-slot close with the
 renamed `provider` JSON key. Owner-only omit-`provider` waits on dual-close.
+
+Result (2026-08-11 local): green — artifact
+`.scaffold/e2e/artifacts/module-e2e-20260811T204348.log`.
+All rename sites hit: `owner` writes (init/deposit/create/pause/resume/topUp),
+`withdraw` (`owner` + distinct `withdraw_to` — same-id `withdraw_to` duplicates
+LEZ account slots), `closeStream` with `provider`, claim unchanged.
+`make check-terminology` / `./scripts/check-terminology.sh` pass.
