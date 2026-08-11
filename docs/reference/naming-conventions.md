@@ -2,6 +2,34 @@
 
 Use this vocabulary consistently in product docs and runbooks.
 
+## Role layers (LIP-155 / module)
+
+Do not collapse service, chain, submitter, and funding into one word.
+Formerly `payer` / `payee` (journey slang) map as below; do not use them on
+living surfaces (see Step 47).
+
+| Layer | Terms | Use for |
+| --- | --- | --- |
+| Service / protocol (LIP Roles, Store hosts) | `user`, `provider` | Who requests service vs who delivers. `provider` is the same party as the chain-layer provider (cross-layer term). |
+| On-chain identity (guest, module JSON, manifests) | `owner`, `provider` | `VaultConfig.owner`, `StreamConfig.provider` / claim account. |
+| Tx submitter (derived) | `submitter` | Who signs/submits this tx. Not a module JSON key. Precedence for close/claim: `provider` > `owner`. Owner writes (`createStream`, …) keep owner as submitter even when `provider` appears as instruction data. |
+| Privacy funding (ops only) | `funder` / `PUBLIC_FUNDER` | Public account that shields into a private owner — not the vault owner. |
+| Informal (retired) | `payer`, `payee` | Historical journey slang only. |
+
+Module `chainAction` JSON (writes + close): vault owner id is `owner`; stream
+provider id is `provider` (close). Store verify peer param is `userPeerId`
+(symmetry with `providerPeerId`). LEZ `#[account(signer)]` / IDL `"signer":
+true` means must-sign only — not the vault owner id.
+
+Account-id write params accept base58 or 64-hex via one helper (fixed order):
+
+1. Trimmed input exactly 64 hex characters (`[0-9a-fA-F]{64}`) → decode hex to 32 bytes.
+2. Else → decode as base58; require decoded length 32.
+3. Otherwise → error.
+
+Inventory (not renamed): localnet fixture state still keys `SIGNER_ID`; scripts
+alias it to local `OWNER` at the state-file boundary.
+
 ## External product names
 
 | Term | Meaning |
