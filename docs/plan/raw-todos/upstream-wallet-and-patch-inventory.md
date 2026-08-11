@@ -1,3 +1,5 @@
+Promoted to a plan step — see [raw-todos README](README.md).
+
 # Raw TODO — upstream alignment and patch inventory
 
 Ideas not yet scheduled as a plan step. Index: [../index.md](../index.md).

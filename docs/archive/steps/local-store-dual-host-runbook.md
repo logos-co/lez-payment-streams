@@ -113,7 +113,7 @@ integration ([N18](reference/integration-decisions.md#n18-integration-demo-vs-pa
 Payment-streams-only Basecamp UI is the User Journey UI (wontfix Step 21), not described here. CLI-based User Journey (Step 22) is separate.
 Policy: [N17](reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06).
 Step 20 Developer Journey adds a step-by-step command path equivalent to the script; see
-[step-20-developer-journey.md](../../plan/waiting/step-20-developer-journey.md).
+[step-20-developer-journey.md](../../plan/upcoming/step-20-developer-journey.md).
 Optional probe: [`scripts/e2e/debug_happy_path.py`](../scripts/e2e/debug_happy_path.py).
 
 ## Hermetic run (hand-off)

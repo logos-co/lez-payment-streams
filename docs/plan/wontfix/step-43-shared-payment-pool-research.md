@@ -1,6 +1,7 @@
 # Step 43 — shared payment pool model for multiple service providers
 
-Index: [index.md](../index.md). Status: **upcoming** (research / spec only).
+Index: [index.md](../index.md). Status: **wontfix** (not near-term;
+research / spec only; may return to `upcoming/`).
 
 Goal: close the Testnet v0.3 incentivisation deliverable
 [Research a shared payment pool model for multiple service providers](https://roadmap.logos.co/anoncomms/roadmap/testnet_v0.3/incentivisation_v0.3)

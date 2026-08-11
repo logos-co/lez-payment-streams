@@ -1,6 +1,6 @@
 # Step 21 — plan excerpt
 
-Wontfix — not planned near-term; may move back to `upcoming/` if resurrected.
+Upcoming — resurrected from wontfix; payment streams Basecamp UI.
 Index: [index.md](../index.md).
 
 Originally an optional stretch after Step 20 — not required for integration milestone closure.

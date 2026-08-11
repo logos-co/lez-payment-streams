@@ -1,7 +1,7 @@
 # Step 42 — service discovery integration for provider payment policy advertisement
 
-Index: [index.md](../index.md). Status: **upcoming** (research / spec;
-Discovery-track support required).
+Index: [index.md](../index.md). Status: **wontfix** (not near-term;
+research / spec; Discovery-track support required; may return to `upcoming/`).
 
 Goal: close the Testnet v0.3 incentivisation deliverable
 [Research service discovery integration for provider payment policy advertisement](https://roadmap.logos.co/anoncomms/roadmap/testnet_v0.3/incentivisation_v0.3)

@@ -730,21 +730,23 @@ Dual-host paid Store demo coordination stays on the **host**, not in a Logos mod
 - **Step 20 developer journey:** document (1) one-script E2E, (2) equivalent step-by-step
   `logoscore call` sequences per host for the same scenario. This is the **Delivery + Store
   eligibility integration** track only ([N18](#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
-- **Step 21 (wontfix UI), Step 22 (complete doc):** payment streams protocol — User Journey CLI
+- **Step 21 (upcoming UI), Step 22 (complete doc):** payment streams protocol — User Journey CLI
   doc packet ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)), Basecamp UI
-  deferred — not Store integration; see
+  upcoming — not Store integration; see
   [N18](#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06). No demo coordinator module.
 
 ### N18, Integration demo vs payment streams UI tracks (2026-06)
 
 Two documentation/demonstration tracks; do not merge them in copy or scope.
 
-**Developer Journey — Step 20 (waiting)**
+**Developer Journey — Step 20 (upcoming)**
 
 - **Story:** LIP-155 eligibility proofs used with **Logos Delivery Store** (one application of
   payment streams). Testing payment streams as an eligibility mechanism with Store queries.
 - **Packet:** [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)
-  ([waiting packet](../plan/waiting/step-20-developer-journey.md)).
+  ([upcoming packet](../plan/upcoming/step-20-developer-journey.md)).
+  Forum progress report (plain English both tracks + command spoiler) is
+  [Step 46](../plan/upcoming/step-46-forum-post-user-journey.md).
 - **Mechanism:** external script orchestration ([N17](#n17-demo-orchestration-stays-external-script-2026-06));
   dual local `logoscore` hosts; `payment_streams_module` + `delivery_module` +
   `logos_execution_zone`.
@@ -770,21 +772,21 @@ Two documentation/demonstration tracks; do not merge them in copy or scope.
   can claim.
 - **Audience:** end users exploring payment streams via CLI; cross-link Step 20 (Developer
   Journey) for Store integration, do not duplicate it.
-- **Future enhancement:** if Step 21 (Basecamp UI, currently wontfix) is resurrected, the
+- **Future enhancement:** if Step 21 (Basecamp UI, currently upcoming) ships, the
   journey may be updated with UI screenshots and Basecamp-specific paths. Additive — the CLI
   journey remains valid.
 
-**User Journey UI — Step 21 (wontfix)**
+**User Journey UI — Step 21 (upcoming)**
 
 - **Story:** Same as User Journey (payment streams protocol only), but delivered as a Basecamp
   `ui_qml` plugin for GUI users.
-- **Status:** [wontfix packet](../plan/wontfix/step-21-basecamp-ui.md) — not near-term;
-  may move to `upcoming/` if resurrected.
+- **Status:** [upcoming packet](../plan/upcoming/step-21-basecamp-ui.md) — resurrected from
+  wontfix.
 - **Mechanism:** Thin UI over `payment_streams_module` (+ wallet). Single-host; out-of-band
   counterparty coordination.
 - **Payer side:** same flows as User Journey, but via buttons/forms in Basecamp.
 - **Audience:** end users who prefer GUI over CLI.
-- **Relationship to Step 22:** Step 21 is independent. If resurrected, Step 22 may be
+- **Relationship to Step 22:** Step 21 is independent. When Step 21 ships, Step 22 may be
   updated to include UI content, but Step 22 does not require Step 21.
 
 ### N16, Step 18b rc5 operational pin (2026-06) — superseded by Step 26 v0.2.0 pin

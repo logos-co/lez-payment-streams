@@ -12,10 +12,12 @@ LEZ state before serving. Rust/FFI holds policy; `payment_streams_module` orches
 delivery forks add wire fields and hooks.
 
 Universal payment protocol vs Store integration use case. Developer Journey (Store integration)
-is waiting on [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369).
+is upcoming ([Step 20](docs/plan/upcoming/step-20-developer-journey.md);
+[logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)).
 User Journey (CLI / module, protocol-only, not Store) is complete
 ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)).
-User Journey UI (Step 21) and public hosted Store (Step 23) are wontfix.
+Forum progress report: [Step 46](docs/plan/upcoming/step-46-forum-post-user-journey.md).
+User Journey UI (Step 21) is upcoming; public hosted Store (Step 23) is wontfix.
 
 Program index: [docs/plan/index.md](docs/plan/index.md).
 Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conventions.md).
@@ -24,8 +26,8 @@ Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conven
 
 ### Documentation and integration
 
-Developer Journey — Store integration (waiting):
-[Step 20](docs/plan/waiting/step-20-developer-journey.md);
+Developer Journey — Store integration (upcoming):
+[Step 20](docs/plan/upcoming/step-20-developer-journey.md);
 [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369).
 In-repo SSOT draft: [docs/store-integration/README.md](docs/store-integration/README.md).
 Developer Journey generalization (protocol-agnostic eligibility guide):
@@ -37,8 +39,13 @@ User Journey (complete — CLI / module, not Store):
 [Step 34](docs/plan/completed/step-34-user-journey-manual-walkthrough.md) (in-repo walkthrough);
 [Step 28](docs/plan/completed/step-28-user-journey-testnet.md) (module×testnet E2E).
 In-repo SSOT: [docs/journeys/USER_JOURNEY.md](docs/journeys/USER_JOURNEY.md).
-Wontfix: [Step 21](docs/plan/wontfix/step-21-basecamp-ui.md) (Basecamp UI),
-[Step 23](docs/plan/wontfix/step-23-public-store-provider.md) (public Store provider),
+Upcoming: [Step 20](docs/plan/upcoming/step-20-developer-journey.md) (Developer Journey Store publish),
+[Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
+[Step 44](docs/plan/upcoming/step-44-payer-and-payee-close.md) (payer and payee close),
+[Step 45](docs/plan/upcoming/step-45-dependencies-and-patches.md) (deps and patches),
+[Step 46](docs/plan/upcoming/step-46-forum-post-user-journey.md) (forum progress report),
+[Step 47](docs/plan/upcoming/step-47-unify-role-terminology.md) (role terminology: module, journey, policy, layouts).
+Wontfix: [Step 23](docs/plan/wontfix/step-23-public-store-provider.md) (public Store provider),
 [Step 25](docs/plan/wontfix/step-25-demo-coordination-module.md) (demo coordinator).
 Raw TODOs (unscheduled ideas): [docs/plan/raw-todos/](docs/plan/raw-todos/).
 
@@ -69,22 +76,25 @@ Gate log: [step-39-testnet-gate-log.md](docs/plan/completed/step-39-testnet-gate
 `E2E_CLAIM_OPTIONAL=0`). Do not reopen Phase 1–3 greens (D39.23). CPU prove is
 valid without NVIDIA (D39.26).
 
-Waiting (docs): [Step 40](docs/plan/waiting/step-40-lip155-privacy-workflow-spec.md) —
-reflect privacy-preserving payer and provider workflows in LIP-155;
-waiting review on [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397).
+Complete (docs): [Step 40](docs/plan/completed/step-40-lip155-privacy-workflow-spec.md) —
+privacy-preserving payer and provider workflows in LIP-155
+([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`).
 
 ### Testnet v0.3 incentivisation research (Steps 41-43)
 
 Roadmap: [incentivisation_v0.3](https://roadmap.logos.co/anoncomms/roadmap/testnet_v0.3/incentivisation_v0.3).
 Client/provider shielding map to Steps 36–40.
+Step 40 complete (privacy workflow on LIP-155):
+[step-40-lip155-privacy-workflow-spec.md](docs/plan/completed/step-40-lip155-privacy-workflow-spec.md)
+([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`).
 Step 41 complete (multi-token provider policy on LIP-155, F8/U9):
 [step-41-non-native-token-policy-spec.md](docs/plan/completed/step-41-non-native-token-policy-spec.md)
 ([logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`).
-Remaining research/spec packets:
+Research/spec packets moved to wontfix:
 
-- [Step 42](docs/plan/upcoming/step-42-discovery-payment-policy-advertisement.md) —
+- [Step 42](docs/plan/wontfix/step-42-discovery-payment-policy-advertisement.md) —
   discovery + payment policy advertisement (F6, F7, U8); Discovery support.
-- [Step 43](docs/plan/upcoming/step-43-shared-payment-pool-research.md) —
+- [Step 43](docs/plan/wontfix/step-43-shared-payment-pool-research.md) —
   shared payment pool investigation (F9–F11, U10).
 
 ## Verification
@@ -103,7 +113,7 @@ Maintainer lifecycle regression: `make verify-store-local-lifecycle` /
 | Verify | verification-matrix → scripts/README |
 | Store wire | integration-contracts → integration-decisions D1/D2 |
 | Localnet failure | archive/operator/localnet-recovery.md |
-| Developer journey | waiting/step-20 packet + store-integration README; logos-docs#369 |
+| Developer journey | upcoming/step-20 packet + store-integration README; logos-docs#369 |
 | Rust / guest | docs/on-chain/README.md |
 
 ## Always-on references

@@ -13,9 +13,9 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41) |
-| [upcoming/](upcoming/) | Steps 42–43 |
-| [waiting/](waiting/) | Waiting on external input — Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)); Step 40 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)) |
-| [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 21, 23, 25 |
+| [upcoming/](upcoming/) | Steps 20–21, 44–47 |
+| [waiting/](waiting/) | (empty) |
+| [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 23, 25, 42, 43 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |
@@ -24,14 +24,18 @@ Journeys ([N18](../reference/integration-decisions.md#n18-integration-demo-vs-pa
 
 | Journey | Status | Steps / links |
 | --- | --- | --- |
-| Developer Journey (Store integration) | Waiting | Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) + Step 17 scripts |
+| Developer Journey (Store integration) | Upcoming | Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) + Step 17 scripts |
 | Developer Journey generalization | Complete | Step 35 |
 | User Journey (CLI / module) | Complete | [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370); Steps 22, 28, 34; [USER_JOURNEY.md](../journeys/USER_JOURNEY.md) |
-| User Journey UI (Basecamp) | Wontfix | Step 21 |
+| User Journey UI (Basecamp) | Upcoming | Step 21 |
+| Forum progress report | Upcoming | Step 46 |
 
-Engineering: Steps 26–33 complete; Steps 36–39 complete; Step 41 complete;
-Step 40 waiting (PR review on [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397));
-Steps 42–43 upcoming (Testnet v0.3 incentivisation research / spec).
+Engineering: Steps 26–33 complete; Steps 36–41 complete
+([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
+[logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
+Steps 20–21, 44–47 upcoming (Developer Journey publish; Basecamp UI; payer/payee close;
+deps/patches; forum progress report; module JSON terminology).
+Steps 42–43 wontfix (Testnet v0.3 incentivisation research / spec).
 Public hosted Store provider: Step 23 (wontfix).
 
 ## Program scope
@@ -53,11 +57,11 @@ paid Store mode on the provider.
 | --- | --- |
 | Runnable integration demo (CLI, Store + eligibility) | 17 (local LEZ), 18 (testnet, historical) |
 | LIP-155 on-chain spec (branch pin) | 19 (complete) |
-| Developer Journey: integrators, Store integration ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) | 20 (waiting) |
+| Developer Journey: integrators, Store integration ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) | 20 (upcoming) |
 | Developer Journey: protocol-agnostic eligibility guide | 35 (complete) |
 | User Journey: CLI doc packet ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)) | 22 (complete) |
 | User Journey: testnet manual walkthrough | 34 (complete) |
-| User Journey UI: Basecamp plugin | 21 (wontfix) |
+| User Journey UI: Basecamp plugin | 21 (upcoming) |
 | Public hosted Store provider | 23 (wontfix) |
 | LEZ in-process harness (`program_tests`, rc5 `lee`) | 24 + 24b (complete) |
 | Deterministic demo lifecycle | 24c (complete) |
@@ -73,18 +77,22 @@ paid Store mode on the provider.
 | Payee receiver privacy via LEZ private execution | 37 (complete) |
 | Store E2E privacy profiles (full privacy mode) | 38 (complete) |
 | Testnet privacy E2E after native guest deploy | 39 (complete) |
-| LIP-155 privacy-preserving workflow in the specification | 40 (waiting; [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)) |
+| LIP-155 privacy-preserving workflow in the specification | 40 (complete; [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`) |
 | Non-native token support in provider payment policies (F8, U9) | 41 (complete; [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`) |
-| Discovery + payment policy advertisement (F6, F7, U8) | 42 (upcoming; Discovery support) |
-| Shared payment pool model research (F9–F11, U10) | 43 (upcoming) |
+| Discovery + payment policy advertisement (F6, F7, U8) | 42 (wontfix; Discovery support) |
+| Shared payment pool model research (F9–F11, U10) | 43 (wontfix) |
+| E2E payer-close and payee-close | 44 (upcoming) |
+| Revisit dependencies and patches | 45 (upcoming) |
+| Forum progress report (plain English + command spoiler) | 46 (upcoming) |
+| Unify module JSON terminology (`owner` / `provider`) | 47 (upcoming) |
 
 Step 25 (in-process demo coordinator module) is wontfix
 ([packet](wontfix/step-25-demo-coordination-module.md)).
 
 Testnet v0.3 incentivisation roadmap:
 [incentivisation_v0.3](https://roadmap.logos.co/anoncomms/roadmap/testnet_v0.3/incentivisation_v0.3).
-Client and provider shielding map to Steps 36–40; remaining research
-deliverables are Steps 42–43.
+Client and provider shielding map to Steps 36–40; Steps 42–43 research
+packets are wontfix for now.
 
 ### Store query dependency
 
@@ -114,6 +122,7 @@ Dual-host demo coordination stays in host scripts
 | 37 | Payee receiver privacy via LEZ private execution | [step-37-payee-receiver-privacy.md](completed/step-37-payee-receiver-privacy.md) |
 | 38 | Store E2E privacy profiles (full privacy mode) | [step-38-store-privacy-e2e.md](completed/step-38-store-privacy-e2e.md) |
 | 39 | Testnet privacy E2E after native guest deploy | [step-39-testnet-privacy-e2e.md](completed/step-39-testnet-privacy-e2e.md) |
+| 40 | LIP-155 privacy-preserving workflow in the specification | [step-40-lip155-privacy-workflow-spec.md](completed/step-40-lip155-privacy-workflow-spec.md) |
 | 41 | Non-native token provider payment policies (F8, U9) | [step-41-non-native-token-policy-spec.md](completed/step-41-non-native-token-policy-spec.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
@@ -124,17 +133,16 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 
 | Step | Focus | Status |
 | --- | --- | --- |
-| 42 | Discovery + payment policy advertisement | Upcoming — research/spec; Discovery support (F6, F7, U8) -- [step-42-discovery-payment-policy-advertisement.md](upcoming/step-42-discovery-payment-policy-advertisement.md) |
-| 43 | Shared payment pool model research | Upcoming — research/spec only (F9–F11, U10) -- [step-43-shared-payment-pool-research.md](upcoming/step-43-shared-payment-pool-research.md) |
+| 20 | Developer Journey: Store integration | Upcoming — Store publish track; [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369) — [step-20-developer-journey.md](upcoming/step-20-developer-journey.md) |
+| 21 | User Journey: Basecamp UI plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
+| 44 | E2E closeStream payer and payee close | Upcoming — [step-44-payer-and-payee-close.md](upcoming/step-44-payer-and-payee-close.md) |
+| 45 | Revisit dependencies and patches | Upcoming — [step-45-dependencies-and-patches.md](upcoming/step-45-dependencies-and-patches.md) |
+| 46 | Forum progress report | Upcoming — [step-46-forum-post-user-journey.md](upcoming/step-46-forum-post-user-journey.md) |
+| 47 | Unify role terminology (module, journey, policy, layouts) | Upcoming — [step-47-unify-role-terminology.md](upcoming/step-47-unify-role-terminology.md) |
 
 ## Waiting steps
 
-Blocked on external input. Resume when the blocker clears (then keep in `waiting/` or move to `upcoming/` / `completed/` as appropriate).
-
-| Step | Focus | Blocker |
-| --- | --- | --- |
-| 20 | Developer Journey: Store integration | [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369) — [step-20-developer-journey.md](waiting/step-20-developer-journey.md) |
-| 40 | LIP-155 privacy-preserving workflow in the specification | [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) review / publish — [step-40-lip155-privacy-workflow-spec.md](waiting/step-40-lip155-privacy-workflow-spec.md) |
+None.
 
 ## Wontfix steps
 
@@ -142,9 +150,10 @@ Not planned near-term. May move to `upcoming/` if resurrected.
 
 | Step | Focus | Packet |
 | --- | --- | --- |
-| 21 | User Journey: Basecamp UI plugin | [step-21-basecamp-ui.md](wontfix/step-21-basecamp-ui.md) |
 | 23 | Public Store provider | [step-23-public-store-provider.md](wontfix/step-23-public-store-provider.md) |
 | 25 | Demo coordination Logos module | [step-25-demo-coordination-module.md](wontfix/step-25-demo-coordination-module.md) |
+| 42 | Discovery + payment policy advertisement | [step-42-discovery-payment-policy-advertisement.md](wontfix/step-42-discovery-payment-policy-advertisement.md) |
+| 43 | Shared payment pool model research | [step-43-shared-payment-pool-research.md](wontfix/step-43-shared-payment-pool-research.md) |
 
 Ideas not yet steps: [raw-todos/](raw-todos/).
 
@@ -179,7 +188,7 @@ when creating the branch. Both delivery repos must use the same string.
 | `logos-delivery` / `liblogosdelivery` | Store protocol + eligibility hooks (14-15) |
 | `logos-delivery-module` | `delivery_module` + routing (16) |
 | `scripts/e2e.sh`, `scripts/e2e/run_local_e2e.py` | Developer Journey: dual-host Store integration orchestration (Step 17, Step 20) |
-| `payment_streams_ui` (wontfix) | User Journey: Basecamp UI over `payment_streams_module` only (Step 21) |
+| `payment_streams_ui` (upcoming) | User Journey: Basecamp UI over `payment_streams_module` only (Step 21) |
 | `lgs` / `logoscore` / `lgpm` / `lm` | Localnet, host, install, introspection |
 
 Detail: [`logos-architecture-overview.md`](../archive/reference/logos-architecture-overview.md).

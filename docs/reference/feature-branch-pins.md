@@ -38,6 +38,18 @@ Step 19 on-chain pin (`feat/payment-streams-onchain-part`) remains the baseline 
 demo program scope until explicitly rebased; multi-token policy prose cites `master`
 at the rev above.
 
+## Privacy-preserving workflows (Step 40, complete)
+
+User unlinkability and provider unlinkability workflow prose published on
+`logos-lips` `master` via [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397).
+
+| Artifact | Ref | Locked rev |
+| --- | --- | --- |
+| `logos-lips` / `rfc-index` `docs/anoncomms/raw/payment-streams.md` (privacy workflow sections) | `master` | `435a6f18` ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)) |
+
+Cite this rev for privacy-preserving payer/provider workflow language. Multi-token
+sections remain at Step 41’s `f09f9e9e` until a later tip that contains both.
+
 ## Delivery integration branches (Steps 14–18)
 
 Branch from upstream `master` in each delivery repo; avoid release-tag baselines and the

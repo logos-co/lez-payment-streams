@@ -213,8 +213,9 @@ Sizing SSOT for docs and fixture: `demo_deposit_amount` 500, `allocation` 80, `s
 [USER_JOURNEY.md](USER_JOURNEY.md) teaches.
 
 Note: `module-e2e.sh` still passes the payee as `closeStream` `authority` until
-[e2e-close-payer-authority.md](../plan/raw-todos/e2e-close-payer-authority.md) lands.
-[USER_JOURNEY.md](USER_JOURNEY.md) documents payer-only close (omit `authority`).
+[Step 44](../plan/upcoming/step-44-payer-and-payee-close.md) lands both payer-close and
+payee-close. [USER_JOURNEY.md](USER_JOURNEY.md) documents payer-led close (omit `authority`);
+that shape needs the Step 44 layout fix (LEZ rejects duplicate account ids).
 
 ## Module × testnet (full privacy)
 

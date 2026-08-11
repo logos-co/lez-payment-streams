@@ -1,18 +1,21 @@
 # Step 20 — plan excerpt
 
-Waiting — external input. Index: [index.md](../index.md).
+Upcoming — Developer Journey (Store + eligibility) publish track.
+Index: [index.md](../index.md).
 
-logos-docs packet:
+Related logos-docs packet:
 [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)
 (Build a Store Query Module with LIP-155 Eligibility).
-Progress on this step waits on the logos-docs journey process (draft / SME / Red Team).
+In-repo runtime and SSOT are green; remaining work is the external publish path for
+integrators (Store composition). Forum progress report (plain English both tracks + command spoiler) is Step 46.
 
 ### Step 20, Developer Journey doc packet
 
-Waiting on [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369).
-In-repo Store verification is green via Steps 26–33 / the verification matrix
+Upcoming. In-repo Store verification is green via Steps 26–33 / the verification matrix
 (`make verify-store-testnet`). Hosted public Store provider is wontfix Step 23
 (may return to upcoming later).
+Related tracking: [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369).
+Forum progress report: [Step 46](step-46-forum-post-user-journey.md).
 
 Prerequisites:
 
@@ -27,7 +30,7 @@ Orchestration policy: [N17](../../reference/integration-decisions.md#n17-demo-or
 Track split: [N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)
 (Step 20 = **Developer Journey** only; Step 22 = **User Journey** doc packet, complete —
 [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370) — not part of this step.
-Step 21 = User Journey UI, wontfix).
+Step 21 = User Journey UI, upcoming).
 No in-process demo coordinator module (Step 25 wontfix).
 
 Architectural context:
@@ -39,7 +42,7 @@ published instructions ([`logos-docs/CONTRIBUTING.md`](https://github.com/logos-
 This step is the **Developer Journey** ([N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
 the documentation deliverable for **integrators** showing payment streams **composed with
 Logos Delivery Store** (LIP-155 eligibility on Store requests — one protocol use case). It is not
-the payment-streams-only Basecamp UI (wontfix Step 21).
+the payment-streams-only Basecamp UI (upcoming Step 21).
 
 Paid Store + eligibility uses **`payment_streams_module`**, **`delivery_module`**, and
 **`logos_execution_zone`**, not Basecamp clicks. Demo coordination is a **host-side script**
@@ -82,7 +85,7 @@ Definition of done:
 - Red Team completes when org process requires `quality:verified` on the published doc (tracked on
   logos-docs project board, not via a script in this repo).
 
-Not in scope: Step 25 demo coordinator module; User Journey UI (wontfix Step 21);
+Not in scope: Step 25 demo coordinator module; User Journey UI (upcoming Step 21);
 hosted provider ops (wontfix Step 23) unless the Developer Journey targets that deployment
 model; new backend features.
 

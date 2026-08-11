@@ -123,7 +123,7 @@ in the LIP file. Docs review is sufficient (no `make verify-*` gate).
 ## Related
 
 - [step-19-lip155-onchain-spec.md](../completed/step-19-lip155-onchain-spec.md)
-- [step-40-lip155-privacy-workflow-spec.md](../waiting/step-40-lip155-privacy-workflow-spec.md)
+- [step-40-lip155-privacy-workflow-spec.md](step-40-lip155-privacy-workflow-spec.md)
   (parallel LIP branch; merged independently)
 - [wrapped-native-token-unification.md](../raw-todos/wrapped-native-token-unification.md)
 - [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)

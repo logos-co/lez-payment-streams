@@ -83,4 +83,4 @@ the explicit provider multiaddr for paid queries in the MVP.
 - Advertisement and manifest `provider_account_id` stay consistent across doc, chain, and proofs.
 
 Not in scope: merging delivery forks to upstream `master`; changing Step 18 (local provider on
-testnet chain); User Journey UI (wontfix Step 21).
+testnet chain); User Journey UI (upcoming Step 21).

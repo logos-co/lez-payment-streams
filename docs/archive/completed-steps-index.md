@@ -28,8 +28,8 @@ Product gates: [verification-matrix.md](../reference/verification-matrix.md).
 | 18b | rc5 LEZ pin unify | Complete -- [step-18b-rc5-unify-handoff.md](../plan/completed/step-18b-rc5-unify-handoff.md) |
 | 18 | Public sequencer E2E | Complete -- [step-18-public-testnet-demo.md](../plan/completed/step-18-public-testnet-demo.md), [steps/public-sequencer-store-runbook.md](steps/public-sequencer-store-runbook.md) |
 | 19 | LIP-155 on-chain spec | Complete -- [step-19](../plan/completed/step-19-lip155-onchain-spec.md) |
-| 20 | Developer Journey | Waiting -- [step-20-developer-journey.md](../plan/waiting/step-20-developer-journey.md); [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369) |
-| 21 | User Journey: Basecamp UI plugin | Wontfix -- [step-21-basecamp-ui.md](../plan/wontfix/step-21-basecamp-ui.md) |
+| 20 | Developer Journey | Upcoming -- [step-20-developer-journey.md](../plan/upcoming/step-20-developer-journey.md); [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369) |
+| 21 | User Journey: Basecamp UI plugin | Upcoming -- [step-21-basecamp-ui.md](../plan/upcoming/step-21-basecamp-ui.md) |
 | 22 | User Journey: doc packet (CLI-based) | Complete -- [step-22-ui-journey.md](../plan/completed/step-22-ui-journey.md); [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370) |
 | 23 | Public Store provider | Wontfix -- [step-23-public-store-provider.md](../plan/wontfix/step-23-public-store-provider.md) |
 | 24 | LEZ `lee` harness @ 510 | Complete -- [step-24](../plan/completed/step-24-lee-harness-upgrade.md) |
@@ -50,7 +50,13 @@ Product gates: [verification-matrix.md](../reference/verification-matrix.md).
 | 37 | Payee receiver privacy | Complete -- [step-37-payee-receiver-privacy.md](../plan/completed/step-37-payee-receiver-privacy.md) |
 | 38 | Store E2E privacy profiles | Complete -- [step-38-store-privacy-e2e.md](../plan/completed/step-38-store-privacy-e2e.md) |
 | 39 | Testnet privacy E2E after native guest deploy | Complete -- [step-39-testnet-privacy-e2e.md](../plan/completed/step-39-testnet-privacy-e2e.md) |
-| 40 | LIP-155 privacy-preserving workflow in the specification | Waiting ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)) -- [step-40-lip155-privacy-workflow-spec.md](../plan/waiting/step-40-lip155-privacy-workflow-spec.md) |
+| 40 | LIP-155 privacy-preserving workflow in the specification | Complete ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`) -- [step-40-lip155-privacy-workflow-spec.md](../plan/completed/step-40-lip155-privacy-workflow-spec.md) |
+| 41 | Non-native token provider payment policies (F8, U9) | Complete -- [step-41-non-native-token-policy-spec.md](../plan/completed/step-41-non-native-token-policy-spec.md) |
+| 42 | Discovery + payment policy advertisement | Wontfix -- [step-42-discovery-payment-policy-advertisement.md](../plan/wontfix/step-42-discovery-payment-policy-advertisement.md) |
+| 43 | Shared payment pool model research | Wontfix -- [step-43-shared-payment-pool-research.md](../plan/wontfix/step-43-shared-payment-pool-research.md) |
+| 44 | Payer-close and payee-close | Upcoming -- [step-44-payer-and-payee-close.md](../plan/upcoming/step-44-payer-and-payee-close.md) |
+| 45 | Revisit dependencies and patches | Upcoming -- [step-45-dependencies-and-patches.md](../plan/upcoming/step-45-dependencies-and-patches.md) |
+| 46 | Forum progress report | Upcoming -- [step-46-forum-post-user-journey.md](../plan/upcoming/step-46-forum-post-user-journey.md) |
 
 ## Completed steps -- summary
 
