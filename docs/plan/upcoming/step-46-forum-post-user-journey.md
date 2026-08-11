@@ -37,7 +37,7 @@ This is the wrap-up public narrative. Formal logos-docs Store packet work remain
 
 | Source | Use in the post |
 | --- | --- |
-| [USER_JOURNEY.md](../../journeys/USER_JOURNEY.md) | Plain-English user steps + spoiler commands (payer/payee) |
+| [USER_JOURNEY.md](../../journeys/USER_JOURNEY.md) | Plain-English user steps + spoiler commands (owner/provider) |
 | [Step 22](../completed/step-22-ui-journey.md) / [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370) | User Journey framing |
 | [Step 34](../completed/step-34-user-journey-manual-walkthrough.md) | Testnet walkthrough detail for commands |
 | [DEVELOPER_JOURNEY.md](../../journeys/DEVELOPER_JOURNEY.md) / [store-integration/README.md](../../store-integration/README.md) | Plain-English developer steps + spoiler Store commands |

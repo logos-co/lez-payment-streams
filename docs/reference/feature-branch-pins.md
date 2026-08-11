@@ -47,7 +47,7 @@ User unlinkability and provider unlinkability workflow prose published on
 | --- | --- | --- |
 | `logos-lips` / `rfc-index` `docs/anoncomms/raw/payment-streams.md` (privacy workflow sections) | `master` | `435a6f18` ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)) |
 
-Cite this rev for privacy-preserving payer/provider workflow language. Multi-token
+Cite this rev for privacy-preserving user/provider workflow language. Multi-token
 sections remain at Step 41’s `f09f9e9e` until a later tip that contains both.
 
 ## Delivery integration branches (Steps 14–18)

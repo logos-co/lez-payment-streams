@@ -109,11 +109,13 @@ rely on the submit acknowledgement. This applies to `MODE=store`
 | [module-e2e.sh](module-e2e.sh) | Module verification orchestrator (local or testnet; `OWNER_PRIVACY` / `PROVIDER_PRIVACY` profiles) |
 | [module-e2e-privacy.sh](module-e2e-privacy.sh) | Sets `OWNER_PRIVACY=1` and execs `module-e2e.sh` |
 | [e2e/run_local_e2e.py](e2e/run_local_e2e.py) | Store integration dual-host orchestrator |
+| [check-terminology.sh](check-terminology.sh) | Step 47 role-terminology gate (owner/provider/userPeerId; retired informal pair) |
 
 ## Make aliases (optional)
 
 Same as `e2e.sh`: `verify-module-local`, `verify-module-testnet`, `verify-store-local`, `verify-store-testnet`.
 Legacy: `verify-step17`, `verify-step18`.
+Terminology: `make check-terminology` runs [check-terminology.sh](check-terminology.sh).
 
 ## Maintainer only
 

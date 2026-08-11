@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-module-local verify-store-local verify-store-testnet verify-store-local-lifecycle verify-step17 verify-step17-back-to-back verify-step18 verify-step18-testnet-read-smoke deploy-testnet bootstrap-testnet prepare-localnet full-reset-localnet debug-sequencer-latency
+.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-module-local verify-store-local verify-store-testnet verify-store-local-lifecycle check-terminology verify-step17 verify-step17-back-to-back verify-step18 verify-step18-testnet-read-smoke deploy-testnet bootstrap-testnet prepare-localnet full-reset-localnet debug-sequencer-latency
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -42,6 +42,7 @@ help: ## Show this help
 	@echo "  make verify-step13  Run Step 13 DoD script (archived)"
 	@echo ""
 	@echo "  Verification — see docs/reference/verification-matrix.md (canonical: scripts/e2e.sh):"
+	@echo "  make check-terminology         Role terminology gate (Step 47)"
 	@echo "  make verify-module-local       Module verification, localnet"
 	@echo "  make verify-module-local-privacy  Module owner privacy (OWNER_PRIVACY=1)"
 	@echo "  make verify-module-local-provider-privacy  Module provider privacy (PROVIDER_PRIVACY=1)"
@@ -144,6 +145,10 @@ verify-step12: ## Step 12 definition of done (archived; scripts/archive/verify-s
 verify-step13: ## Step 13 definition of done (archived; scripts/archive/verify-step13-dod.sh)
 	chmod +x scripts/archive/verify-step13-dod.sh scripts/archive/step12-topup-and-prepare.sh
 	./scripts/archive/verify-step13-dod.sh
+
+check-terminology: ## Step 47 role-terminology gate
+	chmod +x scripts/check-terminology.sh
+	./scripts/check-terminology.sh
 
 verify-module-local: ## Flow A (module only) local happy path (MODE=module scripts/e2e.sh local run)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh

@@ -100,7 +100,7 @@ Legend: **UJ** = exercised in [USER_JOURNEY.md](../journeys/USER_JOURNEY.md) tes
 | `resumeStream` | `owner`, `vault_id`, `stream_id` | Resume paused stream | no |
 | `topUpStream` | `owner`, `vault_id`, `stream_id`, `increase_lo`, `increase_hi` | Increase stream allocation | no |
 | `closeStream` | `owner`, `vault_id`, `stream_id`, optional `provider` | Close stream; unaccrued returns to vault; omit `provider` to sign as `owner` | yes |
-| `claim` | `owner`, `provider`, `vault_id`, `stream_id` | Payee (`provider`) claims accrued on stream | yes |
+| `claim` | `owner`, `provider`, `vault_id`, `stream_id` | Provider claims accrued on stream | yes |
 
 ### Reads (via chainAction)
 

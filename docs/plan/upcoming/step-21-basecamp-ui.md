@@ -31,18 +31,18 @@ Architectural context:
 - **Single Basecamp / single `logoscore`** for typical flows; counterparty service is **out of
   band** (not modeled in UI).
 
-#### Payer flows (in scope)
+#### Owner / user flows (in scope)
 
-Examples: open wallet, initialize vault, deposit, create stream to a **payee account id**
+Examples: open wallet, initialize vault, deposit, create stream to a **provider account id**
 (base58), list vaults/streams, pause/resume/top-up/close stream, read vault/stream status.
 
-#### Payee flows (optional but documented)
+#### Provider flows (optional but documented)
 
 To show the **receiver** side, include **claim** (`chainAction claim`) after accrual.
 
-The payee cannot claim without knowing **which stream** to claim from. **User Journey assumption
+The provider cannot claim without knowing **which stream** to claim from. **User Journey assumption
 (N18):** the stream creator sends the stream identity out of band (vault id, stream id, and any
-manifest fields the payee wallet needs) to notify the payee where accrued funds can be claimed.
+manifest fields the provider wallet needs) to notify the provider where accrued funds can be claimed.
 The plugin may offer a form to paste those ids; it does **not** implement discovery, Store, or
 messaging.
 
@@ -54,8 +54,8 @@ messaging.
 
 Definition of done:
 
-- Operator can run payer flows (minimum: create stream, list streams) on local LEZ through the UI.
-- If payee claim is implemented: doc packet / in-app hint states the out-of-band stream-id
+- Operator can run owner flows (minimum: create stream, list streams) on local LEZ through the UI.
+- If provider claim is implemented: doc packet / in-app hint states the out-of-band stream-id
   assumption ([N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
 
 Not in scope: Step 17 E2E replay in UI; `delivery_module`; eligibility prepare/verify for Store;

@@ -439,7 +439,7 @@ or keep them ephemeral.
 LIP-155's `provider_id` remains the generic provider identity
 used by the payment-stream protocol for replay protection
 and provider-specific policy.
-The LEZ demo puts the 32-byte stream payee `AccountId` in
+The LEZ demo puts the 32-byte stream provider `AccountId` in
 `VaultProof.provider_id`.
 Predicates compare it to `StreamConfig.provider` with octet equality.
 The provider's libp2p `PeerId` is used only for Store routing.
@@ -763,12 +763,12 @@ Two documentation/demonstration tracks; do not merge them in copy or scope.
 - **Packet:** [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370);
   in-repo walkthrough [Step 34](../plan/completed/step-34-user-journey-manual-walkthrough.md) /
   [USER_JOURNEY.md](../journeys/USER_JOURNEY.md); module×testnet E2E [Step 28](../plan/completed/step-28-user-journey-testnet.md).
-- **Content:** install module, load wallet, payer path (vault, deposit, create stream, close),
-  payee path (`chainAction claim`). CLI commands only — no UI required.
-- **Payee side:** `chainAction claim` after funds accrue (and after close in the published
-  walkthrough). The payee must know the stream exists and must have the **stream identity**
+- **Content:** install module, load wallet, owner path (vault, deposit, create stream, close),
+  provider path (`chainAction claim`). CLI commands only — no UI required.
+- **Provider side:** `chainAction claim` after funds accrue (and after close in the published
+  walkthrough). The provider must know the stream exists and must have the **stream identity**
   (vault id, stream id, and program/account context). **Assumption:** the stream creator notifies
-  the payee **out of band** (e.g. message, email, QR) with the stream address / ids so the payee
+  the provider **out of band** (e.g. message, email, QR) with the stream address / ids so the provider
   can claim.
 - **Audience:** end users exploring payment streams via CLI; cross-link Step 20 (Developer
   Journey) for Store integration, do not duplicate it.
@@ -784,7 +784,7 @@ Two documentation/demonstration tracks; do not merge them in copy or scope.
   wontfix.
 - **Mechanism:** Thin UI over `payment_streams_module` (+ wallet). Single-host; out-of-band
   counterparty coordination.
-- **Payer side:** same flows as User Journey, but via buttons/forms in Basecamp.
+- **Owner side:** same flows as User Journey, but via buttons/forms in Basecamp.
 - **Audience:** end users who prefer GUI over CLI.
 - **Relationship to Step 22:** Step 21 is independent. When Step 21 ships, Step 22 may be
   updated to include UI content, but Step 22 does not require Step 21.

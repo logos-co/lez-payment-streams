@@ -77,7 +77,7 @@ Gate log: [step-39-testnet-gate-log.md](docs/plan/completed/step-39-testnet-gate
 valid without NVIDIA (D39.26).
 
 Complete (docs): [Step 40](docs/plan/completed/step-40-lip155-privacy-workflow-spec.md) —
-privacy-preserving payer and provider workflows in LIP-155
+privacy-preserving user and provider workflows in LIP-155
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`).
 
 ### Testnet v0.3 incentivisation research (Steps 41-43)
