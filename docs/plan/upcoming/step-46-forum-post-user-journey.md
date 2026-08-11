@@ -37,13 +37,14 @@ This is the wrap-up public narrative. Formal logos-docs Store packet work remain
 
 | Source | Use in the post |
 | --- | --- |
-| [USER_JOURNEY.md](../../journeys/USER_JOURNEY.md) | Plain-English user steps + spoiler commands (payer/payee) |
+| [USER_JOURNEY.md](../../journeys/USER_JOURNEY.md) | Plain-English user steps + spoiler commands (owner/provider) |
 | [Step 22](../completed/step-22-ui-journey.md) / [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370) | User Journey framing |
 | [Step 34](../completed/step-34-user-journey-manual-walkthrough.md) | Testnet walkthrough detail for commands |
 | [DEVELOPER_JOURNEY.md](../../journeys/DEVELOPER_JOURNEY.md) / [store-integration/README.md](../../store-integration/README.md) | Plain-English developer steps + spoiler Store commands |
 | [E2E.md](../../journeys/E2E.md) | Phase / script command alignment for spoiler |
 | [PRIVACY_ENHANCED_JOURNEY.md](../../journeys/PRIVACY_ENHANCED_JOURNEY.md) | Optional short privacy callout in intro or appendix |
 | LIP-155, [docs/README.md](../../README.md) | Citations only; do not duplicate protocol semantics |
+| [check-terminology.sh](../../scripts/check-terminology.sh) | Before publish: prefer Step 47 final names (`owner`/`provider`/`userPeerId`); rerun the gate |
 
 ## Scope
 

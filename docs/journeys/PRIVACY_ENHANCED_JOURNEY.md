@@ -1,9 +1,9 @@
 # Privacy-enhanced Journey — payment streams with LEZ private execution
 
-Status: draft — payer section reflects Step 36; payee section reflects Step 37.
+Status: draft — owner section reflects Step 36; provider section reflects Step 37.
 
-This document describes the privacy-enhanced payment-streams flow where the payer
-uses a `PseudonymousFunding` vault and/or the payee claims to a shielded address.
+This document describes the privacy-enhanced payment-streams flow where the owner
+uses a `PseudonymousFunding` vault and/or the provider claims to a shielded address.
 Owner privacy and provider privacy are independent choices; either may be used
 alone or together. Automated module checks use `OWNER_PRIVACY=1` and
 `PROVIDER_PRIVACY=1` (see [E2E.md](E2E.md)); `PRIVACY=1` is only an alias for
@@ -15,8 +15,8 @@ Store × privacy E2E is Step 38.
 
 ## What this journey achieves
 
-The payer funds and operates a payment stream without linking every vault and
-stream operation to their primary public key. The payee receives accrued funds
+The owner funds and operates a payment stream without linking every vault and
+stream operation to their primary public key. The provider receives accrued funds
 to a shielded address rather than a public account. Amounts remain public
 because `vault_holding` is a public PDA, but the identities are shielded.
 
@@ -37,11 +37,11 @@ because `vault_holding` is a public PDA, but the identities are shielded.
 | Owner signature | `sign_public_payload` (public key) | `sign_private_payload` (private account NSK) |
 | Provider claim | Public account | Shielded private account (Step 37) |
 
-## Payer privacy-enhanced flow (Step 36)
+## Owner privacy-enhanced flow (Step 36)
 
 ### Step 1 — Create a private account key pair
 
-The payer needs an NPK/VPK pair for the vault owner. The private account id is
+The owner needs an NPK/VPK pair for the vault owner. The private account id is
 derived from the NPK plus an identifier.
 
 Example wallet CLI command (verify exact syntax before use):
@@ -91,7 +91,7 @@ Example `chainAction` JSON:
 
 ```bash
 logoscore call payment_streams_module chainAction initializeVault \
-  '{"signer":"<private_account_id>","vault_id":<id>,"privacy_tier":1}'
+  '{"owner":"<private_account_id>","vault_id":<id>,"privacy_tier":1}'
 ```
 
 The `signer` field is the vault owner private account id. The `privacy_tier`
@@ -107,7 +107,7 @@ Example `chainAction` JSON:
 
 ```bash
 logoscore call payment_streams_module chainAction deposit \
-  '{"signer":"<vault_owner_private_account_id>","vault_id":<id>,"amount_lo":<lo>}'
+  '{"owner":"<vault_owner_private_account_id>","vault_id":<id>,"amount_lo":<lo>}'
 ```
 
 The `signer` here is the vault owner private account; the guest debits it
@@ -120,7 +120,7 @@ Create the stream as usual, but the vault owner is private.
 
 ```bash
 logoscore call payment_streams_module chainAction createStream \
-  '{"signer":"<private_account_id>","vault_id":<id>,"stream_id":<id>,"provider":"<provider_account_id>","rate":<rate>,"allocation_lo":<lo>}'
+  '{"owner":"<private_account_id>","vault_id":<id>,"stream_id":<id>,"provider":"<provider_account_id>","rate":<rate>,"allocation_lo":<lo>}'
 ```
 
 ### Step 6 — Lifecycle operations
@@ -131,7 +131,7 @@ private account id.
 
 ### Step 7 — Eligibility proof signing
 
-When the payer prepares an eligibility proof for a paid Store query, the
+When the owner prepares an eligibility proof for a paid Store query, the
 `VaultProof.owner_signature` must be signed by the vault owner NSK. The module
 calls the repo-local `sign_private_payload` patch on the wallet wrapper.
 
@@ -142,9 +142,9 @@ For `claim`, the provider can be a public or private account. The transaction is
 shielded because the vault owner is private, not because the provider is. If the
 provider is public, the wallet signs the transaction with the provider's
 public-account key; if the provider is private, the wallet proves with the NSK.
-Step 37 generalizes the payee-side receiver-privacy flow for a private provider.
+Step 37 generalizes the provider-side receiver-privacy flow for a private provider.
 
-## Payee privacy-enhanced flow (Step 37)
+## Provider privacy-enhanced flow (Step 37)
 
 Provider receiving privacy is independent of vault owner privacy. A stream can
 use a public vault and a private provider (`PROVIDER_PRIVACY=1`), or combine
@@ -153,7 +153,7 @@ both flags.
 ### 1. Provider publishes a private receiving identity
 
 The provider creates a private account and exports keys (same wallet surface as
-the payer side):
+the owner side):
 
 ```bash
 logoscore call logos_execution_zone create_account_private
@@ -161,7 +161,7 @@ logoscore call logos_execution_zone get_private_account_keys <provider_private_a
 ```
 
 Share the NPK-derived account id (base58 or hex) with the stream creator out of
-band, the same way a public payee shares a public account id.
+band, the same way a public provider shares a public account id.
 
 Reuse one `(npk, identifier)` across create and claim so credits land in one
 private account chain. Do not invent a claim-time identifier field.
@@ -170,7 +170,7 @@ private account chain. Do not invent a claim-time identifier field.
 
 ```bash
 logoscore call payment_streams_module chainAction createStream \
-  '{"signer":"<owner>","vault_id":<id>,"stream_id":<id>,"provider":"<private_provider>","rate":<rate>,"allocation_lo":<lo>}'
+  '{"owner":"<owner>","vault_id":<id>,"stream_id":<id>,"provider":"<private_provider>","rate":<rate>,"allocation_lo":<lo>}'
 ```
 
 On a `Public` vault, create stays on public submit: `provider` is instruction
@@ -229,8 +229,8 @@ marked final.
 | Create private account | `logoscore call logos_execution_zone create_account_private` |
 | Get private account keys (NPK/VPK) | `logoscore call logos_execution_zone get_private_account_keys <private_account_id>` |
 | Pre-shield funds | `logoscore call logos_execution_zone transfer_shielded_owned <public_account_id> <vault_owner_private_account_id> "s:<amount_le16_hex>"` (quote the amount so logoscore keeps it a string) |
-| Initialize vault | `logoscore call payment_streams_module chainAction initializeVault '{"signer":"<private>","vault_id":<id>,"privacy_tier":1}'` |
-| PP deposit | `logoscore call payment_streams_module chainAction deposit '{"signer":"<vault_owner_private>","vault_id":<id>,"amount_lo":<lo>}'` |
-| Create stream | `logoscore call payment_streams_module chainAction createStream '{"signer":"<private>","vault_id":<id>,"stream_id":<id>,"provider":"<provider>","rate":<rate>,"allocation_lo":<lo>}'` |
-| Close stream | `logoscore call payment_streams_module chainAction closeStream '{"signer":"<private>","vault_id":<id>,"stream_id":<id>,"authority":"<provider>"}'` |
+| Initialize vault | `logoscore call payment_streams_module chainAction initializeVault '{"owner":"<private>","vault_id":<id>,"privacy_tier":1}'` |
+| PP deposit | `logoscore call payment_streams_module chainAction deposit '{"owner":"<vault_owner_private>","vault_id":<id>,"amount_lo":<lo>}'` |
+| Create stream | `logoscore call payment_streams_module chainAction createStream '{"owner":"<private>","vault_id":<id>,"stream_id":<id>,"provider":"<provider>","rate":<rate>,"allocation_lo":<lo>}'` |
+| Close stream | `logoscore call payment_streams_module chainAction closeStream '{"owner":"<private>","vault_id":<id>,"stream_id":<id>,"provider":"<provider>"}'` |
 | Claim | `logoscore call payment_streams_module chainAction claim '{"owner":"<private>","provider":"<provider>","vault_id":<id>,"stream_id":<id>}'` |

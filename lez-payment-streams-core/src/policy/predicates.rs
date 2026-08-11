@@ -126,7 +126,7 @@ pub fn proposal_satisfies_policy(
 /// First `StreamProof` in a session: reconcile folded on-chain snapshot against accepted proposal.
 ///
 /// Establishes parity between `StreamParams` negotiated off-chain (Step 4 will sign them)
-/// and the payer's eventual on-chain [`StreamConfig`]:
+/// and the user's eventual on-chain [`StreamConfig`]:
 ///
 /// - Compare persisted `allocation` and `rate` fields, not instantaneous unaccrued balance.
 /// - Bind `provider` pubkey bytes to LEZ `/ VaultProof.provider_id`.
@@ -135,7 +135,7 @@ pub fn new_stream_satisfies_proposal(
     proposal_params: &StreamParams,
     proposal_provider_id: AccountId,
 ) -> Result<(), PolicyRejectReason> {
-    stream_provider_binding_satisfies_expected_payee(folded_stream, proposal_provider_id)?;
+    stream_provider_binding_satisfies_expected_provider(folded_stream, proposal_provider_id)?;
 
     if folded_stream.rate < proposal_params.rate {
         return Err(PolicyRejectReason::RateBelowAcceptedParams);
@@ -150,10 +150,10 @@ pub fn new_stream_satisfies_proposal(
 
 /// Subsequent / ongoing proof validation using the policy snapshot taken at acceptance.
 ///
-/// Keeps rejects aligned between payer preflight and provider verification.
+/// Keeps rejects aligned between user preflight and provider verification.
 ///
 /// - Stream must remain [`StreamState::Active`].
-/// - Payee pubkey must remain the accepted provider binding.
+/// - Provider pubkey must remain the accepted provider binding.
 /// - On-chain [`StreamConfig::rate`] must be greater than or equal to the accepted proposal rate
 ///   and remain at or above pinned policy minima. The payment-streams spec requires this on every
 ///   `StreamProof`, not only when reconciling the first proof with [`new_stream_satisfies_proposal`],
@@ -170,7 +170,7 @@ pub fn stream_satisfies_policy(
         return Err(PolicyRejectReason::StreamNotActive);
     }
 
-    stream_provider_binding_satisfies_expected_payee(folded_stream, accepted_terms.provider_id)?;
+    stream_provider_binding_satisfies_expected_provider(folded_stream, accepted_terms.provider_id)?;
 
     if folded_stream.rate < accepted_terms.policy_at_acceptance.min_rate {
         return Err(PolicyRejectReason::RateBelowPolicyMin);
@@ -192,10 +192,10 @@ pub fn response_within_policy(
     Ok(())
 }
 
-/// Returns [`Ok(())`] when [`StreamConfig::provider`] equals the expected vault payee
+/// Returns [`Ok(())`] when [`StreamConfig::provider`] equals the expected stream provider
 /// [`AccountId`] (vault proof binds this binding).
 #[inline]
-fn stream_provider_binding_satisfies_expected_payee(
+fn stream_provider_binding_satisfies_expected_provider(
     stream_account: &StreamConfig,
     expected_provider_id: AccountId,
 ) -> Result<(), PolicyRejectReason> {

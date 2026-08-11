@@ -92,15 +92,15 @@ Legend: **UJ** = exercised in [USER_JOURNEY.md](../journeys/USER_JOURNEY.md) tes
 
 | operation | JSON keys | Semantics | UJ |
 | --- | --- | --- | --- |
-| `initializeVault` | `signer`, `vault_id` | Create empty vault PDA for signer | yes |
-| `deposit` | `signer`, `vault_id`, `amount_lo`, `amount_hi` | Credit vault from signer balance | yes |
-| `withdraw` | `signer`, `vault_id`, `amount_lo`, `amount_hi`, optional `withdraw_to` | Debit vault to signer or `withdraw_to` | no |
-| `createStream` | `signer`, `vault_id`, `stream_id`, `provider`, `rate`, `allocation_lo`, `allocation_hi` | Open stream to payee (`provider` base58) | yes |
-| `pauseStream` | `signer`, `vault_id`, `stream_id` | Pause accrual | no |
-| `resumeStream` | `signer`, `vault_id`, `stream_id` | Resume paused stream | no |
-| `topUpStream` | `signer`, `vault_id`, `stream_id`, `increase_lo`, `increase_hi` | Increase stream allocation | no |
-| `closeStream` | `signer`, `vault_id`, `stream_id`, optional `authority` | Close stream; unaccrued returns to vault; omit `authority` to sign as `signer` | yes |
-| `claim` | `owner`, `provider`, `vault_id`, `stream_id` | Payee (`provider`) claims accrued on stream | yes |
+| `initializeVault` | `owner`, `vault_id` | Create empty vault PDA for owner | yes |
+| `deposit` | `owner`, `vault_id`, `amount_lo`, `amount_hi` | Credit vault from owner balance | yes |
+| `withdraw` | `owner`, `vault_id`, `amount_lo`, `amount_hi`, optional `withdraw_to` | Debit vault to owner or `withdraw_to` | no |
+| `createStream` | `owner`, `vault_id`, `stream_id`, `provider`, `rate`, `allocation_lo`, `allocation_hi` | Open stream to provider (`provider` base58) | yes |
+| `pauseStream` | `owner`, `vault_id`, `stream_id` | Pause accrual | no |
+| `resumeStream` | `owner`, `vault_id`, `stream_id` | Resume paused stream | no |
+| `topUpStream` | `owner`, `vault_id`, `stream_id`, `increase_lo`, `increase_hi` | Increase stream allocation | no |
+| `closeStream` | `owner`, `vault_id`, `stream_id`, optional `provider` | Close stream; unaccrued returns to vault; omit `provider` to sign as `owner` | yes |
+| `claim` | `owner`, `provider`, `vault_id`, `stream_id` | Provider claims accrued on stream | yes |
 
 ### Reads (via chainAction)
 

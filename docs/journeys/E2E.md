@@ -96,7 +96,7 @@ MODULE_E2E_TOPUP=1 SKIP_BUILD=1 MODE=module CHAIN=local ./scripts/e2e.sh local r
 
 Optional privacy profile overlay on the User Journey module cell.
 Owner privacy and provider privacy are independent choices; this cell covers
-payer unlinkability only (`PseudonymousFunding` vault, public provider).
+owner unlinkability only (`PseudonymousFunding` vault, public provider).
 
 ```bash
 SKIP_BUILD=1 MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
@@ -112,7 +112,7 @@ top-up on. Artifact: `.scaffold/e2e/artifacts/module-e2e-*.log`.
 
 ## Module × localnet (provider privacy)
 
-Optional privacy profile overlay for payee receiver privacy (private provider
+Optional privacy profile overlay for provider receiver privacy (private provider
 account, shielded claim). Independent of `OWNER_PRIVACY`.
 
 ```bash
@@ -149,7 +149,7 @@ public.
 ## Store × localnet (provider privacy)
 
 Optional privacy profile overlay (Step 38 Phase B). Public vault owner; private
-provider claim destination. Maps the Store peer to the private payee id before
+provider claim destination. Maps the Store peer to the private provider id before
 prepare.
 
 ```bash
@@ -187,7 +187,7 @@ Required tier. One-time bootstrap on the machine:
 make bootstrap-testnet-module
 ```
 
-Creates wallet layout and `fixtures/testnet-module.json` (sequencer URL, program id, payer/payee
+Creates wallet layout and `fixtures/testnet-module.json` (sequencer URL, program id, owner/provider
 account ids). Does not replace per-run funding; fund accounts before or during the run.
 
 Pre-fund fixture accounts (recommended before repeated demos):
@@ -205,16 +205,16 @@ SKIP_BUILD=1 MODULE_E2E_SKIP_FUND=1 MODE=module CHAIN=testnet ./scripts/e2e.sh t
 Make alias: `make verify-module-testnet`.
 
 Expected: exit code 0 and the same phase names as localnet in `module-e2e-*.log`.
-The script auto-resolves a fresh empty `vault_id` under the fixture payer unless `VAULT_ID` is pinned.
+The script auto-resolves a fresh empty `vault_id` under the fixture owner unless `VAULT_ID` is pinned.
 
 Sizing SSOT for docs and fixture: `demo_deposit_amount` 500, `allocation` 80, `stream_rate` 1 in
 [`fixtures/testnet-module.json`](../../fixtures/testnet-module.json).
 `module-e2e.sh` env overrides (`DEPOSIT`, `ALLOCATION`, …) may differ; the fixture fields are what
 [USER_JOURNEY.md](USER_JOURNEY.md) teaches.
 
-Note: `module-e2e.sh` still passes the payee as `closeStream` `authority` until
-[Step 44](../plan/upcoming/step-44-payer-and-payee-close.md) lands both payer-close and
-payee-close. [USER_JOURNEY.md](USER_JOURNEY.md) documents payer-led close (omit `authority`);
+Note: `module-e2e.sh` defaults `CLOSE_ROLE=provider` (six-slot close with `provider` key).
+Owner-only close (omit `provider`) needs [Step 44](../plan/upcoming/step-44-payer-and-payee-close.md).
+[USER_JOURNEY.md](USER_JOURNEY.md) documents owner-led close;
 that shape needs the Step 44 layout fix (LEZ rejects duplicate account ids).
 
 ## Module × testnet (full privacy)

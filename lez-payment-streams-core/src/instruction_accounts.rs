@@ -19,10 +19,10 @@ pub type WithdrawInstructionAccounts = [AccountId; 4];
 /// Owner-authorized stream instructions share this five-account tail:
 /// vault config, vault holding, stream config PDA, owner (signer), system clock account.
 pub type StreamOwnerInstructionAccounts = [AccountId; 5];
-/// `close_stream` / `claim`: adds an explicit signer after the bound owner slot.
-pub type StreamAuthorityInstructionAccounts = [AccountId; 6];
-/// `claim` reuses the [`StreamAuthorityInstructionAccounts`] slot pattern (`close_stream` layout).
-pub type ClaimStreamInstructionAccounts = StreamAuthorityInstructionAccounts;
+/// `close_stream` / `claim`: adds the stream provider after the bound owner slot.
+pub type StreamProviderInstructionAccounts = [AccountId; 6];
+/// `claim` reuses the [`StreamProviderInstructionAccounts`] slot pattern (`close_stream` layout).
+pub type ClaimStreamInstructionAccounts = StreamProviderInstructionAccounts;
 
 #[must_use]
 pub fn initialize_vault_instruction_accounts(
@@ -160,15 +160,15 @@ pub fn close_stream_instruction_accounts(
     owner_account_id: AccountId,
     vault_id: VaultId,
     stream_id: StreamId,
-    authority_account_id: AccountId,
+    provider_account_id: AccountId,
     clock_account_id: AccountId,
-) -> StreamAuthorityInstructionAccounts {
-    stream_authority_instruction_accounts(
+) -> StreamProviderInstructionAccounts {
+    stream_provider_instruction_accounts(
         program_id,
         owner_account_id,
         vault_id,
         stream_id,
-        authority_account_id,
+        provider_account_id,
         clock_account_id,
     )
 }
@@ -181,8 +181,8 @@ pub fn claim_instruction_accounts(
     stream_id: StreamId,
     provider_account_id: AccountId,
     clock_account_id: AccountId,
-) -> StreamAuthorityInstructionAccounts {
-    stream_authority_instruction_accounts(
+) -> StreamProviderInstructionAccounts {
+    stream_provider_instruction_accounts(
         program_id,
         owner_account_id,
         vault_id,
@@ -193,14 +193,14 @@ pub fn claim_instruction_accounts(
 }
 
 #[must_use]
-fn stream_authority_instruction_accounts(
+fn stream_provider_instruction_accounts(
     program_id: &ProgramId,
     owner_account_id: AccountId,
     vault_id: VaultId,
     stream_id: StreamId,
-    authority_account_id: AccountId,
+    provider_account_id: AccountId,
     clock_account_id: AccountId,
-) -> StreamAuthorityInstructionAccounts {
+) -> StreamProviderInstructionAccounts {
     let [a, b, c, owner_slot, clock] = stream_owner_instruction_accounts(
         program_id,
         owner_account_id,
@@ -208,7 +208,7 @@ fn stream_authority_instruction_accounts(
         stream_id,
         clock_account_id,
     );
-    [a, b, c, owner_slot, authority_account_id, clock]
+    [a, b, c, owner_slot, provider_account_id, clock]
 }
 
 #[cfg(test)]

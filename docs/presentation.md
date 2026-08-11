@@ -114,7 +114,7 @@ sequenceDiagram
   PSM-->>U: proofBytesHex
   U->>DM: storeQuery(queryJson, providerAddr)
   DM->>PM: Store request + tag 30
-  PM->>Hook: verifyEligibilityForStoreQuery(proofBytes, requesterPeerId)
+  PM->>Hook: verifyEligibilityForStoreQuery(proofBytes, userPeerId)
   Hook-->>PM: OK | PROOF_INVALID | STREAM_NOT_ACTIVE
   alt OK
     PM-->>DM: response + messages

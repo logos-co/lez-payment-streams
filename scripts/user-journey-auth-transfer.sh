@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Step 9 helper: authenticated transfer for payer and payee (E2E auth_transfer.sh path).
+# Step 9 helper: authenticated transfer for owner and provider (E2E auth_transfer.sh path).
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/lib/user-journey-env.sh
@@ -8,8 +8,8 @@ source "$REPO_ROOT/scripts/lib/user-journey-env.sh"
 user_journey_require_shell
 user_journey_require_tools
 
-: "${PAYER:?Set PAYER (Step 7)}"
-: "${PAYEE:?Set PAYEE (Step 7)}"
+: "${OWNER:?Set OWNER (Step 7)}"
+: "${PROVIDER:?Set PROVIDER (Step 7)}"
 WALLET_HOME="${WALLET_HOME:-$(user_journey_default_wallet_home)}"
 WALLET_CONFIG="${WALLET_CONFIG:-$WALLET_HOME/wallet_config.json}"
 WALLET_STORAGE="${WALLET_STORAGE:-$WALLET_HOME/storage.json}"
@@ -23,7 +23,7 @@ mkdir -p "$(dirname "$ARTIFACT")"
 : > "$ARTIFACT"
 
 exec "$REPO_ROOT/scripts/auth-transfer-ensure.sh" \
-  --owner "$PAYER" \
-  --provider "$PAYEE" \
+  --owner "$OWNER" \
+  --provider "$PROVIDER" \
   --artifact "$ARTIFACT" \
   --wallet-home "$WALLET_HOME"

@@ -1,11 +1,10 @@
 # Step 47 — unify role terminology
 
-Upcoming. Index: [index.md](../index.md).
+Index: [index.md](../index.md). Status: **complete** (2026-08).
 
-Spun out of Step 44 N2. Discuss and implement separately from the close hard cut.
-
-Land implementation on a feature branch (one PR; multiple commits per D47.9).
-Do not commit the rename series directly on `master`.
+Spun out of Step 44 N2. Landed on `feat/step-47-unify-role-terminology`
+(multi-commit; D47.9) and merged to `master`. Gate log:
+[step-47-gate-log.md](step-47-gate-log.md).
 
 ## Goal
 
@@ -210,7 +209,10 @@ step removes. Touch at least:
 
 Hard-cut `requesterPeerId` → `userPeerId` on
 `verifyEligibilityForStoreQuery` (impl, eligibility.cpp, error strings such as
-`requesterPeerId is required`, contracts, Store orchestrator call sites).
+`userPeerId is required`, contracts, Store orchestrator call sites).
+Same hard cut on delivery forks: C ABI / Nim `requester_peer_id` →
+`user_peer_id`, local `requesterPeerId` → `userPeerId`, delivery-module
+trampoline and stub headers.
 Aligns with LIP Roles and symmetry with `providerPeerId`. Do not leave a fifth
 informal vocabulary unexamined.
 
@@ -227,9 +229,12 @@ here so future steps do not re-open “temporary aliases” without a new decisi
 
 External spot-check at implement (record in PR / gate log):
 
-- logos-docs User Journey (#370)
-- Basecamp bindings if they serialize old keys or journey env names
-- `logos-delivery` fork docs / hook glue that show write/`closeStream` JSON
+- logos-docs User Journey (#370) — record only; no logos-docs PR in this step
+- Basecamp bindings if they serialize old keys or journey env names — record only
+- `logos-delivery` / `logos-delivery-module` eligibility fork: hard-cut
+  `requester_peer_id` / `requesterPeerId` → `user_peer_id` / `userPeerId` on
+  the C ABI, Nim hooks, trampoline, and tests (same window as D47.17; positional
+  invoke stays compatible with the module method rename)
 
 ## Multi-commit plan (D47.9)
 
@@ -245,7 +250,7 @@ Suggested commit sequence (adjust if inventory finds a cleaner cut):
 | 1 | Inventory note + naming-conventions role-layer table (incl. submitter row, provider double-duty, formerly payer/payee pointer, funder) | docs-only; no code gate |
 | 2 | Unify id parsers (D47.7 detection order); wire withdraw / provider / close-authority / reads without renaming public JSON yet | Focused module/Rust tests as touched |
 | 3 | Rename C++ helpers/params (`signer*` → `owner*` / role names; privacy deposit-owner helpers; `submitterHex` DoD) | Same + grep no owner-id `signer*` helpers |
-| 4 | Hard-cut JSON keys + scripts; `StreamProvider*` + `ClaimStream*` layout rename (D47.16); `userPeerId` (D47.17); **rebuild and reinstall** module `.lgx` (`SKIP_BUILD=1` forbidden) | Required rename smoke (below) |
+| 4 | Hard-cut JSON keys + scripts; `StreamProvider*` + `ClaimStream*` layout rename (D47.16); `userPeerId` (D47.17) + delivery-fork `user_peer_id`; **rebuild and reinstall** module `.lgx` (`SKIP_BUILD=1` forbidden) | Required rename smoke (below) |
 | 5 | Policy / FFI `*payee*` → `*provider*` + living `payer` prose → `user` (D47.13) | Focused `cargo test` on core policy + ffi |
 | 6 | Journeys (`USER_JOURNEY`, `PRIVACY_ENHANCED_JOURNEY`, `E2E`, helpers): `PAYER`/`PAYEE` → `OWNER`/`PROVIDER` (D47.14); contracts / store-integration / glossary | `scripts/check-terminology.sh` |
 | 7 | Final terminology script + D47.4 external spot-check note; wire script into `scripts/README.md` (and a Make target if one already fits) | Full gate; re-run Required smoke if commit 4 was not that run |
@@ -271,7 +276,8 @@ sequence with the same install):
 2. `MODULE_E2E_TOPUP=1 MODULE_E2E_PAUSE_RESUME=1` so `pauseStream` /
    `resumeStream` / `topUpStream` hit new `owner` keys.
 3. One `CLOSE_ROLE=provider` close so closeStream’s `provider` key is parsed
-   (thin cell Step 44 already defines).
+   (thin cell Step 44 already defines; until Step 44 dual-close lands, this is
+   the current six-slot close with the renamed `provider` JSON key).
 4. One `withdraw` `chainAction` (small new phase or appended call in the same
    run) so `owner` / `withdraw_to` parse sites are exercised.
 
@@ -344,7 +350,8 @@ In scope:
   privacy deposit-owner helpers and `submitterHex`.
 - Unified account-id parsing with fixed hex/base58 detection (D47.7).
 - `StreamProvider*` layout rename (D47.16).
-- `userPeerId` rename (D47.17).
+- `userPeerId` rename (D47.17) and delivery-fork `requester_*` → `user_*`
+  (`logos-delivery` + `logos-delivery-module` eligibility glue).
 - Policy / FFI `*payee*` → `*provider*` and living `payer` → `user` (D47.13).
 - Journey `PAYER` / `PAYEE` → `OWNER` / `PROVIDER` (D47.14).
 - `scripts/check-terminology.sh` + Required rename smoke (D47.9 / D47.11).
@@ -381,7 +388,7 @@ Out of scope:
 | D47.1 | Packet ownership | Step 47; terminology / API consistency, not close mechanics. |
 | D47.2 | Target roles | Module JSON uses `owner` and `provider`; drop `signer`/`authority` as public keys. |
 | D47.3 | LEZ term boundary | “signer” only for LEZ must-sign; module-owned code must not use `signer` for vault owner. |
-| D47.4 | Compatibility | Hard cut — no aliases; future renames in this family are hard cuts by default (no JSON schema version). Spot-check logos-docs #370, Basecamp, logos-delivery fork. |
+| D47.4 | Compatibility | Hard cut — no aliases; future renames in this family are hard cuts by default (no JSON schema version). Spot-check logos-docs #370 and Basecamp (record only). Delivery eligibility fork: rename `requester_*` → `user_*` with D47.17. |
 | D47.5 | Ordering vs Step 44 | After Step 44 USER_JOURNEY testnet re-walk, ImageID cut, and 44 packet in `completed/` (or temporary path-allowlist). |
 | D47.6 | Submitter rule | Op-scoped: close/claim use precedence `provider` > `owner`; `createStream.provider` and other owner writes keep owner as submitter. |
 | D47.7 | Id formats | One helper; fixed order: 64 hex chars → hex/32 bytes, else base58/32 bytes, else error. |
@@ -394,7 +401,7 @@ Out of scope:
 | D47.14 | Journey env | `PAYER`/`PAYEE` → `OWNER`/`PROVIDER`; not `USER` (POSIX `$USER` + scaffold host collision). |
 | D47.15 | Role-layer principle | Keep dual service vs chain vocab; `provider` cross-layer; add `submitter` derived row; retire living payer/payee except meta-usage allowlist; keep funder; do not collapse LIP Roles. |
 | D47.16 | Layout types | `StreamAuthority*` → `StreamProvider*` DoD (post–Step 44). |
-| D47.17 | Store verify peer | `requesterPeerId` → `userPeerId` hard cut. |
+| D47.17 | Store verify peer | `requesterPeerId` → `userPeerId` hard cut; delivery C ABI / hooks / trampoline `requester_peer_id` → `user_peer_id`. |
 
 ## Open for discussion
 

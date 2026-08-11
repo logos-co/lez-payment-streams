@@ -21,7 +21,12 @@ intentional freeze rather than accidental drift.
 
 Operational LEZ pin is `scaffold.toml` `[repos.lez]` (today `a58fbce` / tag `v0.2.0`).
 Wallet still builds via `logos-execution-zone-module-patched`.
-Paid Store stays on long-lived delivery forks `feat/payment-streams-store-eligibility`.
+Paid Store stays on long-lived delivery forks `feat/payment-streams-store-eligibility`
+(or successors). Step 47 hard-cut eligibility C ABI
+`requester_peer_id` → `user_peer_id` on branches `feat/step-47-user-peer-id`
+(logos-delivery + logos-delivery-module); fold that rename into the eligibility
+fork pin when rebasing / re-locking (do not leave `requester_*` on the living
+Store path).
 Guest ImageID freeze baseline moves with [Step 44](step-44-payer-and-payee-close.md)
 (D44.19): after Step 44 lands, freeze on the Step 44 ImageID / gate log, not the
 retired Step 39 id (`072a26cc…`).

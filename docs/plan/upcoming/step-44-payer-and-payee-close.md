@@ -18,18 +18,23 @@ LIP-155 already allows either party. Today only provider-close works end-to-end.
 ## Terminology
 
 Packet filename keeps historical “payer/payee.” Prefer owner-close /
-provider-close in new prose. Full role-layer map and retirement of living
-`payer`/`payee` / journey `PAYER`/`PAYEE` is [Step 47](step-47-unify-role-terminology.md)
-(D47.14–D47.15).
+provider-close in new prose.
+
+[Step 47](../completed/step-47-unify-role-terminology.md) (complete)
+hard-cut living module JSON and journey
+env: write/close keys are `owner` / `provider` (not `signer` / `authority`);
+journey helpers use `$OWNER` / `$PROVIDER`. Layout types are `StreamProvider*`.
+Do not reintroduce legacy keys. `scripts/check-terminology.sh` temporarily
+path-allowlists this packet until it moves to `completed/` (D47.5).
 
 | Term | Meaning in this step |
 | --- | --- |
-| User / vault owner | `VaultConfig.owner`; USER_JOURNEY account (today still `$PAYER` until Step 47 → `$OWNER`) |
-| Provider | `StreamConfig.provider`; USER_JOURNEY account (today still `$PAYEE` until Step 47 → `$PROVIDER`) |
-| Module `signer` field | Vault owner account id for PDA derivation on writes/close — not LEZ `#[account(signer)]`. Docs clarify in this step; rename to `owner` is Step 47. |
-| Module `authority` field | Optional close JSON; omit → owner path; distinct provider id → provider path. Kept this step; rename to `provider` is Step 47. |
-| Tx submitter | Owner-close: vault owner (`signer` field); provider-close: provider (`authority` field) |
-| `CLOSE_ROLE` | Module E2E close-role switch: `owner` (default) or `provider`. Orthogonal to Store `E2E_CLOSE_VIA` (`seed` \| `chainaction`) |
+| User / vault owner | `VaultConfig.owner`; USER_JOURNEY / module JSON `owner` (`$OWNER`) |
+| Provider | `StreamConfig.provider`; USER_JOURNEY / close JSON `provider` (`$PROVIDER`) |
+| Module `owner` field | Vault owner account id for PDA derivation on writes/close — not LEZ `#[account(signer)]` |
+| Module `provider` field (close) | Optional close JSON; omit → owner path (this step’s five-slot ix); present → provider path |
+| Tx submitter | Owner-close: vault owner (`owner` field); provider-close: provider (`provider` field). Precedence `provider` > `owner` (D47.6) |
+| `CLOSE_ROLE` | Module E2E close-role switch: `owner` or `provider`. Step 47 already ships the flag (default `provider` on today’s six-slot close). This step makes `CLOSE_ROLE=owner` (omit `provider` key) a working path and may flip the default to `owner`. Orthogonal to Store `E2E_CLOSE_VIA` (`seed` \| `chainaction`) |
 
 ## Problem
 
@@ -44,10 +49,11 @@ private execution. Enforcement is visibility-independent (message-level public a
 PP checks plus execution-level uniqueness), so “hide the duplicate in a private
 slot” does not work.
 
-So omit-`authority` / `authority` = payer is not a working on-chain path with the
+So omit-`provider` / `provider` = owner is not a working on-chain path with the
 current layout. Automated greens (`module-e2e.sh`, Store default close) use
-`authority` = provider. Rust program tests always use distinct owner and provider
-ids. USER_JOURNEY teaches payer-close, but that shape was never a matrix gate.
+`provider` = stream provider (Step 47 rename of former `authority`). Rust program
+tests always use distinct owner and provider ids. USER_JOURNEY teaches
+owner-close, but that shape was never a matrix gate.
 
 Secondary issue: `signingRequirementsForAccounts` marks every slot matching the
 submitter as `needs_sign`. That is a module shortcut; fixing flags alone does not
@@ -150,7 +156,7 @@ Rejected alternatives (do not pursue):
 
 ### Module and FFI
 
-Keep a single `chainAction closeStream` surface so USER_JOURNEY omit-`authority`
+Keep a single `chainAction closeStream` surface so USER_JOURNEY omit-`provider`
 becomes real. Dispatch is strict (reject mismatches; do not guess).
 
 Identity comparisons are over normalized 32-byte account ids (same helpers as
@@ -160,21 +166,21 @@ Identity for the reject matrix comes from on-chain reads before plan/serialize
 (D44.11), mirroring `enforceDepositSignerEqualsOwner` as a pre-submit check
 precedent:
 
-1. Treat module `signer` as the vault-owner id for PDA derivation (same as today
+1. Treat module `owner` as the vault-owner id for PDA derivation (same as today
    for close/claim/pause).
 2. Derive vault PDAs; `loadVaultConfigOnChain` via `get_account_public`; require
    a decodable vault config. Because seeds are
-   `["vault_config", account("owner"), vault_id]`, a wrong `signer` usually
+   `["vault_config", account("owner"), vault_id]`, a wrong `owner` usually
    yields a missing account (`close_prestate_unavailable`), not
    `close_owner_mismatch`. Keep an equality assert as defense-in-depth if data
-   is present; negative E2E for wrong-signer asserts `close_prestate_unavailable`.
+   is present; negative E2E for wrong-owner asserts `close_prestate_unavailable`.
 3. Stream pre-read is path-dependent (D44.11 / M1 locked as (a)):
    - Owner path: do not pre-read `stream_config` for dispatch. Vault identity
      is enough to choose owner-close. A missing/wrong stream fails later in
      the guest when the five-slot list is executed.
    - Provider path: derive stream PDA; decode stream config (same path as
      `getStreamStatus`); read `StreamConfig.provider` and require
-     `authority` match before plan. If stream data is missing/undecodable —
+     `provider` JSON match before plan. If stream data is missing/undecodable —
      reject with `close_prestate_unavailable` (no in-module sync loop;
      callers/orchestrators keep `sync_wallet` retries).
 4. Apply the dispatch table using those on-chain ids.
@@ -189,8 +195,8 @@ a missing stream fails in the guest. Do not “fix” that asymmetry by adding
 an owner-path stream pre-read.
 
 Dispatch selects a path from JSON ids; it does not prove the caller controls
-the submitter key. A caller who omits `authority` while passing the vault
-owner id as `signer` is routed to the owner path and then fails at the wallet
+the submitter key. A caller who omits `provider` while passing the vault
+owner id as `owner` is routed to the owner path and then fails at the wallet
 (or wallet error 7 on PF) if they cannot sign as owner — not at a module
 reject token. Do not assert a close_* token for that case in the negative
 cell.
@@ -660,7 +666,8 @@ Module / E2E:
 3. FFI — serialize/plan pairs; regenerate `lez_payment_streams_ffi.h`; update
    module bridge `.h` / `.c`.
 4. Module — D44.7 + D44.11 pre-read dispatch; create `owner==provider` reject;
-   locked error tokens; `StreamOwner5` / `StreamAuthority6` submitter wiring;
+   locked error tokens; `StreamOwner5` / `StreamProvider6` submitter wiring
+   (Step 47 already renamed `StreamAuthority6` → `StreamProvider6`);
    thread decoded vault config into submit context (M3).
 5. Seed / examples + Store orchestrator `close_body` — provider-path instruction
    name on both branches.
@@ -674,10 +681,11 @@ Module / E2E:
    streams (clean cut).
 8a. Normative docs — integration-contracts rewrite (dual instructions; rewrite
     the six-account owner-as-authority paragraph); living privacy close rows.
-8b. Mechanical docs — USER_JOURNEY, E2E.md (remove “until Step 44” payee note;
-    document `CLOSE_ROLE` aliases), PRIVACY_ENHANCED_JOURNEY close command,
+8b. Mechanical docs — USER_JOURNEY, E2E.md (document `CLOSE_ROLE`; owner-close
+    default after this step), PRIVACY_ENHANCED_JOURNEY close command,
     on-chain README loader map, module README, verification-matrix;
-    clarify module `signer`/`authority` vs LEZ signer (D44.20; rename → Step 47);
+    LEZ `#[account(signer)]` vs module `owner`/`provider` JSON (Step 47 already
+    hard-cut living rename — do not reintroduce `signer`/`authority` keys);
     `docs/store-integration/README.md` no-op for close; spel/`make cli` auto;
     Step 45 ImageID baseline note.
 9. Manual USER_JOURNEY re-walk on testnet.
@@ -709,7 +717,9 @@ Out of scope:
 - Basecamp UI (Step 21).
 - Keeping a deprecated `CloseStream` wire alias on the new ImageID.
 - Merging stream context loaders; spel IDL path raw-todo.
-- Renaming module JSON `signer`/`authority` → `owner`/`provider` ([Step 47](step-47-unify-role-terminology.md)).
+- Renaming module JSON `signer`/`authority` → `owner`/`provider` ([Step 47](../completed/step-47-unify-role-terminology.md)
+  — already implemented on `feat/step-47-unify-role-terminology`; land/merge
+  before or with this step’s docs so implementors do not write legacy keys).
 
 ## Verification
 
@@ -759,7 +769,7 @@ Out of scope:
 | D44.17 | PP no-regression | Both close paths work public and private; PF uses public PDA pre-read + existing private-submit routing; evidence includes PF provider-close unit + soft E2E; host must hold private owner NSK to submit PF provider-close (M10). |
 | D44.18 | Real-prove ImageID | DoD = one local `RISC0_DEV_MODE=0` `OWNER_PRIVACY=1` payer-close cell. Same run’s later claim re-greens six-slot PF private non-signing owner under real prove. Testnet privacy re-run is not DoD. Step 39 prove greens are ImageID-scoped and superseded by the Step 44 gate log. |
 | D44.19 | Step 45 baseline | Step 45 ImageID freeze moves to the Step 44 ImageID after this step; Step 44 does not wait on Step 45 dep work. |
-| D44.20 | Module JSON naming (N2) | Docs-only in this step: `signer` means vault owner id; on provider-close the tx signer is `authority`. No rename/alias here. Full `owner`/`provider` rename is [Step 47](step-47-unify-role-terminology.md). |
+| D44.20 | Module JSON naming (N2) | Docs-only in this step: `signer` means vault owner id; on provider-close the tx signer is `authority`. No rename/alias here. Full `owner`/`provider` rename is [Step 47](../completed/step-47-unify-role-terminology.md). |
 | D44.21 | Reject tokens | Asserted: `close_prestate_unavailable`, `close_provider_mismatch`, `close_args_mismatch` (empty/whitespace `signer` or empty `authority` key — checked before id helpers), `create_provider_equals_owner`. Reserved: `close_owner_mismatch`. Catch-all: unmatched combinations reject, never coerce. |
 
 ## Open for discussion

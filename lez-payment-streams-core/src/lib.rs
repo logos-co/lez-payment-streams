@@ -38,7 +38,7 @@ pub use instruction_accounts::{
     initialize_vault_instruction_accounts, pause_stream_instruction_accounts,
     resume_stream_instruction_accounts, top_up_stream_instruction_accounts,
     withdraw_instruction_accounts, ClaimStreamInstructionAccounts, DepositInstructionAccounts,
-    InitializeVaultInstructionAccounts, StreamAuthorityInstructionAccounts,
+    InitializeVaultInstructionAccounts, StreamProviderInstructionAccounts,
     StreamOwnerInstructionAccounts, WithdrawInstructionAccounts,
 };
 #[cfg(feature = "host")]

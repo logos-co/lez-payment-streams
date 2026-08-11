@@ -5,7 +5,7 @@
 #include <QJsonObject>
 
 using payment_streams_privacy::decideVaultSubmitPath;
-using payment_streams_privacy::depositSignerMismatchMessage;
+using payment_streams_privacy::depositOwnerMismatchMessage;
 using payment_streams_privacy::kTierPseudonymousFunding;
 using payment_streams_privacy::kTierPublic;
 using payment_streams_privacy::providerBase58ForPeer;
@@ -60,22 +60,22 @@ LOGOS_TEST(pseudonymous_funding_never_selects_public_submit) {
     LOGOS_ASSERT_TRUE(noPrivateSlots.path != VaultSubmitPath::Public);
 }
 
-LOGOS_TEST(deposit_signer_mismatch_is_rejected) {
+LOGOS_TEST(deposit_owner_mismatch_is_rejected) {
     const auto d = decideVaultSubmitPath(kTierPseudonymousFunding, true, true, kOtherHex, kOwnerHex);
     LOGOS_ASSERT_FALSE(d.ok);
-    LOGOS_ASSERT_EQ(d.error, depositSignerMismatchMessage());
+    LOGOS_ASSERT_EQ(d.error, depositOwnerMismatchMessage());
 }
 
-LOGOS_TEST(deposit_signer_match_allows_private_submit) {
+LOGOS_TEST(deposit_owner_match_allows_private_submit) {
     const auto d = decideVaultSubmitPath(kTierPseudonymousFunding, true, true, kOwnerHex, kOwnerHex);
     LOGOS_ASSERT_TRUE(d.ok);
     LOGOS_ASSERT_EQ(static_cast<int>(d.path), static_cast<int>(VaultSubmitPath::Private));
 }
 
-LOGOS_TEST(public_deposit_signer_mismatch_is_rejected) {
+LOGOS_TEST(public_deposit_owner_mismatch_is_rejected) {
     const auto d = decideVaultSubmitPath(kTierPublic, false, true, kOtherHex, kOwnerHex);
     LOGOS_ASSERT_FALSE(d.ok);
-    LOGOS_ASSERT_EQ(d.error, depositSignerMismatchMessage());
+    LOGOS_ASSERT_EQ(d.error, depositOwnerMismatchMessage());
 }
 
 LOGOS_TEST(resolutions_contain_private_helper) {

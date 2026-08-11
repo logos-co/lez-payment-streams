@@ -85,8 +85,8 @@ export RATE=1
 export MIN_ACCRUED=1
 export VAULT_ID=0
 export STREAM_ID=0
-export PAYER=""
-export PAYEE=""
+export OWNER=""
+export PROVIDER=""
 export LOGOSCORE_DAEMON_LOG="$REPO_ROOT/.scaffold/e2e/user-journey-logoscore-$(date -u +%Y-%m-%dT%H-%M-%SZ).log"
 ```
 
@@ -267,28 +267,28 @@ journey_ok "Modules loaded; wallet open (log: $LOGOSCORE_DAEMON_LOG)"
 Use the last line of each `logoscore call` for JSON `status` / `result`. For daemon debug logs:
 `tail -f "$LOGOSCORE_DAEMON_LOG"`.
 
-## Step 7 — Create payer and payee accounts
+## Step 7 — Create owner and provider accounts
 
 ```bash
 if ! logoscore list-modules --loaded 2>/dev/null | grep -q logos_execution_zone; then
   journey_fail "logos_execution_zone not loaded; run the second block of Step 6 (load-module logos_execution_zone, load-module payment_streams_module, open wallet) before Step 7"
 else
-if [[ -z "$PAYER" ]]; then
-  PAYER_HEX=$(logoscore call logos_execution_zone create_account_public | tail -1 \
+if [[ -z "$OWNER" ]]; then
+  OWNER_HEX=$(logoscore call logos_execution_zone create_account_public | tail -1 \
     | sed -n 's/.*"result":"\([^"]*\)".*/\1/p')
-  PAYER=$(logoscore call logos_execution_zone account_id_to_base58 "$PAYER_HEX" | tail -1 \
+  OWNER=$(logoscore call logos_execution_zone account_id_to_base58 "$OWNER_HEX" | tail -1 \
     | sed -n 's/.*"result":"\([^"]*\)".*/\1/p')
-  export PAYER
+  export OWNER
 fi
-if [[ -z "$PAYEE" ]]; then
-  PAYEE_HEX=$(logoscore call logos_execution_zone create_account_public | tail -1 \
+if [[ -z "$PROVIDER" ]]; then
+  PROVIDER_HEX=$(logoscore call logos_execution_zone create_account_public | tail -1 \
     | sed -n 's/.*"result":"\([^"]*\)".*/\1/p')
-  PAYEE=$(logoscore call logos_execution_zone account_id_to_base58 "$PAYEE_HEX" | tail -1 \
+  PROVIDER=$(logoscore call logos_execution_zone account_id_to_base58 "$PROVIDER_HEX" | tail -1 \
     | sed -n 's/.*"result":"\([^"]*\)".*/\1/p')
-  export PAYEE
+  export PROVIDER
 fi
 logoscore call logos_execution_zone save
-journey_ok "Payer and payee public accounts ready (payer=$PAYER payee=$PAYEE)"
+journey_ok "Owner and provider public accounts ready (owner=$OWNER provider=$PROVIDER)"
 fi
 ```
 
@@ -297,13 +297,13 @@ fi
 ## Step 8 — Authenticated transfer registration
 
 Uses the same path as module E2E (`wallet auth-transfer init` with logoscore wallet handoff, then
-`register_public_account` if needed). Requires `$PAYER` and `$PAYEE` from Step 7.
+`register_public_account` if needed). Requires `$OWNER` and `$PROVIDER` from Step 7.
 
 ```bash
 cd "$REPO_ROOT"
 ./scripts/user-journey-auth-transfer.sh
 sync_to_chain
-journey_ok "Authenticated transfer registered for payer and payee"
+journey_ok "Authenticated transfer registered for owner and provider"
 ```
 
 On success the script exits 0 and appends phases to `.scaffold/e2e/user-journey-at.jsonl`. If it
@@ -316,48 +316,48 @@ Close the in-process wallet before the standalone `wallet` binary claims pinata.
 ```bash
 export PATH="$(dirname "$SCAFFOLD_WALLET"):$PATH"
 PINATA_PER_CLAIM=150
-PAYER_TARGET=$((DEPOSIT + 50))
-PAYEE_TARGET=50
+OWNER_TARGET=$((DEPOSIT + 50))
+PROVIDER_TARGET=50
 MAX_CLAIMS_PER_ACCOUNT=6
 
-pb=$(chain_balance "$PAYER"); pb=${pb:-0}
-pe=$(chain_balance "$PAYEE"); pe=${pe:-0}
-payer_claims=0
-payee_claims=0
-if (( pb < PAYER_TARGET )); then
-  payer_claims=$(( (PAYER_TARGET - pb + PINATA_PER_CLAIM - 1) / PINATA_PER_CLAIM ))
-  (( payer_claims > MAX_CLAIMS_PER_ACCOUNT )) && payer_claims=$MAX_CLAIMS_PER_ACCOUNT
+pb=$(chain_balance "$OWNER"); pb=${pb:-0}
+pe=$(chain_balance "$PROVIDER"); pe=${pe:-0}
+owner_claims=0
+provider_claims=0
+if (( pb < OWNER_TARGET )); then
+  owner_claims=$(( (OWNER_TARGET - pb + PINATA_PER_CLAIM - 1) / PINATA_PER_CLAIM ))
+  (( owner_claims > MAX_CLAIMS_PER_ACCOUNT )) && owner_claims=$MAX_CLAIMS_PER_ACCOUNT
 fi
-if (( pe < PAYEE_TARGET )); then
-  payee_claims=$(( (PAYEE_TARGET - pe + PINATA_PER_CLAIM - 1) / PINATA_PER_CLAIM ))
-  (( payee_claims > MAX_CLAIMS_PER_ACCOUNT )) && payee_claims=$MAX_CLAIMS_PER_ACCOUNT
+if (( pe < PROVIDER_TARGET )); then
+  provider_claims=$(( (PROVIDER_TARGET - pe + PINATA_PER_CLAIM - 1) / PINATA_PER_CLAIM ))
+  (( provider_claims > MAX_CLAIMS_PER_ACCOUNT )) && provider_claims=$MAX_CLAIMS_PER_ACCOUNT
 fi
 
 logoscore call logos_execution_zone close
-for (( i = 0; i < payer_claims; i++ )); do
-  "$SCAFFOLD_WALLET" pinata claim --to "Public/$PAYER"
+for (( i = 0; i < owner_claims; i++ )); do
+  "$SCAFFOLD_WALLET" pinata claim --to "Public/$OWNER"
   sleep 2
 done
-for (( i = 0; i < payee_claims; i++ )); do
-  "$SCAFFOLD_WALLET" pinata claim --to "Public/$PAYEE"
+for (( i = 0; i < provider_claims; i++ )); do
+  "$SCAFFOLD_WALLET" pinata claim --to "Public/$PROVIDER"
   sleep 2
 done
 logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE"
 logoscore call logos_execution_zone save
 
-pb=$(chain_balance "$PAYER"); pb=${pb:-0}
-pe=$(chain_balance "$PAYEE"); pe=${pe:-0}
-echo "Payer balance $pb (target $PAYER_TARGET); payee balance $pe (target $PAYEE_TARGET)"
+pb=$(chain_balance "$OWNER"); pb=${pb:-0}
+pe=$(chain_balance "$PROVIDER"); pe=${pe:-0}
+echo "Owner balance $pb (target $OWNER_TARGET); provider balance $pe (target $PROVIDER_TARGET)"
 sync_to_chain
-journey_ok "Payer and payee funded on testnet (pinata)"
+journey_ok "Owner and provider funded on testnet (pinata)"
 ```
 
 
 
 ## Step 10 — Initialize vault
 
-Step 1 sets `VAULT_ID=0`. After Step 7 you have a new payer, so vault 0 is usually free. If
-`initializeVault` fails because that vault already exists for `$PAYER`, run
+Step 1 sets `VAULT_ID=0`. After Step 7 you have a new owner, so vault 0 is usually free. If
+`initializeVault` fails because that vault already exists for `$OWNER`, run
 `export VAULT_ID=1` (or the next free id) and repeat this step.
 
 Initialize the vault, then confirm the transaction was included before moving on:
@@ -365,7 +365,7 @@ Initialize the vault, then confirm the transaction was included before moving on
 ```bash
 h0=$(last_block)
 line=$(logoscore call payment_streams_module chainAction initializeVault \
-  "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID}" | tail -1)
+  "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID}" | tail -1)
 echo "$line"
 journey_write_ok "Vault created (vault_id=$VAULT_ID)" "$line"
 echo "Submitted at chain height $h0"
@@ -377,7 +377,7 @@ height greater than `$h0`, then confirm the state change:
 ```bash
 sync_to_chain
 logoscore call payment_streams_module chainAction getVaultStatus \
-  "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
+  "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID}"
 ```
 
 Proceed to Step 11 only once the read returns a real `vault_config` instead of
@@ -393,7 +393,7 @@ Deposit into the vault, then confirm inclusion before moving on:
 ```bash
 h0=$(last_block)
 line=$(logoscore call payment_streams_module chainAction deposit \
-  "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}" | tail -1)
+  "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}" | tail -1)
 echo "$line"
 journey_write_ok "Vault funded ($DEPOSIT tokens, vault_id=$VAULT_ID)" "$line"
 echo "Submitted at chain height $h0"
@@ -404,7 +404,7 @@ Wait until `last_block` is greater than `$h0`, then confirm the state change:
 ```bash
 sync_to_chain
 logoscore call payment_streams_module chainAction getVaultStatus \
-  "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID}"
+  "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID}"
 ```
 
 Proceed to Step 12 only once the read reflects the funded `vault_holding_balance`; if the change
@@ -420,9 +420,9 @@ Create the stream, then confirm inclusion before moving on:
 ```bash
 h0=$(last_block)
 line=$(logoscore call payment_streams_module chainAction createStream \
-  "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PAYEE\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}" | tail -1)
+  "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PROVIDER\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}" | tail -1)
 echo "$line"
-journey_write_ok "Payment stream created (stream_id=$STREAM_ID, payee=$PAYEE)" "$line"
+journey_write_ok "Payment stream created (stream_id=$STREAM_ID, provider=$PROVIDER)" "$line"
 echo "Submitted at chain height $h0"
 ```
 
@@ -431,7 +431,7 @@ Wait until `last_block` is greater than `$h0`, then confirm the state change:
 ```bash
 sync_to_chain
 logoscore call payment_streams_module chainAction getStreamStatus \
-  "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
+  "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
 Proceed to Step 13 only once the read shows the stream instead of `account data missing`; if the
@@ -447,20 +447,20 @@ Wait approximately 30 seconds for funds to accrue, then:
 ```bash
 sync_to_chain
 logoscore call payment_streams_module chainAction getStreamStatus \
-  "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
+  "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 journey_ok "Accrual window elapsed; check accrued_lo in JSON above (need ≥ $MIN_ACCRUED before close)"
 ```
 
 
 
-## Step 14 — Close stream (payer)
+## Step 14 — Close stream (owner)
 
 ```bash
 h0=$(last_block)
 line=$(logoscore call payment_streams_module chainAction closeStream \
-  "{\"signer\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}" | tail -1)
+  "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}" | tail -1)
 echo "$line"
-journey_write_ok "Stream closed by payer (vault_id=$VAULT_ID stream_id=$STREAM_ID)" "$line"
+journey_write_ok "Stream closed by owner (vault_id=$VAULT_ID stream_id=$STREAM_ID)" "$line"
 echo "Submitted at chain height $h0"
 ```
 
@@ -469,7 +469,7 @@ Wait until `last_block` is greater than `$h0`, then confirm the state change:
 ```bash
 sync_to_chain
 logoscore call payment_streams_module chainAction getStreamStatus \
-  "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
+  "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
 ```
 
 Proceed to Step 15 only once the read shows `stream_state` `2` (Closed); if the change has not
@@ -477,27 +477,27 @@ appeared after about a minute (several blocks), the close was likely dropped —
 
 
 
-## Step 15 — Claim (payee)
+## Step 15 — Claim (provider)
 
 ```bash
 h0=$(last_block)
 line=$(logoscore call payment_streams_module chainAction claim \
-  "{\"owner\":\"$PAYER\",\"provider\":\"$PAYEE\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}" | tail -1)
+  "{\"owner\":\"$OWNER\",\"provider\":\"$PROVIDER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}" | tail -1)
 echo "$line"
-journey_write_ok "Payee claimed accrued tokens" "$line"
+journey_write_ok "Provider claimed accrued tokens" "$line"
 echo "Submitted at chain height $h0"
 ```
 
-`claim` is signed by the payee. Wait until `last_block` is greater than `$h0`, then confirm the
-state change (the payee balance increasing by the payout):
+`claim` is signed by the provider. Wait until `last_block` is greater than `$h0`, then confirm the
+state change (the provider balance increasing by the payout):
 
 ```bash
 sync_to_chain
-payee_bal=$(chain_balance "$PAYEE"); payee_bal=${payee_bal:-0}
-echo "Payee on-chain balance: $payee_bal"
+provider_bal=$(chain_balance "$PROVIDER"); provider_bal=${provider_bal:-0}
+echo "Provider on-chain balance: $provider_bal"
 ```
 
-Proceed to Step 16 only once the payee balance reflects the claimed payout; if it has not changed
+Proceed to Step 16 only once the provider balance reflects the claimed payout; if it has not changed
 after about a minute (several blocks), the claim was likely dropped — re-run this step.
 
 
@@ -509,10 +509,10 @@ Uses `chain_balance` from Step 1 (sequencer `getAccount`, no `sync_to_chain` nee
 ```bash
 sync_to_chain
 logoscore call payment_streams_module chainAction getStreamStatus \
-  "{\"owner\":\"$PAYER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
-payee_bal=$(chain_balance "$PAYEE"); payee_bal=${payee_bal:-0}
-echo "Payee on-chain balance: $payee_bal"
-journey_ok "Payment stream walkthrough complete (payee balance $payee_bal)"
+  "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}"
+provider_bal=$(chain_balance "$PROVIDER"); provider_bal=${provider_bal:-0}
+echo "Provider on-chain balance: $provider_bal"
+journey_ok "Payment stream walkthrough complete (provider balance $provider_bal)"
 ```
 
 
@@ -531,8 +531,8 @@ exit
 ## Expected result
 
 Each step prints a `Success: ...` line on success. After Step 14 (Close) the stream `stream_state`
-is `2` (Closed). After Step 15 (Claim) the accrued tokens move to the payee. Step 16 (Confirm)
-prints the payee on-chain balance and `Success: Payment stream walkthrough complete (payee balance <n>)`.
+is `2` (Closed). After Step 15 (Claim) the accrued tokens move to the provider. Step 16 (Confirm)
+prints the provider on-chain balance and `Success: Payment stream walkthrough complete (provider balance <n>)`.
 
 ## Configuration details
 
@@ -551,10 +551,10 @@ Environment variables (set in Step 1): `FIXTURE_MANIFEST`, `PAYMENT_STREAMS_GUES
 
 | Term (prose)                | JSON / wire                                             | Meaning                                                                                     |
 | --------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Payer                       | `signer` on writes; `owner` on reads and `claim`        | Vault owner; closes the stream in this flow                                                 |
-| Payee                       | `provider` on `createStream` and `claim`                | Recipient; claims after close                                                               |
+| Owner                       | `owner` on writes, reads, and `claim`        | Vault owner; closes the stream in this flow                                                 |
+| Provider                       | `provider` on `createStream` and `claim`                | Recipient; claims after close                                                               |
 | Vault                       | `vault_id`                                              | Holds deposits and allocations                                                              |
-| Stream                      | `stream_id`                                             | Pays payee at `rate` up to `allocation`                                                     |
+| Stream                      | `stream_id`                                             | Pays provider at `rate` up to `allocation`                                                     |
 | `*_lo` / `*_hi`             | writes and `getStreamStatus`                            | 128-bit amount as two uint64s: `lo + (hi << 64)`. Values here fit in `*_lo` with `*_hi` = 0 |
 | `accrued_*`, `unaccrued_*`  | `getStreamStatus`                                       | Claimable vs not-yet-time-accrued allocation                                                |
 | `stream_state`              | 0 Active, 1 Paused, 2 Closed                            |                                                                                             |
@@ -574,11 +574,11 @@ Environment variables (set in Step 1): `FIXTURE_MANIFEST`, `PAYMENT_STREAMS_GUES
 | Module variant / `load-module` failed                         | `./scripts/user-journey-reset.sh`, re-enter `./scripts/user-journey-shell.sh`, Step 5 `./scripts/user-journey-install-modules.sh`             |
 | `Run this from the journey toolchain shell`                   | `./scripts/user-journey-shell.sh` before Step 5                                                                                               |
 | `missing wallet debug config in lez repo`                     | `./scripts/user-journey-lgs-setup.sh` (fallback copy built in)                                                                                |
-| `Call to logos_execution_zone.<method> failed` + empty `PAYER`/`PAYEE` | `logos_execution_zone` is not loaded in the daemon (only `capability_module` auto-loads). Run the second block of Step 6 (`load-module logos_execution_zone`, `load-module payment_streams_module`, open wallet), then re-run Step 7 |
+| `Call to logos_execution_zone.<method> failed` + empty `OWNER`/`PROVIDER` | `logos_execution_zone` is not loaded in the daemon (only `capability_module` auto-loads). Run the second block of Step 6 (`load-module logos_execution_zone`, `load-module payment_streams_module`, open wallet), then re-run Step 7 |
 | `account data missing` after a successful write | The write was not included, not mirror lag. Wait until `last_block` is past the submission height `$h0` the step printed, then re-run the `getVaultStatus` / `getStreamStatus` read. If the expected state still does not appear after about a minute (several blocks), the tx was dropped by the sequencer — re-run the step. If the state appears but is wrong, the tx was included but reverted — stop and debug |
 | Paused between steps                                          | Run the next step as written; first command is often `sync_to_chain` before a read                                                            |
-| `initializeVault` fails for vault 0                           | Reuse of `$PAYER` from an earlier run: `export VAULT_ID=1` and retry Step 10, or `./scripts/user-journey-reset.sh` and new accounts in Step 7 |
-| Deposit rejected                                              | Step 9 pinata for payer                                                                                                                       |
+| `initializeVault` fails for vault 0                           | Reuse of `$OWNER` from an earlier run: `export VAULT_ID=1` and retry Step 10, or `./scripts/user-journey-reset.sh` and new accounts in Step 7 |
+| Deposit rejected                                              | Step 9 pinata for owner                                                                                                                       |
 | Stream not Closed                                             | Run `sync_to_chain`; redo Step 14                                                                                                             |
 | Empty claim                                                   | Step 13 until `accrued_lo` ≥ `MIN_ACCRUED`                                                                                                    |
 | AT errors                                                     | Step 8 `./scripts/user-journey-auth-transfer.sh`; check `.scaffold/e2e/user-journey-at.jsonl`                                                 |
