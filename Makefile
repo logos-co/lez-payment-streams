@@ -20,7 +20,7 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-module-local verify-store-local verify-store-testnet verify-store-local-lifecycle check-terminology verify-step17 verify-step17-back-to-back verify-step18 verify-step18-testnet-read-smoke deploy-testnet bootstrap-testnet prepare-localnet full-reset-localnet debug-sequencer-latency
+.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-module-local verify-module-local-payee-close verify-module-local-payee-close-privacy verify-store-local verify-store-testnet verify-store-local-lifecycle check-terminology verify-step17 verify-step17-back-to-back verify-step18 verify-step18-testnet-read-smoke deploy-testnet bootstrap-testnet prepare-localnet full-reset-localnet debug-sequencer-latency
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
@@ -154,6 +154,14 @@ verify-module-local: ## Flow A (module only) local happy path (MODE=module scrip
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
 	MODE=module CHAIN=local ./scripts/e2e.sh local run
 
+verify-module-local-payee-close: ## Step 44 thin provider-close cell (CLOSE_ROLE=provider)
+	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
+	MODE=module CHAIN=local CLOSE_ROLE=provider ./scripts/e2e.sh local run
+
+verify-module-local-payee-close-privacy: ## Step 44 PF provider-close (CLOSE_ROLE=provider OWNER_PRIVACY=1)
+	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
+	MODE=module CHAIN=local CLOSE_ROLE=provider OWNER_PRIVACY=1 ./scripts/e2e.sh local run
+
 verify-module-local-privacy: ## Owner privacy (OWNER_PRIVACY=1) PseudonymousFunding lifecycle on localnet
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
 	MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
@@ -161,6 +169,10 @@ verify-module-local-privacy: ## Owner privacy (OWNER_PRIVACY=1) PseudonymousFund
 verify-module-local-provider-privacy: ## Provider privacy (PROVIDER_PRIVACY=1) shielded claim on localnet
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh
 	MODE=module CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+
+verify-module-local-close-negatives: ## Step 44 asserted close/create reject tokens on localnet
+	chmod +x scripts/module-e2e-close-negatives.sh
+	./scripts/module-e2e-close-negatives.sh
 
 verify-module-testnet: ## Flow A (module only) testnet happy path
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh

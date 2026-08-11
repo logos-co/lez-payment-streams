@@ -156,6 +156,8 @@ else
 fi
 # Set MODULE_E2E_SKIP_CLOSE=1 to skip settlement (close + claim; saves testnet txs).
 MODULE_E2E_SKIP_CLOSE="${MODULE_E2E_SKIP_CLOSE:-0}"
+# Set MODULE_E2E_CLOSE_NEGATIVES=1 to assert Step 44 reject tokens after create.
+MODULE_E2E_CLOSE_NEGATIVES="${MODULE_E2E_CLOSE_NEGATIVES:-0}"
 # Close role for Step 44 cells: owner (default; omit provider key) or provider
 # (include provider JSON key on six-slot close).
 CLOSE_ROLE="${CLOSE_ROLE:-owner}"
@@ -690,12 +692,17 @@ call_ps() {
       local close_extra=""
       if [[ "$phase" == "close_stream" ]]; then
         local clock_hex=""
-        clock_hex="$(python3 -c 'import json,sys
+        clock_hex="$(python3 -c '
+import json,sys
 try:
-  o=json.loads(sys.argv[1])
-  print(o.get("clock_account_id_hex") or "")
+  outer=json.loads(sys.argv[1])
+  inner=outer.get("result","{}")
+  if isinstance(inner,str):
+    inner=json.loads(inner) if inner.strip().startswith("{") else {}
+  print(inner.get("clock_account_id_hex") or "")
 except Exception:
-  print("")' "${line:-}" 2>/dev/null || true)"
+  print("")
+' "${line:-}" 2>/dev/null || true)"
         close_extra=",\"close_role\":\"${CLOSE_ROLE:-}\",\"RISC0_DEV_MODE\":\"${RISC0_DEV_MODE:-1}\",\"clock_account_id_hex\":\"${clock_hex}\""
       fi
       if [[ -n "$tx_hash" ]] && ! await_inclusion "$tx_hash"; then
@@ -1213,6 +1220,79 @@ narr_value "rate=$RATE tokens/sec, allocation=$ALLOCATION tokens, vault=$VAULT_I
 narr_verbose "A payment stream allocates tokens to a provider at a fixed rate."
 narr_verbose "The allocation is the maximum the stream can pay out."
 call_ps create_stream 1 createStream "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PROVIDER\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}")" "" "Stream $STREAM_ID created (ACTIVE)" verify_create_stream
+
+# ---------------------------------------------------------------------------
+# Optional Step 44 negative rejects (asserted tokens only; D44.21)
+# ---------------------------------------------------------------------------
+assert_close_reject_token() {
+  local label="$1" params="$2" token="$3"
+  local line msg
+  line="$(logoscore call payment_streams_module chainAction closeStream "$params" 2>/dev/null | tail -1)"
+  msg="$(extract_field "$line" message)"
+  if [[ "$msg" == *"$token"* ]]; then
+    emit_phase "close_neg_$label" true "{\"token\":\"$token\"}"
+    narr_ok "Reject $label → $token"
+    return 0
+  fi
+  emit_phase "close_neg_$label" false "{\"token\":\"$token\",\"message\":$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "${msg:-}")}"
+  narr_fail "Reject $label expected token $token, got: ${msg:-<empty>}"
+  FAILURES=$((FAILURES + 1))
+  return 0
+}
+
+assert_create_reject_token() {
+  local label="$1" params="$2" token="$3"
+  local line msg
+  line="$(logoscore call payment_streams_module chainAction createStream "$params" 2>/dev/null | tail -1)"
+  msg="$(extract_field "$line" message)"
+  if [[ "$msg" == *"$token"* ]]; then
+    emit_phase "create_neg_$label" true "{\"token\":\"$token\"}"
+    narr_ok "Reject $label → $token"
+    return 0
+  fi
+  emit_phase "create_neg_$label" false "{\"token\":\"$token\",\"message\":$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "${msg:-}")}"
+  narr_fail "Reject $label expected token $token, got: ${msg:-<empty>}"
+  FAILURES=$((FAILURES + 1))
+  return 0
+}
+
+if [[ "$MODULE_E2E_CLOSE_NEGATIVES" == "1" ]]; then
+  narr_phase "Close / create negatives (Step 44)"
+  assert_close_reject_token args_empty_owner \
+    "$(j "{\"owner\":\"\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" \
+    close_args_mismatch
+  assert_close_reject_token args_empty_provider \
+    "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"\"}")" \
+    close_args_mismatch
+  assert_close_reject_token prestate_wrong_owner \
+    "$(j "{\"owner\":\"$PROVIDER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" \
+    close_prestate_unavailable
+  ALT_PROVIDER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
+  if [[ -z "${ALT_PROVIDER:-}" ]]; then
+    narr_fail "Could not create alt provider account for close_provider_mismatch"
+    FAILURES=$((FAILURES + 1))
+  else
+    logoscore call logos_execution_zone save >/dev/null 2>&1 || true
+    assert_close_reject_token provider_mismatch \
+      "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$ALT_PROVIDER\"}")" \
+      close_provider_mismatch
+  fi
+  # provider == owner on create (use a high stream id that would be next only if accepted)
+  NEXT_SID=$((STREAM_ID + 50))
+  assert_create_reject_token provider_equals_owner \
+    "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$NEXT_SID,\"provider\":\"$OWNER\",\"rate\":1,\"allocation_lo\":1,\"allocation_hi\":0}")" \
+    create_provider_equals_owner
+  emit_phase close_negatives_summary true "{\"failures\":$FAILURES}"
+  if [[ "$MODULE_E2E_SKIP_CLOSE" == "1" ]]; then
+    narr_phase "Done (negatives only)"
+    if [[ "$FAILURES" -gt 0 ]]; then
+      narr_fail "$FAILURES negative assertion(s) failed"
+      exit 1
+    fi
+    narr_ok "Step 44 negative tokens asserted"
+    exit 0
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 # PHASE: Stream Lifecycle (optional pause/resume + top-up)
