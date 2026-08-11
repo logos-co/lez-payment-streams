@@ -14,7 +14,7 @@ use crate::{
         state_with_initialized_vault,
     },
     StreamConfig, StreamId, StreamState, Timestamp, TokensPerSecond, VaultConfig, VaultId,
-    DEFAULT_VERSION,
+    CLOCK_01_PROGRAM_ACCOUNT_ID, DEFAULT_VERSION,
 };
 
 use super::common::{
@@ -146,6 +146,46 @@ fn test_create_stream_succeeds() {
             .balance,
         amount
     );
+}
+
+#[test]
+fn test_create_stream_provider_equals_owner_fails() {
+    let clock_id = CLOCK_01_PROGRAM_ACCOUNT_ID;
+    let mut dep = state_deposited_with_clock(
+        DEFAULT_OWNER_GENESIS_BALANCE,
+        DEFAULT_STREAM_TEST_DEPOSIT,
+        clock_id,
+        DEFAULT_CLOCK_INITIAL_TS,
+    );
+    let stream_id = StreamId::MIN;
+    let stream_pda = derive_stream_pda(
+        dep.vault.program_id,
+        dep.vault.vault_config_account_id,
+        stream_id,
+    );
+    let stream_accounts = [
+        dep.vault.vault_config_account_id,
+        dep.vault.vault_holding_account_id,
+        stream_pda,
+        dep.vault.owner_account_id,
+        clock_id,
+    ];
+    let r = dep.vault.state.transition_from_public_transaction(
+        &signed_create_stream(
+            dep.vault.program_id,
+            dep.vault.vault_id,
+            stream_id,
+            dep.vault.owner_account_id,
+            1 as TokensPerSecond,
+            100 as Balance,
+            &stream_accounts,
+            Nonce(2),
+            &dep.vault.owner_private_key,
+        ),
+        3 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
+    assert_execution_failed_with_code(r, ErrorCode::ProviderEqualsOwner);
 }
 
 #[test]

@@ -59,13 +59,16 @@ pub(crate) const DEFAULT_STREAM_TEST_DEPOSIT: Balance = 500;
 /// Account order for stream instructions: vault config, holding, stream PDA, owner, clock account.
 pub(crate) type StreamIxAccounts = [AccountId; 5];
 
-/// `close_stream`: vault config, holding, stream PDA, owner (vault pubkey), authority, clock.
-pub(crate) type CloseStreamIxAccounts = [AccountId; 6];
+/// `close_stream_by_owner`: same five slots as other owner-authorized stream instructions.
+pub(crate) type CloseStreamByOwnerIxAccounts = StreamIxAccounts;
 
-/// `claim`: same six slots as [`CloseStreamIxAccounts`].
+/// `close_stream_by_provider`: vault config, holding, stream PDA, owner (vault pubkey), provider, clock.
+pub(crate) type CloseStreamByProviderIxAccounts = [AccountId; 6];
+
+/// `claim`: same six slots as [`CloseStreamByProviderIxAccounts`].
 /// Index 4, stream provider (authorization source, payout recipient).
 /// Index 3, vault owner (present for owner binding).
-pub(crate) type ClaimStreamIxAccounts = CloseStreamIxAccounts;
+pub(crate) type ClaimStreamIxAccounts = CloseStreamByProviderIxAccounts;
 
 fn signed_stream_public_tx(
     program_id: ProgramId,
@@ -185,23 +188,43 @@ pub(crate) fn signed_top_up_stream(
     )
 }
 
-pub(crate) fn signed_close_stream(
+pub(crate) fn signed_close_stream_by_owner(
     program_id: ProgramId,
     vault_id: VaultId,
     stream_id: StreamId,
-    accounts: &CloseStreamIxAccounts,
+    accounts: &CloseStreamByOwnerIxAccounts,
     nonce: Nonce,
-    authority: &PrivateKey,
+    owner: &PrivateKey,
+) -> PublicTransaction {
+    signed_stream_public_tx(
+        program_id,
+        Instruction::CloseStreamByOwner {
+            vault_id,
+            stream_id,
+        },
+        accounts,
+        nonce,
+        owner,
+    )
+}
+
+pub(crate) fn signed_close_stream_by_provider(
+    program_id: ProgramId,
+    vault_id: VaultId,
+    stream_id: StreamId,
+    accounts: &CloseStreamByProviderIxAccounts,
+    nonce: Nonce,
+    provider: &PrivateKey,
 ) -> PublicTransaction {
     build_signed_public_tx(
         program_id,
-        Instruction::CloseStream {
+        Instruction::CloseStreamByProvider {
             vault_id,
             stream_id,
         },
         accounts,
         &[nonce],
-        &[authority],
+        &[provider],
     )
 }
 
@@ -301,7 +324,8 @@ pub(crate) fn assert_vault_conservation_invariants(
     );
 }
 
-/// Test-only: set stream state to `Closed` by rewriting the stream account (bypasses `close_stream`).
+/// Test-only: set stream state to `Closed` by rewriting the stream account
+/// (bypasses `close_stream_by_owner` / `close_stream_by_provider`).
 pub(crate) fn force_stream_state_closed(state: &mut V03State, stream_pda: AccountId) {
     let mut stream_cfg =
         borsh::from_slice::<StreamConfig>(&state.get_account_by_id(stream_pda).data)

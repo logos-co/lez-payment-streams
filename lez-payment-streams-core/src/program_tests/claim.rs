@@ -12,7 +12,8 @@ use crate::{
 
 use super::common::{
     assert_execution_failed_with_code, claim_stream_prelude_at_t1, signed_claim_stream,
-    signed_close_stream, transition_ok, ClaimStreamIxAccounts, CloseStreamIxAccounts,
+    signed_close_stream_by_provider, transition_ok, ClaimStreamIxAccounts,
+    CloseStreamByProviderIxAccounts,
     DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
 };
 use crate::harness_seeds::{SEED_ALT_SIGNER, SEED_PROVIDER};
@@ -287,7 +288,7 @@ fn test_claim_after_close_succeeds() {
     let stream_id = scenario.stream_id;
     let stream_pda = scenario.stream_pda;
 
-    let close_accounts: CloseStreamIxAccounts = [
+    let close_accounts: CloseStreamByProviderIxAccounts = [
         wp.deposited.vault.vault_config_account_id,
         wp.deposited.vault.vault_holding_account_id,
         stream_pda,
@@ -298,7 +299,7 @@ fn test_claim_after_close_succeeds() {
 
     transition_ok(
         &mut wp.deposited.vault.state,
-        &signed_close_stream(
+        &signed_close_stream_by_provider(
             wp.deposited.vault.program_id,
             wp.deposited.vault.vault_id,
             stream_id,

@@ -280,7 +280,7 @@ pub(crate) fn run_pp_withdraw_to_private_recipient(
     )
 }
 
-// ---- Phase 1: visibility-1 private signer (claim and close_stream) ---- //
+// ---- Phase 1: visibility-1 private signer (claim and close_stream_by_provider) ---- //
 
 pub(crate) const PP_T0: Timestamp = 1;
 pub(crate) const PP_T1: Timestamp = 6;
@@ -298,7 +298,7 @@ pub(crate) struct PpClaimCloseSetup {
     pub(crate) provider_committed_account: Account,
 }
 
-/// Build the shared state for the PP claim and close_stream tests.
+/// Build the shared state for the PP claim and close_stream_by_provider tests.
 pub(crate) fn pp_claim_close_setup() -> PpClaimCloseSetup {
     let mut fx = vault_fixture_public_tier_funded_via_deposit();
 
