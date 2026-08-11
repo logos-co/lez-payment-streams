@@ -57,7 +57,7 @@ pub struct StreamParams {
     pub rate: TokensPerSecond,
     /// Proposed allocation cap; same scale as on-chain [`crate::StreamConfig::allocation`].
     pub allocation: Balance,
-    /// Latest ledger time by which the payer must land `create_stream` on-chain (signed proposal field).
+    /// Latest ledger time by which the user must land `create_stream` on-chain (signed proposal field).
     pub create_stream_deadline: Timestamp,
     /// Opaque service identifier; length SHOULD be at most [`MAX_SERVICE_ID_LEN`].
     pub service_id: Vec<u8>,
@@ -80,7 +80,7 @@ impl StreamParams {
     }
 }
 
-/// Session view pinned at acceptance: proposal params, payee identity, and provider policy snapshot.
+/// Session view pinned at acceptance: proposal params, provider identity, and provider policy snapshot.
 ///
 /// LIP-155 requires ongoing verification to use `policy_at_acceptance`, not the latest advertised policy.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -145,7 +145,7 @@ pub enum PolicyRejectReason {
     RateBelowAcceptedParams = 4,
     /// Established on-chain allocation is weaker than accepted proposal terms.
     AllocationBelowAcceptedParams = 5,
-    /// Folded [`crate::StreamConfig::provider`] or proof payee mismatch against the acceptance binding.
+    /// Folded [`crate::StreamConfig::provider`] or proof provider mismatch against the acceptance binding.
     ProviderMismatch = 6,
     /// Only [`crate::StreamState::Active`] streams may serve proofs.
     StreamNotActive = 7,

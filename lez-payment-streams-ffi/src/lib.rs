@@ -991,14 +991,14 @@ mod tests {
 
         #[test]
         fn ffi_fold_matches_core_vectors() {
-            let provider_payee_binding = marker_account(9);
+            let provider_binding = marker_account(9);
             let stream_snapshot = stream_fixture_row(
                 0,
                 1_000,
                 10,
                 100,
                 StreamState::Active,
-                provider_payee_binding,
+                provider_binding,
             );
             let decoded_snapshot = decoded_stream_fixture_row(&stream_snapshot);
             let mut fold_scratch = zero_fold_outcome_scratch();
@@ -1039,14 +1039,14 @@ mod tests {
 
         #[test]
         fn ffi_fold_surfaces_time_regression_through_guest_slot() {
-            let provider_payee_binding = marker_account(8);
+            let provider_binding = marker_account(8);
             let stream_snapshot = stream_fixture_row(
                 0,
                 1_000,
                 10,
                 100,
                 StreamState::Active,
-                provider_payee_binding,
+                provider_binding,
             );
             let decoded_snapshot = decoded_stream_fixture_row(&stream_snapshot);
             let mut fold_scratch = zero_fold_outcome_scratch();
@@ -1071,12 +1071,12 @@ mod tests {
         fn ffi_proposal_matches_below_min_rate_vector() {
             let advertised_provider_policy_snapshot =
                 StreamProviderPolicy::new(20, 500, 1_000, 65_536);
-            let payer_proposal_terms = StreamParams::new(10, 600, 200, vec![]);
+            let user_proposal_terms = StreamParams::new(10, 600, 200, vec![]);
             let mut reject_slot = PaymentStreamsFfiPolicyRejectReason::RateBelowPolicyMin;
             let holding_balance_halves = balance_pair(10_000);
             let total_allocated_halves = balance_pair(100);
             let proposal_check_bundle = PaymentStreamsFfiProposalCheckInputs {
-                params: ffi_stream_params_fixture(&payer_proposal_terms),
+                params: ffi_stream_params_fixture(&user_proposal_terms),
                 policy: ffi_provider_policy_fixture(&advertised_provider_policy_snapshot),
                 vault_holding_balance_lo: holding_balance_halves.0,
                 vault_holding_balance_hi: holding_balance_halves.1,
@@ -1138,12 +1138,12 @@ mod tests {
 
         #[test]
         fn ffi_stream_policy_matches_paused_rejection_vector() {
-            let provider_payee_binding = marker_account(12);
+            let provider_binding = marker_account(12);
             let accepted_params_snapshot = StreamParams::new(5, 100, 0, vec![]);
             let accepted_policy_snapshot = StreamProviderPolicy::new(1, 1, 1_000, 65_536);
             let accepted_terms_host_view = AcceptedStreamTerms {
                 params: accepted_params_snapshot.clone(),
-                provider_id: provider_payee_binding,
+                provider_id: provider_binding,
                 policy_at_acceptance: accepted_policy_snapshot.clone(),
             };
 
@@ -1161,7 +1161,7 @@ mod tests {
                 10,
                 10,
                 StreamState::Paused,
-                provider_payee_binding,
+                provider_binding,
             );
             let decoded_paused_fold = decoded_stream_fixture_row(&folded_paused_stream_snapshot);
             let mut reject_slot = PaymentStreamsFfiPolicyRejectReason::RateBelowPolicyMin;

@@ -213,7 +213,7 @@ pub unsafe extern "C" fn payment_streams_ffi_fold_stream(
     }
 }
 
-/// Proposal-phase policy gate (runs on payer + provider before signing).
+/// Proposal-phase policy gate (runs on user + provider before signing).
 ///
 /// On [`PaymentStreamsFfiStatus::PolicyRejected`], `ffi_out_policy_reject` carries a
 /// [`crate::PaymentStreamsFfiPolicyRejectReason`] code (`0..=8` mirrors core; `Unknown` covers
@@ -316,7 +316,7 @@ pub unsafe extern "C" fn payment_streams_ffi_new_stream_satisfies_proposal(
         return PaymentStreamsFfiStatus::NullPointer;
     }
 
-    let proposal_payee_binding =
+    let proposal_provider_binding =
         match proposal_provider_binding_from_ffi_bytes(proposal_provider_id_bytes) {
             Ok(id) => id,
             Err(err) => return err,
@@ -330,7 +330,7 @@ pub unsafe extern "C" fn payment_streams_ffi_new_stream_satisfies_proposal(
         (Ok(on_chain_folded_stream), Ok(accepted_params)) => match new_stream_satisfies_proposal(
             &on_chain_folded_stream,
             &accepted_params,
-            proposal_payee_binding,
+            proposal_provider_binding,
         ) {
             Ok(()) => PaymentStreamsFfiStatus::Success,
             Err(reason) => {

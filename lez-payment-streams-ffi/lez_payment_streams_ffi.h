@@ -703,7 +703,7 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_fold_stream(const s
                                                                          uint32_t *guest_error_out);
 
 /**
- * Proposal-phase policy gate (runs on payer + provider before signing).
+ * Proposal-phase policy gate (runs on user + provider before signing).
  *
  * On [`PaymentStreamsFfiStatus::PolicyRejected`], `ffi_out_policy_reject` carries a
  * [`crate::PaymentStreamsFfiPolicyRejectReason`] code (`0..=8` mirrors core; `Unknown` covers
