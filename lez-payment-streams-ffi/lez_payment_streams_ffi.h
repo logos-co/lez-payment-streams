@@ -624,34 +624,63 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_top_up_stream_
                                                                                                      uintptr_t *accounts_hex_out_len);
 
 /**
- * Serializes `close_stream`.
+ * Serializes `close_stream_by_owner`.
  *
  * # Safety
  *
  * See module-level FFI contracts.
  */
-PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_close_stream_instruction(uint64_t vault_id,
-                                                                                                uint64_t stream_id,
-                                                                                                uint8_t *out_ptr,
-                                                                                                uintptr_t out_cap,
-                                                                                                uintptr_t *out_len);
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_close_stream_by_owner_instruction(uint64_t vault_id,
+                                                                                                         uint64_t stream_id,
+                                                                                                         uint8_t *out_ptr,
+                                                                                                         uintptr_t out_cap,
+                                                                                                         uintptr_t *out_len);
 
 /**
- * Plans ordered account ids for `close_stream` (`provider_account_id_bytes` signs).
+ * Plans ordered account ids for `close_stream_by_owner` (owner signs).
  *
  * # Safety
  *
  * See module-level FFI contracts.
  */
-PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_close_stream_instruction_accounts(const uint8_t *program_id_bytes,
-                                                                                                    const uint8_t *owner_account_id_bytes,
-                                                                                                    uint64_t vault_id,
-                                                                                                    uint64_t stream_id,
-                                                                                                    const uint8_t *provider_account_id_bytes,
-                                                                                                    const uint8_t *clock_account_id_bytes,
-                                                                                                    uint8_t *accounts_hex_out,
-                                                                                                    uintptr_t accounts_hex_out_cap,
-                                                                                                    uintptr_t *accounts_hex_out_len);
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_close_stream_by_owner_instruction_accounts(const uint8_t *program_id_bytes,
+                                                                                                             const uint8_t *owner_account_id_bytes,
+                                                                                                             uint64_t vault_id,
+                                                                                                             uint64_t stream_id,
+                                                                                                             const uint8_t *clock_account_id_bytes,
+                                                                                                             uint8_t *accounts_hex_out,
+                                                                                                             uintptr_t accounts_hex_out_cap,
+                                                                                                             uintptr_t *accounts_hex_out_len);
+
+/**
+ * Serializes `close_stream_by_provider`.
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_close_stream_by_provider_instruction(uint64_t vault_id,
+                                                                                                            uint64_t stream_id,
+                                                                                                            uint8_t *out_ptr,
+                                                                                                            uintptr_t out_cap,
+                                                                                                            uintptr_t *out_len);
+
+/**
+ * Plans ordered account ids for `close_stream_by_provider` (`provider_account_id_bytes` signs).
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_close_stream_by_provider_instruction_accounts(const uint8_t *program_id_bytes,
+                                                                                                                const uint8_t *owner_account_id_bytes,
+                                                                                                                uint64_t vault_id,
+                                                                                                                uint64_t stream_id,
+                                                                                                                const uint8_t *provider_account_id_bytes,
+                                                                                                                const uint8_t *clock_account_id_bytes,
+                                                                                                                uint8_t *accounts_hex_out,
+                                                                                                                uintptr_t accounts_hex_out_cap,
+                                                                                                                uintptr_t *accounts_hex_out_len);
 
 /**
  * Serializes `claim`.

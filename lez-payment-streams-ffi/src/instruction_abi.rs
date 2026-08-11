@@ -59,12 +59,12 @@
 use core::slice;
 
 use lez_payment_streams_core::{
-    claim_instruction_accounts, close_stream_instruction_accounts,
-    create_stream_instruction_accounts, deposit_instruction_accounts,
-    initialize_vault_instruction_accounts, instruction_bytes_for_public_transaction,
-    pause_stream_instruction_accounts, resume_stream_instruction_accounts,
-    top_up_stream_instruction_accounts, withdraw_instruction_accounts, Instruction,
-    VaultPrivacyTier,
+    claim_instruction_accounts, close_stream_by_owner_instruction_accounts,
+    close_stream_by_provider_instruction_accounts, create_stream_instruction_accounts,
+    deposit_instruction_accounts, initialize_vault_instruction_accounts,
+    instruction_bytes_for_public_transaction, pause_stream_instruction_accounts,
+    resume_stream_instruction_accounts, top_up_stream_instruction_accounts,
+    withdraw_instruction_accounts, Instruction, VaultPrivacyTier,
 };
 use lee_core::account::{AccountId, Balance};
 use lee_core::program::ProgramId;
@@ -675,33 +675,82 @@ pub unsafe extern "C" fn payment_streams_ffi_plan_top_up_stream_instruction_acco
     )
 }
 
-/// Serializes `close_stream`.
+/// Serializes `close_stream_by_owner`.
 ///
 /// # Safety
 ///
 /// See module-level FFI contracts.
 #[no_mangle]
-pub unsafe extern "C" fn payment_streams_ffi_serialize_close_stream_instruction(
+pub unsafe extern "C" fn payment_streams_ffi_serialize_close_stream_by_owner_instruction(
     vault_id: u64,
     stream_id: u64,
     out_ptr: *mut u8,
     out_cap: usize,
     out_len: *mut usize,
 ) -> PaymentStreamsFfiStatus {
-    let instruction = Instruction::CloseStream {
+    let instruction = Instruction::CloseStreamByOwner {
         vault_id,
         stream_id,
     };
     serialize_instruction_bytes(&instruction, out_ptr, out_cap, out_len)
 }
 
-/// Plans ordered account ids for `close_stream` (`provider_account_id_bytes` signs).
+/// Plans ordered account ids for `close_stream_by_owner` (owner signs).
 ///
 /// # Safety
 ///
 /// See module-level FFI contracts.
 #[no_mangle]
-pub unsafe extern "C" fn payment_streams_ffi_plan_close_stream_instruction_accounts(
+pub unsafe extern "C" fn payment_streams_ffi_plan_close_stream_by_owner_instruction_accounts(
+    program_id_bytes: *const u8,
+    owner_account_id_bytes: *const u8,
+    vault_id: u64,
+    stream_id: u64,
+    clock_account_id_bytes: *const u8,
+    accounts_hex_out: *mut u8,
+    accounts_hex_out_cap: usize,
+    accounts_hex_out_len: *mut usize,
+) -> PaymentStreamsFfiStatus {
+    plan_stream_owner_instruction_accounts(
+        program_id_bytes,
+        owner_account_id_bytes,
+        vault_id,
+        stream_id,
+        clock_account_id_bytes,
+        accounts_hex_out,
+        accounts_hex_out_cap,
+        accounts_hex_out_len,
+        close_stream_by_owner_instruction_accounts,
+    )
+}
+
+/// Serializes `close_stream_by_provider`.
+///
+/// # Safety
+///
+/// See module-level FFI contracts.
+#[no_mangle]
+pub unsafe extern "C" fn payment_streams_ffi_serialize_close_stream_by_provider_instruction(
+    vault_id: u64,
+    stream_id: u64,
+    out_ptr: *mut u8,
+    out_cap: usize,
+    out_len: *mut usize,
+) -> PaymentStreamsFfiStatus {
+    let instruction = Instruction::CloseStreamByProvider {
+        vault_id,
+        stream_id,
+    };
+    serialize_instruction_bytes(&instruction, out_ptr, out_cap, out_len)
+}
+
+/// Plans ordered account ids for `close_stream_by_provider` (`provider_account_id_bytes` signs).
+///
+/// # Safety
+///
+/// See module-level FFI contracts.
+#[no_mangle]
+pub unsafe extern "C" fn payment_streams_ffi_plan_close_stream_by_provider_instruction_accounts(
     program_id_bytes: *const u8,
     owner_account_id_bytes: *const u8,
     vault_id: u64,
@@ -722,7 +771,7 @@ pub unsafe extern "C" fn payment_streams_ffi_plan_close_stream_instruction_accou
         accounts_hex_out,
         accounts_hex_out_cap,
         accounts_hex_out_len,
-        close_stream_instruction_accounts,
+        close_stream_by_provider_instruction_accounts,
     )
 }
 

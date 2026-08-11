@@ -280,25 +280,53 @@ uint32_t ps_ffi_plan_top_up_stream(const uint8_t program_id_bytes[32],
         accounts_hex_out_len));
 }
 
-uint32_t ps_ffi_serialize_close_stream(uint64_t vault_id,
-                                       uint64_t stream_id,
-                                       uint8_t* out_ptr,
-                                       size_t out_cap,
-                                       size_t* out_len) {
-    return map_status(payment_streams_ffi_serialize_close_stream_instruction(
+uint32_t ps_ffi_serialize_close_stream_by_owner(uint64_t vault_id,
+                                                uint64_t stream_id,
+                                                uint8_t* out_ptr,
+                                                size_t out_cap,
+                                                size_t* out_len) {
+    return map_status(payment_streams_ffi_serialize_close_stream_by_owner_instruction(
         vault_id, stream_id, out_ptr, out_cap, out_len));
 }
 
-uint32_t ps_ffi_plan_close_stream(const uint8_t program_id_bytes[32],
-                                  const uint8_t owner_account_id_bytes[32],
-                                  uint64_t vault_id,
-                                  uint64_t stream_id,
-                                  const uint8_t provider_account_id_bytes[32],
-                                  const uint8_t clock_account_id_bytes[32],
-                                  uint8_t* accounts_hex_out,
-                                  size_t accounts_hex_out_cap,
-                                  size_t* accounts_hex_out_len) {
-    return map_status(payment_streams_ffi_plan_close_stream_instruction_accounts(
+uint32_t ps_ffi_plan_close_stream_by_owner(const uint8_t program_id_bytes[32],
+                                           const uint8_t owner_account_id_bytes[32],
+                                           uint64_t vault_id,
+                                           uint64_t stream_id,
+                                           const uint8_t clock_account_id_bytes[32],
+                                           uint8_t* accounts_hex_out,
+                                           size_t accounts_hex_out_cap,
+                                           size_t* accounts_hex_out_len) {
+    return map_status(payment_streams_ffi_plan_close_stream_by_owner_instruction_accounts(
+        program_id_bytes,
+        owner_account_id_bytes,
+        vault_id,
+        stream_id,
+        clock_account_id_bytes,
+        accounts_hex_out,
+        accounts_hex_out_cap,
+        accounts_hex_out_len));
+}
+
+uint32_t ps_ffi_serialize_close_stream_by_provider(uint64_t vault_id,
+                                                   uint64_t stream_id,
+                                                   uint8_t* out_ptr,
+                                                   size_t out_cap,
+                                                   size_t* out_len) {
+    return map_status(payment_streams_ffi_serialize_close_stream_by_provider_instruction(
+        vault_id, stream_id, out_ptr, out_cap, out_len));
+}
+
+uint32_t ps_ffi_plan_close_stream_by_provider(const uint8_t program_id_bytes[32],
+                                              const uint8_t owner_account_id_bytes[32],
+                                              uint64_t vault_id,
+                                              uint64_t stream_id,
+                                              const uint8_t provider_account_id_bytes[32],
+                                              const uint8_t clock_account_id_bytes[32],
+                                              uint8_t* accounts_hex_out,
+                                              size_t accounts_hex_out_cap,
+                                              size_t* accounts_hex_out_len) {
+    return map_status(payment_streams_ffi_plan_close_stream_by_provider_instruction_accounts(
         program_id_bytes,
         owner_account_id_bytes,
         vault_id,
