@@ -19,7 +19,8 @@ use lee_core::account::Balance;
 use lee_core::program::ProgramId as LeeProgramId;
 use programs::authenticated_transfer;
 use lez_payment_streams_core::{
-    claim_instruction_accounts, close_stream_instruction_accounts, create_stream_instruction_accounts,
+    claim_instruction_accounts, close_stream_by_provider_instruction_accounts,
+    create_stream_instruction_accounts,
     deposit_instruction_accounts, derive_stream_config_account_id, derive_vault_account_ids,
     initialize_vault_instruction_accounts, top_up_stream_instruction_accounts, ClockAccountData,
     Instruction, StreamId, TokensPerSecond, VaultConfig, VaultId, VaultPrivacyTier,
@@ -777,7 +778,7 @@ async fn close_stream_onchain(
 ) -> Result<()> {
     let provider_id = account_id_from_base58(provider)?;
     let provider_lee = to_lee_account(provider_id);
-    let accounts = close_stream_instruction_accounts(
+    let accounts = close_stream_by_provider_instruction_accounts(
         &ctx.program_id,
         ctx.owner_id,
         ctx.vault_id,
@@ -789,14 +790,14 @@ async fn close_stream_onchain(
         &ctx.wallet,
         ctx.lee_program_id,
         accounts.iter().copied().map(to_lee_account).collect(),
-        Instruction::CloseStream {
+        Instruction::CloseStreamByProvider {
             vault_id: ctx.vault_id,
             stream_id,
         },
         vec![provider_lee],
     )
     .await
-    .context("close_stream")?;
+    .context("close_stream_by_provider")?;
     Ok(())
 }
 

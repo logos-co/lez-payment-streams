@@ -915,6 +915,9 @@ struct VaultSubmitContext {
     VaultIxLayout layout = VaultIxLayout::InitOrDeposit3;
     bool requireAuthTransferDep = false;
     bool enforceDepositSubmitterEqualsOwner = false;
+    // When set, buildAndSubmit reuses this vault read instead of a second chain fetch (M3).
+    bool hasDecodedVaultConfig = false;
+    PsFfiDecodedVaultConfig decodedVaultConfig{};
 };
 
 QString buildAndSubmit(LogosExecutionZone& wallet,
@@ -949,14 +952,17 @@ QString buildAndSubmit(LogosExecutionZone& wallet,
     uint8_t privacyTier = kPrivacyTierPublic;
     PsFfiDecodedVaultConfig vaultCfg{};
     if (vaultCtx != nullptr) {
-        if (!vaultPrivacyTierForSubmit(wallet,
-                                       vaultCtx->programId,
-                                       vaultCtx->vaultOwner,
-                                       vaultCtx->vaultId,
-                                       vaultCtx->initPrivacyTier,
-                                       &privacyTier,
-                                       &vaultCfg,
-                                       &loadErr)) {
+        if (vaultCtx->hasDecodedVaultConfig) {
+            vaultCfg = vaultCtx->decodedVaultConfig;
+            privacyTier = vaultCfg.privacy_tier;
+        } else if (!vaultPrivacyTierForSubmit(wallet,
+                                              vaultCtx->programId,
+                                              vaultCtx->vaultOwner,
+                                              vaultCtx->vaultId,
+                                              vaultCtx->initPrivacyTier,
+                                              &privacyTier,
+                                              &vaultCfg,
+                                              &loadErr)) {
             return makeErrorJson(loadErr);
         }
     }
@@ -1238,6 +1244,9 @@ QString PaymentStreamsModuleImpl::createStream(const QVariant& ownerAccountIdBas
     if (!ownerBytesFromBase58(wallet, providerAccountIdBase58.toString(), provider, &err)) {
         return makeErrorJson(err);
     }
+    if (std::memcmp(owner, provider, 32) == 0) {
+        return makeErrorJson(QStringLiteral("create_provider_equals_owner"));
+    }
     if (!clockBytes(clock, &err)) {
         return makeErrorJson(err);
     }
@@ -1438,45 +1447,138 @@ QString PaymentStreamsModuleImpl::closeStream(const QVariant& ownerAccountIdBase
         return makeErrorJson(QStringLiteral("invalid numeric argument"));
     }
 
-    const QString providerBase58 = providerAccountIdBase58.isValid() && !providerAccountIdBase58.isNull()
-                                       ? providerAccountIdBase58.toString()
-                                       : ownerAccountIdBase58.toString();
+    // Classify provider absence before id helpers (D44.21 / P1). Do not coerce absent
+    // provider into the owner string.
+    const bool providerKeyPresent =
+        providerAccountIdBase58.isValid() && !providerAccountIdBase58.isNull();
+    const QString ownerField = ownerAccountIdBase58.toString();
+    if (ownerField.trimmed().isEmpty()) {
+        return makeErrorJson(QStringLiteral("close_args_mismatch"));
+    }
+    const QString providerField = providerKeyPresent ? providerAccountIdBase58.toString() : QString();
+    if (providerKeyPresent && providerField.trimmed().isEmpty()) {
+        return makeErrorJson(QStringLiteral("close_args_mismatch"));
+    }
 
     uint8_t programId[32]{};
     uint8_t owner[32]{};
-    uint8_t provider[32]{};
     uint8_t clock[32]{};
     QString err;
-    if (!programIdBytes(programId, &err) || !ownerBytesFromOwnerField(wallet, ownerAccountIdBase58.toString(), owner, &err) ||
-        !ownerBytesFromBase58(wallet, providerBase58, provider, &err) || !clockBytes(clock, &err)) {
+    if (!programIdBytes(programId, &err) || !ownerBytesFromOwnerField(wallet, ownerField, owner, &err) ||
+        !clockBytes(clock, &err)) {
         return makeErrorJson(err);
+    }
+
+    PsFfiDecodedVaultConfig decodedVault{};
+    QString vaultLoadErr;
+    if (!loadVaultConfigOnChain(wallet, programId, owner, vid, &decodedVault, &vaultLoadErr)) {
+        return makeErrorJson(QStringLiteral("close_prestate_unavailable"));
+    }
+    if (std::memcmp(decodedVault.owner, owner, 32) != 0) {
+        return makeErrorJson(QStringLiteral("close_owner_mismatch"));
+    }
+
+    const bool providerOmitted = !providerKeyPresent;
+    uint8_t provider[32]{};
+    bool providerPath = false;
+    if (!providerOmitted) {
+        if (!ownerBytesFromBase58(wallet, providerField, provider, &err)) {
+            return makeErrorJson(err);
+        }
+        if (std::memcmp(provider, owner, 32) == 0) {
+            providerPath = false;
+        } else {
+            providerPath = true;
+        }
+    }
+
+    if (providerPath) {
+        uint8_t vaultCfgAccount[32]{};
+        uint8_t vaultHoldingAccount[32]{};
+        uint8_t streamCfgAccount[32]{};
+        if (ps_ffi_derive_vault_account_ids(programId, owner, vid, vaultCfgAccount, vaultHoldingAccount) !=
+                kFfiSuccess ||
+            ps_ffi_derive_stream_config_account_id(programId, vaultCfgAccount, sid, streamCfgAccount) !=
+                kFfiSuccess) {
+            return makeErrorJson(QStringLiteral("close_prestate_unavailable"));
+        }
+        QString streamErr;
+        const QByteArray streamData =
+            accountDataBytesFromHex(wallet, bytes32ToHexLower(streamCfgAccount), &streamErr);
+        if (streamData.isEmpty()) {
+            return makeErrorJson(QStringLiteral("close_prestate_unavailable"));
+        }
+        PsFfiDecodedStreamConfig decodedStream{};
+        if (ps_ffi_decode_stream_config(reinterpret_cast<const uint8_t*>(streamData.constData()),
+                                        static_cast<size_t>(streamData.size()),
+                                        &decodedStream) != 0u) {
+            return makeErrorJson(QStringLiteral("close_prestate_unavailable"));
+        }
+        if (std::memcmp(decodedStream.provider, provider, 32) != 0) {
+            return makeErrorJson(QStringLiteral("close_provider_mismatch"));
+        }
     }
 
     QByteArray instruction;
-    if (!ffiSerializeTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
-                return ps_ffi_serialize_close_stream(vid, sid, ptr, cap, len);
-            },
-            &instruction, &err)) {
-        return makeErrorJson(err);
-    }
-
     QByteArray accountsHex;
-    if (!ffiPlanAccountsTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
-                return ps_ffi_plan_close_stream(
-                    programId, owner, vid, sid, provider, clock, ptr, cap, len);
-            },
-            &accountsHex, &err)) {
-        return makeErrorJson(err);
-    }
-
     VaultSubmitContext ctx{};
     std::memcpy(ctx.programId, programId, 32);
     std::memcpy(ctx.vaultOwner, owner, 32);
     ctx.vaultId = vid;
-    ctx.layout = VaultIxLayout::StreamProvider6;
-    return buildAndSubmit(wallet, modules().api, providerBase58, instruction, accountsHex, &err, &ctx);
+    ctx.hasDecodedVaultConfig = true;
+    ctx.decodedVaultConfig = decodedVault;
+
+    QString submitterBase58;
+    if (providerPath) {
+        ctx.layout = VaultIxLayout::StreamProvider6;
+        submitterBase58 = providerField;
+        if (!ffiSerializeTwoPhase(
+                [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+                    return ps_ffi_serialize_close_stream_by_provider(vid, sid, ptr, cap, len);
+                },
+                &instruction, &err)) {
+            return makeErrorJson(err);
+        }
+        if (!ffiPlanAccountsTwoPhase(
+                [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+                    return ps_ffi_plan_close_stream_by_provider(
+                        programId, owner, vid, sid, provider, clock, ptr, cap, len);
+                },
+                &accountsHex, &err)) {
+            return makeErrorJson(err);
+        }
+    } else {
+        ctx.layout = VaultIxLayout::StreamOwner5;
+        submitterBase58 = ownerField;
+        if (!ffiSerializeTwoPhase(
+                [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+                    return ps_ffi_serialize_close_stream_by_owner(vid, sid, ptr, cap, len);
+                },
+                &instruction, &err)) {
+            return makeErrorJson(err);
+        }
+        if (!ffiPlanAccountsTwoPhase(
+                [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+                    return ps_ffi_plan_close_stream_by_owner(
+                        programId, owner, vid, sid, clock, ptr, cap, len);
+                },
+                &accountsHex, &err)) {
+            return makeErrorJson(err);
+        }
+    }
+
+    const QString submitResult =
+        buildAndSubmit(wallet, modules().api, submitterBase58, instruction, accountsHex, &err, &ctx);
+    QJsonParseError submitParse{};
+    const QJsonDocument submitDoc = QJsonDocument::fromJson(submitResult.toUtf8(), &submitParse);
+    if (submitParse.error == QJsonParseError::NoError && submitDoc.isObject()) {
+        QJsonObject submitObj = submitDoc.object();
+        if (submitObj.value(QStringLiteral("status")).toString() == QLatin1String("ok")) {
+            submitObj.insert(QStringLiteral("clock_account_id_hex"), bytes32ToHexLower(clock));
+            return QJsonDocument(submitObj).toJson(QJsonDocument::Compact);
+        }
+    }
+    return submitResult;
 }
 
 QString PaymentStreamsModuleImpl::claim(const QVariant& ownerAccountIdBase58,

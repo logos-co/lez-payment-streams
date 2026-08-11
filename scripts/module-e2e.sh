@@ -156,10 +156,9 @@ else
 fi
 # Set MODULE_E2E_SKIP_CLOSE=1 to skip settlement (close + claim; saves testnet txs).
 MODULE_E2E_SKIP_CLOSE="${MODULE_E2E_SKIP_CLOSE:-0}"
-# Close role for rename smoke / Step 44 cells: provider (default; includes provider
-# JSON key on six-slot close) or owner (omit provider key; owner-only close needs
-# Step 44 dual-instruction).
-CLOSE_ROLE="${CLOSE_ROLE:-provider}"
+# Close role for Step 44 cells: owner (default; omit provider key) or provider
+# (include provider JSON key on six-slot close).
+CLOSE_ROLE="${CLOSE_ROLE:-owner}"
 # Optional tiny withdraw before settlement (Step 47 Required rename smoke).
 MODULE_E2E_WITHDRAW="${MODULE_E2E_WITHDRAW:-0}"
 WITHDRAW_AMOUNT="${WITHDRAW_AMOUNT:-1}"
@@ -688,9 +687,20 @@ call_ps() {
     fi
     if inner_status_ok "$line" "$key"; then
       tx_hash="$(extract_tx_hash "$line")"
+      local close_extra=""
+      if [[ "$phase" == "close_stream" ]]; then
+        local clock_hex=""
+        clock_hex="$(python3 -c 'import json,sys
+try:
+  o=json.loads(sys.argv[1])
+  print(o.get("clock_account_id_hex") or "")
+except Exception:
+  print("")' "${line:-}" 2>/dev/null || true)"
+        close_extra=",\"close_role\":\"${CLOSE_ROLE:-}\",\"RISC0_DEV_MODE\":\"${RISC0_DEV_MODE:-1}\",\"clock_account_id_hex\":\"${clock_hex}\""
+      fi
       if [[ -n "$tx_hash" ]] && ! await_inclusion "$tx_hash"; then
         if [[ -n "$verify_fn" ]] && ps_poll_verify "$verify_fn"; then
-          emit_phase "$phase" true "{\"op\":\"$op\",\"attempt\":$attempt,\"tx_hash\":\"$tx_hash\",\"inclusion\":\"state_verified\"}"
+          emit_phase "$phase" true "{\"op\":\"$op\",\"attempt\":$attempt,\"tx_hash\":\"$tx_hash\",\"inclusion\":\"state_verified\"${close_extra}}"
           narr_ok "$success_label"
           if [[ -n "$tx_hash" ]]; then
             narr_value "tx published on chain: $tx_hash (verified via state read; getTransaction returned null)"
@@ -699,7 +709,7 @@ call_ps() {
           echo "$line"
           return 0
         fi
-        emit_phase "$phase" false "{\"op\":\"$op\",\"attempt\":$attempt,\"tx_hash\":\"$tx_hash\",\"inclusion\":\"timeout\"}"
+        emit_phase "$phase" false "{\"op\":\"$op\",\"attempt\":$attempt,\"tx_hash\":\"$tx_hash\",\"inclusion\":\"timeout\"${close_extra}}"
         narr_fail "$phase failed: transaction not included on chain"
         narr_hint "Submitted tx_hash=$tx_hash but getTransaction returned null — check mempool, nonce, and sequencer"
         if [[ "$required" == "1" ]]; then
@@ -709,7 +719,7 @@ call_ps() {
         echo ""
         return 0
       fi
-      emit_phase "$phase" true "{\"op\":\"$op\",\"attempt\":$attempt$( [[ -n "$tx_hash" ]] && echo ",\"tx_hash\":\"$tx_hash\"" )}"
+      emit_phase "$phase" true "{\"op\":\"$op\",\"attempt\":$attempt$( [[ -n "$tx_hash" ]] && echo ",\"tx_hash\":\"$tx_hash\"" )${close_extra}}"
       narr_ok "$success_label"
       if [[ -n "$tx_hash" ]]; then
         narr_value "tx published on chain: $tx_hash"

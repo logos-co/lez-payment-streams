@@ -3942,8 +3942,9 @@ def demo_teardown(
             "stream_id": stream_id,
             "provider": manifest["provider_account_id"],
         }
-        # closeStream is owner-signed. Under OWNER_PRIVACY the private owner NSK
-        # lives on the user host; provider-host resolve fails (wallet error 7).
+        # Provider-close via closeStream (provider key present). Under OWNER_PRIVACY /
+        # PseudonymousFunding the private owner non-signing slot still requires the
+        # owner NSK on the submitting host (M10), so use the user host.
         close_cfg = cfg_user if owner_privacy_enabled() else cfg_provider
         parsed: dict[str, Any] = {}
         for attempt in range(4):
