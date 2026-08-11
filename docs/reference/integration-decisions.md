@@ -86,7 +86,7 @@ For outbound Store queries,
 as `providerPeerId` to the eligibility provider hook.
 For inbound Store requests,
 it passes the caller's libp2p `PeerId`
-as `requesterPeerId` to the eligibility verifier hook.
+as `userPeerId` to the eligibility verifier hook.
 It does not interpret either value or know about LEZ account IDs.
 We ship this on our branches and do not negotiate spec changes.
 
@@ -407,7 +407,7 @@ Normative policy for `setEligibilityVerifier` / `setEligibilityProvider` in
 When Step 15 calls the verifier with `proof_hex == NULL` (no tag-30 proof on the Store request),
 Step 16’s bridge does not short-circuit in `delivery_module`. It always delegates to
 `verifyEligibilityForStoreQuery` with empty lowercase hex for `proofBytes` (same encoding
-rules as Step 12–13), plus `canonicalRequestBytes` and `requesterPeerId`.
+rules as Step 12–13), plus `canonicalRequestBytes` and `userPeerId`.
 
 Eligibility policy for unauthenticated Store requests lives in the registered module, not in
 Delivery. For the LIP-155 paid Store demo, `payment_streams_module` rejects empty proof with a

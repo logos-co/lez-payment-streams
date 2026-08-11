@@ -50,7 +50,7 @@ completion event ([N3a](integration-decisions.md#n3a-step-16-threading--approach
 | `prepareEligibilityProofWithStreamProposalForStoreQuery` | User / outbound (Step 16 delivery): vault proposal → `"kind":"stream_proposal"`. Two args: `canonical_request_hex`, `provider_peer_id`. |
 | `prepareEligibilityProofWithStreamProofForStoreQuery` | Developer Journey E2E: stream proof → `"kind":"stream_proof"`. Three args; third = `stream_id`. See [Prepare methods](#prepare-methods--step-24c). |
 | `verifyEligibilityForStoreQuery` | Provider / inbound: returns `eligibility` verdict |
-| `registerProviderMapping` | User routing: `PeerId` → payee base58 (host before outbound queries; Step 17 demo) |
+| `registerProviderMapping` | User routing: `PeerId` → provider base58 (host before outbound queries; Step 17 demo) |
 | `listMyStreams`, `rediscoverStreams` | Inventory / refresh |
 | `chainAction` | On-chain writes (Step 11b router) |
 
@@ -63,7 +63,7 @@ Codegen: Universal module exports single-line `Q_INVOKABLE` declarations in
 | --- | --- |
 | `proofBytes` | Lowercase hex of serialized `EligibilityProof` |
 | `canonicalRequestBytes` | Lowercase hex of full N8 canonical payload (138-byte reference wire for the pinned demo query) |
-| `requesterPeerId` / provider peer in prepare | Opaque UTF-8 libp2p peer id |
+| `userPeerId` / provider peer in prepare | Opaque UTF-8 libp2p peer id |
 
 N8 tool:
 
@@ -113,7 +113,7 @@ stream in product code; the E2E norm is post-close claim only.
 Local seed close (fixture helper):
 
 ```bash
-# Provider must sign; authority account = provider_account_id from manifest
+# Provider must sign; provider account = provider_account_id from manifest
 cargo run -q --manifest-path examples/Cargo.toml --bin seed_localnet_fixture -- \
   close-stream-onchain --program-bin "$PAYMENT_STREAMS_GUEST_BIN" \
   --owner "$OWNER" --provider "$PROVIDER" --vault-id 0 --stream-id "$STREAM_ID"
@@ -123,13 +123,13 @@ Logoscore (provider host):
 
 ```bash
 logoscore call payment_streams_module chainAction closeStream \
-  '{"signer":"<owner>","vault_id":0,"stream_id":<id>,"authority":"<provider_account_id>"}'
+  '{"owner":"<owner>","vault_id":0,"stream_id":<id>,"provider":"<provider_account_id>"}'
 logoscore call payment_streams_module chainAction claim \
   '{"owner":"<owner_account_id>","provider":"<provider_account_id>","vault_id":0,"stream_id":<id>}'
 ```
 
-Owner-as-both-signer-and-authority close is invalid for the six-account layout unless the product
-adds a distinct authority slot; Developer Journey E2E uses the stream provider key from prefund.
+Owner-as-both-owner-and-provider close is invalid for the six-account layout unless the product
+adds a distinct provider slot; Developer Journey E2E uses the stream provider key from prefund.
 
 ## JSON — user prepare (Step 12)
 
@@ -147,10 +147,10 @@ Success shapes use `"status":"ok"` inside `result` with `"kind":"stream_proposal
 - Step 17 demo: provider runs paid-only (verifier always on); users learn provider PeerId
   off-band ([store-integration/README.md](../store-integration/README.md))
 
-## Fixture and provider payee
+## Fixture and provider binding
 
 - Default manifest: `fixtures/localnet.json` (`FIXTURE_MANIFEST`)
-- Verify binds payee to manifest `provider_account_id` (same as Step 12 chain fixture)
+- Verify binds provider to manifest `provider_account_id` (same as Step 12 chain fixture)
 - Demo `service_id`: UTF-8 `/vac/waku/store-query/3.0.0`
 - Demo policy: `min_rate` 1, `min_allocation` 1, `max_create_stream_deadline_delay` 3600
 

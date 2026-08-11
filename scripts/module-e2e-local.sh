@@ -2,7 +2,7 @@
 # module-e2e-local.sh — Flow A (module only) single-host happy path.
 #
 # Exercises payment_streams_module chainAction end-to-end through logoscore:
-# vault init, deposit, stream create, pause/resume/top-up, accrual, payee claim.
+# vault init, deposit, stream create, pause/resume/top-up, accrual, provider claim.
 # No delivery_module, no Store, no eligibility. This is the module-only cell of
 # the 2x2 verification matrix (Flow A x localnet). Revived and modernized from
 # scripts/archive/step11b-logoscore-e2e.sh onto the unified script stack.
@@ -15,7 +15,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/lib/common.sh
 source "$REPO_ROOT/scripts/lib/common.sh"
 
-# Flow A is localnet only for now; A-testnet is future work (the payee claim that
+# Flow A is localnet only for now; A-testnet is future work (the provider claim that
 # ends this happy path is not reliable on public testnet — see
 # docs/archive/operator/testnet-claim-known-issue.md).
 if ps_is_testnet; then
@@ -212,7 +212,7 @@ if s: print(s)
 ' "$1" 2>/dev/null || true
 }
 
-# Owner and provider (payee) are both fresh public accounts in this isolated
+# Owner and provider (provider) are both fresh public accounts in this isolated
 # wallet, so vault 0 / stream 0 are guaranteed fresh this run.
 OWNER="$(parse_new_account "$(logoscore call logos_execution_zone create_account_public 2>/dev/null | tail -1)")"
 [[ -z "$OWNER" ]] && ps_fatal "could not create owner account"
@@ -249,7 +249,7 @@ call_ps topup_stream 1 topUpStream     "$(j "{\"signer\":\"$OWNER\",\"vault_id\"
 # the original step11b verify (docs/archive/steps/module-chain-writes-runbook.md).
 call_ps vault_status 0 getVaultStatus  "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID}")" vault_id
 call_ps stream_status 0 getStreamStatus "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" stream_id
-# Let the stream accrue, then the payee claims residual (teardown).
+# Let the stream accrue, then the provider claims residual (teardown).
 sleep 5
 call_ps claim        1 claim           "$(j "{\"provider\":\"$PROVIDER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")"
 
