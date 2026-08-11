@@ -237,38 +237,54 @@ bool programIdBytes(uint8_t out[32], QString* errorOut) {
     return hex32FromQString(fixtureConfig().programIdHex, out);
 }
 
-bool ownerBytesFromBase58(LogosExecutionZone& wallet, const QString& base58, uint8_t out[32], QString* errorOut) {
-    const QString hex = walletAccountIdHexFromBase58(wallet, base58);
-    if (hex.size() != 64) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("account_id_from_base58 failed");
-        }
+// D47.7: 64 hex chars → hex/32 bytes; else base58/32 bytes; else error.
+// Fixed order — do not try both without this check (64-char hex can be
+// charset-valid base58).
+bool isAccountIdHex64(const QString& trimmed) {
+    if (trimmed.size() != kAccountIdHexLen) {
         return false;
     }
-    return hex32FromQString(hex, out);
+    for (QChar ch : trimmed) {
+        if (!ch.isDigit() && (ch.toLower() < QLatin1Char('a') || ch.toLower() > QLatin1Char('f'))) {
+            return false;
+        }
+    }
+    return true;
 }
 
-QString signerAccountIdHex(LogosExecutionZone& wallet, const QString& signerField, QString* errorOut) {
-    const QString trimmed = signerField.trimmed();
-    if (trimmed.size() == kAccountIdHexLen && trimmed.indexOf(QLatin1Char('{')) < 0) {
+QString accountIdHexFromField(LogosExecutionZone& wallet, const QString& field, QString* errorOut) {
+    const QString trimmed = field.trimmed();
+    if (isAccountIdHex64(trimmed)) {
         return trimmed.toLower();
     }
     const QString hex = walletAccountIdHexFromBase58(wallet, trimmed);
     if (hex.size() != kAccountIdHexLen) {
         if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("invalid signer account id");
+            *errorOut = QStringLiteral("invalid account id (expect 64-hex or base58)");
         }
         return {};
     }
     return hex.toLower();
 }
 
-bool ownerBytesFromSignerField(LogosExecutionZone& wallet, const QString& signerField, uint8_t out[32], QString* errorOut) {
-    const QString hex = signerAccountIdHex(wallet, signerField, errorOut);
+bool accountIdBytesFromField(LogosExecutionZone& wallet, const QString& field, uint8_t out[32], QString* errorOut) {
+    const QString hex = accountIdHexFromField(wallet, field, errorOut);
     if (hex.size() != kAccountIdHexLen) {
         return false;
     }
     return hex32FromQString(hex, out);
+}
+
+bool ownerBytesFromBase58(LogosExecutionZone& wallet, const QString& base58, uint8_t out[32], QString* errorOut) {
+    return accountIdBytesFromField(wallet, base58, out, errorOut);
+}
+
+QString signerAccountIdHex(LogosExecutionZone& wallet, const QString& signerField, QString* errorOut) {
+    return accountIdHexFromField(wallet, signerField, errorOut);
+}
+
+bool ownerBytesFromSignerField(LogosExecutionZone& wallet, const QString& signerField, uint8_t out[32], QString* errorOut) {
+    return accountIdBytesFromField(wallet, signerField, out, errorOut);
 }
 
 bool loadVaultConfigOnChain(LogosExecutionZone& wallet,

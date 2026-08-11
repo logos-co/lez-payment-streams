@@ -24,6 +24,7 @@
 namespace {
 
 constexpr uint32_t kFfiSuccess = 0u;
+constexpr int kAccountIdHexLen = 64;
 constexpr uint8_t kStreamStateActive = 0u;
 constexpr uint8_t kStreamStatePaused = 1u;
 constexpr uint8_t kStreamStateClosed = 2u;
@@ -415,10 +416,24 @@ bool programIdBytes(uint8_t out[32], QString* errorOut) {
 }
 
 bool ownerBytesFromBase58(LogosExecutionZone& wallet, const QString& base58, uint8_t out[32], QString* errorOut) {
-    const QString hex = walletAccountIdHexFromBase58(wallet, base58);
-    if (hex.size() != 64) {
+    // D47.7: accept 64-hex or base58 (hex first).
+    const QString trimmed = base58.trimmed();
+    if (trimmed.size() == kAccountIdHexLen) {
+        bool allHex = true;
+        for (QChar ch : trimmed) {
+            if (!ch.isDigit() && (ch.toLower() < QLatin1Char('a') || ch.toLower() > QLatin1Char('f'))) {
+                allHex = false;
+                break;
+            }
+        }
+        if (allHex) {
+            return hex32FromQString(trimmed, out);
+        }
+    }
+    const QString hex = walletAccountIdHexFromBase58(wallet, trimmed);
+    if (hex.size() != kAccountIdHexLen) {
         if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("account_id_from_base58 failed");
+            *errorOut = QStringLiteral("invalid account id (expect 64-hex or base58)");
         }
         return false;
     }
