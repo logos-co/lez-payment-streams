@@ -211,12 +211,12 @@ unsafe fn plan_stream_owner_instruction_accounts(
     )
 }
 
-unsafe fn plan_stream_authority_instruction_accounts(
+unsafe fn plan_stream_provider_instruction_accounts(
     program_id_bytes: *const u8,
     owner_account_id_bytes: *const u8,
     vault_id: u64,
     stream_id: u64,
-    authority_account_id_bytes: *const u8,
+    provider_account_id_bytes: *const u8,
     clock_account_id_bytes: *const u8,
     accounts_hex_out: *mut u8,
     accounts_hex_out_cap: usize,
@@ -231,7 +231,7 @@ unsafe fn plan_stream_authority_instruction_accounts(
         Ok(value) => value,
         Err(err) => return err,
     };
-    let authority = match read_account_id(authority_account_id_bytes) {
+    let provider = match read_account_id(provider_account_id_bytes) {
         Ok(value) => value,
         Err(err) => return err,
     };
@@ -240,7 +240,7 @@ unsafe fn plan_stream_authority_instruction_accounts(
         Err(err) => return err,
     };
 
-    let accounts = planner(&program_id, owner, vault_id, stream_id, authority, clock);
+    let accounts = planner(&program_id, owner, vault_id, stream_id, provider, clock);
     write_instruction_accounts_hex(
         &accounts,
         accounts_hex_out,
@@ -695,7 +695,7 @@ pub unsafe extern "C" fn payment_streams_ffi_serialize_close_stream_instruction(
     serialize_instruction_bytes(&instruction, out_ptr, out_cap, out_len)
 }
 
-/// Plans ordered account ids for `close_stream` (`authority_account_id_bytes` signs).
+/// Plans ordered account ids for `close_stream` (`provider_account_id_bytes` signs).
 ///
 /// # Safety
 ///
@@ -706,18 +706,18 @@ pub unsafe extern "C" fn payment_streams_ffi_plan_close_stream_instruction_accou
     owner_account_id_bytes: *const u8,
     vault_id: u64,
     stream_id: u64,
-    authority_account_id_bytes: *const u8,
+    provider_account_id_bytes: *const u8,
     clock_account_id_bytes: *const u8,
     accounts_hex_out: *mut u8,
     accounts_hex_out_cap: usize,
     accounts_hex_out_len: *mut usize,
 ) -> PaymentStreamsFfiStatus {
-    plan_stream_authority_instruction_accounts(
+    plan_stream_provider_instruction_accounts(
         program_id_bytes,
         owner_account_id_bytes,
         vault_id,
         stream_id,
-        authority_account_id_bytes,
+        provider_account_id_bytes,
         clock_account_id_bytes,
         accounts_hex_out,
         accounts_hex_out_cap,
@@ -763,7 +763,7 @@ pub unsafe extern "C" fn payment_streams_ffi_plan_claim_instruction_accounts(
     accounts_hex_out_cap: usize,
     accounts_hex_out_len: *mut usize,
 ) -> PaymentStreamsFfiStatus {
-    plan_stream_authority_instruction_accounts(
+    plan_stream_provider_instruction_accounts(
         program_id_bytes,
         owner_account_id_bytes,
         vault_id,

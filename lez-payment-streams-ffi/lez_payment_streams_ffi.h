@@ -637,7 +637,7 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_close_str
                                                                                                 uintptr_t *out_len);
 
 /**
- * Plans ordered account ids for `close_stream` (`authority_account_id_bytes` signs).
+ * Plans ordered account ids for `close_stream` (`provider_account_id_bytes` signs).
  *
  * # Safety
  *
@@ -647,7 +647,7 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_close_stream_i
                                                                                                     const uint8_t *owner_account_id_bytes,
                                                                                                     uint64_t vault_id,
                                                                                                     uint64_t stream_id,
-                                                                                                    const uint8_t *authority_account_id_bytes,
+                                                                                                    const uint8_t *provider_account_id_bytes,
                                                                                                     const uint8_t *clock_account_id_bytes,
                                                                                                     uint8_t *accounts_hex_out,
                                                                                                     uintptr_t accounts_hex_out_cap,

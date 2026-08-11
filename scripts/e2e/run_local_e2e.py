@@ -1730,7 +1730,7 @@ def bump_allocation_on_chain(
     repo: Path | None = None,
 ) -> None:
     topup = {
-        "signer": manifest["owner_account_id"],
+        "owner": manifest["owner_account_id"],
         "vault_id": vault_id,
         "stream_id": stream_id,
         "increase_lo": increase_lo,
@@ -1992,7 +1992,7 @@ def ensure_continuation_vault_funded(
     deposit_via = e2e_continuation_deposit_via()
     if deposit_via == "chainaction":
         deposit_body = {
-            "signer": manifest["owner_account_id"],
+            "owner": manifest["owner_account_id"],
             "vault_id": int(manifest.get("vault_id", 0)),
             "amount_lo": shortfall,
             "amount_hi": 0,
@@ -3133,7 +3133,7 @@ def ensure_vault_funded_via_chainaction(
 
     if not vault_config_present(cfg_user, manifest):
         init_body = {
-            "signer": owner,
+            "owner": owner,
             "vault_id": vault_id,
             "privacy_tier": privacy_tier,
         }
@@ -3182,7 +3182,7 @@ def ensure_vault_funded_via_chainaction(
             raise E2EError(f"initializeVault tx landed but vault {vault_id} config not visible")
 
     deposit_body = {
-        "signer": owner,
+        "owner": owner,
         "vault_id": vault_id,
         "amount_lo": deposit_lo,
         "amount_hi": 0,
@@ -3295,7 +3295,7 @@ def create_demo_stream_for_run(
                 label="clock50_prove_window_before_create",
             )
             create_body = {
-                "signer": manifest["owner_account_id"],
+                "owner": manifest["owner_account_id"],
                 "vault_id": vault_id,
                 "stream_id": create_id,
                 "provider": manifest["provider_account_id"],
@@ -3418,7 +3418,7 @@ def create_demo_stream_for_run(
             )
             if not ok_create:
                 create_body = {
-                    "signer": manifest["owner_account_id"],
+                    "owner": manifest["owner_account_id"],
                     "vault_id": vault_id,
                     "stream_id": create_id,
                     "provider": manifest["provider_account_id"],
@@ -3480,7 +3480,7 @@ def create_demo_stream_for_run(
                 label="clock50_prove_window_before_create",
             )
             create_body = {
-                "signer": manifest["owner_account_id"],
+                "owner": manifest["owner_account_id"],
                 "vault_id": vault_id,
                 "stream_id": create_id,
                 "provider": manifest["provider_account_id"],
@@ -3559,7 +3559,7 @@ def create_demo_stream_for_run(
             label="clock50_prove_window_before_create",
         )
         create_body = {
-            "signer": manifest["owner_account_id"],
+            "owner": manifest["owner_account_id"],
             "vault_id": vault_id,
             "stream_id": create_id,
             "provider": manifest["provider_account_id"],
@@ -3937,10 +3937,10 @@ def demo_teardown(
             label="clock50_prove_window_before_close",
         )
         close_body = {
-            "signer": manifest["owner_account_id"],
+            "owner": manifest["owner_account_id"],
             "vault_id": vault_id,
             "stream_id": stream_id,
-            "authority": manifest["provider_account_id"],
+            "provider": manifest["provider_account_id"],
         }
         # closeStream is owner-signed. Under OWNER_PRIVACY the private owner NSK
         # lives on the user host; provider-host resolve fails (wallet error 7).
@@ -4303,7 +4303,7 @@ def user_prepare_proof(
                     "testnet stream has insufficient unaccrued allocation after create_demo_stream"
                 )
             topup = {
-                "signer": manifest["owner_account_id"],
+                "owner": manifest["owner_account_id"],
                 "vault_id": vault_id,
                 "stream_id": stream_id,
                 "increase_lo": default_topup_increase_lo(manifest) + attempt * 200,

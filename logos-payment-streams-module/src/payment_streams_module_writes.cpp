@@ -39,7 +39,7 @@ constexpr int kPrivateSubmitTimeoutMs = 600000;
 enum class VaultIxLayout : uint8_t {
     InitOrDeposit3,
     StreamOwner5,
-    StreamAuthority6,
+    StreamProvider6,
 };
 
 QString parseWalletSubmitJson(const QString& walletJson, QJsonObject* fieldsOut, QString* errorOut);
@@ -375,7 +375,7 @@ bool pfOwnerSlotByLayout(VaultIxLayout layout, int index) {
     case VaultIxLayout::InitOrDeposit3:
         return index == 2;
     case VaultIxLayout::StreamOwner5:
-    case VaultIxLayout::StreamAuthority6:
+    case VaultIxLayout::StreamProvider6:
         return index == 3;
     }
     return false;
@@ -1475,7 +1475,7 @@ QString PaymentStreamsModuleImpl::closeStream(const QVariant& ownerAccountIdBase
     std::memcpy(ctx.programId, programId, 32);
     std::memcpy(ctx.vaultOwner, owner, 32);
     ctx.vaultId = vid;
-    ctx.layout = VaultIxLayout::StreamAuthority6;
+    ctx.layout = VaultIxLayout::StreamProvider6;
     return buildAndSubmit(wallet, modules().api, providerBase58, instruction, accountsHex, &err, &ctx);
 }
 
@@ -1536,7 +1536,7 @@ QString PaymentStreamsModuleImpl::claim(const QVariant& ownerAccountIdBase58,
     std::memcpy(ctx.programId, programId, 32);
     std::memcpy(ctx.vaultOwner, owner, 32);
     ctx.vaultId = vid;
-    ctx.layout = VaultIxLayout::StreamAuthority6;
+    ctx.layout = VaultIxLayout::StreamProvider6;
     return buildAndSubmit(wallet, modules().api, providerAccountIdBase58.toString(), instruction, accountsHex, &err, &ctx);
 }
 
@@ -1688,16 +1688,16 @@ QString PaymentStreamsModuleImpl::chainAction(const QVariant& operation, const Q
     };
 
     if (op == QLatin1String("initializeVault")) {
-        return initializeVault(qv("signer"), qv("vault_id"), qv("privacy_tier"));
+        return initializeVault(qv("owner"), qv("vault_id"), qv("privacy_tier"));
     }
     if (op == QLatin1String("deposit")) {
-        return deposit(qv("signer"), qv("vault_id"), qv("amount_lo"), qv("amount_hi"));
+        return deposit(qv("owner"), qv("vault_id"), qv("amount_lo"), qv("amount_hi"));
     }
     if (op == QLatin1String("withdraw")) {
-        return withdraw(qv("signer"), qv("vault_id"), qv("amount_lo"), qv("amount_hi"), qv("withdraw_to"));
+        return withdraw(qv("owner"), qv("vault_id"), qv("amount_lo"), qv("amount_hi"), qv("withdraw_to"));
     }
     if (op == QLatin1String("createStream")) {
-        return createStream(qv("signer"),
+        return createStream(qv("owner"),
                             qv("vault_id"),
                             qv("stream_id"),
                             qv("provider"),
@@ -1706,16 +1706,16 @@ QString PaymentStreamsModuleImpl::chainAction(const QVariant& operation, const Q
                             qv("allocation_hi"));
     }
     if (op == QLatin1String("pauseStream")) {
-        return pauseStream(qv("signer"), qv("vault_id"), qv("stream_id"));
+        return pauseStream(qv("owner"), qv("vault_id"), qv("stream_id"));
     }
     if (op == QLatin1String("resumeStream")) {
-        return resumeStream(qv("signer"), qv("vault_id"), qv("stream_id"));
+        return resumeStream(qv("owner"), qv("vault_id"), qv("stream_id"));
     }
     if (op == QLatin1String("topUpStream")) {
-        return topUpStream(qv("signer"), qv("vault_id"), qv("stream_id"), qv("increase_lo"), qv("increase_hi"));
+        return topUpStream(qv("owner"), qv("vault_id"), qv("stream_id"), qv("increase_lo"), qv("increase_hi"));
     }
     if (op == QLatin1String("closeStream")) {
-        return closeStream(qv("signer"), qv("vault_id"), qv("stream_id"), qv("authority"));
+        return closeStream(qv("owner"), qv("vault_id"), qv("stream_id"), qv("provider"));
     }
     if (op == QLatin1String("claim")) {
         return claim(qv("owner"), qv("provider"), qv("vault_id"), qv("stream_id"));

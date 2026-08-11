@@ -156,6 +156,13 @@ else
 fi
 # Set MODULE_E2E_SKIP_CLOSE=1 to skip settlement (close + claim; saves testnet txs).
 MODULE_E2E_SKIP_CLOSE="${MODULE_E2E_SKIP_CLOSE:-0}"
+# Close role for rename smoke / Step 44 cells: provider (default; includes provider
+# JSON key on six-slot close) or owner (omit provider key; owner-only close needs
+# Step 44 dual-instruction).
+CLOSE_ROLE="${CLOSE_ROLE:-provider}"
+# Optional tiny withdraw before settlement (Step 47 Required rename smoke).
+MODULE_E2E_WITHDRAW="${MODULE_E2E_WITHDRAW:-0}"
+WITHDRAW_AMOUNT="${WITHDRAW_AMOUNT:-1}"
 # Set MODULE_E2E_SKIP_FUND=1 to skip inline testnet pinata funding (assumes the
 # fixture owner/provider were pre-funded via scripts/fund-testnet-accounts.sh).
 MODULE_E2E_SKIP_FUND="${MODULE_E2E_SKIP_FUND:-0}"
@@ -1139,13 +1146,13 @@ fi
 
 narr_step "Alice creates vault $VAULT_ID"
 if ps_is_owner_privacy_e2e; then
-  call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"privacy_tier\":1}")" "" "Vault $VAULT_ID created on chain (PseudonymousFunding)" verify_vault_init
+  call_ps vault_init 1 initializeVault "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"privacy_tier\":1}")" "" "Vault $VAULT_ID created on chain (PseudonymousFunding)" verify_vault_init
 else
-  call_ps vault_init 1 initializeVault "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID}")" "" "Vault $VAULT_ID created on chain" verify_vault_init
+  call_ps vault_init 1 initializeVault "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID}")" "" "Vault $VAULT_ID created on chain" verify_vault_init
 fi
 
 narr_step "Depositing $DEPOSIT tokens into vault"
-DEPOSIT_LINE="$(call_ps deposit 1 deposit "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}")" "" "Deposit transaction included on chain" verify_deposit)"
+DEPOSIT_LINE="$(call_ps deposit 1 deposit "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}")" "" "Deposit transaction included on chain" verify_deposit)"
 
 # Verify the deposit settled on chain by reading the vault holding balance.
 if DEPOSIT_VAULT="$(poll_read read_vault "$OWNER" "$VAULT_ID")"; then
@@ -1187,7 +1194,7 @@ narr_step "Alice opens stream $STREAM_ID to Bob"
 narr_value "rate=$RATE tokens/sec, allocation=$ALLOCATION tokens, vault=$VAULT_ID"
 narr_verbose "A payment stream allocates tokens to a provider at a fixed rate."
 narr_verbose "The allocation is the maximum the stream can pay out."
-call_ps create_stream 1 createStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PROVIDER\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}")" "" "Stream $STREAM_ID created (ACTIVE)" verify_create_stream
+call_ps create_stream 1 createStream "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PROVIDER\",\"rate\":$RATE,\"allocation_lo\":$ALLOCATION,\"allocation_hi\":0}")" "" "Stream $STREAM_ID created (ACTIVE)" verify_create_stream
 
 # ---------------------------------------------------------------------------
 # PHASE: Stream Lifecycle (optional pause/resume + top-up)
@@ -1212,9 +1219,9 @@ if [[ "$MODULE_E2E_PAUSE_RESUME" == "1" ]]; then
     FAILURES=$((FAILURES + 1))
   fi
   narr_step "Pausing stream $STREAM_ID"
-  call_ps pause_stream 1 pauseStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Stream paused"
+  call_ps pause_stream 1 pauseStream "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Stream paused"
   narr_step "Resuming stream $STREAM_ID"
-  call_ps resume_stream 1 resumeStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Stream resumed"
+  call_ps resume_stream 1 resumeStream "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Stream resumed"
 fi
 
 if [[ "$MODULE_E2E_TOPUP" == "1" ]]; then
@@ -1226,7 +1233,7 @@ if [[ "$MODULE_E2E_TOPUP" == "1" ]]; then
     read -r PRE_ACC PRE_UNC _ <<< "$TOPUP_PRE"
     PRE_ALLOC=$((PRE_ACC + PRE_UNC))
   fi
-  TOPUP_LINE="$(call_ps topup_stream 1 topUpStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"increase_lo\":$TOPUP_INCREASE,\"increase_hi\":0}")" "" "Top-up transaction included on chain")"
+  TOPUP_LINE="$(call_ps topup_stream 1 topUpStream "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"increase_lo\":$TOPUP_INCREASE,\"increase_hi\":0}")" "" "Top-up transaction included on chain")"
   if TOPUP_POST="$(poll_read read_stream "$OWNER" "$VAULT_ID" "$STREAM_ID")"; then
     read -r POST_ACC POST_UNC _ <<< "$TOPUP_POST"
     POST_ALLOC=$((POST_ACC + POST_UNC))
@@ -1299,6 +1306,12 @@ if [[ "$MODULE_E2E_SKIP_CLOSE" == "1" ]]; then
   emit_phase close_stream true "{\"skipped\":true,\"reason\":\"MODULE_E2E_SKIP_CLOSE\"}"
   emit_phase claim true "{\"skipped\":true,\"reason\":\"MODULE_E2E_SKIP_CLOSE\"}"
 else
+  if [[ "$MODULE_E2E_WITHDRAW" == "1" ]]; then
+    narr_phase "Withdraw"
+    narr_step "Alice withdraws ${WITHDRAW_AMOUNT} token(s) from vault $VAULT_ID"
+    call_ps withdraw 1 withdraw "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$WITHDRAW_AMOUNT,\"amount_hi\":0,\"withdraw_to\":\"$OWNER\"}")" "" "Withdraw transaction included on chain"
+  fi
+
   narr_phase "Close"
 
   if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
@@ -1307,8 +1320,18 @@ else
     sync_wallet
   fi
 
-  narr_step "Alice closes stream $STREAM_ID, reclaims unspent allocation"
-  CLOSE_LINE="$(call_ps close_stream 1 closeStream "$(j "{\"signer\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"authority\":\"$PROVIDER\"}")" "" "Close transaction included on chain" verify_close_stream)"
+  if [[ "$CLOSE_ROLE" == "provider" ]]; then
+    CLOSE_PARAMS="$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PROVIDER\"}")"
+    narr_step "Provider closes stream $STREAM_ID (CLOSE_ROLE=provider)"
+  elif [[ "$CLOSE_ROLE" == "owner" ]]; then
+    CLOSE_PARAMS="$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")"
+    narr_step "Alice closes stream $STREAM_ID (CLOSE_ROLE=owner)"
+  else
+    narr_fail "CLOSE_ROLE must be provider or owner (got: $CLOSE_ROLE)"
+    FAILURES=$((FAILURES + 1))
+    CLOSE_PARAMS="$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID,\"provider\":\"$PROVIDER\"}")"
+  fi
+  CLOSE_LINE="$(call_ps close_stream 1 closeStream "$CLOSE_PARAMS" "" "Close transaction included on chain" verify_close_stream)"
 
   CLOSE_VAULT_BAL=""
   CLOSE_VAULT_TOT=""

@@ -1427,10 +1427,10 @@ QString PaymentStreamsModuleImpl::rediscoverStreams(const QVariant& vaultId) {
 
 QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant& proofBytes,
                                                                  const QVariant& canonicalRequestBytes,
-                                                                 const QVariant& requesterPeerId) {
-    const QString peer = requesterPeerId.toString().trimmed();
+                                                                 const QVariant& userPeerId) {
+    const QString peer = userPeerId.toString().trimmed();
     if (peer.isEmpty()) {
-        return makePlainError(QStringLiteral("requesterPeerId is required"));
+        return makePlainError(QStringLiteral("userPeerId is required"));
     }
 
     const QByteArray proofWire = QByteArray::fromHex(proofBytes.toString().trimmed().toLatin1());
