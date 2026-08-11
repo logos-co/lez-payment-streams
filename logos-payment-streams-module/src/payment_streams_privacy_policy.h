@@ -10,7 +10,7 @@
 // Submit-path policy for vault-touching operations (D37.9).
 // Any private account slot forces private submit. PseudonymousFunding vaults
 // must never take the transparent submit path. Deposit may additionally
-// require signer == VaultConfig.owner.
+// require submitter == VaultConfig.owner.
 //
 // Also hosts N5 peer-mapping encoding helpers for D37.12 unit smoke (Store
 // dual-host E2E remains Step 38).
@@ -32,21 +32,21 @@ struct VaultSubmitDecision {
 };
 
 // Slot-based submit selection:
-// 1) optional deposit signer == owner check
+// 1) optional deposit submitter == owner check
 // 2) anyPrivateSlot → Private
 // 3) PseudonymousFunding → Private (never public)
 // 4) else Public
 VaultSubmitDecision decideVaultSubmitPath(uint8_t privacyTier,
                                           bool anyPrivateSlot,
-                                          bool enforceDepositSignerEqualsOwner,
-                                          const QString& signerHexLower,
+                                          bool enforceDepositSubmitterEqualsOwner,
+                                          const QString& submitterHexLower,
                                           const QString& vaultOwnerHexLower);
 
-QString depositSignerMismatchMessage();
+QString depositOwnerMismatchMessage();
 
 bool resolutionsContainPrivate(const QStringList& resolutions);
 
-// Host-local PeerId → payee base58 mapping (N5 / D37.12).
+// Host-local PeerId → provider base58 mapping (N5 / D37.12).
 QString providerBase58ForPeer(const QJsonObject& mappings, const QString& peerId);
 void setProviderBase58ForPeer(QJsonObject* mappings,
                               const QString& peerId,

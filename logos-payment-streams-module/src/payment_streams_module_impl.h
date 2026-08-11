@@ -29,38 +29,38 @@ public:
 
 private:
     QString accountIdHexFromBase58(const QVariant& accountIdBase58);
-    QString initializeVault(const QVariant& signerAccountIdBase58, const QVariant& vaultId, const QVariant& privacyTier);
-    QString deposit(const QVariant& signerAccountIdBase58,
+    QString initializeVault(const QVariant& ownerAccountIdBase58, const QVariant& vaultId, const QVariant& privacyTier);
+    QString deposit(const QVariant& ownerAccountIdBase58,
                     const QVariant& vaultId,
                     const QVariant& amountLo,
                     const QVariant& amountHi);
-    QString withdraw(const QVariant& signerAccountIdBase58,
+    QString withdraw(const QVariant& ownerAccountIdBase58,
                      const QVariant& vaultId,
                      const QVariant& amountLo,
                      const QVariant& amountHi,
                      const QVariant& withdrawToAccountIdBase58);
-    QString createStream(const QVariant& signerAccountIdBase58,
+    QString createStream(const QVariant& ownerAccountIdBase58,
                          const QVariant& vaultId,
                          const QVariant& streamId,
                          const QVariant& providerAccountIdBase58,
                          const QVariant& rateTokensPerSecond,
                          const QVariant& allocationLo,
                          const QVariant& allocationHi);
-    QString pauseStream(const QVariant& signerAccountIdBase58,
+    QString pauseStream(const QVariant& ownerAccountIdBase58,
                         const QVariant& vaultId,
                         const QVariant& streamId);
-    QString resumeStream(const QVariant& signerAccountIdBase58,
+    QString resumeStream(const QVariant& ownerAccountIdBase58,
                          const QVariant& vaultId,
                          const QVariant& streamId);
-    QString topUpStream(const QVariant& signerAccountIdBase58,
+    QString topUpStream(const QVariant& ownerAccountIdBase58,
                         const QVariant& vaultId,
                         const QVariant& streamId,
                         const QVariant& increaseLo,
                         const QVariant& increaseHi);
-    QString closeStream(const QVariant& signerAccountIdBase58,
+    QString closeStream(const QVariant& ownerAccountIdBase58,
                         const QVariant& vaultId,
                         const QVariant& streamId,
-                        const QVariant& authorityAccountIdBase58);
+                        const QVariant& providerAccountIdBase58);
     QString claim(const QVariant& ownerAccountIdBase58,
                   const QVariant& providerAccountIdBase58,
                   const QVariant& vaultId,
