@@ -232,5 +232,6 @@ marked final.
 | Initialize vault | `logoscore call payment_streams_module chainAction initializeVault '{"owner":"<private>","vault_id":<id>,"privacy_tier":1}'` |
 | PP deposit | `logoscore call payment_streams_module chainAction deposit '{"owner":"<vault_owner_private>","vault_id":<id>,"amount_lo":<lo>}'` |
 | Create stream | `logoscore call payment_streams_module chainAction createStream '{"owner":"<private>","vault_id":<id>,"stream_id":<id>,"provider":"<provider>","rate":<rate>,"allocation_lo":<lo>}'` |
-| Close stream | `logoscore call payment_streams_module chainAction closeStream '{"owner":"<private>","vault_id":<id>,"stream_id":<id>,"provider":"<provider>"}'` |
+| Close stream (owner) | `logoscore call payment_streams_module chainAction closeStream '{"owner":"<private>","vault_id":<id>,"stream_id":<id>}'` |
+| Close stream (provider) | `logoscore call payment_streams_module chainAction closeStream '{"owner":"<private>","vault_id":<id>,"stream_id":<id>,"provider":"<provider>"}'` |
 | Claim | `logoscore call payment_streams_module chainAction claim '{"owner":"<private>","provider":"<provider>","vault_id":<id>,"stream_id":<id>}'` |

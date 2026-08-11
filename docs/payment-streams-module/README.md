@@ -99,7 +99,7 @@ Legend: **UJ** = exercised in [USER_JOURNEY.md](../journeys/USER_JOURNEY.md) tes
 | `pauseStream` | `owner`, `vault_id`, `stream_id` | Pause accrual | no |
 | `resumeStream` | `owner`, `vault_id`, `stream_id` | Resume paused stream | no |
 | `topUpStream` | `owner`, `vault_id`, `stream_id`, `increase_lo`, `increase_hi` | Increase stream allocation | no |
-| `closeStream` | `owner`, `vault_id`, `stream_id`, optional `provider` | Close stream; unaccrued returns to vault; omit `provider` to sign as `owner` | yes |
+| `closeStream` | `owner`, `vault_id`, `stream_id`, optional `provider` | Close stream; unaccrued returns to vault. Omit `provider` (or match `owner`) for owner-close. Distinct `provider` selects provider-close after stream pre-read. | yes |
 | `claim` | `owner`, `provider`, `vault_id`, `stream_id` | Provider claims accrued on stream | yes |
 
 ### Reads (via chainAction)

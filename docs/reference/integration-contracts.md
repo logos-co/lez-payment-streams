@@ -119,17 +119,32 @@ cargo run -q --manifest-path examples/Cargo.toml --bin seed_localnet_fixture -- 
   --owner "$OWNER" --provider "$PROVIDER" --vault-id 0 --stream-id "$STREAM_ID"
 ```
 
-Logoscore (provider host):
+Logoscore close dispatch (single `closeStream` op):
+
+- Omit `provider`, or set `provider` equal to `owner`: owner-close
+  (`close_stream_by_owner`, five accounts; vault owner signs).
+- Distinct `provider`: provider-close (`close_stream_by_provider`, six accounts;
+  stream provider signs; vault owner is a non-signing binding account).
+- Empty `owner` or empty `provider` string: `close_args_mismatch`.
+- Wrong vault PDA for `owner`/`vault_id`: `close_prestate_unavailable`.
+- Distinct `provider` that is not the stream provider: `close_provider_mismatch`.
+- `createStream` with `provider` equal to `owner`: `create_provider_equals_owner`.
+
+Store E2E teardown uses provider-close. Module Required cells default to
+owner-close (`CLOSE_ROLE=owner`). Thin payee cells set `CLOSE_ROLE=provider`.
 
 ```bash
+# Owner-close (payer)
+logoscore call payment_streams_module chainAction closeStream \
+  '{"owner":"<owner>","vault_id":0,"stream_id":<id>}'
+
+# Provider-close (payee; Store teardown path)
 logoscore call payment_streams_module chainAction closeStream \
   '{"owner":"<owner>","vault_id":0,"stream_id":<id>,"provider":"<provider_account_id>"}'
+
 logoscore call payment_streams_module chainAction claim \
   '{"owner":"<owner_account_id>","provider":"<provider_account_id>","vault_id":0,"stream_id":<id>}'
 ```
-
-Owner-as-both-owner-and-provider close is invalid for the six-account layout unless the product
-adds a distinct provider slot; Developer Journey E2E uses the stream provider key from prefund.
 
 ## JSON — user prepare (Step 12)
 

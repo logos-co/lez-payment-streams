@@ -212,10 +212,12 @@ Sizing SSOT for docs and fixture: `demo_deposit_amount` 500, `allocation` 80, `s
 `module-e2e.sh` env overrides (`DEPOSIT`, `ALLOCATION`, …) may differ; the fixture fields are what
 [USER_JOURNEY.md](USER_JOURNEY.md) teaches.
 
-Note: `module-e2e.sh` defaults `CLOSE_ROLE=provider` (six-slot close with `provider` key).
-Owner-only close (omit `provider`) needs [Step 44](../plan/upcoming/step-44-payer-and-payee-close.md).
-[USER_JOURNEY.md](USER_JOURNEY.md) documents owner-led close;
-that shape needs the Step 44 layout fix (LEZ rejects duplicate account ids).
+Note: `module-e2e.sh` defaults `CLOSE_ROLE=owner` (five-slot close; omit `provider`).
+Set `CLOSE_ROLE=provider` for payee-close (six-slot; include `provider` key).
+Make aliases: `verify-module-local-payee-close`,
+`verify-module-local-payee-close-privacy`,
+`verify-module-local-close-negatives`.
+[USER_JOURNEY.md](USER_JOURNEY.md) Step 14 documents owner-led close.
 
 ## Module × testnet (full privacy)
 

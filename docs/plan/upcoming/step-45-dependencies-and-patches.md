@@ -28,7 +28,9 @@ Paid Store stays on long-lived delivery forks `feat/payment-streams-store-eligib
 fork pin when rebasing / re-locking (do not leave `requester_*` on the living
 Store path).
 Guest ImageID freeze baseline moves with [Step 44](step-44-payer-and-payee-close.md)
-(D44.19): after Step 44 lands, freeze on the Step 44 ImageID / gate log, not the
+(D44.19): after Step 44 lands, freeze on the Step 44 ImageID /
+`ee2cfb7466c239c51ef5c60222f4216d45df4de4664bae5c976c1b29f3da2ed1`
+([step-44-gate-log.md](../completed/step-44-gate-log.md)), not the
 retired Step 39 id (`072a26cc…`).
 
 ## Scope

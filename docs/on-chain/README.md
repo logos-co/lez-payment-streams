@@ -28,11 +28,12 @@ and writes — not shared pure logic in `lib.rs`.
 
 ## Guest helpers
 
-Two stream-loading helpers reflect authorization:
+Stream-loading helpers reflect authorization:
 
-- `load_owner_stream_context` — `pause_stream`, `resume_stream`, `top_up_stream` (owner auth)
-- `load_stream_context_with_owner_binding` — `close_stream`, `claim` (owner binding without owner
-  auth; provider may claim; owner or provider may close)
+- `load_owner_stream_context` — `pause_stream`, `resume_stream`, `top_up_stream`,
+  `close_stream_by_owner` (owner auth; five-slot close)
+- `load_stream_context_with_owner_binding` — `close_stream_by_provider`, `claim`
+  (owner binding without owner auth; provider signs)
 
 ## Tests
 

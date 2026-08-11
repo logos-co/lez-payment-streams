@@ -252,6 +252,10 @@ ImageID probe (2026-08): guest rebuild after the rename left ImageID
 `072a26cc9865e95679012e53f2b1861b71f488b5e90da93611459afbc7adcfc7` unchanged;
 no redeploy or gate re-run required for the rename alone.
 
+Step 44 dual-close guest rebuild flips ImageID to
+`ee2cfb7466c239c51ef5c60222f4216d45df4de4664bae5c976c1b29f3da2ed1`
+(release ELF 366716 bytes). See [step-44-gate-log.md](../plan/completed/step-44-gate-log.md).
+
 Historical completed step packets and gate logs keep contemporary `PseudonymousFunder`
 wording as a record of what was verified when they ran.
 

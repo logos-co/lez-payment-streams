@@ -86,6 +86,8 @@ Per-cell prepare, bootstrap one-liners, verbosity flags, and expected artifacts:
 [journeys/E2E.md](../journeys/E2E.md).
 
 Make convenience aliases: `verify-module-local`, `verify-module-testnet`,
+`verify-module-local-payee-close`, `verify-module-local-payee-close-privacy`,
+`verify-module-local-close-negatives`,
 `verify-store-local`, `verify-store-testnet`. Legacy names `verify-step17` / `verify-step18`
 still work.
 
