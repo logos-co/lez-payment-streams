@@ -68,6 +68,10 @@ Publish two tiers in one doc packet (or two linked sections):
 
 Both tiers must cite [integration-contracts.md](../../reference/integration-contracts.md) for method names
 and encodings; do not duplicate full contract tables in the packet.
+Use Step 47 final names in examples: write/close JSON `owner` / `provider`;
+`verifyEligibilityForStoreQuery` peer arg `userPeerId` (delivery ABI
+`user_peer_id`). Rerun `scripts/check-terminology.sh` before handoff if editing
+in-repo SSOT examples.
 
 Deliver:
 

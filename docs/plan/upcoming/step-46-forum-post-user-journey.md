@@ -44,6 +44,7 @@ This is the wrap-up public narrative. Formal logos-docs Store packet work remain
 | [E2E.md](../../journeys/E2E.md) | Phase / script command alignment for spoiler |
 | [PRIVACY_ENHANCED_JOURNEY.md](../../journeys/PRIVACY_ENHANCED_JOURNEY.md) | Optional short privacy callout in intro or appendix |
 | LIP-155, [docs/README.md](../../README.md) | Citations only; do not duplicate protocol semantics |
+| [check-terminology.sh](../../scripts/check-terminology.sh) | Before publish: prefer Step 47 final names (`owner`/`provider`/`userPeerId`); rerun the gate |
 
 ## Scope
 

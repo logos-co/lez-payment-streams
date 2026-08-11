@@ -28,6 +28,9 @@ Architectural context:
   no demo coordinator (Step 25 wontfix).
 - Thin wrapper: buttons/forms map to existing LogosAPI (`chainAction`, reads, `listMyStreams`,
   `rediscoverStreams`) per [integration-contracts.md](../../reference/integration-contracts.md).
+  Write/close JSON keys are Step 47 hard cuts: `owner` / `provider` (not `signer` /
+  `authority`). Journey env names if surfaced: `OWNER` / `PROVIDER` (not `PAYER` /
+  `PAYEE`; avoid clobbering POSIX `$USER`).
 - **Single Basecamp / single `logoscore`** for typical flows; counterparty service is **out of
   band** (not modeled in UI).
 
