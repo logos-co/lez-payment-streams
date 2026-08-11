@@ -1,11 +1,10 @@
 # Step 47 — unify role terminology
 
-Upcoming. Index: [index.md](../index.md).
+Index: [index.md](../index.md). Status: **complete** (2026-08).
 
-Spun out of Step 44 N2. Discuss and implement separately from the close hard cut.
-
-Land implementation on a feature branch (one PR; multiple commits per D47.9).
-Do not commit the rename series directly on `master`.
+Spun out of Step 44 N2. Landed on `feat/step-47-unify-role-terminology`
+(multi-commit; D47.9) and merged to `master`. Gate log:
+[step-47-gate-log.md](step-47-gate-log.md).
 
 ## Goal
 

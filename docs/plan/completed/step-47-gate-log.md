@@ -1,6 +1,7 @@
 # Step 47 gate log
 
-Feature branch: `feat/step-47-unify-role-terminology`.
+Feature branch: `feat/step-47-unify-role-terminology` (merged to `master`).
+Packet: [step-47-unify-role-terminology.md](step-47-unify-role-terminology.md).
 
 ## D47.4 external spot-check
 

@@ -20,8 +20,8 @@ LIP-155 already allows either party. Today only provider-close works end-to-end.
 Packet filename keeps historical “payer/payee.” Prefer owner-close /
 provider-close in new prose.
 
-[Step 47](step-47-unify-role-terminology.md) (feature branch
-`feat/step-47-unify-role-terminology`) hard-cut living module JSON and journey
+[Step 47](../completed/step-47-unify-role-terminology.md) (complete)
+hard-cut living module JSON and journey
 env: write/close keys are `owner` / `provider` (not `signer` / `authority`);
 journey helpers use `$OWNER` / `$PROVIDER`. Layout types are `StreamProvider*`.
 Do not reintroduce legacy keys. `scripts/check-terminology.sh` temporarily
@@ -717,7 +717,7 @@ Out of scope:
 - Basecamp UI (Step 21).
 - Keeping a deprecated `CloseStream` wire alias on the new ImageID.
 - Merging stream context loaders; spel IDL path raw-todo.
-- Renaming module JSON `signer`/`authority` → `owner`/`provider` ([Step 47](step-47-unify-role-terminology.md)
+- Renaming module JSON `signer`/`authority` → `owner`/`provider` ([Step 47](../completed/step-47-unify-role-terminology.md)
   — already implemented on `feat/step-47-unify-role-terminology`; land/merge
   before or with this step’s docs so implementors do not write legacy keys).
 
@@ -769,7 +769,7 @@ Out of scope:
 | D44.17 | PP no-regression | Both close paths work public and private; PF uses public PDA pre-read + existing private-submit routing; evidence includes PF provider-close unit + soft E2E; host must hold private owner NSK to submit PF provider-close (M10). |
 | D44.18 | Real-prove ImageID | DoD = one local `RISC0_DEV_MODE=0` `OWNER_PRIVACY=1` payer-close cell. Same run’s later claim re-greens six-slot PF private non-signing owner under real prove. Testnet privacy re-run is not DoD. Step 39 prove greens are ImageID-scoped and superseded by the Step 44 gate log. |
 | D44.19 | Step 45 baseline | Step 45 ImageID freeze moves to the Step 44 ImageID after this step; Step 44 does not wait on Step 45 dep work. |
-| D44.20 | Module JSON naming (N2) | Docs-only in this step: `signer` means vault owner id; on provider-close the tx signer is `authority`. No rename/alias here. Full `owner`/`provider` rename is [Step 47](step-47-unify-role-terminology.md). |
+| D44.20 | Module JSON naming (N2) | Docs-only in this step: `signer` means vault owner id; on provider-close the tx signer is `authority`. No rename/alias here. Full `owner`/`provider` rename is [Step 47](../completed/step-47-unify-role-terminology.md). |
 | D44.21 | Reject tokens | Asserted: `close_prestate_unavailable`, `close_provider_mismatch`, `close_args_mismatch` (empty/whitespace `signer` or empty `authority` key — checked before id helpers), `create_provider_equals_owner`. Reserved: `close_owner_mismatch`. Catch-all: unmatched combinations reject, never coerce. |
 
 ## Open for discussion

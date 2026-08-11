@@ -12,8 +12,8 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | Path | Contents |
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
-| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41) |
-| [upcoming/](upcoming/) | Steps 20–21, 44–47 |
+| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 47) |
+| [upcoming/](upcoming/) | Steps 20–21, 44–46 |
 | [waiting/](waiting/) | (empty) |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 23, 25, 42, 43 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
@@ -33,8 +33,8 @@ Journeys ([N18](../reference/integration-decisions.md#n18-integration-demo-vs-pa
 Engineering: Steps 26–33 complete; Steps 36–41 complete
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
-Steps 20–21, 44–47 upcoming (Developer Journey publish; Basecamp UI; payer/payee close;
-deps/patches; forum progress report; module JSON terminology).
+Steps 20–21, 44–46 upcoming (Developer Journey publish; Basecamp UI; payer/payee close;
+deps/patches; forum progress report). Step 47 complete (role terminology).
 Steps 42–43 wontfix (Testnet v0.3 incentivisation research / spec).
 Public hosted Store provider: Step 23 (wontfix).
 
@@ -84,7 +84,7 @@ paid Store mode on the provider.
 | E2E payer-close and payee-close | 44 (upcoming) |
 | Revisit dependencies and patches | 45 (upcoming) |
 | Forum progress report (plain English + command spoiler) | 46 (upcoming) |
-| Unify module JSON terminology (`owner` / `provider`) | 47 (upcoming) |
+| Unify module JSON terminology (`owner` / `provider`) | 47 (complete) |
 
 Step 25 (in-process demo coordinator module) is wontfix
 ([packet](wontfix/step-25-demo-coordination-module.md)).
@@ -124,10 +124,12 @@ Dual-host demo coordination stays in host scripts
 | 39 | Testnet privacy E2E after native guest deploy | [step-39-testnet-privacy-e2e.md](completed/step-39-testnet-privacy-e2e.md) |
 | 40 | LIP-155 privacy-preserving workflow in the specification | [step-40-lip155-privacy-workflow-spec.md](completed/step-40-lip155-privacy-workflow-spec.md) |
 | 41 | Non-native token provider payment policies (F8, U9) | [step-41-non-native-token-policy-spec.md](completed/step-41-non-native-token-policy-spec.md) |
+| 47 | Unify role terminology (module, journey, policy, layouts) | [step-47-unify-role-terminology.md](completed/step-47-unify-role-terminology.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
 [step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33),
 [step-39-testnet-gate-log.md](completed/step-39-testnet-gate-log.md) (Step 39).
+[step-47-gate-log.md](completed/step-47-gate-log.md) (Step 47).
 
 ## Upcoming steps
 
@@ -138,7 +140,6 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | 44 | E2E closeStream payer and payee close | Upcoming — [step-44-payer-and-payee-close.md](upcoming/step-44-payer-and-payee-close.md) |
 | 45 | Revisit dependencies and patches | Upcoming — [step-45-dependencies-and-patches.md](upcoming/step-45-dependencies-and-patches.md) |
 | 46 | Forum progress report | Upcoming — [step-46-forum-post-user-journey.md](upcoming/step-46-forum-post-user-journey.md) |
-| 47 | Unify role terminology (module, journey, policy, layouts) | Upcoming — [step-47-unify-role-terminology.md](upcoming/step-47-unify-role-terminology.md) |
 
 ## Waiting steps
 
