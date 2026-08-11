@@ -43,11 +43,15 @@ pub enum Instruction {
         stream_id: StreamId,
         vault_total_allocated_increase: Balance,
     },
-    CloseStream {
+    CloseStreamByOwner {
         vault_id: VaultId,
         stream_id: StreamId,
     },
     Claim {
+        vault_id: VaultId,
+        stream_id: StreamId,
+    },
+    CloseStreamByProvider {
         vault_id: VaultId,
         stream_id: StreamId,
     },

@@ -215,7 +215,7 @@ mod lez_payment_streams {
     // ---- Shared account loaders ---- //
 
     /// Load and validate vault, stream, and clock for instructions authorized by the vault owner
-    /// (pause, resume, top-up).
+    /// (pause, resume, top-up, close_stream_by_owner).
     /// The `owner_account_id` parameter is the account id used for owner authorization.
     fn load_owner_stream_context(
         vault_config: &AccountWithMetadata,
@@ -250,8 +250,8 @@ mod lez_payment_streams {
     }
 
     /// Load and validate vault, stream, and clock for instructions where the owner account is
-    /// present for identity binding but authorization comes from a different account (`close`,
-    /// `claim`).
+    /// present for identity binding but authorization comes from a different account
+    /// (`close_stream_by_provider`, `claim`).
     /// `owner_account_id` is still checked against `VaultConfig.owner` as defense in depth
     /// alongside the PDA binding.
     fn load_stream_context_with_owner_binding(
@@ -314,14 +314,14 @@ mod lez_payment_streams {
         )
     }
 
-    /// Shared account order for instructions with owner binding and separate authorization:
-    /// `[vault_config, vault_holding, stream_config, owner, authority, clock_account]`.
+    /// Shared account order for instructions with owner binding and separate provider authorization:
+    /// `[vault_config, vault_holding, stream_config, owner, provider, clock_account]`.
     fn execute_stream_instruction_with_explicit_owner(
         vault_config_account: Account,
         vault_holding_account: Account,
         stream_account: Account,
         owner_account: Account,
-        authority_account: Account,
+        provider_account: Account,
         clock_account: Account,
     ) -> SpelOutput {
         SpelOutput::execute(
@@ -330,11 +330,33 @@ mod lez_payment_streams {
                 vault_holding_account,
                 stream_account,
                 owner_account,
-                authority_account,
+                provider_account,
                 clock_account,
             ],
             vec![],
         )
+    }
+
+    /// Shared close accounting: fold/close stream, release unaccrued into vault total_allocated.
+    /// Callers write both account datas and choose the path-specific SpelOutput builder.
+    fn apply_close_accounting(
+        vault_config_state: &mut VaultConfig,
+        stream_config_state: StreamConfig,
+        now: Timestamp,
+    ) -> Result<StreamConfig, SpelError> {
+        let (unaccrued_released, stream_after_close) = stream_config_state
+            .close_at_time(now)
+            .map_err(|e| spel_err(e, "close_at_time failed"))?;
+
+        // `close_at_time` shrinks stream allocation only by the unaccrued remainder returned to
+        // the vault. Any accrued residual stays allocated on the closed stream until a later claim.
+        vault_config_state.total_allocated = checked_total_allocated_after_release(
+            vault_config_state.total_allocated,
+            unaccrued_released,
+        )
+        .map_err(|e| spel_err(e, "total_allocated release failed"))?;
+
+        Ok(stream_after_close)
     }
 
     fn serialize_transfer_amount(amount: Balance) -> Result<Vec<u32>, SpelError> {
@@ -552,6 +574,13 @@ mod lez_payment_streams {
         validate_vault_structure(&vault_config_state, &vault_holding_state, vault_id)?;
         validate_vault_owner(&vault_config_state, owner.account_id)?;
 
+        if provider == owner.account_id {
+            return Err(spel_err(
+                ErrorCode::ProviderEqualsOwner,
+                "provider must not equal vault owner",
+            ));
+        }
+
         if stream_id != vault_config_state.next_stream_id {
             return Err(spel_err(
                 ErrorCode::StreamIdMismatch,
@@ -768,65 +797,43 @@ mod lez_payment_streams {
     }
 
     #[instruction]
-    pub fn close_stream(
+    pub fn close_stream_by_owner(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
         vault_config: AccountWithMetadata,
         #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
         vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
         stream_config: AccountWithMetadata,
-        // `owner` is present for identity binding.
-        // Authorization may come from the vault owner or from the stream provider,
-        // so we cannot require the owner account to be the authorizing account here.
-        // The owner id is still verified against `VaultConfig.owner` in `load_stream_context_with_owner_binding`
-        // as defense in depth alongside the PDA seed binding.
-        #[account(mut)]
-        owner: AccountWithMetadata,
         #[account(signer)]
-        authority: AccountWithMetadata,
+        owner: AccountWithMetadata,
         clock_account: AccountWithMetadata,
         vault_id: VaultId,
         stream_id: StreamId,
     ) -> SpelResult {
-        let (mut vault_config_state, _, stream_config_state, now) = load_stream_context_with_owner_binding(
-                &vault_config,
-                &vault_holding,
-                &stream_config,
-                &clock_account,
-                vault_id,
-                stream_id,
-                owner.account_id,
-            )?;
+        let (mut vault_config_state, _, stream_config_state, now) = load_owner_stream_context(
+            &vault_config,
+            &vault_holding,
+            &stream_config,
+            &clock_account,
+            vault_id,
+            stream_id,
+            owner.account_id,
+        )?;
 
-        let authority_id = authority.account_id;
-        if authority_id != vault_config_state.owner && authority_id != stream_config_state.provider {
-            return Err(spel_err(ErrorCode::CloseUnauthorized, "not vault owner or stream provider"));
-        }
+        let stream_after_close =
+            apply_close_accounting(&mut vault_config_state, stream_config_state, now)?;
 
-        let (unaccrued_released, stream_after_close) = stream_config_state
-            .close_at_time(now)
-            .map_err(|e| spel_err(e, "close_at_time failed"))?;
+        let mut vault_config_account = vault_config.account;
+        write_account_data(&mut vault_config_account, &vault_config_state);
 
-        // `close_at_time` shrinks stream allocation only by the unaccrued remainder returned to
-        // the vault. Any accrued residual stays allocated on the closed stream until a later claim.
-        vault_config_state.total_allocated = checked_total_allocated_after_release(
-            vault_config_state.total_allocated,
-            unaccrued_released,
-        )
-        .map_err(|e| spel_err(e, "total_allocated release failed"))?;
+        let mut stream_account = stream_config.account;
+        write_account_data(&mut stream_account, &stream_after_close);
 
-        let mut vault_config = vault_config;
-        let mut stream_config = stream_config;
-
-        write_account_data(&mut vault_config.account, &vault_config_state);
-        write_account_data(&mut stream_config.account, &stream_after_close);
-
-        Ok(execute_stream_instruction_with_explicit_owner(
-            vault_config.account,
+        Ok(execute_owner_stream_instruction(
+            vault_config_account,
             vault_holding.account,
-            stream_config.account,
+            stream_account,
             owner.account,
-            authority.account,
             clock_account.account,
         ))
     }
@@ -840,9 +847,9 @@ mod lez_payment_streams {
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
         stream_config: AccountWithMetadata,
         // `owner` is present for identity binding.
-        // Authorization comes from the provider account, not from the owner account.
+        // Authorization comes from the provider account.
         // The owner id is verified against `VaultConfig.owner` for defense in depth alongside
-        // the PDA seed binding (same pattern as `close_stream`).
+        // the PDA seed binding (same pattern as `close_stream_by_provider`).
         #[account(mut)]
         owner: AccountWithMetadata,
         #[account(mut, signer)]
@@ -896,6 +903,59 @@ mod lez_payment_streams {
 
         write_account_data(&mut vault_config.account, &vault_config_state);
         write_account_data(&mut stream_config.account, &stream_after_claim);
+
+        Ok(execute_stream_instruction_with_explicit_owner(
+            vault_config.account,
+            vault_holding.account,
+            stream_config.account,
+            owner.account,
+            provider.account,
+            clock_account.account,
+        ))
+    }
+
+    #[instruction]
+    pub fn close_stream_by_provider(
+        #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
+        vault_config: AccountWithMetadata,
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("native")])]
+        vault_holding: AccountWithMetadata,
+        #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
+        stream_config: AccountWithMetadata,
+        // `owner` is present for identity binding.
+        // Authorization comes from the stream provider.
+        // The owner id is verified against `VaultConfig.owner` in `load_stream_context_with_owner_binding`
+        // as defense in depth alongside the PDA seed binding.
+        #[account(mut)]
+        owner: AccountWithMetadata,
+        #[account(signer)]
+        provider: AccountWithMetadata,
+        clock_account: AccountWithMetadata,
+        vault_id: VaultId,
+        stream_id: StreamId,
+    ) -> SpelResult {
+        let (mut vault_config_state, _, stream_config_state, now) = load_stream_context_with_owner_binding(
+                &vault_config,
+                &vault_holding,
+                &stream_config,
+                &clock_account,
+                vault_id,
+                stream_id,
+                owner.account_id,
+            )?;
+
+        if provider.account_id != stream_config_state.provider {
+            return Err(spel_err(ErrorCode::CloseUnauthorized, "not stream provider"));
+        }
+
+        let stream_after_close =
+            apply_close_accounting(&mut vault_config_state, stream_config_state, now)?;
+
+        let mut vault_config = vault_config;
+        let mut stream_config = stream_config;
+
+        write_account_data(&mut vault_config.account, &vault_config_state);
+        write_account_data(&mut stream_config.account, &stream_after_close);
 
         Ok(execute_stream_instruction_with_explicit_owner(
             vault_config.account,

@@ -19,9 +19,10 @@ pub type WithdrawInstructionAccounts = [AccountId; 4];
 /// Owner-authorized stream instructions share this five-account tail:
 /// vault config, vault holding, stream config PDA, owner (signer), system clock account.
 pub type StreamOwnerInstructionAccounts = [AccountId; 5];
-/// `close_stream` / `claim`: adds the stream provider after the bound owner slot.
+/// `close_stream_by_provider` / `claim`: adds the stream provider after the bound owner slot.
 pub type StreamProviderInstructionAccounts = [AccountId; 6];
-/// `claim` reuses the [`StreamProviderInstructionAccounts`] slot pattern (`close_stream` layout).
+/// `claim` reuses the [`StreamProviderInstructionAccounts`] slot pattern
+/// (`close_stream_by_provider` layout).
 pub type ClaimStreamInstructionAccounts = StreamProviderInstructionAccounts;
 
 #[must_use]
@@ -155,7 +156,24 @@ fn stream_owner_instruction_accounts(
 }
 
 #[must_use]
-pub fn close_stream_instruction_accounts(
+pub fn close_stream_by_owner_instruction_accounts(
+    program_id: &ProgramId,
+    owner_account_id: AccountId,
+    vault_id: VaultId,
+    stream_id: StreamId,
+    clock_account_id: AccountId,
+) -> StreamOwnerInstructionAccounts {
+    stream_owner_instruction_accounts(
+        program_id,
+        owner_account_id,
+        vault_id,
+        stream_id,
+        clock_account_id,
+    )
+}
+
+#[must_use]
+pub fn close_stream_by_provider_instruction_accounts(
     program_id: &ProgramId,
     owner_account_id: AccountId,
     vault_id: VaultId,
@@ -216,7 +234,7 @@ mod tests {
     use super::*;
     use crate::harness_seeds::SEED_PROVIDER;
     use crate::program_tests::common::{
-        first_stream_ix_accounts, state_deposited_with_clock, CloseStreamIxAccounts,
+        first_stream_ix_accounts, state_deposited_with_clock, CloseStreamByProviderIxAccounts,
         DEFAULT_CLOCK_INITIAL_TS, DEFAULT_OWNER_GENESIS_BALANCE, DEFAULT_STREAM_TEST_DEPOSIT,
     };
     use crate::test_helpers::{
@@ -301,7 +319,7 @@ mod tests {
     }
 
     #[test]
-    fn close_and_claim_match_six_account_layout() {
+    fn close_owner_and_provider_and_claim_match_layouts() {
         let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
         let deposit_amount = DEFAULT_STREAM_TEST_DEPOSIT;
         let t0 = DEFAULT_CLOCK_INITIAL_TS;
@@ -315,7 +333,14 @@ mod tests {
             dep.vault.vault_config_account_id,
             stream_id,
         );
-        let close_accounts: CloseStreamIxAccounts = [
+        let owner_five = [
+            dep.vault.vault_config_account_id,
+            dep.vault.vault_holding_account_id,
+            stream_pda,
+            dep.vault.owner_account_id,
+            clock_id,
+        ];
+        let provider_six: CloseStreamByProviderIxAccounts = [
             dep.vault.vault_config_account_id,
             dep.vault.vault_holding_account_id,
             stream_pda,
@@ -324,7 +349,18 @@ mod tests {
             clock_id,
         ];
 
-        let planner = close_stream_instruction_accounts(
+        assert_eq!(
+            close_stream_by_owner_instruction_accounts(
+                &dep.vault.program_id,
+                dep.vault.owner_account_id,
+                dep.vault.vault_id,
+                stream_id,
+                clock_id,
+            ),
+            owner_five
+        );
+
+        let planner = close_stream_by_provider_instruction_accounts(
             &dep.vault.program_id,
             dep.vault.owner_account_id,
             dep.vault.vault_id,
@@ -332,7 +368,7 @@ mod tests {
             provider_account_id,
             clock_id,
         );
-        assert_eq!(planner, close_accounts);
+        assert_eq!(planner, provider_six);
 
         let claim_planner = claim_instruction_accounts(
             &dep.vault.program_id,
@@ -342,6 +378,6 @@ mod tests {
             provider_account_id,
             clock_id,
         );
-        assert_eq!(claim_planner, close_accounts);
+        assert_eq!(claim_planner, provider_six);
     }
 }

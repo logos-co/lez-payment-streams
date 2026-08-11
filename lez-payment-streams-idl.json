@@ -812,12 +812,6 @@
         {
           "init": false,
           "name": "owner",
-          "signer": false,
-          "writable": true
-        },
-        {
-          "init": false,
-          "name": "authority",
           "signer": true,
           "writable": false
         },
@@ -842,7 +836,7 @@
           }
         }
       ],
-      "name": "close_stream"
+      "name": "close_stream_by_owner"
     },
     {
       "accounts": [
@@ -946,6 +940,109 @@
         }
       ],
       "name": "claim"
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "vault_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_config"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "vault_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "vault_holding",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_holding"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "const",
+                "value": "native"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "stream_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "stream_config"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "arg",
+                "path": "stream_id"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "owner",
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "provider",
+          "signer": true,
+          "writable": false
+        },
+        {
+          "init": false,
+          "name": "clock_account",
+          "signer": false,
+          "writable": false
+        }
+      ],
+      "args": [
+        {
+          "name": "vault_id",
+          "type": {
+            "defined": "VaultId"
+          }
+        },
+        {
+          "name": "stream_id",
+          "type": {
+            "defined": "StreamId"
+          }
+        }
+      ],
+      "name": "close_stream_by_provider"
     }
   ],
   "name": "lez_payment_streams",

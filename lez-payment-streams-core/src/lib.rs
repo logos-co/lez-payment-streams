@@ -33,13 +33,14 @@ pub use clock_core::{
 pub use error_codes::*;
 pub use instruction::Instruction;
 pub use instruction_accounts::{
-    claim_instruction_accounts, close_stream_instruction_accounts,
-    create_stream_instruction_accounts, deposit_instruction_accounts,
-    initialize_vault_instruction_accounts, pause_stream_instruction_accounts,
-    resume_stream_instruction_accounts, top_up_stream_instruction_accounts,
-    withdraw_instruction_accounts, ClaimStreamInstructionAccounts, DepositInstructionAccounts,
-    InitializeVaultInstructionAccounts, StreamProviderInstructionAccounts,
-    StreamOwnerInstructionAccounts, WithdrawInstructionAccounts,
+    claim_instruction_accounts, close_stream_by_owner_instruction_accounts,
+    close_stream_by_provider_instruction_accounts, create_stream_instruction_accounts,
+    deposit_instruction_accounts, initialize_vault_instruction_accounts,
+    pause_stream_instruction_accounts, resume_stream_instruction_accounts,
+    top_up_stream_instruction_accounts, withdraw_instruction_accounts,
+    ClaimStreamInstructionAccounts, DepositInstructionAccounts, InitializeVaultInstructionAccounts,
+    StreamOwnerInstructionAccounts, StreamProviderInstructionAccounts,
+    WithdrawInstructionAccounts,
 };
 #[cfg(feature = "host")]
 pub use instruction_wire::{

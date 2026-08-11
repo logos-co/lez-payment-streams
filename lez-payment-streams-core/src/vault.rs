@@ -79,7 +79,8 @@ pub fn checked_total_allocated_after_add(
 /// Zero decrease: return the input unchanged (e.g. close with nothing left to release).
 ///
 /// Callers must pass exactly the amount by which some stream's `allocation` shrank:
-/// - `close_stream` releases only the stream's unaccrued remainder back to the vault
+/// - `close_stream_by_owner` / `close_stream_by_provider` release only the stream's unaccrued
+///   remainder back to the vault
 /// - `claim` releases the full payout amount because `claim_at_time` reduces `allocation` by payout
 pub fn checked_total_allocated_after_release(
     vault_total_allocated: Balance,

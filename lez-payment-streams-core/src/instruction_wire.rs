@@ -102,13 +102,17 @@ mod tests {
                 stream_id: 10,
                 vault_total_allocated_increase: 123,
             },
-            Instruction::CloseStream {
+            Instruction::CloseStreamByOwner {
                 vault_id: 11,
                 stream_id: 12,
             },
             Instruction::Claim {
                 vault_id: 13,
                 stream_id: 14,
+            },
+            Instruction::CloseStreamByProvider {
+                vault_id: 15,
+                stream_id: 16,
             },
         ];
 
@@ -126,5 +130,32 @@ mod tests {
             let reparsed = instruction_words_from_bytes_le(&bytes).expect("bytes should parse");
             assert_eq!(reparsed, words);
         }
+    }
+
+    #[test]
+    fn close_and_claim_wire_discriminants_are_stable() {
+        let close_owner = instruction_words_for_public_transaction(&Instruction::CloseStreamByOwner {
+            vault_id: 1,
+            stream_id: 2,
+        })
+        .expect("serialize CloseStreamByOwner");
+        let claim = instruction_words_for_public_transaction(&Instruction::Claim {
+            vault_id: 1,
+            stream_id: 2,
+        })
+        .expect("serialize Claim");
+        let close_provider =
+            instruction_words_for_public_transaction(&Instruction::CloseStreamByProvider {
+                vault_id: 1,
+                stream_id: 2,
+            })
+            .expect("serialize CloseStreamByProvider");
+
+        assert_eq!(close_owner[0], 7, "CloseStreamByOwner discriminant must stay at 7");
+        assert_eq!(claim[0], 8, "Claim discriminant must stay at 8");
+        assert_eq!(
+            close_provider[0], 9,
+            "CloseStreamByProvider discriminant must stay at 9"
+        );
     }
 }
