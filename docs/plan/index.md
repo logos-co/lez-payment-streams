@@ -12,31 +12,33 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | Path | Contents |
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
-| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44, 47) |
-| [upcoming/](upcoming/) | Steps 21, 45–46, 48 |
-| [waiting/](waiting/) | (empty) |
+| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44–45, 47) |
+| [upcoming/](upcoming/) | Steps 21, 46 |
+| [waiting/](waiting/) | Step 48 (upstream spel / AT ImageID trigger) |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |
 
-Journeys ([N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
+Documentation tracks ([N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
 
-| Journey | Status | Steps / links |
+| Track | Status | Steps / links |
 | --- | --- | --- |
-| Developer Journey (Store integration) | Wontfix (formal publish) | Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)); in-repo SSOT + Step 17 scripts; high-level narrative in Step 46 |
-| Developer Journey generalization | Complete | Step 35 |
-| User Journey (CLI / module) | Complete | [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370); Steps 22, 28, 34; [USER_JOURNEY.md](../journeys/USER_JOURNEY.md) |
-| User Journey UI (Basecamp) | Upcoming | Step 21 |
-| Forum progress report | Upcoming | Step 46 (plain-English user + developer tracks) |
+| Store eligibility (historical “Developer Journey”) | Formal logos-docs publish wontfix; living docs in Step 46 | Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)); Step 46 `reproduce/store-eligibility.md` + `integrate/eligibility.md` |
+| Eligibility integration guide (Step 35) | Complete (substance → Step 46 integrate doc) | Step 35 |
+| Protocol-only CLI (historical “User Journey”) | Complete as historical track; living path in Step 46 | [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370); Steps 22, 28, 34; Step 46 `reproduce/payment-streams.md` |
+| Protocol UI (Basecamp) | Upcoming | Step 21 |
+| Docs unify + forum post | Upcoming | Step 46 |
 
 Engineering: Steps 26–33 complete; Steps 36–41 complete
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
-Steps 21, 45–46, 48 upcoming (Basecamp UI; deps/patches; forum progress report;
-program-graph LEZ unify / AT config drop).
-Step 44 complete (payer/payee close). Step 47 complete (role terminology).
-Step 20 wontfix (formal Developer Journey logos-docs publish; high-level content in Step 46).
+Steps 21, 46 upcoming (Basecamp UI; docs unify + forum post).
+Step 48 waiting (program-graph LEZ unify / AT config drop; upstream trigger).
+Step 44 complete (payer/payee close). Step 45 complete (deps and patches freeze).
+Step 47 complete (role terminology).
+Step 20 wontfix (formal Developer Journey logos-docs publish; replaced by Step 46 docs + forum).
+Step 46 is not blocked on Step 48.
 Steps 42–43 wontfix (Testnet v0.3 incentivisation research / spec).
 Public hosted Store provider: Step 23 (wontfix).
 
@@ -59,7 +61,7 @@ paid Store mode on the provider.
 | --- | --- |
 | Runnable integration demo (CLI, Store + eligibility) | 17 (local LEZ), 18 (testnet, historical) |
 | LIP-155 on-chain spec (branch pin) | 19 (complete) |
-| Developer Journey: integrators, Store integration ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) | 20 (wontfix; high-level in Step 46) |
+| Developer Journey: integrators, Store integration ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) | 20 (wontfix; living docs + forum in Step 46) |
 | Developer Journey: protocol-agnostic eligibility guide | 35 (complete) |
 | User Journey: CLI doc packet ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)) | 22 (complete) |
 | User Journey: testnet manual walkthrough | 34 (complete) |
@@ -85,9 +87,9 @@ paid Store mode on the provider.
 | Shared payment pool model research (F9–F11, U10) | 43 (wontfix) |
 | E2E payer-close and payee-close | 44 (complete) |
 | Revisit dependencies and patches | 45 (upcoming) |
-| Forum progress report (plain English + command spoiler) | 46 (upcoming) |
+| Docs unify + forum post (reproduce / integrate / README Testing / forum links) | 46 (upcoming; after 45) |
 | Unify module JSON terminology (`owner` / `provider`) | 47 (complete) |
-| Program-graph LEZ unify + drop AT hex config | 48 (upcoming) |
+| Program-graph LEZ unify + drop AT hex config | 48 (waiting; upstream trigger) |
 
 Step 25 (in-process demo coordinator module) is wontfix
 ([packet](wontfix/step-25-demo-coordination-module.md)).
@@ -128,12 +130,14 @@ Dual-host demo coordination stays in host scripts
 | 40 | LIP-155 privacy-preserving workflow in the specification | [step-40-lip155-privacy-workflow-spec.md](completed/step-40-lip155-privacy-workflow-spec.md) |
 | 41 | Non-native token provider payment policies (F8, U9) | [step-41-non-native-token-policy-spec.md](completed/step-41-non-native-token-policy-spec.md) |
 | 44 | E2E closeStream payer and payee close | [step-44-payer-and-payee-close.md](completed/step-44-payer-and-payee-close.md) |
+| 45 | Revisit dependencies and patches | [step-45-dependencies-and-patches.md](completed/step-45-dependencies-and-patches.md) |
 | 47 | Unify role terminology (module, journey, policy, layouts) | [step-47-unify-role-terminology.md](completed/step-47-unify-role-terminology.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
 [step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33),
 [step-39-testnet-gate-log.md](completed/step-39-testnet-gate-log.md) (Step 39),
 [step-44-gate-log.md](completed/step-44-gate-log.md) (Step 44),
+[step-45-gate-log.md](completed/step-45-gate-log.md) (Step 45),
 [step-47-gate-log.md](completed/step-47-gate-log.md) (Step 47).
 
 ## Upcoming steps
@@ -141,13 +145,15 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | Step | Focus | Status |
 | --- | --- | --- |
 | 21 | User Journey: Basecamp UI plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
-| 45 | Revisit dependencies and patches | Upcoming — [step-45-dependencies-and-patches.md](upcoming/step-45-dependencies-and-patches.md) |
-| 46 | Forum progress report | Upcoming — [step-46-forum-post-user-journey.md](upcoming/step-46-forum-post-user-journey.md) |
-| 48 | Program-graph LEZ unify + drop AT hex config | Upcoming — [step-48-program-graph-lez-unify.md](upcoming/step-48-program-graph-lez-unify.md) |
+| 46 | Docs unify + forum post | Upcoming — [step-46-docs-unify-and-forum-post.md](upcoming/step-46-docs-unify-and-forum-post.md) |
 
 ## Waiting steps
 
-None.
+Blocked on external input before the step can progress.
+
+| Step | Focus | Packet |
+| --- | --- | --- |
+| 48 | Program-graph LEZ unify + drop AT hex config | [step-48-program-graph-lez-unify.md](waiting/step-48-program-graph-lez-unify.md) |
 
 ## Wontfix steps
 

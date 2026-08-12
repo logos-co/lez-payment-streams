@@ -1,7 +1,8 @@
 # Step 45 — revisit dependencies and patches
 
-Upcoming. Index: [index.md](../index.md).
-Pins SSOT after freeze: [feature-branch-pins.md](../../reference/feature-branch-pins.md).
+Index: [index.md](../index.md). Status: complete (2026-08).
+Gate log: [step-45-gate-log.md](step-45-gate-log.md).
+Pins SSOT: [feature-branch-pins.md](../../reference/feature-branch-pins.md).
 Follow-up (program-graph unify + drop AT hex): [Step 48](../waiting/step-48-program-graph-lez-unify.md).
 
 Absorbed raw TODOs (now this packet): PATH wallet vs LEZ pin; wallet Nix patch
@@ -12,7 +13,7 @@ Parked (unchanged): private-account identifier hygiene; wrapped-native token.
 
 Freeze a reproducible wrap-up state: published pins, explicit patch inventory,
 fetchable eligibility forks, and no tribal knowledge about split LEZ versions or
-unpushed branches — **without** forcing host/guest LEZ unification (that is Step 48).
+unpushed branches — without forcing host/guest LEZ unification (that is Step 48).
 
 ## Pin policy (locked)
 
@@ -148,7 +149,7 @@ stub typo, and `modules().api` (universal `LogosModules` has no `.api`).
 ## Verification (phased DoD)
 
 Matrix: [verification-matrix.md](../../reference/verification-matrix.md).
-Gate log: `docs/plan/completed/step-45-gate-log.md` (create when executing).
+Gate log: [step-45-gate-log.md](step-45-gate-log.md).
 
 | Column | Content |
 | --- | --- |
@@ -230,10 +231,12 @@ Step 45.
 ## Done when
 
 - O45.1–O45.6 outcomes recorded (C or C-fails; helper kept; AT config kept;
-  rebase proceed/defer; three AT hexes).
-- D45.19 delivery tip + D45.20 eligibility `bind_*` landed (Q45.1–Q45.5 locked as above).
+  rebase proceed/defer; three AT hexes). Met (gate log).
+- D45.19 delivery tip + D45.20/D45.21/D45.22 eligibility landed. Met
+  (`c101e31a` / `49eb6c0`; soft Store `e2e-20260812T212907`).
 - Pins rewritten for the split; D45.17 freeze set landed; helper AT assert green;
   `LEZ_OP_REV` = operator SHA; D45.18 required cleanups done (`testnet-common`
-  live under `scripts/lib/`; no live→archive script calls).
+  live under `scripts/lib/`; no live→archive script calls). Met.
 - Phase 1 + Phase 2 Tier A (soft-only) in the gate log. Phase 3 deferred to Step 48.
-- Packet in `docs/plan/completed/`; index / AGENTS updated.
+  Met.
+- Packet in `docs/plan/completed/`; index / AGENTS updated. Met.

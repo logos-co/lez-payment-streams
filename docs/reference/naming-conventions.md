@@ -50,7 +50,7 @@ Makefile targets use the Journey names directly where applicable.
 
 | Term | Meaning |
 | --- | --- |
-| N18 | Developer Journey (in-repo Store track; Step 20 formal logos-docs publish wontfix — logos-docs#369) vs User Journey (Step 22, complete — logos-docs#370) vs User Journey UI (Step 21, upcoming) vs forum progress report (Step 46, upcoming; high-level both tracks). |
+| N18 | Protocol vs Store eligibility tracks (historical journey names retired by Step 46). Step 20 formal logos-docs publish wontfix (logos-docs#369). Historical User Journey CLI complete (Step 22 / logos-docs#370). User Journey UI Step 21 upcoming. Step 46: reproduce + integrate docs + forum links. |
 
 ## Logos and protocol names
 

@@ -64,7 +64,7 @@ Definition of done:
   assumption ([N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
 
 Not in scope: Step 17 E2E replay in UI; `delivery_module`; eligibility prepare/verify for Store;
-Store Developer Journey content (in-repo SSOT / Step 46 high-level; Step 20 formal publish wontfix).
+Store eligibility content (Step 46 reproduce/integrate docs; Step 20 formal publish wontfix).
 
 Follow-on: Step 22 (User Journey doc packet, complete —
 [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370));

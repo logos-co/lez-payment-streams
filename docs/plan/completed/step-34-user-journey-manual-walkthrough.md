@@ -91,7 +91,7 @@ State explicitly:
   (repo `nix build` + `lgpm` portable `.lgx`). Module-only walks exercise generic public tx via
   `send_generic_public_transaction_json`; they do **not** call patched `sign_public_payload`
   (Store eligibility only). Upstream-only wallet builds are a separate
-  [Step 45](../upcoming/step-45-dependencies-and-patches.md) wallet patch inventory,
+  [Step 45](step-45-dependencies-and-patches.md) wallet patch inventory,
   not a Step 34 prerequisite.
 - **One-time machine setup:** `make bootstrap-testnet-module` (details in E2E.md). Walkthrough does
   not replay bootstrap’s on-chain seeding; it starts at runtime + accounts onward.

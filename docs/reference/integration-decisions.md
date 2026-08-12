@@ -746,25 +746,28 @@ Dual-host paid Store demo coordination stays on the **host**, not in a Logos mod
 
 ### N18, Integration demo vs payment streams UI tracks (2026-06)
 
-Two documentation/demonstration tracks; do not merge them in copy or scope.
+Two demonstration tracks; do not merge them in copy or scope.
+Living doc names move under [Step 46](../plan/upcoming/step-46-docs-unify-and-forum-post.md)
+(`reproduce/payment-streams.md`, `reproduce/store-eligibility.md`,
+`integrate/eligibility.md`); historical “journey” labels below remain for older packets.
 
-**Developer Journey — Store eligibility track (in-repo; Step 20 formal publish wontfix)**
+**Store eligibility track (in-repo; Step 20 formal publish wontfix)**
 
 - **Story:** LIP-155 eligibility proofs used with **Logos Delivery Store** (one application of
   payment streams). Testing payment streams as an eligibility mechanism with Store queries.
 - **Formal packet:** [Step 20](../plan/wontfix/step-20-developer-journey.md) /
   [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369) — wontfix as a
-  standalone logos-docs journey. In-repo SSOT remains
+  standalone logos-docs journey. Until Step 46 lands, interim SSOT remains
   [store-integration/README.md](../store-integration/README.md) /
   [DEVELOPER_JOURNEY.md](../journeys/DEVELOPER_JOURNEY.md).
-  High-level public narrative (with User Journey) is
-  [Step 46](../plan/upcoming/step-46-forum-post-user-journey.md).
+  Target living surfaces and forum orientation:
+  [Step 46](../plan/upcoming/step-46-docs-unify-and-forum-post.md).
 - **Mechanism:** external script orchestration ([N17](#n17-demo-orchestration-stays-external-script-2026-06));
   dual local `logoscore` hosts; `payment_streams_module` + `delivery_module` +
   `logos_execution_zone`.
-- **Audience:** integrators reproducing paid Store via CLI/script (in-repo docs + forum high-level).
+- **Audience:** integrators reproducing paid Store via CLI/script (in-repo docs + forum orientation).
 
-**User Journey — Step 22 (complete)**
+**Protocol-only track — Step 22 (complete; historical “User Journey” name)**
 
 - **Story:** **Payment streams protocol only** — universal LEZ payment (vaults, streams, accrual,
   close, claim). Testing payment streams in isolation via command-line, as a pure payment mechanism
@@ -775,6 +778,7 @@ Two documentation/demonstration tracks; do not merge them in copy or scope.
 - **Packet:** [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370);
   in-repo walkthrough [Step 34](../plan/completed/step-34-user-journey-manual-walkthrough.md) /
   [USER_JOURNEY.md](../journeys/USER_JOURNEY.md); module×testnet E2E [Step 28](../plan/completed/step-28-user-journey-testnet.md).
+  Step 46 folds living commands into `reproduce/payment-streams.md`.
 - **Content:** install module, load wallet, owner path (vault, deposit, create stream, close),
   provider path (`chainAction claim`). CLI commands only — no UI required.
 - **Provider side:** `chainAction claim` after funds accrue (and after close in the published
@@ -782,11 +786,11 @@ Two documentation/demonstration tracks; do not merge them in copy or scope.
   (vault id, stream id, and program/account context). **Assumption:** the stream creator notifies
   the provider **out of band** (e.g. message, email, QR) with the stream address / ids so the provider
   can claim.
-- **Audience:** end users exploring payment streams via CLI; cross-link in-repo Store
-  SSOT / Step 46 for Store integration high-level, do not duplicate Store steps.
+- **Audience:** end users exploring payment streams via CLI; cross-link Store reproduce /
+  Step 46 for Store eligibility, do not duplicate Store steps.
 - **Future enhancement:** if Step 21 (Basecamp UI, currently upcoming) ships, the
-  journey may be updated with UI screenshots and Basecamp-specific paths. Additive — the CLI
-  journey remains valid.
+  protocol docs may gain UI screenshots and Basecamp-specific paths. Additive — the CLI
+  path remains valid.
 
 **User Journey UI — Step 21 (upcoming)**
 

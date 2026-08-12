@@ -17,7 +17,7 @@ the integration branch; locked revs in the table below.
 Step 45 freezes a deliberate split between operator-stack LEZ and program-graph LEZ.
 Do not treat that divergence as a bug. Unification is [Step 48](../plan/waiting/step-48-program-graph-lez-unify.md).
 Pins SSOT for the freeze packet:
-[step-45-dependencies-and-patches.md](plan/upcoming/step-45-dependencies-and-patches.md).
+[step-45-dependencies-and-patches.md](plan/completed/step-45-dependencies-and-patches.md).
 
 ## LIP-155 spec (Step 19, complete)
 

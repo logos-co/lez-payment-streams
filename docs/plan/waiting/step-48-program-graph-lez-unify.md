@@ -1,8 +1,10 @@
 # Step 48 — program-graph LEZ unify and AT config drop
 
-Upcoming. Index: [index.md](../index.md).
-Depends on: [Step 45](step-45-dependencies-and-patches.md) freeze complete
+Waiting — blocked on upstream spel + LEZ AT ImageID match (see Trigger).
+Index: [index.md](../index.md).
+Depends on: [Step 45](../completed/step-45-dependencies-and-patches.md) freeze complete
 (operator vs program-graph LEZ split; documented AT hex config).
+Not a prerequisite for [Step 46](../upcoming/step-46-docs-unify-and-forum-post.md).
 
 ## Goal
 

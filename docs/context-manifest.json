@@ -10,9 +10,9 @@
   "program_index": "docs/plan/index.md",
   "verification_matrix": "docs/reference/verification-matrix.md",
   "active_steps": [],
-  "waiting_steps": [],
+  "waiting_steps": [48],
   "paused_steps": [],
-  "upcoming_steps": [21, 45, 46, 48],
+  "upcoming_steps": [21, 46],
   "wontfix_steps": [20, 23, 25, 42, 43],
   "optional_stretch_steps": [],
   "optional_steps": [],
@@ -51,10 +51,10 @@
     "42": "docs/plan/wontfix/step-42-discovery-payment-policy-advertisement.md",
     "43": "docs/plan/wontfix/step-43-shared-payment-pool-research.md",
     "44": "docs/plan/completed/step-44-payer-and-payee-close.md",
-    "45": "docs/plan/upcoming/step-45-dependencies-and-patches.md",
-    "46": "docs/plan/upcoming/step-46-forum-post-user-journey.md",
+    "45": "docs/plan/completed/step-45-dependencies-and-patches.md",
+    "46": "docs/plan/upcoming/step-46-docs-unify-and-forum-post.md",
     "47": "docs/plan/completed/step-47-unify-role-terminology.md",
-    "48": "docs/plan/upcoming/step-48-program-graph-lez-unify.md"
+    "48": "docs/plan/waiting/step-48-program-graph-lez-unify.md"
   },
   "completed_normative": {
     "12": "docs/plan/completed/step-12-normative.md",
@@ -88,6 +88,6 @@
     "flake_input": "logos-delivery",
     "branch_ref": "feat/payment-streams-store-eligibility",
     "flake_nix": "flake.nix",
-    "locked_rev": "e59319d8648c3c3ea9384c592728d5738f623a13"
+    "locked_rev": "c101e31aa78f0d0002ae18cba6582b3a35e51ee3"
   }
 }

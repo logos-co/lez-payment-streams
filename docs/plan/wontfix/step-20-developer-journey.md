@@ -5,8 +5,9 @@ Index: [index.md](../index.md).
 
 Formal logos-docs Developer Journey publish ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369))
 is not shipping as a standalone public packet.
-High-level user and developer journey content ships in the
-[Step 46](../upcoming/step-46-forum-post-user-journey.md) forum progress report instead.
+Living docs and public narrative ship in
+[Step 46](../upcoming/step-46-docs-unify-and-forum-post.md)
+(reproduce / integrate docs + forum orientation with links) instead.
 In-repo Store SSOT and verification remain:
 [store-integration/README.md](../../store-integration/README.md),
 [DEVELOPER_JOURNEY.md](../../journeys/DEVELOPER_JOURNEY.md),
@@ -20,9 +21,9 @@ Related logos-docs packet (historical track, not required for wrap-up):
 
 Wontfix. In-repo Store verification is green via Steps 26–33 / the verification matrix
 (`make verify-store-testnet`). Hosted public Store provider is wontfix Step 23.
-Public high-level narrative for both tracks is Step 46.
+Public docs unify and forum orientation for both tracks are Step 46.
 Related tracking: [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369).
-Forum progress report: [Step 46](../upcoming/step-46-forum-post-user-journey.md).
+Packet: [Step 46](../upcoming/step-46-docs-unify-and-forum-post.md).
 
 Prerequisites:
 
