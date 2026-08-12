@@ -15,6 +15,18 @@ source "$REPO_ROOT/scripts/lib/common.sh"
 cmd_localnet_start() {
   ps_log_info "Starting localnet..."
   ps_require_command lgs
+  # lgs expects <lez>/sequencer/...; LEZ v0.2.x keeps the tree under lez/sequencer.
+  # Recreate the compatibility symlink after fresh `lgs setup` checkouts (Step 45).
+  local lez_cache sequencer_link
+  lez_cache="$(ps_lez_cache)"
+  sequencer_link="$lez_cache/sequencer"
+  if [[ ! -e "$sequencer_link" && -d "$lez_cache/lez/sequencer" ]]; then
+    ln -s lez/sequencer "$sequencer_link"
+    ps_log_info "Created LEZ sequencer symlink: $sequencer_link -> lez/sequencer"
+  fi
+  ps_ensure_wallet_config_split_compatible "$(ps_scaffold_localnet_wallet_dir)/wallet_config.json" \
+    "http://127.0.0.1:$(python3 -c "import tomllib; print(tomllib.load(open('$REPO_ROOT/scaffold.toml','rb')).get('localnet',{}).get('port',3040))" 2>/dev/null || echo 3040)"
+  ps_ensure_wallet_statistics "$(ps_scaffold_localnet_wallet_dir)/storage.json" >/dev/null
   # Default lgs timeout (~20s) is too short after snapshot restore when the
   # sequencer rebuilds a large RocksDB block cache; it then kills the child.
   local timeout_sec="${LGS_LOCALNET_START_TIMEOUT_SEC:-120}"

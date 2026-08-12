@@ -156,15 +156,15 @@ cmd_prefund() {
   ps_log_info "Prefunding vault for owner: $owner"
   ps_log_info "Deposit amount: $SEED_DEPOSIT_AMOUNT"
 
-  # The pinned LEZ wallet (v0.2.0 storage format) must be on PATH for the
-  # faucet and deploy steps. The cargo-installed wallet (0.1.0) cannot read
-  # v0.2.0 storage. Prefer the LEZ-built binary from the scaffold cache.
+  # Prefer operator LEZ wallet from the scaffold cache (Step 45 PATH invert).
   local lez_wallet_dir
   lez_wallet_dir="$(ps_lez_cache)/target/release"
   if [[ -x "$lez_wallet_dir/wallet" ]]; then
     export PATH="$lez_wallet_dir:$PATH"
   fi
   ps_prepend_lez_wallet_path
+  # Seed uses program-graph WalletCore; pass live operator AT id for deposit chains.
+  ps_export_authenticated_transfer_program_id_hex
 
   # Deploy the guest program if not already on chain (idempotent).
   # prefund-onchain submits initialize_vault + deposit, both of which
@@ -174,11 +174,9 @@ cmd_prefund() {
   fi
   wait_chain_settle
 
-  # LEZ v0.2.0: the deposit instruction chains into authenticated_transfer
-  # to debit the owner, so the owner must hold at least the deposit amount
-  # before prefund-onchain runs. The localnet genesis does not pre-fund
-  # wallet-derived accounts, so pull funds from the pinata faucet first.
-  # See docs/plan/upcoming/step-27-claim-fix-verification.md (Symptom A).
+  # Deposit chains into authenticated_transfer to debit the owner, so the owner
+  # must hold at least the deposit amount before prefund-onchain runs. Localnet
+  # genesis does not pre-fund wallet-derived accounts; use pinata first.
   fund_owner_account "$owner" "$SEED_DEPOSIT_AMOUNT"
 
   local manifest provider
@@ -338,6 +336,8 @@ cmd_vault_ensure() {
   fi
 
   local ensure_attempts=0 max_ensure_attempts="${VAULT_ENSURE_MAX_RETRIES:-3}"
+  ps_prepend_lez_wallet_path
+  ps_export_authenticated_transfer_program_id_hex
   while true; do
     ensure_attempts=$((ensure_attempts + 1))
     # After the first attempt, force the deposit even if the vault config

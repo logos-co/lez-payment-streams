@@ -15,7 +15,6 @@ use serde::Deserialize;
 use crate::Instruction;
 
 /// Serialize an [`Instruction`] the same way NSSA builds [`PublicTransaction`](lee::public_transaction::PublicTransaction) payloads.
-#[must_use]
 pub fn instruction_words_for_public_transaction(
     instruction: &Instruction,
 ) -> Result<InstructionData, LeeError> {
@@ -23,7 +22,6 @@ pub fn instruction_words_for_public_transaction(
 }
 
 /// Deserialize instruction words produced by [`instruction_words_for_public_transaction`] (or the host `Program::serialize_instruction` path).
-#[must_use]
 pub fn instruction_try_from_instruction_words(
     words: &[u32],
 ) -> Result<Instruction, Risc0SerdeError> {
@@ -37,7 +35,6 @@ pub fn instruction_bytes_le_from_words(words: &[u32]) -> Vec<u8> {
 }
 
 /// Convenience: instruction words then LE byte expansion (for `send_public_transaction` `instruction` hex).
-#[must_use]
 pub fn instruction_bytes_for_public_transaction(
     instruction: &Instruction,
 ) -> Result<Vec<u8>, LeeError> {
@@ -46,9 +43,8 @@ pub fn instruction_bytes_for_public_transaction(
 }
 
 /// Parse a LE `u32` word slice from a byte buffer (must be a multiple of four).
-#[must_use]
 pub fn instruction_words_from_bytes_le(bytes: &[u8]) -> Option<Vec<u32>> {
-    if bytes.len() % 4 != 0 {
+    if !bytes.len().is_multiple_of(4) {
         return None;
     }
     let mut words = Vec::with_capacity(bytes.len() / 4);

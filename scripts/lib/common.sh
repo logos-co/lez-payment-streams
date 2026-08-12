@@ -356,6 +356,8 @@ ps_prepend_lez_wallet_path() {
 
 # ImageID (hex bytes) of the authenticated_transfer program for on-chain verify.
 # Override: PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX
+# Under the Step 45 split, resolve from the operator LEZ cache (live sequencer AT),
+# not from program-graph `authenticated_transfer().id()` (graph AT differs).
 ps_authenticated_transfer_program_id_hex() {
   if [[ -n "${PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX:-}" ]]; then
     echo "${PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX}" | tr '[:upper:]' '[:lower:]'
@@ -391,6 +393,17 @@ ps_authenticated_transfer_program_id_hex() {
     done
   fi
   return 1
+}
+
+# Export live AT hex for seed / WalletCore paths that still default to graph AT.
+ps_export_authenticated_transfer_program_id_hex() {
+  local hex
+  if ! hex="$(ps_authenticated_transfer_program_id_hex)"; then
+    ps_log_error "Could not resolve PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX (operator AT bin / override)"
+    return 1
+  fi
+  export PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX="$hex"
+  ps_log_info "PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX=$hex"
 }
 
 # Fetch getAccount JSON result for acct; up to 3 attempts on curl/RPC failure.
@@ -579,6 +592,35 @@ ps_ensure_wallet_statistics() {
     printf '%s\n' '{}' >"$path"
   fi
   echo "$path"
+}
+
+# Step 45 split: operator wallet CLI (v0.2.4) requires sequencers[]; program-graph
+# WalletCore (v0.2.0) still requires sequencer_addr. Keep both keys for local
+# scaffold wallets so seed + pinata share one home.
+ps_ensure_wallet_config_split_compatible() {
+  local cfg="${1:-$(ps_default_wallet_config)}"
+  local url="${2:-http://127.0.0.1:3040}"
+  [[ -f "$cfg" ]] || return 0
+  python3 - "$cfg" "$url" <<'PY'
+import json, sys
+path, url = sys.argv[1], sys.argv[2].rstrip("/")
+cfg = json.loads(open(path).read())
+changed = False
+if "sequencer_addr" not in cfg:
+    cfg["sequencer_addr"] = url
+    changed = True
+elif isinstance(cfg.get("sequencer_addr"), str):
+    url = cfg["sequencer_addr"].rstrip("/")
+if "sequencers" not in cfg:
+    cfg["sequencers"] = [{"sequencer_addr": url, "basic_auth": None}]
+    changed = True
+cfg.setdefault(
+    "multi_sequencer_client_config",
+    {"distribution_limit": 1, "calibration_limit": 100},
+)
+if changed or "multi_sequencer_client_config" not in json.loads(open(path).read()):
+    open(path, "w").write(json.dumps(cfg, indent=2) + "\n")
+PY
 }
 
 # Wallet home directory (holds storage.json + wallet_config.json) the seed

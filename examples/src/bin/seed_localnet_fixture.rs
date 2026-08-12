@@ -478,16 +478,40 @@ async fn submit_instruction(
         .context("submit transaction")?;
     eprintln!("Submitted tx {tx_hash}, waiting for confirmation…");
 
-    let poller = wallet::poller::TxPoller::new(
-        wallet.config(),
-        wallet.sequencer_client.clone(),
-    );
-    poller
-        .poll_tx(tx_hash)
-        .await
-        .context("confirm transaction")?;
-    eprintln!("Confirmed {tx_hash}");
-    Ok(())
+    // Step 45: WalletCore v0.2.0 TxPoller can miss txs on operator LEZ v0.2.4
+    // sequencers even when getTransaction succeeds. Poll getTransaction directly.
+    for attempt in 1..=120 {
+        match wallet.sequencer_client.get_transaction(tx_hash).await {
+            Ok(_) => {
+                eprintln!("Confirmed {tx_hash}");
+                return Ok(());
+            }
+            Err(_) if attempt < 120 => {
+                tokio::time::sleep(Duration::from_millis(500)).await;
+            }
+            Err(err) => {
+                return Err(err).context("confirm transaction");
+            }
+        }
+    }
+    bail!("confirm transaction: timed out waiting for {tx_hash}");
+}
+
+fn auth_transfer_program_id() -> Result<LeeProgramId> {
+    if let Ok(hex) = std::env::var("PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX") {
+        let hex = hex.trim().to_ascii_lowercase();
+        if hex.len() != 64 {
+            bail!("PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX must be 64 hex chars");
+        }
+        let mut words = [0u32; 8];
+        for (i, word) in words.iter_mut().enumerate() {
+            let slice = &hex[i * 8..(i + 1) * 8];
+            let bytes = hex::decode(slice).context("decode AT program id hex")?;
+            *word = u32::from_le_bytes(bytes.as_slice().try_into().context("AT word bytes")?);
+        }
+        return Ok(words);
+    }
+    Ok(authenticated_transfer().id())
 }
 
 async fn account_has_data(wallet: &WalletCore, account_id: LeeAccountId) -> Result<bool> {
@@ -652,7 +676,7 @@ async fn prefund_vault(
         return Ok(());
     }
 
-    let auth_transfer = authenticated_transfer().id();
+    let auth_transfer = auth_transfer_program_id()?;
 
     if !vault_ready {
         submit_instruction(
@@ -839,7 +863,7 @@ async fn deposit_vault(ctx: &OnchainContext, deposit_amount: Balance) -> Result<
     if !vault_ready {
         return Err(anyhow!("vault must be initialized before deposit"));
     }
-    let auth_transfer = authenticated_transfer().id();
+    let auth_transfer = auth_transfer_program_id()?;
     let deposit_accounts =
         deposit_instruction_accounts(&ctx.program_id, ctx.owner_id, ctx.vault_id);
     submit_instruction(
