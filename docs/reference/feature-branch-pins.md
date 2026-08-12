@@ -15,7 +15,7 @@ async `storeQuery`) is complete on the module fork. The module flake pins `logos
 the integration branch; locked revs in the table below.
 
 Step 45 freezes a deliberate split between operator-stack LEZ and program-graph LEZ.
-Do not treat that divergence as a bug. Unification is [Step 48](plan/upcoming/step-48-program-graph-lez-unify.md).
+Do not treat that divergence as a bug. Unification is [Step 48](../plan/waiting/step-48-program-graph-lez-unify.md).
 Pins SSOT for the freeze packet:
 [step-45-dependencies-and-patches.md](plan/upcoming/step-45-dependencies-and-patches.md).
 
@@ -75,10 +75,10 @@ below. Workflow detail: [index.md](plan/index.md#delivery-integration-branches).
 
 ### Delivery flake lock (logos-delivery-module)
 
-| Artifact | Branch ref | Locked rev (2026-07-01) |
+| Artifact | Branch ref | Locked rev (2026-08-12 Step 45 Phase 2) |
 | --- | --- | --- |
-| `logos-delivery` flake input | `feat/payment-streams-store-eligibility` | `155957ad` (includes Step 47 `user_peer_id`; org remote `logos-messaging/logos-delivery`) |
-| `logos-delivery-module` integration branch | `feat/payment-streams-store-eligibility` | `2296f87` on personal fork `s-tikhomirov/logos-delivery-module` (Step 47 rename; no org push access — D45.10) |
+| `logos-delivery` flake input | `feat/payment-streams-store-eligibility` | `c101e31a` (D45.19 Jul-30 ABI parent + eligibility; org remote `logos-messaging/logos-delivery`) |
+| `logos-delivery-module` integration branch | `feat/payment-streams-store-eligibility` | `49eb6c0` on personal fork `s-tikhomirov/logos-delivery-module` (D45.20/D45.21 Lp async trampoline; D45.10) |
 
 After each push to `logos-delivery`, run `nix flake update logos-delivery` in
 `logos-delivery-module` and commit the lock. Record the resolved `rev` in this table when
