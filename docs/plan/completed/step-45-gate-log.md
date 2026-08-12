@@ -18,8 +18,8 @@ deferred to Step 48; no Tier C; force-push feature branches only after Phase 2.
 | Helper LEZ rev | `47eba256479f6f785acbd138834340703cd03401` |
 | Guest ImageID | `dea010d9cb75887e8350f3dbd45b0efb8517e822fa105bc3e7b9fa2c9a2908ba` |
 | ELF size | 366868 |
-| Delivery eligibility tip | TBD |
-| Delivery-module eligibility tip | TBD |
+| Delivery eligibility tip | local `08b27e2b` (on `origin/master` `e2a8c2b5`; pre-step45 `155957ad`) |
+| Delivery-module eligibility tip | local `b7eeac6` (rebased on `origin/master` `3f0f2d8`; pre-step45 `2296f87`; D45.13 applied) |
 
 ## O45.6 AT hexes
 
@@ -35,7 +35,7 @@ deferred to Step 48; no Tier C; force-push feature branches only after Phase 2.
 | --- | --- | --- |
 | O45.1 spel×graph | C | stock `v0.6.0` guest build green; `nssa_core` alias in guest+core; `tag=v0.2.0` unify; IDL via `spel generate-idl` |
 | Wallet schema probe | dual-keys | `ps_ensure_wallet_config_split_compatible` keeps `sequencer_addr` + `sequencers[]`; seed uses graph WalletCore + direct getTransaction confirm |
-| O45.3 rebase census | proceed | delivery conflicts in store_api/node_api; master has nim-ffi 0.3 — treat as conflict resolution + D45.13; stop only if unpaid sync cannot be kept |
+| O45.3 rebase census | proceed | delivery already on master+eligibility; module rebased with D45.13 (`storeQuery` sync kept; paid → `storeQueryWithEligibility`) |
 | O45.6 AT hexes | recorded | helper assert == operator/live `fe96c422…` |
 
 ## Verification rows
