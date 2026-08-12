@@ -4984,7 +4984,9 @@ def main() -> int:
             proof_hex = user_prepare_proof(cfg_user, manifest, n8_wire, peer_id, artifact)
             narrator.ok(f"Proof generated: {len(proof_hex) // 2} bytes, stream_id={stream_id}")
             seed_provider_session_from_user(persist_user, persist_provider, manifest_path, repo)
-            reload_provider_payment_streams_module(cfg_provider)
+            # Do not unload/reload payment_streams here: delivery_module's
+            # embedded Lp stack loses the target across reload (null verify).
+            # PS re-reads provider_acceptances from disk on session miss.
             sync_wallet(cfg_provider, seq_url)
             vault_id = int(manifest.get("vault_id", 0))
             logoscore_cmd(

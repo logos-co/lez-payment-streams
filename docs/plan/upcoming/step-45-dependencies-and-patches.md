@@ -44,7 +44,9 @@ Other SHAs (reference only): LEZ `v0.2.1` `15144ddb…`, `v0.2.2` `d6e4ae69…`,
 | D45.7 | Spel `v0.6.0` tag-only in scaffold, guest, **core**, and **examples**; drop `vendor/spel-*` and path `[patch]` at root **and** `examples/`. Add `nssa_core = { package = "lee_core", … }` wherever stock macros expand (guest; check core in Phase 0). Gate: guest builds; ImageID + ELF; IDL byte-identical across two runs. **C-fails:** if stock `v0.6.0` will not build against program-graph `v0.2.0`, keep vendored `v0.5.0`, skip spel bump, keep current ImageID, finish the rest of Step 45, defer spel+graph unify to Step 48. |
 | D45.8–D45.9 | Rebase delivery then delivery-module eligibility onto recorded bases (not delivery tag v0.38.1). Push **pre-rebase refs** before force-push. Apply D45.13 on the module rebase. Delivery base amended by D45.19. |
 | D45.19 | Delivery eligibility freeze parent = **upstream delivery-module’s flake pin era** (delivery ~2026-07-30 / `f8b036594ea2a36b529e10b584b7d2851a3ac5c8`: has `channel_exists`, flat `create_node` + `set_event_callback`) **plus** eligibility commits. Do **not** use tip-of-master, and do **not** use “latest before 2026-08-06 typed ABI” — that lineage already includes the ~2026-07-31 per-listener event ABI (`add_event_listener`), which upstream module has not adopted. Two breaks exist (events ~Jul 31, typed create ~Aug 6); Step 45 freezes before both. Later bump when upstream module moves. |
-| D45.20 | Eligibility cross-module calls: universal pattern only — no raw `LogosAPI`, no `modules().api`. Use `interface_dependencies` + `modules().bind_<iface>(moduleName)` (runtime names from `setEligibilityVerifier` / `setEligibilityProvider`). Do **not** hard-code `dependencies: ["payment_streams_module"]` for this freeze (keeps shipped module-name API). Interface header lives in `logos-delivery-module/interfaces/` only (tutorial layout; no shared package yet). Declare interface methods with `std::string` (consumer universal style); do not mirror provider `QVariant`/`QString` in the interface. If first bind/RPC fails on types, adjust interface to published LIDL field types only — do not redesign payment_streams in Step 45. Drop `getPluginMethods` pre-validation (tutorial no-validation / ordinary RPC errors); optional non-blocking debug log only. Sources: logos-tutorial composing-modules + interface-dependencies; logos-docs wrap-a-c-library; SDK `LogosModuleContext`. |
+| D45.20 | Eligibility cross-module calls: universal pattern — `interface_dependencies` + runtime module name from `setEligibilityVerifier` / `setEligibilityProvider`. Do not hard-code `dependencies: ["payment_streams_module"]` for this freeze. Interface header in `logos-delivery-module/interfaces/` only. Return type is LIDL `any` (`EligibilityWireJson`) so object/string survive. Drop `getPluginMethods` pre-validation. |
+| D45.21 | module-builder 0.2.5 builds universal core with `LOGOS_API_STYLE=lp` (`LogosModules` has no `.api`; cdylib glue uses `new LogosModules()`). Store trampolines call `logos::LpClient::invokeAsync` then normalize with `eligibilityJsonFromInvokeResult` (sync `bind_*` / event-loop-thread sync invoke returned null). Stubs may keep `.api` for unit Approach A coverage only. |
+| D45.22 | Store E2E must not unload/reload `payment_streams_module` after seeding `provider_acceptances` on disk — reload breaks delivery’s embedded Lp stack to that target (null verify). PS re-reads acceptances from disk once on session miss; e2e seeds file then `rediscoverStreams` only. |
 | D45.10 | Delivery eligibility on `logos-messaging`; module eligibility stays on personal fork `s-tikhomirov` (no org move). Contingency: re-fork + URL; re-lock flake by recorded rev after force-push. |
 | D45.11 | Patch-only delivery: rejected. |
 | D45.12 | Tier A local required (Phase 1–2). Soft-only for this freeze (`RISC0_DEV_MODE=1`); module real-prove and Store soft full privacy = Tier C / later. Public testnet Tier A (Phase 3) deferred to Step 48. |
@@ -108,9 +110,9 @@ stub typo, and `modules().api` (universal `LogosModules` has no `.api`).
 2. Delivery-module feature branch
    - Keep unpaid sync `storeQuery` and paid `storeQueryWithEligibility` (D45.13).
    - Keep flat C call sites matching D45.19 library docs (`create_node`, `set_event_callback`, `bindApiCall` as today).
-   - Add `interfaces/<eligibility>.h` + `interface_dependencies` (D45.20); trampolines use
-     `modules().bind_<iface>(moduleName).…`; drop `LogosAPI*` / `invokeRemoteMethod` / `getPluginMethods` gate.
-   - Update unit-test stubs: `FFICallBack`; generated-style `LogosModules` with `bind_*` (no fake `.api`).
+   - Add `interfaces/<eligibility>.h` + `interface_dependencies` (D45.20);
+     trampolines use `LpClient::invokeAsync` (D45.21) with `EligibilityWireJson` normalize.
+   - Update unit-test stubs: `FFICallBack`; `bind_*` + optional stub `.api` for Approach A tests.
 3. Re-lock
    - `logos-delivery-module` flake → D45.19 delivery eligibility tip.
    - payment-streams Store pins / overlays → same tip after Phase 2 green + force-push.
@@ -124,7 +126,9 @@ stub typo, and `modules().api` (universal `LogosModules` has no `.api`).
 | Q45.2 → D45.20 | Interface uses `std::string`; adjust to LIDL only if bind/RPC proves a type mismatch; no payment_streams redesign. |
 | Q45.3 → D45.20 | Drop `getPluginMethods` pre-check; rely on bind/RPC errors. |
 | Q45.4 → D45.20 | Interface header only under `logos-delivery-module/interfaces/`. |
-| Q45.5 → D45.20 | Keep `interface_dependencies` + runtime `bind_*`; reject hard-coded `payment_streams_module` dep for this freeze. |
+| Q45.5 → D45.20 | Keep `interface_dependencies` + runtime module name; reject hard-coded `payment_streams_module` dep for this freeze. |
+| (phase2) → D45.21 | Lp `invokeAsync` trampoline; no production `modules().api`. |
+| (phase2) → D45.22 | Seed acceptances on disk + PS disk re-read; no post-seed PS unload/reload. |
 
 ## Out of scope
 
@@ -193,15 +197,19 @@ refs; no force-push until Phase 2 green; never push `master`/`main`; no LEZ
 Pre-rebase: Store hermetic on new ImageID + old delivery pins
 (`SKIP_LIBLOGOSDELIVERY_OVERLAY=1`, `E2E_CLAIM_OPTIONAL=0`) — already green.
 
-After D45.19/D45.20 + re-lock:
+After D45.19/D45.20/D45.21/D45.22 + re-lock:
 
 10. Same Store hermetic on new (D45.19) delivery pins.
+    Soft local green: artifact `e2e-20260812T212907.log`
+    (`RISC0_DEV_MODE=1`, `E2E_CLAIM_OPTIONAL=0`, `SKIP_LIBLOGOSDELIVERY_OVERLAY=1`,
+    local `DELIVERY_MODULE_ROOT` / `LOGOS_DELIVERY_ROOT`).
 11. Module nix `checks…unit-tests` / `result-tests` (incl. thread probe, `storeQuery_*`).
-    Attr is `.#checks.<system>.unit-tests`, not `.#tests`.
+    Attr is `.#checks.<system>.unit-tests`, not `.#tests`. (53 passed.)
 12. Delivery Nim store/eligibility/codec tests via `all_tests_waku.nim` on the D45.19 tip.
 13. flake.lock revs = pins tips (delivery-module + payment-streams-module/wrappers).
-14. `store_query_missing_proof` still fails closed.
-15. No `modules().api` in delivery-module; eligibility uses `bind_*` (D45.20).
+14. `store_query_missing_proof` still fails closed (Rejection Path green in same artifact).
+15. Production eligibility trampoline uses `LpClient::invokeAsync` (D45.21);
+    `interface_dependencies` declared (D45.20); no post-seed PS module reload (D45.22).
 
 ### Phase 3 — public testnet (deferred to Step 48)
 

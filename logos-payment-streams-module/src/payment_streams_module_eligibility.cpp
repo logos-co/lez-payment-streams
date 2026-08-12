@@ -1599,7 +1599,14 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
 
     uint8_t sessionPublic[32]{};
     if (!sessionPublicKeyFromNegotiations(vaultId, providerIdHex, sessionPublic)) {
-        const int accIdx = findProviderAcceptanceIndex(vaultId, providerIdHex);
+        int accIdx = findProviderAcceptanceIndex(vaultId, providerIdHex);
+        if (accIdx < 0) {
+            // E2E seeds provider_acceptances on disk while this module stays
+            // loaded; re-read once so callers need not unload/reload (reload
+            // breaks delivery_module's embedded Lp client to this target).
+            loadStateFromDisk();
+            accIdx = findProviderAcceptanceIndex(vaultId, providerIdHex);
+        }
         if (accIdx < 0) {
             return makeVerifyEligibilityError(QStringLiteral("PROOF_INVALID"),
                                               QStringLiteral("session public key unknown"));
