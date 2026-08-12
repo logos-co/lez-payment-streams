@@ -12,7 +12,7 @@ require_testnet_rpc
 
 MANIFEST="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/testnet.json}"
 PROGRAM_BIN="${PAYMENT_STREAMS_GUEST_BIN:-methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
-PROGRAM_ID_HEX="${TESTNET_PROGRAM_ID_HEX:-072a26cc9865e95679012e53f2b1861b71f488b5e90da93611459afbc7adcfc7}"
+PROGRAM_ID_HEX="${TESTNET_PROGRAM_ID_HEX:-ee2cfb7466c239c51ef5c60222f4216d45df4de4664bae5c976c1b29f3da2ed1}"
 
 if [[ ! -f "$MANIFEST" ]]; then
   echo "ERROR: missing $MANIFEST (run make bootstrap-testnet)" >&2
