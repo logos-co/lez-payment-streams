@@ -47,7 +47,7 @@ cmd_build() {
   # compgen -G expands the glob (unlike [[ -f ... ]], where it stays literal);
   # otherwise the wallet lgx would be re-bundled on every run.
   if ! compgen -G "$wallet_out/*.lgx" >/dev/null; then
-    "$REPO_ROOT/scripts/archive/build-wallet-lgx.sh"
+    "$REPO_ROOT/scripts/build-wallet-lgx.sh"
   fi
   local wallet_lgx
   wallet_lgx="$(readlink -f "$wallet_out/"*.lgx)"
