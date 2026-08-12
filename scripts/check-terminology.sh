@@ -17,8 +17,6 @@ is_allowlisted_path() {
   local f="$1"
   case "$f" in
     docs/plan/completed/*|docs/plan/wontfix/*|docs/archive/*) return 0 ;;
-    # Step 44 still upcoming until its packet moves (D47.5); temporary allowlist.
-    docs/plan/upcoming/step-44-payer-and-payee-close.md) return 0 ;;
     scripts/check-terminology.sh) return 0 ;;
     .scaffold/*|target/*|vendor/*|nimbledeps/*) return 0 ;;
     *) return 1 ;;

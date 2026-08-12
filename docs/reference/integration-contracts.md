@@ -131,14 +131,14 @@ Logoscore close dispatch (single `closeStream` op):
 - `createStream` with `provider` equal to `owner`: `create_provider_equals_owner`.
 
 Store E2E teardown uses provider-close. Module Required cells default to
-owner-close (`CLOSE_ROLE=owner`). Thin payee cells set `CLOSE_ROLE=provider`.
+owner-close (`CLOSE_ROLE=owner`). Thin provider-close cells set `CLOSE_ROLE=provider`.
 
 ```bash
-# Owner-close (payer)
+# Owner-close (vault owner)
 logoscore call payment_streams_module chainAction closeStream \
   '{"owner":"<owner>","vault_id":0,"stream_id":<id>}'
 
-# Provider-close (payee; Store teardown path)
+# Provider-close (stream provider; Store teardown path)
 logoscore call payment_streams_module chainAction closeStream \
   '{"owner":"<owner>","vault_id":0,"stream_id":<id>,"provider":"<provider_account_id>"}'
 

@@ -142,7 +142,7 @@ archive copies under `scripts/archive/{bootstrap-testnet,create-testnet-stream-f
 3. Also build/clippy: `examples/Cargo.toml`; `tools/lez-testnet-submit/Cargo.toml`
    (`--release` for helper assert).
 4. `make check-terminology`.
-5–7. `verify-module-local`, `verify-module-local-payee-close`,
+5–7. `verify-module-local`, `verify-module-local-provider-close`,
    `verify-module-local-close-negatives`.
 8–9. Soft privacy / real-prove: Tier C for this freeze (not required).
 

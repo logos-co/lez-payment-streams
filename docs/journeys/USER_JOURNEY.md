@@ -467,7 +467,7 @@ echo "Submitted at chain height $h0"
 ```
 
 Provider-close uses the same `closeStream` action with a distinct `provider`
-(the stream payee). Pass `"provider":"$PROVIDER"` so the module selects the
+(the stream provider account). Pass `"provider":"$PROVIDER"` so the module selects the
 six-slot provider instruction.
 
 Wait until `last_block` is greater than `$h0`, then confirm the state change:
