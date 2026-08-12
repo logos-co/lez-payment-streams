@@ -455,6 +455,8 @@ journey_ok "Accrual window elapsed; check accrued_lo in JSON above (need ≥ $MI
 
 ## Step 14 — Close stream (owner)
 
+Omit `provider`, or set it equal to `owner`, to take the owner-close path.
+
 ```bash
 h0=$(last_block)
 line=$(logoscore call payment_streams_module chainAction closeStream \
@@ -463,6 +465,10 @@ echo "$line"
 journey_write_ok "Stream closed by owner (vault_id=$VAULT_ID stream_id=$STREAM_ID)" "$line"
 echo "Submitted at chain height $h0"
 ```
+
+Provider-close uses the same `closeStream` action with a distinct `provider`
+(the stream payee). Pass `"provider":"$PROVIDER"` so the module selects the
+six-slot provider instruction.
 
 Wait until `last_block` is greater than `$h0`, then confirm the state change:
 

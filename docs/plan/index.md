@@ -124,11 +124,13 @@ Dual-host demo coordination stays in host scripts
 | 39 | Testnet privacy E2E after native guest deploy | [step-39-testnet-privacy-e2e.md](completed/step-39-testnet-privacy-e2e.md) |
 | 40 | LIP-155 privacy-preserving workflow in the specification | [step-40-lip155-privacy-workflow-spec.md](completed/step-40-lip155-privacy-workflow-spec.md) |
 | 41 | Non-native token provider payment policies (F8, U9) | [step-41-non-native-token-policy-spec.md](completed/step-41-non-native-token-policy-spec.md) |
+| 44 | E2E closeStream payer and payee close | [step-44-payer-and-payee-close.md](completed/step-44-payer-and-payee-close.md) |
 | 47 | Unify role terminology (module, journey, policy, layouts) | [step-47-unify-role-terminology.md](completed/step-47-unify-role-terminology.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
 [step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33),
-[step-39-testnet-gate-log.md](completed/step-39-testnet-gate-log.md) (Step 39).
+[step-39-testnet-gate-log.md](completed/step-39-testnet-gate-log.md) (Step 39),
+[step-44-gate-log.md](completed/step-44-gate-log.md) (Step 44),
 [step-47-gate-log.md](completed/step-47-gate-log.md) (Step 47).
 
 ## Upcoming steps
@@ -137,7 +139,6 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | --- | --- | --- |
 | 20 | Developer Journey: Store integration | Upcoming — Store publish track; [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369) — [step-20-developer-journey.md](upcoming/step-20-developer-journey.md) |
 | 21 | User Journey: Basecamp UI plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
-| 44 | E2E closeStream payer and payee close | Upcoming — [step-44-payer-and-payee-close.md](upcoming/step-44-payer-and-payee-close.md) |
 | 45 | Revisit dependencies and patches | Upcoming — [step-45-dependencies-and-patches.md](upcoming/step-45-dependencies-and-patches.md) |
 | 46 | Forum progress report | Upcoming — [step-46-forum-post-user-journey.md](upcoming/step-46-forum-post-user-journey.md) |
 
