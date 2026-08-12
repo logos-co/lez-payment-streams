@@ -1059,7 +1059,23 @@ def load_modules(cfg: Path) -> None:
     time.sleep(2)
 
 
+def wallet_statistics_path(wallet_storage: Path) -> Path:
+    env = os.environ.get("WALLET_STATISTICS", "").strip()
+    if env:
+        return Path(env)
+    return wallet_storage.parent / "statistics.json"
+
+
+def ensure_wallet_statistics(wallet_storage: Path) -> Path:
+    path = wallet_statistics_path(wallet_storage)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.is_file():
+        path.write_text("{}\n", encoding="utf-8")
+    return path
+
+
 def open_wallet(cfg: Path, wallet_config: Path, wallet_storage: Path) -> None:
+    stats = ensure_wallet_statistics(wallet_storage)
     r = logoscore_cmd(
         cfg,
         "call",
@@ -1067,6 +1083,7 @@ def open_wallet(cfg: Path, wallet_config: Path, wallet_storage: Path) -> None:
         "open",
         str(wallet_config),
         str(wallet_storage),
+        str(stats),
     )
     parsed = call_result(r)
     if parsed.get("status") != "ok":
@@ -1267,9 +1284,7 @@ def reload_payment_streams_wallet(cfg: Path, seq_url: str) -> None:
     sync_wallet(cfg, seq_url)
     logoscore_cmd(cfg, "unload-module", "payment_streams_module")
     logoscore_cmd(cfg, "load-module", "payment_streams_module")
-    wc, ws = cfg_wallet_paths(cfg)
-    logoscore_cmd(cfg, "call", "logos_execution_zone", "open", str(wc), str(ws))
-    sync_wallet(cfg, seq_url)
+    reopen_logoscore_wallet(cfg, seq_url)
 
 
 def vault_next_stream_id(cfg: Path, manifest: dict) -> int:
@@ -1467,7 +1482,8 @@ def discard_and_reopen_wallet(cfg: Path, seq_url: str) -> None:
 
 def reopen_logoscore_wallet(cfg: Path, seq_url: str) -> None:
     wc, ws = cfg_wallet_paths(cfg)
-    logoscore_cmd(cfg, "call", "logos_execution_zone", "open", str(wc), str(ws))
+    stats = ensure_wallet_statistics(ws)
+    logoscore_cmd(cfg, "call", "logos_execution_zone", "open", str(wc), str(ws), str(stats))
     sync_wallet(cfg, seq_url)
 
 
