@@ -14,6 +14,11 @@ complete on the delivery fork (verify commands in
 async `storeQuery`) is complete on the module fork. The module flake pins `logos-delivery` to
 the integration branch; locked revs in the table below.
 
+Step 45 freezes a deliberate split between operator-stack LEZ and program-graph LEZ.
+Do not treat that divergence as a bug. Unification is [Step 48](plan/upcoming/step-48-program-graph-lez-unify.md).
+Pins SSOT for the freeze packet:
+[step-45-dependencies-and-patches.md](plan/upcoming/step-45-dependencies-and-patches.md).
+
 ## LIP-155 spec (Step 19, complete)
 
 Integration treats the on-chain LIP as done on the spec feature branch (merge to `main` optional).
@@ -65,8 +70,8 @@ logos-delivery.url =
 
 Commit `flake.lock` after changing the input; the lock file records the resolved `rev` at update
 time (branch tip moves until you re-lock). Steps 17–18 E2E cite locked revs where needed; optional
-Step 23 hosted provider uses the same delivery pins. Wallet pins follow the table in the next section.
-Workflow detail: [index.md](plan/index.md#delivery-integration-branches).
+Step 23 hosted provider uses the same delivery pins. Wallet and LEZ pins follow the split tables
+below. Workflow detail: [index.md](plan/index.md#delivery-integration-branches).
 
 ### Delivery flake lock (logos-delivery-module)
 
@@ -123,83 +128,134 @@ Re-run `nix flake update logos-delivery` in `logos-delivery-module` after pushin
 the delivery eligibility branch, then commit the updated `flake.lock`. Steps 17–18 E2E may pin this rev explicitly in
 scripts; until then the branch ref in `flake.nix` plus a committed lock is the source of truth.
 
-## Wallet — primary path (v0.2.0 operational + `main` module)
+## Split LEZ pin policy (Step 45)
 
-Chain writes use generic public transactions and program deploy FFI from LEZ `v0.2.0`
-(operational pin; public testnet compatible):
+Two LEZ pins on purpose. Do not force them equal.
+Host and guest unification (and dropping the AT hex override) is Step 48.
+
+| Layer | LEZ | Spel | What pins it |
+| --- | --- | --- | --- |
+| Operator stack | `v0.2.4` (`47eba256479f6f785acbd138834340703cd03401`) | `v0.6.0` (`0cb7e0980535af619482cf1c823f4d394b3ebd61`) in `scaffold.toml` | `scaffold.toml` `[repos.lez]`, Nix wallet / `lez-wallet-ffi-patched`, PATH `wallet` via scaffold cache (`ps_lez_cache` / `lez_scaffold_cache_dir`), `tools/lez-testnet-submit`, `scripts/lib/testnet-common.sh` `LEZ_OP_REV` |
+| Program graph | `v0.2.0` (`a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a`) | same stock `v0.6.0` tag | `lez-payment-streams-core`, `-ffi`, `methods/guest`, `examples`, `nix/payment-streams-ffi.nix` |
+
+Also locked:
+
+| Artifact | Pin |
+| --- | --- |
+| LEZ-module (wallet wrapper upstream) | `549cf1159f20fa0c3fe8e88a5ab71de68a5aa34b` |
+| Spel | stock `v0.6.0` (`0cb7e098…`) — no `vendor/spel-*`, no path `[patch]` |
+| Testnet marketing name `v0.2.1` | not a software pin |
+
+Do not pin LEZ `dev` tip.
+Retired rule: `scaffold.toml` `[repos.lez].pin` must equal `nix/payment-streams-ffi.nix` rev.
+Those pins now diverge by design (operator vs program graph).
+
+Reference-only SHAs (not freeze pins): LEZ `v0.2.1` `15144ddb…`, `v0.2.2` `d6e4ae69…`,
+`v0.2.3` `43b66b15…`.
+
+### Operator stack (LEZ v0.2.4)
+
+Chain writes from the wallet module, PATH `wallet`, scaffold localnet tooling, and the
+testnet submit helper use operator LEZ `v0.2.4` (`47eba256…`).
 
 | Layer | Upstream | Role |
 | --- | --- | --- |
-| LEZ `wallet_ffi` | [`logos-execution-zone`](https://github.com/logos-blockchain/logos-execution-zone) @ `a58fbce…` (`v0.2.0`) | Deploy, program ELF helpers, LEE v0.3 public tx signing |
-| Wallet module | [`logos-execution-zone-module`](https://github.com/logos-blockchain/logos-execution-zone-module) @ `92dd9e2…` (Universal, post-rename / pre-labels) | Expose FFI to Logos modules (std::string / LogosAPI) |
+| LEZ `wallet_ffi` | [`logos-execution-zone`](https://github.com/logos-blockchain/logos-execution-zone) @ `47eba256…` (`v0.2.4`) | Deploy, program ELF helpers, public/private tx signing for the live operator surface |
+| Wallet module | [`logos-execution-zone-module`](https://github.com/logos-blockchain/logos-execution-zone-module) @ `549cf115…` | Expose FFI to Logos modules (std::string / LogosAPI) |
+| PATH `wallet` | scaffold cache under `~/.cache/logos-scaffold/repos/lez/${LEZ_OP_REV}/target/release/wallet` | Prefer over `~/.cargo/bin/wallet` (`ps_prepend_lez_wallet_path` / `lez_wallet_bin`) |
+| `tools/lez-testnet-submit` | same LEZ rev in crate Cargo.toml + lockfile | Required testnet bootstrap (AT id + ELF source) |
+| `scripts/lib/testnet-common.sh` | `LEZ_OP_REV` default `47eba256…` | Live shared helpers (moved out of `scripts/archive/`) |
 
 Do not pin [PR 429 / PR 16](archive/superseded-wallet-pr-429-16.md) in this integration.
 
-### Flake refs (Step 26)
+Flake refs:
 
-- LEZ rev `a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a` (`v0.2.0`) in:
-  - `scaffold.toml` `[repos.lez].pin`
-  - `nix/payment-streams-ffi.nix` (`fetchFromGitHub`)
-  - `lez-wallet-ffi-patched/flake.nix` (wallet wrapper input)
-  - `tools/lez-testnet-submit` (testnet submit helper; same pin)
-- `lez-payment-streams-core`, guest, FFI, and `examples/` use LEZ `v0.2.0` (`a58fbce…`) — same rev as operational pin.
+- `scaffold.toml` `[repos.lez].pin` = `47eba256479f6f785acbd138834340703cd03401`
+- `scaffold.toml` `[repos.spel].pin` = `0cb7e0980535af619482cf1c823f4d394b3ebd61`
+- `lez-wallet-ffi-patched` input already at `47eba256…`
+  (`logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/lez-wallet-ffi-patched/`)
 - Patched wallet wrapper `upstream` =
-  `github:logos-blockchain/logos-execution-zone-module/92dd9e25bcc6be04f841671e8da7b94bd2449f39`
-  (post-rename `lez_core`, pre-labels). Pinned to a rev that still builds
-  against the LEZ `v0.2.0` wallet_ffi; later `main` adds a labels feature
-  that needs a newer wallet_ffi than this pin.
-  `upstream.inputs.logos-execution-zone.follows` the same LEZ input as payment streams.
+  `github:logos-blockchain/logos-execution-zone-module/549cf1159f20fa0c3fe8e88a5ab71de68a5aa34b`
+- `upstream.inputs.logos-execution-zone.follows` the operator LEZ input (`lez-wallet-ffi-patched`)
+
+Retired shims: `wallet-v021.sh` and the wallet-shim directory are deleted.
+Keep dual `NSSA_WALLET_HOME_DIR` + `LEE_WALLET_HOME_DIR` exports.
+
+### Program graph (LEZ v0.2.0)
+
+Guest ImageID, PDAs, core types, and payment-streams FFI artifacts stay on LEZ `v0.2.0`
+(`a58fbce2…` / tag `v0.2.0`):
+
+- `lez-payment-streams-core`, `lez-payment-streams-ffi`, `methods/guest`, `examples`
+- `nix/payment-streams-ffi.nix` (`fetchFromGitHub` rev `a58fbce2…`)
+
+Spel is stock `v0.6.0` tag-only in core, guest, and examples (no vendored tree).
+Stock macros expand to `nssa_core::`; crates alias `nssa_core` to package `lee_core`
+from program-graph LEZ `v0.2.0`.
+
+### Authenticated transfer hex under the split
+
+Keep `PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX` as documented testnet config (D45.14).
+Under the split, program-graph FFI embeds the `v0.2.0` AT id, while the live sequencer
+(and operator LEZ `v0.2.2+`) use `fe96c422…`. Dropping the override is Step 48.
+
+`tools/lez-testnet-submit` is the AT id and ELF source for `bootstrap_testnet_fixture` /
+`ensure-testnet-vault` (no ELF override flag today). Rebuild the release binary on
+operator LEZ `v0.2.4` after any helper pin bump, then assert:
+
+```text
+auth-transfer-program-id-hex == fe96c422…   # live / operator AT id
+```
+
+A stale `tools/lez-testnet-submit/target/release` silently keeps an old AT id.
+Record the helper LEZ rev in the Step 45 gate-log Pins column.
 
 ### Our patch (wrapper flake)
 
 We use the local wrapper flake for payment-streams wallet behavior
-(`send_generic_public_transaction_json`, `sign_public_payload`) and build
-fixes (codegen API headers, `.lgx` metadata for bundler). Logos module id
-matches upstream: `logos_execution_zone`. The wallet module is
-Universal (std::string/std::vector); the Qt patches were rewritten in
-Step 26 against that surface and the 4-argument
-`send_generic_public_transaction(account_ids, signing_requirements,
-instruction, program_id_hex)` signature. The payload now carries
-`program_id_hex` (not `program_elf_hex` / `program_dependencies_hex`).
+(`send_generic_public_transaction_json`, `sign_public_payload`, private counterparts)
+and build fixes (codegen API headers, `.lgx` metadata for bundler). Logos module id
+matches upstream shipping identity: `logos_execution_zone`. The wallet module is
+Universal (std::string/std::vector).
 
-Patches in `logos-execution-zone-module-patched/` (applied in `postPatch`):
+Patches live under
+`logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/`
+and are applied in `postPatch` (list the directory; do not assume a fixed count):
 
-- `wallet-qt-sign-public-payload.patch` — `sign_public_payload` Qt entry
-  point, rebased onto `lez_core_module.{cpp,h}` / `LEZCoreModule`.
-- `wallet-qt-send-generic-public-transaction-json.patch` — JSON IPC wrapper
-  for instruction submit, rebased onto `lez_core_module.{cpp,h}` / `LEZCoreModule`.
-- `wallet-qt-cmake-module-name.patch` — `logos_module(NAME lez_core)` →
-  `NAME logos_execution_zone` so the built plugin is
-  `logos_execution_zone_plugin.so`.
-- `wallet-qt-metadata-module-name.patch` — `metadata.json` `name`/`main` →
-  `logos_execution_zone` / `logos_execution_zone_plugin` so the embedded
-  module identity and codegen class (`LogosExecutionZone`) are preserved.
+- `wallet-qt-sign-public-payload.patch`
+- `wallet-qt-sign-private-payload.patch`
+- `wallet-qt-send-generic-public-transaction-json.patch`
+- `wallet-qt-send-generic-private-transaction-json.patch`
+- `wallet-qt-private-json-elf-path.patch`
+- `wallet-qt-transfer-shielded-amount-prefix.patch`
+- `wallet-qt-fix-authenticated-transfer-elf.patch` (skipped with `|| true` when already applied upstream)
+- `wallet-qt-cmake-module-name.patch`
+- `wallet-qt-metadata-module-name.patch`
 
-Upstream renamed the module identity to `lez_core`; the two identity patches
-plus the wrapper flake `preInstall`/`postInstall` hooks (bridge the
-eval-time-templated `lez_core_plugin.so` installPhase to the
-`logos_execution_zone_plugin.so` we ship) and the `lidl`/`lez_core-lidl`
-output rename (republish the sidecar as `logos_execution_zone.lidl`) keep
-the ~25 `payment_streams_module` call sites, `metadata.json` dependency,
-Qt client name, and codegen header unchanged. The obsolete
-`wallet-qt-cmake-ffi-include.patch` (targeted the removed `qt_add_plugin`
-CMake) was dropped.
-If `nix bundle` fails after a pin bump, adjust
-`logos-execution-zone-module-patched/flake.nix` against current `main` packages.
+`lez-wallet-ffi-patched/` also carries LEZ-side Rust patches
+(`lez-rust-sign-public-payload.patch`, `lez-rust-sign-private-payload.patch`) for the
+operator `wallet_ffi` input.
+
+Upstream module identity is `lez_core`; the two identity patches plus wrapper
+`preInstall`/`postInstall` hooks (bridge eval-time-templated `lez_core_plugin.so`
+to `logos_execution_zone_plugin.so`) and the `lidl` rename keep
+`payment_streams_module` call sites, `metadata.json` dependency, Qt client name,
+and codegen header unchanged.
 
 Step 30 (static dependency migration) lists `logos_execution_zone` in
 `payment_streams_module`'s `metadata.json` `"dependencies"` and migrates the
 wallet-call surface to codegen-emitted typed `modules().logos_execution_zone`
-wrappers (Qt-free `lp` API style; `QString` ↔ `std::string` at the boundary).
-Three repo-local / complex-type methods (`sign_public_payload`,
-`send_generic_public_transaction_json`, `authenticated_transfer_elf`) stay on
-a minimal dynamic-dispatch fallback through `modules().api`; see
+wrappers. Complex-type methods (`sign_public_payload`,
+`send_generic_public_transaction_json`, private/JSON variants,
+`authenticated_transfer_elf`) stay on a minimal dynamic-dispatch fallback through
+`modules().api`; see
 [step-30-static-dependency-migration.md](../plan/completed/step-30-static-dependency-migration.md#findings).
-D6's revisit condition is closed.
 
 Runbook: [`archive/steps/wallet-510-runbook.md`](archive/steps/wallet-510-runbook.md).
 
 ### After changing pins
+
+Operator stack (wallet / LEZ-module / helper):
 
 ```bash
 cd logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched
@@ -207,53 +263,73 @@ nix flake update
 
 cd ../../..   # logos-payment-streams-module/
 nix flake update logos-execution-zone logos-execution-zone-module
+
+# Rebuild submit helper after operator LEZ bump; assert AT id
+cd ../tools/lez-testnet-submit && cargo build --release
+# auth-transfer-program-id-hex must equal live fe96c422…
 ```
 
-Refresh `rev` / `sha256` in `nix/payment-streams-ffi.nix` when the LEZ pin moves
-(`fetchFromGitHub` for program-methods symlink).
+Program graph only (guest / FFI / core) — bump `nix/payment-streams-ffi.nix` and
+Cargo tags/revs together; do not move `scaffold.toml` `[repos.lez]` unless the
+operator pin is intentionally changing:
 
-From repo root after LEZ bump:
+```bash
+# Refresh rev / sha256 in nix/payment-streams-ffi.nix when the program-graph LEZ pin moves
+nix build .#payment-streams-ffi
+```
+
+From repo root after an operator LEZ bump:
 
 ```bash
 lgs setup
-nix build .#payment-streams-ffi
 ./scripts/archive/build-wallet-lgx.sh
 nix build ./logos-payment-streams-module#lgx-portable
 ```
 
-## Payment streams workspace (`lez-payment-streams`)
+After a program-graph or guest ImageID change, rebuild the funded localnet snapshot:
+`make full-reset-localnet`
+([step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md)).
+Do not require scaffold LEZ pin to match `payment-streams-ffi.nix` before reset;
+snapshot `lez_pin` tracks the operator scaffold pin.
 
-### Rust FFI (`nix/payment-streams-ffi.nix`)
+## Payment streams workspace
 
-`lez-payment-streams-ffi` symlinks LEZ `artifacts/` from the same `logos-execution-zone` revision
-as the wallet stack (operational pin `v0.2.0`).
+### Rust FFI
 
-### Scaffold localnet (`scaffold.toml`)
+`nix/payment-streams-ffi.nix` builds `lez-payment-streams-ffi` and symlinks LEZ
+`artifacts/` from the program-graph pin (`v0.2.0` / `a58fbce2…`), not the
+operator scaffold pin.
 
-`[repos.lez].pin` must match the LEZ `rev` in `nix/payment-streams-ffi.nix` (Step 10a / 11d / 18b).
-After bumping either pin, re-run `lgs setup` from this repo so `wallet` and localnet match the operational LEZ rev.
-Rebuild the Step 17b funded snapshot after a LEZ pin or guest ImageID change:
-`make full-reset-localnet` ([step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md)).
+### Scaffold
 
-### Payment-streams Logos module (`logos-payment-streams-module/flake.nix`)
+`scaffold.toml` `[repos.lez].pin` is the operator pin (`v0.2.4` / `47eba256…`).
+`[repos.spel].pin` is stock `v0.6.0` (`0cb7e098…`).
+After bumping the operator pin, re-run `lgs setup` so PATH `wallet` and localnet
+tooling match `LEZ_OP_REV`.
 
-- `logos_execution_zone` flake input → patched wrapper (`main` upstream inside).
-  Listed in `metadata.json` `"dependencies"` since Step 30 (static dependency
-  migration); wallet calls use codegen-emitted typed wrappers with a
-  minimal dynamic-dispatch fallback for patched methods.
-- `logos-execution-zone` follows the operational LEZ pin (`v0.2.0`) for `wallet_ffi`.
+### Payment-streams Logos module
 
-## Step 18 public testnet (single v0.2.0 pin)
+- `logos_execution_zone` flake input → patched wrapper (upstream at `549cf115…`).
+  Listed in `metadata.json` `"dependencies"` since Step 30; wallet calls use
+  codegen-emitted typed wrappers with a minimal dynamic-dispatch fallback for
+  patched methods.
+- `logos-execution-zone` follows the operator LEZ pin (`v0.2.4`) for `wallet_ffi`
+  via `lez-wallet-ffi-patched`.
 
-Local E2E, module `.lgx`, and public testnet share LEZ `v0.2.0` (`a58fbce…`). See
-[archive/steps/public-sequencer-store-runbook.md](archive/steps/public-sequencer-store-runbook.md) and
-[step-18b-rc5-unify-handoff.md](plan/completed/step-18b-rc5-unify-handoff.md).
+## Public testnet under the split
+
+Local E2E module writes and public testnet operator tooling share operator LEZ
+`v0.2.4` (`47eba256…`). Guest ImageID and program-graph types stay on `v0.2.0`.
+See [archive/steps/public-sequencer-store-runbook.md](archive/steps/public-sequencer-store-runbook.md)
+and [step-18b-rc5-unify-handoff.md](plan/completed/step-18b-rc5-unify-handoff.md).
 
 | Artifact | Pin / ref | Role |
 | --- | --- | --- |
-| `logos_execution_zone` .lgx | `a58fbce` (v0.2.0) | Local E2E + testnet reads/writes |
-| `lez-testnet-submit` | `a58fbce` (v0.2.0) | Retained as fallback; not dispatched from module as of Step 26 |
-| `wallet` CLI | `a58fbce` (v0.2.0) | `make deploy-testnet`, bootstrap, Piñata |
+| `logos_execution_zone` .lgx | `47eba256` (v0.2.4) + module `549cf115` | Local E2E + testnet reads/writes via patched wallet |
+| `lez-testnet-submit` | `47eba256` (v0.2.4) | Required bootstrap; AT id/ELF source; assert vs live `fe96c422…` |
+| PATH `wallet` CLI | scaffold cache @ `47eba256` | `make deploy-testnet`, bootstrap, Piñata |
+| Guest / FFI / core | `a58fbce2` (v0.2.0) | ImageID, PDAs, program-graph types |
+| `PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX` | documented config → live `fe96c422…` | Required under the split until Step 48 |
 
 Guest `program_id_hex` on testnet: org deploy recorded in step packet; example in
 `fixtures/testnet.json.example`.
@@ -265,31 +341,36 @@ program identity. A rebuild with a different profile produces a different
 `program_id_hex` and invalidates every PDA derived from it; after a guest
 rebuild, re-derive `program_id_hex` and the vault/stream-config/clock PDAs.
 
-Retirement (Phase 9): when module `chainAction` works on testnet without
-the helper on the FFI path, delete `tools/lez-testnet-submit`,
-`chainUsesTestnetSubmit`, `submitGenericPublicViaTestnetHelper`, and the
-`LEZ_TESTNET_SUBMIT` plumbing. As of Step 26, `chainUsesTestnetSubmit()`
-always returns `false` and all writes route through
-`submitGenericPublicViaFfi`; the helper is retained in-tree as a manual
-operator fallback and is no longer invoked from the module.
+As of Step 26, module `chainUsesTestnetSubmit()` always returns `false` and all
+writes route through `submitGenericPublicViaFfi`. The helper remains required for
+testnet bootstrap (AT id + ELF), not as an in-module write path. Removing the
+helper (WalletCore port) is Tier C / later and must add AT hex + ELF inject flags
+first (D45.16).
 
 Runbook: [archive/steps/public-sequencer-store-runbook.md](archive/steps/public-sequencer-store-runbook.md).
 
 ## Verification commands
 
 ```bash
-# Payment-streams FFI (repo root)
+# Payment-streams FFI (repo root; program-graph LEZ)
 nix build .#payment-streams-ffi
 
-# Patched wallet lib (wrapper flake)
+# Patched wallet lib (wrapper flake; operator LEZ)
 nix build ./logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched#lib
 
 # Payment-streams Logos module bundle
 nix build ./logos-payment-streams-module#lgx-portable
+
+# Submit helper (operator LEZ); rebuild before asserting AT id
+(cd tools/lez-testnet-submit && cargo build --release)
 ```
 
+Confirm PATH `wallet` resolves under the scaffold operator cache
+(`~/.cache/logos-scaffold/repos/lez/47eba256…/target/release/wallet`) unless a
+Phase 0 schema exception is recorded in the Step 45 gate log.
+
 Step 11 DoD scripts under `scripts/archive/verify-step11*-dod.sh` are pinned
-to rc5 and retained as historical checks; they fail on v0.2.0 and are not
+to rc5 and retained as historical checks; they fail on current LEZ pins and are not
 run as gates.
 
 `#lgx-portable` (not `#lgx`) is required for `lgpm` 0.2.0 / `logoscore`,
