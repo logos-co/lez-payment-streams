@@ -4385,15 +4385,22 @@ def wait_store_query(cfg: Path, query_json: str, provider_addr: str, log_path: P
         start_new_session=True,
     )
     time.sleep(1)
+    # D45.13: paid async is storeQueryWithEligibility; keep storeQuery fallback for
+    # pre-rebase delivery-module tips that still expose the old method name.
     try:
-        r = logoscore_cmd(cfg, "call", "delivery_module", "storeQuery", query_json, provider_addr)
+        method = "storeQueryWithEligibility"
+        r = logoscore_cmd(cfg, "call", "delivery_module", method, query_json, provider_addr)
         dispatch = call_result(r)
+        if dispatch.get("status") != "ok":
+            method = "storeQuery"
+            r = logoscore_cmd(cfg, "call", "delivery_module", method, query_json, provider_addr)
+            dispatch = call_result(r)
         if dispatch.get("status") != "ok":
             err_tail = ""
             err_file = log_path.parent / "logoscore-daemon.stderr"
             if err_file.is_file():
                 err_tail = err_file.read_text()[-3000:]
-            raise E2EError(f"storeQuery dispatch: {json.dumps(dispatch)} daemon_stderr={err_tail!r}")
+            raise E2EError(f"{method} dispatch: {json.dumps(dispatch)} daemon_stderr={err_tail!r}")
         inner = dispatch.get("result")
         if isinstance(inner, str):
             try:
@@ -4401,18 +4408,20 @@ def wait_store_query(cfg: Path, query_json: str, provider_addr: str, log_path: P
             except json.JSONDecodeError:
                 inner = {}
         if isinstance(inner, dict) and inner.get("success") is False:
-            raise E2EError(f"storeQuery dispatch: {inner.get('error') or inner}")
+            raise E2EError(f"{method} dispatch: {inner.get('error') or inner}")
 
         deadline = time.time() + STORE_QUERY_TIMEOUT_S
         blob = ""
         while time.time() < deadline:
             if log_path.is_file():
                 blob = log_path.read_text()
-                if "storeQueryCompleted" in blob:
+                if _store_query_completion_marker_in(blob):
                     break
             time.sleep(0.5)
-        if "storeQueryCompleted" not in blob:
-            raise E2EError(f"timeout waiting storeQueryCompleted; log={blob[-2000:]!r}")
+        if not _store_query_completion_marker_in(blob):
+            raise E2EError(
+                f"timeout waiting storeQuery completion event; log={blob[-2000:]!r}"
+            )
         return parse_store_query_completed(blob)
     finally:
         watch.terminate()
@@ -4420,6 +4429,12 @@ def wait_store_query(cfg: Path, query_json: str, provider_addr: str, log_path: P
             watch.wait(timeout=5)
         except subprocess.TimeoutExpired:
             watch.kill()
+
+
+def _store_query_completion_marker_in(blob: str) -> bool:
+    return (
+        "storeQueryWithEligibilityCompleted" in blob or "storeQueryCompleted" in blob
+    )
 
 
 def provider_verify_verdict(cfg_provider: Path, proof_hex: str, n8_wire: str) -> dict:
@@ -4453,7 +4468,7 @@ def provider_verify_verdict(cfg_provider: Path, proof_hex: str, n8_wire: str) ->
 
 def parse_store_query_completed(blob: str) -> dict:
     for line in reversed(blob.splitlines()):
-        if "storeQueryCompleted" not in line:
+        if not _store_query_completion_marker_in(line):
             continue
         try:
             obj = json.loads(line.strip())
@@ -4478,7 +4493,11 @@ def parse_store_query_completed(blob: str) -> dict:
                 inner = json.loads(m.group(0))
             except json.JSONDecodeError:
                 continue
-            if inner.get("event") == "storeQueryCompleted" and isinstance(inner.get("data"), dict):
+            event = inner.get("event")
+            if event in (
+                "storeQueryWithEligibilityCompleted",
+                "storeQueryCompleted",
+            ) and isinstance(inner.get("data"), dict):
                 data = inner["data"]
                 resp_raw = data.get("arg1", "")
                 if isinstance(resp_raw, str) and resp_raw.strip().startswith("{"):
@@ -4487,7 +4506,7 @@ def parse_store_query_completed(blob: str) -> dict:
                     return {"statusCode": 0, "error": str(resp_raw), "messages": []}
             if "responseJson" in inner or "messages" in inner:
                 return inner
-    raise E2EError(f"could not parse storeQueryCompleted from {blob[-1500:]!r}")
+    raise E2EError(f"could not parse storeQuery completion from {blob[-1500:]!r}")
 
 
 def find_ps_state_file(persist_root: Path) -> Path:
