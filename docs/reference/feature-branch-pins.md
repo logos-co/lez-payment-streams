@@ -22,8 +22,8 @@ Integration treats the on-chain LIP as done on the spec feature branch (merge to
 | --- | --- | --- |
 | `logos-lips` / `rfc-index` `docs/anoncomms/raw/payment-streams.md` | `feat/payment-streams-onchain-part` | `345c8eef` |
 
-Local clone: `lez-related/rfc-index`. Step 20 doc packets should link this branch/rev until
-`main` catches up.
+Local clone: `lez-related/rfc-index`. Cite this branch/rev from in-repo Store SSOT and
+Step 46 until `main` catches up (Step 20 formal logos-docs publish is wontfix).
 
 ## Multi-token provider policy (Step 41, complete)
 

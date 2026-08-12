@@ -11,12 +11,13 @@ Paid Store queries carry LIP-155 `EligibilityProof` (RFC 73 on Store tag `30`); 
 LEZ state before serving. Rust/FFI holds policy; `payment_streams_module` orchestrates wallet I/O;
 delivery forks add wire fields and hooks.
 
-Universal payment protocol vs Store integration use case. Developer Journey (Store integration)
-is upcoming ([Step 20](docs/plan/upcoming/step-20-developer-journey.md);
-[logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)).
+Universal payment protocol vs Store integration use case. Developer Journey formal
+logos-docs publish is wontfix ([Step 20](docs/plan/wontfix/step-20-developer-journey.md);
+[logos-docs#369](https://github.com/logos-co/logos-docs/issues/369));
+in-repo Store SSOT remains; high-level user and developer narrative is
+[Step 46](docs/plan/upcoming/step-46-forum-post-user-journey.md).
 User Journey (CLI / module, protocol-only, not Store) is complete
 ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)).
-Forum progress report: [Step 46](docs/plan/upcoming/step-46-forum-post-user-journey.md).
 User Journey UI (Step 21) is upcoming; public hosted Store (Step 23) is wontfix.
 
 Program index: [docs/plan/index.md](docs/plan/index.md).
@@ -26,10 +27,11 @@ Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conven
 
 ### Documentation and integration
 
-Developer Journey — Store integration (upcoming):
-[Step 20](docs/plan/upcoming/step-20-developer-journey.md);
+Developer Journey — Store integration (formal publish wontfix):
+[Step 20](docs/plan/wontfix/step-20-developer-journey.md);
 [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369).
-In-repo SSOT draft: [docs/store-integration/README.md](docs/store-integration/README.md).
+In-repo SSOT: [docs/store-integration/README.md](docs/store-integration/README.md).
+High-level public narrative (user + developer): [Step 46](docs/plan/upcoming/step-46-forum-post-user-journey.md).
 Developer Journey generalization (protocol-agnostic eligibility guide):
 [Step 35](docs/plan/completed/step-35-developer-journey-generalization.md) (complete).
 
@@ -39,13 +41,13 @@ User Journey (complete — CLI / module, not Store):
 [Step 34](docs/plan/completed/step-34-user-journey-manual-walkthrough.md) (in-repo walkthrough);
 [Step 28](docs/plan/completed/step-28-user-journey-testnet.md) (module×testnet E2E).
 In-repo SSOT: [docs/journeys/USER_JOURNEY.md](docs/journeys/USER_JOURNEY.md).
-Upcoming: [Step 20](docs/plan/upcoming/step-20-developer-journey.md) (Developer Journey Store publish),
-[Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
+Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
 [Step 45](docs/plan/upcoming/step-45-dependencies-and-patches.md) (deps and patches),
 [Step 46](docs/plan/upcoming/step-46-forum-post-user-journey.md) (forum progress report).
 Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer and payee close),
 [Step 47](docs/plan/completed/step-47-unify-role-terminology.md) (role terminology).
-Wontfix: [Step 23](docs/plan/wontfix/step-23-public-store-provider.md) (public Store provider),
+Wontfix: [Step 20](docs/plan/wontfix/step-20-developer-journey.md) (formal Developer Journey publish),
+[Step 23](docs/plan/wontfix/step-23-public-store-provider.md) (public Store provider),
 [Step 25](docs/plan/wontfix/step-25-demo-coordination-module.md) (demo coordinator).
 Raw TODOs (unscheduled ideas): [docs/plan/raw-todos/](docs/plan/raw-todos/).
 
@@ -113,7 +115,7 @@ Maintainer lifecycle regression: `make verify-store-local-lifecycle` /
 | Verify | verification-matrix → scripts/README |
 | Store wire | integration-contracts → integration-decisions D1/D2 |
 | Localnet failure | archive/operator/localnet-recovery.md |
-| Developer journey | upcoming/step-20 packet + store-integration README; logos-docs#369 |
+| Developer journey | store-integration README + journeys/DEVELOPER_JOURNEY; Step 46 for public high-level; Step 20 wontfix |
 | Rust / guest | docs/on-chain/README.md |
 
 ## Always-on references

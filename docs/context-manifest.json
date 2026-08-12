@@ -12,8 +12,8 @@
   "active_steps": [],
   "waiting_steps": [],
   "paused_steps": [],
-  "upcoming_steps": [20, 21, 44, 45, 46],
-  "wontfix_steps": [23, 25, 42, 43],
+  "upcoming_steps": [21, 45, 46],
+  "wontfix_steps": [20, 23, 25, 42, 43],
   "optional_stretch_steps": [],
   "optional_steps": [],
   "step_packets": {
@@ -24,7 +24,7 @@
     "18": "docs/plan/completed/step-18-public-testnet-demo.md",
     "18b": "docs/plan/completed/step-18b-rc5-unify-handoff.md",
     "19": "docs/plan/completed/step-19-lip155-onchain-spec.md",
-    "20": "docs/plan/upcoming/step-20-developer-journey.md",
+    "20": "docs/plan/wontfix/step-20-developer-journey.md",
     "25": "docs/plan/wontfix/step-25-demo-coordination-module.md",
     "21": "docs/plan/upcoming/step-21-basecamp-ui.md",
     "22": "docs/plan/completed/step-22-ui-journey.md",
@@ -50,7 +50,7 @@
     "41": "docs/plan/completed/step-41-non-native-token-policy-spec.md",
     "42": "docs/plan/wontfix/step-42-discovery-payment-policy-advertisement.md",
     "43": "docs/plan/wontfix/step-43-shared-payment-pool-research.md",
-    "44": "docs/plan/upcoming/step-44-payer-and-payee-close.md",
+    "44": "docs/plan/completed/step-44-payer-and-payee-close.md",
     "45": "docs/plan/upcoming/step-45-dependencies-and-patches.md",
     "46": "docs/plan/upcoming/step-46-forum-post-user-journey.md",
     "47": "docs/plan/completed/step-47-unify-role-terminology.md"

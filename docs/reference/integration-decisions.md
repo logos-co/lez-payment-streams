@@ -723,7 +723,8 @@ Dual-host paid Store demo coordination stays on the **host**, not in a Logos mod
   [`scripts/e2e.sh`](../../scripts/e2e.sh) `local run` — fixture prepare, build/install, then
   [`scripts/e2e/run_local_e2e.py`](../../scripts/e2e/run_local_e2e.py) (archived entry:
   [`scripts/archive/demo-e2e-local.sh`](../../scripts/archive/demo-e2e-local.sh)).
-- **Cross-host sequencing:** the Python orchestrator (or an operator following Step 20 /
+- **Cross-host sequencing:** the Python orchestrator (or an operator following the
+  in-repo Store runbook /
   [archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md)) calls `logoscore` with
   `LOGOSCORE_CONFIG_USER` vs `LOGOSCORE_CONFIG_PROVIDER`. Each daemon loads
   `logos_execution_zone`, `payment_streams_module`, and `delivery_module` only.
@@ -731,9 +732,13 @@ Dual-host paid Store demo coordination stays on the **host**, not in a Logos mod
   `payment_streams_module` + `delivery_module` ([integration-contracts.md](integration-contracts.md)).
   A future third-party Logos app module may compose those APIs; that is **not** part of this
   integration plan (Step 25 closed — [wontfix packet](../plan/wontfix/step-25-demo-coordination-module.md)).
-- **Step 20 developer journey:** document (1) one-script E2E, (2) equivalent step-by-step
-  `logoscore call` sequences per host for the same scenario. This is the **Delivery + Store
-  eligibility integration** track only ([N18](#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
+- **Developer journey (in-repo):** one-script E2E and equivalent step-by-step
+  `logoscore call` sequences per host live under
+  [store-integration/README.md](../store-integration/README.md) /
+  [DEVELOPER_JOURNEY.md](../journeys/DEVELOPER_JOURNEY.md)
+  (Delivery + Store eligibility track only —
+  [N18](#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
+  Formal logos-docs publish is Step 20 wontfix; high-level public narrative is Step 46.
 - **Step 21 (upcoming UI), Step 22 (complete doc):** payment streams protocol — User Journey CLI
   doc packet ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)), Basecamp UI
   upcoming — not Store integration; see
@@ -743,18 +748,21 @@ Dual-host paid Store demo coordination stays on the **host**, not in a Logos mod
 
 Two documentation/demonstration tracks; do not merge them in copy or scope.
 
-**Developer Journey — Step 20 (upcoming)**
+**Developer Journey — Store eligibility track (in-repo; Step 20 formal publish wontfix)**
 
 - **Story:** LIP-155 eligibility proofs used with **Logos Delivery Store** (one application of
   payment streams). Testing payment streams as an eligibility mechanism with Store queries.
-- **Packet:** [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)
-  ([upcoming packet](../plan/upcoming/step-20-developer-journey.md)).
-  Forum progress report (plain English both tracks + command spoiler) is
+- **Formal packet:** [Step 20](../plan/wontfix/step-20-developer-journey.md) /
+  [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369) — wontfix as a
+  standalone logos-docs journey. In-repo SSOT remains
+  [store-integration/README.md](../store-integration/README.md) /
+  [DEVELOPER_JOURNEY.md](../journeys/DEVELOPER_JOURNEY.md).
+  High-level public narrative (with User Journey) is
   [Step 46](../plan/upcoming/step-46-forum-post-user-journey.md).
 - **Mechanism:** external script orchestration ([N17](#n17-demo-orchestration-stays-external-script-2026-06));
   dual local `logoscore` hosts; `payment_streams_module` + `delivery_module` +
   `logos_execution_zone`.
-- **Audience:** integrators reproducing paid Store via CLI/script.
+- **Audience:** integrators reproducing paid Store via CLI/script (in-repo docs + forum high-level).
 
 **User Journey — Step 22 (complete)**
 
@@ -774,8 +782,8 @@ Two documentation/demonstration tracks; do not merge them in copy or scope.
   (vault id, stream id, and program/account context). **Assumption:** the stream creator notifies
   the provider **out of band** (e.g. message, email, QR) with the stream address / ids so the provider
   can claim.
-- **Audience:** end users exploring payment streams via CLI; cross-link Step 20 (Developer
-  Journey) for Store integration, do not duplicate it.
+- **Audience:** end users exploring payment streams via CLI; cross-link in-repo Store
+  SSOT / Step 46 for Store integration high-level, do not duplicate Store steps.
 - **Future enhancement:** if Step 21 (Basecamp UI, currently upcoming) ships, the
   journey may be updated with UI screenshots and Basecamp-specific paths. Additive — the CLI
   journey remains valid.

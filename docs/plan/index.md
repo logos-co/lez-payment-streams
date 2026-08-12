@@ -12,10 +12,10 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | Path | Contents |
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
-| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 47) |
-| [upcoming/](upcoming/) | Steps 20–21, 44–46 |
+| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44, 47) |
+| [upcoming/](upcoming/) | Steps 21, 45–46 |
 | [waiting/](waiting/) | (empty) |
-| [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 23, 25, 42, 43 |
+| [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |
@@ -24,17 +24,18 @@ Journeys ([N18](../reference/integration-decisions.md#n18-integration-demo-vs-pa
 
 | Journey | Status | Steps / links |
 | --- | --- | --- |
-| Developer Journey (Store integration) | Upcoming | Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) + Step 17 scripts |
+| Developer Journey (Store integration) | Wontfix (formal publish) | Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)); in-repo SSOT + Step 17 scripts; high-level narrative in Step 46 |
 | Developer Journey generalization | Complete | Step 35 |
 | User Journey (CLI / module) | Complete | [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370); Steps 22, 28, 34; [USER_JOURNEY.md](../journeys/USER_JOURNEY.md) |
 | User Journey UI (Basecamp) | Upcoming | Step 21 |
-| Forum progress report | Upcoming | Step 46 |
+| Forum progress report | Upcoming | Step 46 (plain-English user + developer tracks) |
 
 Engineering: Steps 26–33 complete; Steps 36–41 complete
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
-Steps 20–21, 44–46 upcoming (Developer Journey publish; Basecamp UI; payer/payee close;
-deps/patches; forum progress report). Step 47 complete (role terminology).
+Steps 21, 45–46 upcoming (Basecamp UI; deps/patches; forum progress report).
+Step 44 complete (payer/payee close). Step 47 complete (role terminology).
+Step 20 wontfix (formal Developer Journey logos-docs publish; high-level content in Step 46).
 Steps 42–43 wontfix (Testnet v0.3 incentivisation research / spec).
 Public hosted Store provider: Step 23 (wontfix).
 
@@ -57,7 +58,7 @@ paid Store mode on the provider.
 | --- | --- |
 | Runnable integration demo (CLI, Store + eligibility) | 17 (local LEZ), 18 (testnet, historical) |
 | LIP-155 on-chain spec (branch pin) | 19 (complete) |
-| Developer Journey: integrators, Store integration ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) | 20 (upcoming) |
+| Developer Journey: integrators, Store integration ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) | 20 (wontfix; high-level in Step 46) |
 | Developer Journey: protocol-agnostic eligibility guide | 35 (complete) |
 | User Journey: CLI doc packet ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)) | 22 (complete) |
 | User Journey: testnet manual walkthrough | 34 (complete) |
@@ -81,7 +82,7 @@ paid Store mode on the provider.
 | Non-native token support in provider payment policies (F8, U9) | 41 (complete; [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`) |
 | Discovery + payment policy advertisement (F6, F7, U8) | 42 (wontfix; Discovery support) |
 | Shared payment pool model research (F9–F11, U10) | 43 (wontfix) |
-| E2E payer-close and payee-close | 44 (upcoming) |
+| E2E payer-close and payee-close | 44 (complete) |
 | Revisit dependencies and patches | 45 (upcoming) |
 | Forum progress report (plain English + command spoiler) | 46 (upcoming) |
 | Unify module JSON terminology (`owner` / `provider`) | 47 (complete) |
@@ -137,7 +138,6 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 
 | Step | Focus | Status |
 | --- | --- | --- |
-| 20 | Developer Journey: Store integration | Upcoming — Store publish track; [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369) — [step-20-developer-journey.md](upcoming/step-20-developer-journey.md) |
 | 21 | User Journey: Basecamp UI plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
 | 45 | Revisit dependencies and patches | Upcoming — [step-45-dependencies-and-patches.md](upcoming/step-45-dependencies-and-patches.md) |
 | 46 | Forum progress report | Upcoming — [step-46-forum-post-user-journey.md](upcoming/step-46-forum-post-user-journey.md) |
@@ -152,6 +152,7 @@ Not planned near-term. May move to `upcoming/` if resurrected.
 
 | Step | Focus | Packet |
 | --- | --- | --- |
+| 20 | Developer Journey formal logos-docs publish | [step-20-developer-journey.md](wontfix/step-20-developer-journey.md) |
 | 23 | Public Store provider | [step-23-public-store-provider.md](wontfix/step-23-public-store-provider.md) |
 | 25 | Demo coordination Logos module | [step-25-demo-coordination-module.md](wontfix/step-25-demo-coordination-module.md) |
 | 42 | Discovery + payment policy advertisement | [step-42-discovery-payment-policy-advertisement.md](wontfix/step-42-discovery-payment-policy-advertisement.md) |
@@ -189,7 +190,7 @@ when creating the branch. Both delivery repos must use the same string.
 | `logos-payment-streams-module` | Universal Qt module, wallet via `logos_execution_zone` |
 | `logos-delivery` / `liblogosdelivery` | Store protocol + eligibility hooks (14-15) |
 | `logos-delivery-module` | `delivery_module` + routing (16) |
-| `scripts/e2e.sh`, `scripts/e2e/run_local_e2e.py` | Developer Journey: dual-host Store integration orchestration (Step 17, Step 20) |
+| `scripts/e2e.sh`, `scripts/e2e/run_local_e2e.py` | Developer Journey: dual-host Store integration orchestration (Step 17; in-repo SSOT) |
 | `payment_streams_ui` (upcoming) | User Journey: Basecamp UI over `payment_streams_module` only (Step 21) |
 | `lgs` / `logoscore` / `lgpm` / `lm` | Localnet, host, install, introspection |
 

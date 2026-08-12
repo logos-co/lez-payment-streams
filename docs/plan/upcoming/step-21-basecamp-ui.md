@@ -3,7 +3,8 @@
 Upcoming — resurrected from wontfix; payment streams Basecamp UI.
 Index: [index.md](../index.md).
 
-Originally an optional stretch after Step 20 — not required for integration milestone closure.
+Originally an optional stretch after formal Developer Journey publish (Step 20, now wontfix) —
+not required for integration milestone closure.
 Track split: [N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 
 ### Step 21, Payment streams Basecamp UI
@@ -15,7 +16,8 @@ UI host unless an advanced integrator panel is added deliberately.
 #### Scope boundary
 
 This step is **payment streams protocol only** (LIP-155 / LEZ vaults and streams). It is **not**
-the Store eligibility integration demo (that is Step 20 + Step 17 script). Store, `storeQuery`,
+the Store eligibility integration demo (that is Step 17 script + in-repo Store SSOT;
+Step 20 formal publish is wontfix). Store, `storeQuery`,
 eligibility hook registration, and dual-`logoscore` provider/user layout are **out of scope**.
 
 Canonical module id: `payment_streams_ui` (`metadata.json` `name`); plugin id
@@ -62,7 +64,7 @@ Definition of done:
   assumption ([N18](../../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
 
 Not in scope: Step 17 E2E replay in UI; `delivery_module`; eligibility prepare/verify for Store;
-Step 20 Developer Journey content (cross-link only).
+Store Developer Journey content (in-repo SSOT / Step 46 high-level; Step 20 formal publish wontfix).
 
 Follow-on: Step 22 (User Journey doc packet, complete —
 [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370));

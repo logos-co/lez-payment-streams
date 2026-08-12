@@ -50,7 +50,7 @@ Makefile targets use the Journey names directly where applicable.
 
 | Term | Meaning |
 | --- | --- |
-| N18 | Developer Journey (Step 20, upcoming — logos-docs#369) vs User Journey (Step 22, complete — logos-docs#370) vs User Journey UI (Step 21, upcoming) vs forum progress report (Step 46, upcoming). |
+| N18 | Developer Journey (in-repo Store track; Step 20 formal logos-docs publish wontfix — logos-docs#369) vs User Journey (Step 22, complete — logos-docs#370) vs User Journey UI (Step 21, upcoming) vs forum progress report (Step 46, upcoming; high-level both tracks). |
 
 ## Logos and protocol names
 

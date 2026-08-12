@@ -14,7 +14,11 @@ Structure:
 3. Under a spoiler (collapsed detail): a full command list compiled from the current in-repo
    journeys (User Journey and Developer / Store journey), not a second conflicting SSOT.
 
-This is the wrap-up public narrative. Formal logos-docs Store packet work remains Step 20.
+This is the wrap-up public narrative for both tracks.
+Formal logos-docs Developer Journey publish ([Step 20](../wontfix/step-20-developer-journey.md),
+[logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)) is wontfix;
+the forum post carries the high-level user and developer substance instead of a
+standalone logos-docs journey packet.
 
 ## Audience and tone
 
@@ -57,17 +61,19 @@ In scope:
 
 Out of scope:
 
-- Replacing Step 20 (formal Developer Journey / logos-docs#369 publish).
+- Publishing a standalone logos-docs Developer Journey packet (Step 20 wontfix).
 - Step 21 UI screenshots unless already shipped (additive later).
 - New backend features; inventing commands not present in journey SSOT.
-- Expanding the open body into a full dual-host Store tutorial (that detail stays in spoiler
-  and/or Step 20).
+- Expanding the open body into a full dual-host Store tutorial
+  (that detail stays in the spoiler and in-repo Store SSOT).
 
 ## Relationship to Step 20
 
-Step 20 = formal Store / integrator journey publish (logos-docs or equivalent).
-Step 46 = forum progress report with plain-English both tracks + command spoiler.
-The forum post may summarize developer steps; it does not close Step 20.
+Step 20 (wontfix) was the formal Store / integrator journey publish track
+([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)).
+Step 46 is the public wrap-up: plain-English user and developer steps plus a
+command spoiler compiled from in-repo journeys.
+Step 46 does not revive Step 20 as a logos-docs packet.
 
 ## Deliver
 
@@ -89,4 +95,4 @@ The forum post may summarize developer steps; it does not close Step 20.
 - Forum post published or checked in as ready-to-post.
 - Intro + plain-English user and developer steps present.
 - Spoiler carries the compiled command list from current journeys.
-- Step 20 still tracked separately for formal Store publish work.
+- Step 20 remains wontfix (no separate logos-docs Developer Journey publish).

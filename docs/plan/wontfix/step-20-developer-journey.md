@@ -1,21 +1,28 @@
 # Step 20 — plan excerpt
 
-Upcoming — Developer Journey (Store + eligibility) publish track.
+Wontfix — not planned near-term; may move back to `upcoming/` if resurrected.
 Index: [index.md](../index.md).
 
-Related logos-docs packet:
+Formal logos-docs Developer Journey publish ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369))
+is not shipping as a standalone public packet.
+High-level user and developer journey content ships in the
+[Step 46](../upcoming/step-46-forum-post-user-journey.md) forum progress report instead.
+In-repo Store SSOT and verification remain:
+[store-integration/README.md](../../store-integration/README.md),
+[DEVELOPER_JOURNEY.md](../../journeys/DEVELOPER_JOURNEY.md),
+verification matrix Store cells.
+
+Related logos-docs packet (historical track, not required for wrap-up):
 [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)
 (Build a Store Query Module with LIP-155 Eligibility).
-In-repo runtime and SSOT are green; remaining work is the external publish path for
-integrators (Store composition). Forum progress report (plain English both tracks + command spoiler) is Step 46.
 
 ### Step 20, Developer Journey doc packet
 
-Upcoming. In-repo Store verification is green via Steps 26–33 / the verification matrix
-(`make verify-store-testnet`). Hosted public Store provider is wontfix Step 23
-(may return to upcoming later).
+Wontfix. In-repo Store verification is green via Steps 26–33 / the verification matrix
+(`make verify-store-testnet`). Hosted public Store provider is wontfix Step 23.
+Public high-level narrative for both tracks is Step 46.
 Related tracking: [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369).
-Forum progress report: [Step 46](step-46-forum-post-user-journey.md).
+Forum progress report: [Step 46](../upcoming/step-46-forum-post-user-journey.md).
 
 Prerequisites:
 
