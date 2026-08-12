@@ -18,8 +18,8 @@ deferred to Step 48; no Tier C; force-push feature branches only after Phase 2.
 | Helper LEZ rev | `47eba256479f6f785acbd138834340703cd03401` |
 | Guest ImageID | `dea010d9cb75887e8350f3dbd45b0efb8517e822fa105bc3e7b9fa2c9a2908ba` |
 | ELF size | 366868 |
-| Delivery eligibility tip | local `08b27e2b` (on `origin/master` `e2a8c2b5`; pre-step45 `155957ad`) |
-| Delivery-module eligibility tip | local `b7eeac6` (rebased on `origin/master` `3f0f2d8`; pre-step45 `2296f87`; D45.13 applied) |
+| Delivery eligibility tip | local D45.19 tip on `f8b03659…` + eligibility + Opt fix (`c101e31a`; side discard nimffi tip; pre-step45 `155957ad`) |
+| Delivery-module eligibility tip | local D45.13+D45.20 (`1229812`; pre-step45 `2296f87`) |
 
 ## O45.6 AT hexes
 
