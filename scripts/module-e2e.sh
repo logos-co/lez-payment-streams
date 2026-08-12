@@ -288,6 +288,32 @@ if ps_is_testnet; then
   [[ -n "$PROVIDER" ]] || ps_fatal "fixture missing provider_account_id"
   [[ -n "$PROGRAM_ID_HEX" ]] || ps_fatal "fixture missing program_id_hex"
 
+  # Module open uses TESTNET_WALLET_DIR (v0.2.0 config). Wallet CLI AT/pinata
+  # uses the v0.2.2+ CLI home when present.
+  if [[ -n "${TESTNET_WALLET_CLI_DIR:-}" ]]; then
+    export LEE_WALLET_HOME_DIR="$TESTNET_WALLET_CLI_DIR"
+    export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_CLI_DIR"
+  fi
+  WALLET_E2E_PASSWORD="${WALLET_E2E_PASSWORD:-${TESTNET_WALLET_PASSWORD:-testnet-dev}}"
+
+  # Public sequencer AT ImageID follows the live getProgramIds tip (v0.2.2+ as of
+  # 2026-08), while scaffold LEZ pin remains v0.2.0. Override verify so
+  # ps_account_is_at_initialized matches remote ownership.
+  if [[ -z "${PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX:-}" ]]; then
+    PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX="$(python3 -c '
+import json, struct, urllib.request, os
+url = os.environ.get("TESTNET_SEQUENCER", "https://testnet.lez.logos.co/").rstrip("/") + "/"
+body = json.dumps({"jsonrpc":"2.0","id":1,"method":"getProgramIds","params":[]}).encode()
+req = urllib.request.Request(url, data=body, headers={"content-type":"application/json"})
+at = json.load(urllib.request.urlopen(req, timeout=30))["result"]["authenticated_transfer"]
+print("".join(struct.pack("<I", int(x) & 0xFFFFFFFF).hex() for x in at))
+' 2>/dev/null || true)"
+    if [[ -n "${PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX:-}" ]]; then
+      export PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX
+      narr_verbose "PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX=${PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX}"
+    fi
+  fi
+
   narr_step "Using testnet fixture: owner=$OWNER provider=$PROVIDER"
 else
   # Localnet: fresh isolated wallet with its own owner + provider accounts.
