@@ -54,7 +54,7 @@ Product gates: [verification-matrix.md](../reference/verification-matrix.md).
 | 41 | Non-native token provider payment policies (F8, U9) | Complete -- [step-41-non-native-token-policy-spec.md](../plan/completed/step-41-non-native-token-policy-spec.md) |
 | 42 | Discovery + payment policy advertisement | Wontfix -- [step-42-discovery-payment-policy-advertisement.md](../plan/wontfix/step-42-discovery-payment-policy-advertisement.md) |
 | 43 | Shared payment pool model research | Wontfix -- [step-43-shared-payment-pool-research.md](../plan/wontfix/step-43-shared-payment-pool-research.md) |
-| 44 | Payer-close and payee-close | Upcoming -- [step-44-payer-and-payee-close.md](../plan/upcoming/step-44-payer-and-payee-close.md) |
+| 44 | Payer-close and payee-close | Complete -- [step-44-payer-and-payee-close.md](../plan/completed/step-44-payer-and-payee-close.md) |
 | 45 | Revisit dependencies and patches | Upcoming -- [step-45-dependencies-and-patches.md](../plan/upcoming/step-45-dependencies-and-patches.md) |
 | 46 | Forum progress report | Upcoming -- [step-46-forum-post-user-journey.md](../plan/upcoming/step-46-forum-post-user-journey.md) |
 

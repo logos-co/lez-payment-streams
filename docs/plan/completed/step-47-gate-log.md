@@ -15,7 +15,7 @@ Packet: [step-47-unify-role-terminology.md](step-47-unify-role-terminology.md).
 ## Terminology gate
 
 `scripts/check-terminology.sh` — Required. Temporary path-allowlist for
-`docs/plan/upcoming/step-44-payer-and-payee-close.md` until Step 44 moves to
+`docs/plan/completed/step-44-payer-and-payee-close.md` until Step 44 moves to
 `completed/` (D47.5).
 
 ## Required rename smoke (D47.9)

@@ -52,7 +52,7 @@ Publication: in-repo SSOT is USER_JOURNEY.md; logos-docs packet is Step 22 /
 Single host, one `logoscore` daemon, one wallet storage with **two public accounts** (payer and payee).
 
 Narrative order (differs from current `module-e2e.sh` close signer until
-[Step 44](../upcoming/step-44-payer-and-payee-close.md) is done):
+[Step 44](step-44-payer-and-payee-close.md) is done):
 
 1. Payer creates vault (or reuses an empty vault id), deposits, opens stream to payee.
 2. Funds accrue; reader polls `getStreamStatus` until `accrued_lo` is sufficient.
@@ -62,7 +62,7 @@ Narrative order (differs from current `module-e2e.sh` close signer until
 
 **Pre-dry-run check (implementor):** Run one `closeStream` on testnet with payer-only params before
 locking USER_JOURNEY copy. `module-e2e.sh` still passes payee as `authority` until
-[Step 44](../upcoming/step-44-payer-and-payee-close.md); the walkthrough
+[Step 44](step-44-payer-and-payee-close.md); the walkthrough
 must not copy that JSON shape.
 
 Pedagogy: after stream creation, include an **out-of-band** step — copy payer account id,
@@ -166,7 +166,7 @@ Create [docs/journeys/E2E.md](../../journeys/E2E.md):
 #### Scripts and alignment (non-blocking for doc land)
 
 `module-e2e.sh` still uses payee as `closeStream` `authority` while narrative says payer closes.
-Track fix in [Step 44](../upcoming/step-44-payer-and-payee-close.md).
+Track fix in [Step 44](step-44-payer-and-payee-close.md).
 After fix, optional one-line note in E2E.md expected phases; USER_JOURNEY already teaches payer close.
 
 #### Stale doc pass (after implementation)
