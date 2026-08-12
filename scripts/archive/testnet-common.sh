@@ -72,19 +72,24 @@ lez_testnet_submit_bin() {
 
 write_testnet_wallet_config() {
   mkdir -p "$TESTNET_WALLET_DIR"
-  # logos_execution_zone module is still on the scaffold LEZ v0.2.0 pin and
-  # expects the pre-v0.2.1 single sequencer_addr shape.
+  # logos_execution_zone module tracks live LEZ (v0.2.2+): sequencers[] shape.
   python3 -c "
 import json, os
 path = os.environ['TESTNET_WALLET_DIR'] + '/wallet_config.json'
-url = os.environ['TESTNET_SEQUENCER']
+url = os.environ['TESTNET_SEQUENCER'].rstrip('/')
 cfg = {
-  'sequencer_addr': url,
+  'sequencers': [{
+    'sequencer_addr': url,
+    'basic_auth': None,
+  }],
   'seq_poll_timeout': '60s',
   'seq_tx_poll_max_blocks': 120,
   'seq_poll_max_retries': 20,
   'seq_block_poll_max_amount': 100,
-  'basic_auth': None,
+  'multi_sequencer_client_config': {
+    'distribution_limit': 1,
+    'calibration_limit': 100,
+  },
 }
 json.dump(cfg, open(path, 'w'), indent=2)
 "
@@ -128,8 +133,8 @@ ensure_testnet_wallet() {
   export TESTNET_WALLET_CLI_DIR="${TESTNET_WALLET_CLI_DIR:-${TESTNET_WALLET_DIR}-cli-v024}"
   export TESTNET_WALLET_CLI_DIR
   write_testnet_wallet_cli_config
-  # Module/logoscore use TESTNET_WALLET_DIR (v0.2.0 config). Wallet CLI uses
-  # the v0.2.2+ sequencers[] home so AT ImageID matches public getProgramIds.
+  # Module/logoscore use TESTNET_WALLET_DIR. Wallet CLI may use a separate
+  # TESTNET_WALLET_CLI_DIR when CLI storage is kept apart from the module home.
   export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_CLI_DIR"
   export LEE_WALLET_HOME_DIR="$TESTNET_WALLET_CLI_DIR"
   local wallet_bin

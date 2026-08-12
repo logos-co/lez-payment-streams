@@ -64,7 +64,9 @@ ps_at_logoscore_open_wallet() {
   [[ "${PS_AT_LOGOSCORE_WALLET_HANDOFF:-0}" == "1" ]] || return 0
   command -v logoscore >/dev/null 2>&1 || return 0
   [[ -n "${WALLET_CONFIG:-}" && -n "${WALLET_STORAGE:-}" ]] || return 0
-  logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE" >/dev/null 2>&1 || true
+  local stats
+  stats="${WALLET_STATISTICS:-$(ps_ensure_wallet_statistics "$WALLET_STORAGE")}"
+  logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE" "$stats" >/dev/null 2>&1 || true
   ps_at_sync_wallet
 }
 
@@ -100,7 +102,9 @@ ps_logoscore_daemon_restart_after_wallet() {
   logoscore load-module logos_execution_zone >/dev/null
   logoscore load-module payment_streams_module >/dev/null 2>&1 || true
   [[ -n "${WALLET_CONFIG:-}" && -n "${WALLET_STORAGE:-}" ]] || return 1
-  open_line="$(logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE" 2>/dev/null | tail -1)" || true
+  local stats
+  stats="${WALLET_STATISTICS:-$(ps_ensure_wallet_statistics "$WALLET_STORAGE")}"
+  open_line="$(logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE" "$stats" 2>/dev/null | tail -1)" || true
   if ! python3 -c 'import json,sys; d=json.loads(sys.argv[1]); sys.exit(0 if d.get("status")=="ok" or d.get("result")==0 else 1)' "$open_line" 2>/dev/null; then
     echo "wallet open failed after logoscore restart: ${open_line:-<empty>}" >&2
     return 1
@@ -114,7 +118,9 @@ ps_reload_payment_streams_wallet() {
   logoscore unload-module payment_streams_module >/dev/null 2>&1 || true
   logoscore load-module payment_streams_module >/dev/null 2>&1 || true
   [[ -n "${WALLET_CONFIG:-}" && -n "${WALLET_STORAGE:-}" ]] || return 0
-  logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE" >/dev/null 2>&1 || true
+  local stats
+  stats="${WALLET_STATISTICS:-$(ps_ensure_wallet_statistics "$WALLET_STORAGE")}"
+  logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE" "$stats" >/dev/null 2>&1 || true
   ps_at_sync_wallet
 }
 

@@ -570,6 +570,26 @@ ps_default_wallet_storage() {
   fi
 }
 
+# LEZ wallet open/create_new (v0.2.2+) take a statistics.json path beside storage.
+ps_wallet_statistics_path() {
+  local storage="${1:-${WALLET_STORAGE:-$(ps_default_wallet_storage)}}"
+  if [[ -n "${WALLET_STATISTICS:-}" ]]; then
+    echo "$WALLET_STATISTICS"
+    return 0
+  fi
+  echo "$(dirname "$storage")/statistics.json"
+}
+
+ps_ensure_wallet_statistics() {
+  local path
+  path="$(ps_wallet_statistics_path "${1:-}")"
+  mkdir -p "$(dirname "$path")"
+  if [[ ! -f "$path" ]]; then
+    printf '%s\n' '{}' >"$path"
+  fi
+  echo "$path"
+}
+
 # Wallet home directory (holds storage.json + wallet_config.json) the seed
 # binary opens via LEE_WALLET_HOME_DIR. This selects which sequencer the seed
 # CLI talks to, so it MUST follow CHAIN: testnet writes use the testnet wallet,

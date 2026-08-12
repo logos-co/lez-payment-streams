@@ -172,13 +172,15 @@ sleep 3
 logoscore load-module logos_execution_zone >/dev/null
 logoscore load-module payment_streams_module >/dev/null
 
+WALLET_STATISTICS="$(ps_ensure_wallet_statistics "$WALLET_STORAGE")"
+export WALLET_STATISTICS
 if [[ ! -f "$WALLET_STORAGE" ]]; then
-  OPEN_LINE="$(logoscore call logos_execution_zone create_new "$WALLET_CONFIG" "$WALLET_STORAGE" "$WALLET_E2E_PASSWORD" 2>/dev/null | tail -1)"
+  OPEN_LINE="$(logoscore call logos_execution_zone create_new "$WALLET_CONFIG" "$WALLET_STORAGE" "$WALLET_STATISTICS" "$WALLET_E2E_PASSWORD" 2>/dev/null | tail -1)"
 else
-  OPEN_LINE="$(logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE" 2>/dev/null | tail -1)"
+  OPEN_LINE="$(logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE" "$WALLET_STATISTICS" 2>/dev/null | tail -1)"
   if ! python3 -c 'import json,sys; d=json.loads(sys.argv[1]); sys.exit(0 if d.get("result")==0 else 1)' "$OPEN_LINE" 2>/dev/null; then
     rm -f "$WALLET_STORAGE"
-    OPEN_LINE="$(logoscore call logos_execution_zone create_new "$WALLET_CONFIG" "$WALLET_STORAGE" "$WALLET_E2E_PASSWORD" 2>/dev/null | tail -1)"
+    OPEN_LINE="$(logoscore call logos_execution_zone create_new "$WALLET_CONFIG" "$WALLET_STORAGE" "$WALLET_STATISTICS" "$WALLET_E2E_PASSWORD" 2>/dev/null | tail -1)"
   fi
 fi
 # create_new returns status="ok" with result=<mnemonic string>; open returns
