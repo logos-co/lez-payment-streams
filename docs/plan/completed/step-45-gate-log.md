@@ -34,7 +34,7 @@ deferred to Step 48; no Tier C; force-push feature branches only after Phase 2.
 | ID | Result | Notes |
 | --- | --- | --- |
 | O45.1 spel×graph | C | stock `v0.6.0` guest build green; `nssa_core` alias in guest+core; `tag=v0.2.0` unify; IDL via `spel generate-idl` |
-| Wallet schema probe | TBD | after `lgs setup` operator wallet |
+| Wallet schema probe | dual-keys | `ps_ensure_wallet_config_split_compatible` keeps `sequencer_addr` + `sequencers[]`; seed uses graph WalletCore + direct getTransaction confirm |
 | O45.3 rebase census | proceed | delivery conflicts in store_api/node_api; master has nim-ffi 0.3 — treat as conflict resolution + D45.13; stop only if unpaid sync cannot be kept |
 | O45.6 AT hexes | recorded | helper assert == operator/live `fe96c422…` |
 
@@ -42,3 +42,4 @@ deferred to Step 48; no Tier C; force-push feature branches only after Phase 2.
 
 | Date (UTC) | Repo commit | Cell | Artifact | Result | ImageID | ELF size | RISC0_DEV_MODE | Pins | Clock | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-08-12 | `7d51ce3` | full-reset-localnet | `.scaffold/snapshots/funded` | pass | `dea010d9…` | 366868 | 1 | op `47eba256` / graph `v0.2.0` / spel `0cb7e098` / helper `47eba256` | n/a | AT hex exported `fe96c422…`; vault already funded skip; snapshot lez_pin matches operator |
