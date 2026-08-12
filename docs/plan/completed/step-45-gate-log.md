@@ -46,3 +46,4 @@ deferred to Step 48; no Tier C; force-push feature branches only after Phase 2.
 | 2026-08-12 | `931a6a0` | module-local | `.scaffold/e2e/artifacts/module-e2e-20260812T172651.log` | pass | `dea010d9…` | 366868 | 1 | op/graph/spel/helper as Pins | n/a | soft; AT hex set |
 | 2026-08-12 | `1ec1263` | module-local-provider-close | `.scaffold/e2e/artifacts/module-e2e-20260812T173450.log` | pass | `dea010d9…` | 366868 | 1 | as Pins | n/a | soft; CLOSE_ROLE=provider |
 | 2026-08-12 | `1ec1263` | module-local-close-negatives | `.scaffold/e2e/artifacts/module-e2e-20260812T174317.log` | pass | `dea010d9…` | 366868 | 1 | as Pins | n/a | soft; MODULE_E2E_CLOSE_NEGATIVES=1 |
+| 2026-08-12 | `d1b6698` | store-local-hermetic-pre-rebase | `.scaffold/e2e/artifacts/e2e-20260812T175924.log` | pass | `dea010d9…` | 366868 | 1 | old delivery pins; SKIP_LIBLOGOSDELIVERY_OVERLAY=1 | n/a | E2E_CLAIM_OPTIONAL=0; soft; missing-proof reject observed |
