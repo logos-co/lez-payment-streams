@@ -5,7 +5,7 @@
     # pyo3-build-config in wallet-ffi-deps needs a Python interpreter in nativeBuildInputs.
     logos-execution-zone.url = "path:./lez-wallet-ffi-patched";
 
-    upstream.url = "github:logos-blockchain/logos-execution-zone-module/92dd9e25bcc6be04f841671e8da7b94bd2449f39";
+    upstream.url = "github:logos-blockchain/logos-execution-zone-module/549cf1159f20fa0c3fe8e88a5ab71de68a5aa34b";
     upstream.inputs.logos-execution-zone.follows = "logos-execution-zone";
 
     nixpkgs.follows = "upstream/logos-module-builder/nixpkgs";
@@ -38,7 +38,8 @@
             patch -p1 --forward < ${./wallet-qt-send-generic-private-transaction-json.patch}
             patch -p1 --forward < ${./wallet-qt-private-json-elf-path.patch}
             patch -p1 --forward < ${./wallet-qt-transfer-shielded-amount-prefix.patch}
-            patch -p1 --forward < ${./wallet-qt-fix-authenticated-transfer-elf.patch}
+            # Upstream v0.2.2+ already embeds AT ELF path; skip if already applied.
+            patch -p1 --forward < ${./wallet-qt-fix-authenticated-transfer-elf.patch} || true
             patch -p1 --forward < ${./wallet-qt-cmake-module-name.patch}
             patch -p1 --forward < ${./wallet-qt-metadata-module-name.patch}
           '';
