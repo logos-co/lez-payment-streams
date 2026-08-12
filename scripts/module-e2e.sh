@@ -429,8 +429,14 @@ ps_pre_shield_to_private_account() {
   amt_hex="s:$(amount_le16_hex "$amount")"
   amt_file="$(mktemp "${TMPDIR:-/tmp}/ps-preshield-amt.XXXXXX")"
   printf '%s' "$amt_hex" >"$amt_file"
-  line="$(logoscore call logos_execution_zone transfer_shielded_owned \
-    "$from_hex" "$to_hex" "@$amt_file" 2>/dev/null | tail -1)"
+  if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+    line="$(env "LOGOSCORE_RPC_TIMEOUT_MS=${PS_LOGOSCORE_RPC_TIMEOUT_MS}" \
+      logoscore call logos_execution_zone transfer_shielded_owned \
+      "$from_hex" "$to_hex" "@$amt_file" 2>/dev/null | tail -1)" || true
+  else
+    line="$(logoscore call logos_execution_zone transfer_shielded_owned \
+      "$from_hex" "$to_hex" "@$amt_file" 2>/dev/null | tail -1)" || true
+  fi
   rm -f "$amt_file"
   tx_hash="$(python3 -c '
 import json,sys
@@ -682,10 +688,11 @@ call_ps() {
   for attempt in 1 2 3 4 5 6; do
     # Real prove: raise outer logoscore CLI→daemon budget for this call only (D39.24).
     if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+      # pipefail: logoscore non-zero (module/wallet errors) must not abort before emit_phase.
       line="$(env "LOGOSCORE_RPC_TIMEOUT_MS=${PS_LOGOSCORE_RPC_TIMEOUT_MS}" \
-        logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)"
+        logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)" || true
     else
-      line="$(logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)"
+      line="$(logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)" || true
     fi
     if inner_status_ok "$line" "$key"; then
       tx_hash="$(extract_tx_hash "$line")"
@@ -861,6 +868,27 @@ if ps_is_local; then
       [[ -z "$FUNDER_HEX" || -z "$OWNER_HEX" ]] && ps_fatal "could not resolve hex account ids for pre-shield"
       if ! ps_pre_shield_to_private_owner "$FUNDER_HEX" "$OWNER_HEX" "$owner_target"; then
         FAILURES=$((FAILURES + 1))
+      else
+        # Real prove stops logoscore for wallet CLI; confirm private owner is still resolvable.
+        if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+          keys_line="$(logoscore call logos_execution_zone get_private_account_keys "$OWNER_HEX" 2>/dev/null | tail -1)" || true
+          if ! python3 -c 'import json,sys
+try:
+  o=json.loads(sys.argv[1]); r=o.get("result",o)
+  if isinstance(r,str) and r.strip().startswith("{"): r=json.loads(r)
+  ok=isinstance(r,dict) and (r.get("status")=="ok" or "nullifier_public_key" in r or "npk" in r)
+  sys.exit(0 if ok else 1)
+except Exception:
+  sys.exit(1)' "$keys_line" 2>/dev/null; then
+            narr_fail "Private vault owner keys unresolved after wallet shield handoff"
+            narr_hint "get_private_account_keys failed for OWNER_HEX=$OWNER_HEX — check LEE_WALLET_HOME_DIR storage after auth-transfer send"
+            emit_phase pre_shield_keys false "$(python3 -c 'import json,sys; print(json.dumps({"owner_hex":sys.argv[1],"raw":sys.argv[2]}))' "$OWNER_HEX" "${keys_line:-}")"
+            FAILURES=$((FAILURES + 1))
+          else
+            emit_phase pre_shield_keys true "$(python3 -c 'import json,sys; print(json.dumps({"owner_hex":sys.argv[1]}))' "$OWNER_HEX")"
+            narr_ok "Private vault owner keys resolvable after wallet shield"
+          fi
+        fi
       fi
       # D37.11: never pinata a private provider as Public/$PROVIDER. Dust-shield
       # into the private provider so claim has a committed private note.
@@ -997,6 +1025,11 @@ if ps_is_testnet; then
     fi
     sync_wallet
   fi
+fi
+
+if [[ "$FAILURES" -gt 0 ]]; then
+  narr_fail "$FAILURES failure(s) before vault init — aborting"
+  exit 1
 fi
 
 # ---------------------------------------------------------------------------
@@ -1199,6 +1232,11 @@ fi
 # ---------------------------------------------------------------------------
 # PHASE: Stream Creation
 # ---------------------------------------------------------------------------
+if [[ "$FAILURES" -gt 0 ]]; then
+  narr_fail "$FAILURES failure(s) before stream creation — aborting"
+  exit 1
+fi
+
 narr_phase "Stream Creation"
 
 if ps_is_local && [[ "$MODULE_E2E_PAUSE_RESUME" == "1" ]]; then

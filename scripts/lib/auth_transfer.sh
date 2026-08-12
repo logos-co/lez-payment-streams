@@ -100,7 +100,11 @@ ps_logoscore_daemon_restart_after_wallet() {
   logoscore load-module logos_execution_zone >/dev/null
   logoscore load-module payment_streams_module >/dev/null 2>&1 || true
   [[ -n "${WALLET_CONFIG:-}" && -n "${WALLET_STORAGE:-}" ]] || return 1
-  logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE" >/dev/null 2>&1 || true
+  open_line="$(logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE" 2>/dev/null | tail -1)" || true
+  if ! python3 -c 'import json,sys; d=json.loads(sys.argv[1]); sys.exit(0 if d.get("status")=="ok" or d.get("result")==0 else 1)' "$open_line" 2>/dev/null; then
+    echo "wallet open failed after logoscore restart: ${open_line:-<empty>}" >&2
+    return 1
+  fi
   ps_at_sync_wallet
 }
 
@@ -140,7 +144,12 @@ ps_auth_transfer_init_one() {
   wallet_bin="$(command -v wallet 2>/dev/null || true)"
   if [[ -n "$wallet_bin" && -n "${LEE_WALLET_HOME_DIR:-}" ]]; then
     via="wallet"
-    if [[ -n "${MODULES:-}" ]]; then
+    if [[ "${CHAIN:-}" == "local" ]]; then
+      ps_at_logoscore_close_wallet
+      timeout 90 "$wallet_bin" auth-transfer init --account-id "Public/$acct" >/dev/null 2>&1 || true
+      ps_at_logoscore_open_wallet || true
+      ps_reload_payment_streams_wallet
+    elif [[ -n "${MODULES:-}" ]]; then
       ps_logoscore_daemon_stop_for_wallet
       timeout 90 "$wallet_bin" auth-transfer init --account-id "Public/$acct" >/dev/null 2>&1 || true
       ps_logoscore_daemon_restart_after_wallet || true
@@ -235,8 +244,15 @@ ps_wallet_auth_transfer_send() {
   }
 
   out_file="$(mktemp "${TMPDIR:-/tmp}/ps-wallet-shield.XXXXXX")"
-  # close() is ineffective on current LEZ; stop daemon for exclusive storage access.
-  ps_logoscore_daemon_stop_for_wallet
+  # Local: close/open wallet only so the daemon and module FFI stay on the same
+  # process. Full daemon stop+reopen after wallet CLI rewrite has been losing
+  # private-account resolvability (AccountNotFound) on this pin.
+  # Testnet: keep full daemon stop for exclusive storage (D39.22).
+  if [[ "${CHAIN:-}" == "local" ]]; then
+    ps_at_logoscore_close_wallet
+  else
+    ps_logoscore_daemon_stop_for_wallet
+  fi
   local rc=0
   # Prefer pinned-LEZ timeout default; testnet real prove often needs >10 min.
   local shield_timeout="${PS_WALLET_SHIELD_TIMEOUT:-}"
@@ -255,11 +271,21 @@ ps_wallet_auth_transfer_send() {
     --from "Public/$from_b58" \
     --to "Private/$to_b58" \
     --amount "$amount" >"$out_file" 2>&1 || rc=$?
-  if ! ps_logoscore_daemon_restart_after_wallet; then
-    echo "failed to restart logoscore after wallet auth-transfer send" >&2
-    cat "$out_file" || true
-    rm -f "$out_file"
-    return 1
+  if [[ "${CHAIN:-}" == "local" ]]; then
+    if ! ps_at_logoscore_open_wallet; then
+      echo "failed to reopen logoscore wallet after wallet auth-transfer send" >&2
+      cat "$out_file" || true
+      rm -f "$out_file"
+      return 1
+    fi
+    ps_reload_payment_streams_wallet
+  else
+    if ! ps_logoscore_daemon_restart_after_wallet; then
+      echo "failed to restart logoscore after wallet auth-transfer send" >&2
+      cat "$out_file" || true
+      rm -f "$out_file"
+      return 1
+    fi
   fi
   if [[ "$rc" -ne 0 ]]; then
     cat "$out_file" || true
