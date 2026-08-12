@@ -43,7 +43,9 @@ User Journey (complete — CLI / module, not Store):
 In-repo SSOT: [docs/journeys/USER_JOURNEY.md](docs/journeys/USER_JOURNEY.md).
 Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
 [Step 45](docs/plan/upcoming/step-45-dependencies-and-patches.md) (deps and patches),
-[Step 46](docs/plan/upcoming/step-46-forum-post-user-journey.md) (forum progress report).
+[Step 46](docs/plan/upcoming/step-46-forum-post-user-journey.md) (forum progress report),
+[Step 48](docs/plan/upcoming/step-48-program-graph-lez-unify.md) (program-graph LEZ
+unify + drop AT hex config).
 Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer and payee close),
 [Step 47](docs/plan/completed/step-47-unify-role-terminology.md) (role terminology).
 Wontfix: [Step 20](docs/plan/wontfix/step-20-developer-journey.md) (formal Developer Journey publish),

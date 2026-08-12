@@ -72,8 +72,8 @@ Workflow detail: [index.md](plan/index.md#delivery-integration-branches).
 
 | Artifact | Branch ref | Locked rev (2026-07-01) |
 | --- | --- | --- |
-| `logos-delivery` flake input | `feat/payment-streams-store-eligibility` | `64593368` (rebased onto upstream `master` post api-shape phase2; `eligibility_api.nim` adapted to `FFIContext[LogosDelivery]`) |
-| `logos-delivery-module` integration branch | `feat/payment-streams-store-eligibility` | `f8a76ba` on fork `s-tikhomirov/logos-delivery-module` (rebased onto upstream `master`; preserves eligibility bridge alongside `collectOpenMetricsText()`) |
+| `logos-delivery` flake input | `feat/payment-streams-store-eligibility` | `155957ad` (includes Step 47 `user_peer_id`; org remote `logos-messaging/logos-delivery`) |
+| `logos-delivery-module` integration branch | `feat/payment-streams-store-eligibility` | `2296f87` on personal fork `s-tikhomirov/logos-delivery-module` (Step 47 rename; no org push access — D45.10) |
 
 After each push to `logos-delivery`, run `nix flake update logos-delivery` in
 `logos-delivery-module` and commit the lock. Record the resolved `rev` in this table when
@@ -107,13 +107,20 @@ Pin table dates are when the row was last updated. Decision subsection titles in
 [integration-decisions.md](reference/integration-decisions.md) use their own `(YYYY-MM-DD)` record dates;
 those need not match the pin table calendar day.
 
-Module repo: same branch name on `logos-delivery-module` (`flake.nix` + `flake.lock` at
-`f8a76ba…` for the `logos-delivery` input). Push target may be org fork or personal fork
-(`s-tikhomirov/logos-delivery-module`) until the integration branch lands on
-`logos-co/logos-delivery-module`.
+Module repo: same branch name on `logos-delivery-module`.
+Durable remote SSOT is the personal fork
+[`s-tikhomirov/logos-delivery-module`](https://github.com/s-tikhomirov/logos-delivery-module)
+branch `feat/payment-streams-store-eligibility`
+(tip recorded in the table above; includes Step 47 `user_peer_id`).
+The operator account does not have push access to org
+`logos-co/logos-delivery-module`, so the eligibility branch is not mirrored there
+(D45.10). E2E defaults to a sibling checkout of that fork.
+`logos-delivery` eligibility stays on the org remote
+(`logos-messaging/logos-delivery`) because the module flake URL pins that ref
+and push access exists there.
 
 Re-run `nix flake update logos-delivery` in `logos-delivery-module` after pushing new commits to
-that branch, then commit the updated `flake.lock`. Steps 17–18 E2E may pin this rev explicitly in
+the delivery eligibility branch, then commit the updated `flake.lock`. Steps 17–18 E2E may pin this rev explicitly in
 scripts; until then the branch ref in `flake.nix` plus a committed lock is the source of truth.
 
 ## Wallet — primary path (v0.2.0 operational + `main` module)

@@ -13,7 +13,7 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44, 47) |
-| [upcoming/](upcoming/) | Steps 21, 45–46 |
+| [upcoming/](upcoming/) | Steps 21, 45–46, 48 |
 | [waiting/](waiting/) | (empty) |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
@@ -33,7 +33,8 @@ Journeys ([N18](../reference/integration-decisions.md#n18-integration-demo-vs-pa
 Engineering: Steps 26–33 complete; Steps 36–41 complete
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
-Steps 21, 45–46 upcoming (Basecamp UI; deps/patches; forum progress report).
+Steps 21, 45–46, 48 upcoming (Basecamp UI; deps/patches; forum progress report;
+program-graph LEZ unify / AT config drop).
 Step 44 complete (payer/payee close). Step 47 complete (role terminology).
 Step 20 wontfix (formal Developer Journey logos-docs publish; high-level content in Step 46).
 Steps 42–43 wontfix (Testnet v0.3 incentivisation research / spec).
@@ -86,6 +87,7 @@ paid Store mode on the provider.
 | Revisit dependencies and patches | 45 (upcoming) |
 | Forum progress report (plain English + command spoiler) | 46 (upcoming) |
 | Unify module JSON terminology (`owner` / `provider`) | 47 (complete) |
+| Program-graph LEZ unify + drop AT hex config | 48 (upcoming) |
 
 Step 25 (in-process demo coordinator module) is wontfix
 ([packet](wontfix/step-25-demo-coordination-module.md)).
@@ -141,6 +143,7 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | 21 | User Journey: Basecamp UI plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
 | 45 | Revisit dependencies and patches | Upcoming — [step-45-dependencies-and-patches.md](upcoming/step-45-dependencies-and-patches.md) |
 | 46 | Forum progress report | Upcoming — [step-46-forum-post-user-journey.md](upcoming/step-46-forum-post-user-journey.md) |
+| 48 | Program-graph LEZ unify + drop AT hex config | Upcoming — [step-48-program-graph-lez-unify.md](upcoming/step-48-program-graph-lez-unify.md) |
 
 ## Waiting steps
 
