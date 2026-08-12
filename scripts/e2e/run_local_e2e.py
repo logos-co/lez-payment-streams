@@ -3260,7 +3260,11 @@ def create_demo_stream_for_run(
         create_id = int(precreated_raw)
     else:
         strip_snapshot_stream_fields(manifest, manifest_path)
-        if store_reuse_baseline_vault() or continuation_e2e_run():
+        if (
+            store_reuse_baseline_vault()
+            or continuation_e2e_run()
+            or chain == "testnet"
+        ):
             create_id = vault_next_stream_id(cfg_user, manifest)
         else:
             create_id = 0
@@ -3300,6 +3304,11 @@ def create_demo_stream_for_run(
 
     rate = int(manifest.get("stream_rate", 1))
     alloc = continuation_allocation_lo(manifest, cfg_user)
+    seed_alloc = os.environ.get("SEED_ALLOCATION", "").strip()
+    if seed_alloc:
+        alloc = int(seed_alloc)
+    set_manifest_allocation(manifest, alloc)
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
 
     if chain == "local":
         create_via = local_e2e_create_via()
