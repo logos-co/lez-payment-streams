@@ -35,7 +35,7 @@ deferred to Step 48; no Tier C; force-push feature branches only after Phase 2.
 | --- | --- | --- |
 | O45.1 spel×graph | C | stock `v0.6.0` guest build green; `nssa_core` alias in guest+core; `tag=v0.2.0` unify; IDL via `spel generate-idl` |
 | Wallet schema probe | dual-keys | `ps_ensure_wallet_config_split_compatible` keeps `sequencer_addr` + `sequencers[]`; seed uses graph WalletCore + direct getTransaction confirm |
-| O45.3 rebase census | proceed | delivery already on master+eligibility; module rebased with D45.13 (`storeQuery` sync kept; paid → `storeQueryWithEligibility`) |
+| O45.3 rebase census | proceed → amended | Tip-of-master delivery rebase pulled nim-ffi / post–Jul-31 event ABI; Phase 2 blocked. Locked D45.19 (parent = upstream-module pin `f8b03659…`) + D45.20 (`interfaces/` + `bind_*`, `std::string`, no `.api`, no `getPluginMethods` gate). Q45.1–Q45.5 closed into those decisions. |
 | O45.6 AT hexes | recorded | helper assert == operator/live `fe96c422…` |
 
 ## Verification rows

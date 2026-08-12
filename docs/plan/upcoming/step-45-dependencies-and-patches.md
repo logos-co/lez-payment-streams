@@ -2,7 +2,7 @@
 
 Upcoming. Index: [index.md](../index.md).
 Pins SSOT after freeze: [feature-branch-pins.md](../../reference/feature-branch-pins.md).
-Follow-up (program-graph unify + drop AT hex): [Step 48](step-48-program-graph-lez-unify.md).
+Follow-up (program-graph unify + drop AT hex): [Step 48](../waiting/step-48-program-graph-lez-unify.md).
 
 Absorbed raw TODOs (now this packet): PATH wallet vs LEZ pin; wallet Nix patch
 inventory; spel vendor / IDL path; eligibility fork rebase onto `master`.
@@ -42,7 +42,9 @@ Other SHAs (reference only): LEZ `v0.2.1` `15144ddb…`, `v0.2.2` `d6e4ae69…`,
 | D45.5 | Pin policy table above. |
 | D45.6 | LEZ-module at SHA above; refresh in-repo Nix patches; do not push local module `main` experiments upstream. |
 | D45.7 | Spel `v0.6.0` tag-only in scaffold, guest, **core**, and **examples**; drop `vendor/spel-*` and path `[patch]` at root **and** `examples/`. Add `nssa_core = { package = "lee_core", … }` wherever stock macros expand (guest; check core in Phase 0). Gate: guest builds; ImageID + ELF; IDL byte-identical across two runs. **C-fails:** if stock `v0.6.0` will not build against program-graph `v0.2.0`, keep vendored `v0.5.0`, skip spel bump, keep current ImageID, finish the rest of Step 45, defer spel+graph unify to Step 48. |
-| D45.8–D45.9 | Rebase delivery then delivery-module eligibility onto recorded `origin/master` SHAs (not delivery tag v0.38.1). Push **pre-rebase refs** before force-push. Apply D45.13 on the module rebase. |
+| D45.8–D45.9 | Rebase delivery then delivery-module eligibility onto recorded bases (not delivery tag v0.38.1). Push **pre-rebase refs** before force-push. Apply D45.13 on the module rebase. Delivery base amended by D45.19. |
+| D45.19 | Delivery eligibility freeze parent = **upstream delivery-module’s flake pin era** (delivery ~2026-07-30 / `f8b036594ea2a36b529e10b584b7d2851a3ac5c8`: has `channel_exists`, flat `create_node` + `set_event_callback`) **plus** eligibility commits. Do **not** use tip-of-master, and do **not** use “latest before 2026-08-06 typed ABI” — that lineage already includes the ~2026-07-31 per-listener event ABI (`add_event_listener`), which upstream module has not adopted. Two breaks exist (events ~Jul 31, typed create ~Aug 6); Step 45 freezes before both. Later bump when upstream module moves. |
+| D45.20 | Eligibility cross-module calls: universal pattern only — no raw `LogosAPI`, no `modules().api`. Use `interface_dependencies` + `modules().bind_<iface>(moduleName)` (runtime names from `setEligibilityVerifier` / `setEligibilityProvider`). Do **not** hard-code `dependencies: ["payment_streams_module"]` for this freeze (keeps shipped module-name API). Interface header lives in `logos-delivery-module/interfaces/` only (tutorial layout; no shared package yet). Declare interface methods with `std::string` (consumer universal style); do not mirror provider `QVariant`/`QString` in the interface. If first bind/RPC fails on types, adjust interface to published LIDL field types only — do not redesign payment_streams in Step 45. Drop `getPluginMethods` pre-validation (tutorial no-validation / ordinary RPC errors); optional non-blocking debug log only. Sources: logos-tutorial composing-modules + interface-dependencies; logos-docs wrap-a-c-library; SDK `LogosModuleContext`. |
 | D45.10 | Delivery eligibility on `logos-messaging`; module eligibility stays on personal fork `s-tikhomirov` (no org move). Contingency: re-fork + URL; re-lock flake by recorded rev after force-push. |
 | D45.11 | Patch-only delivery: rejected. |
 | D45.12 | Tier A local required (Phase 1–2). Soft-only for this freeze (`RISC0_DEV_MODE=1`); module real-prove and Store soft full privacy = Tier C / later. Public testnet Tier A (Phase 3) deferred to Step 48. |
@@ -59,7 +61,7 @@ Closed outcome IDs (same content as above; for gate-log cross-ref):
 | --- | --- |
 | O45.1 | Program graph stays on LEZ `v0.2.0` with stock spel `v0.6.0` (C). C-fails → Step 48. Reject forcing guest onto `v0.2.4` via vendor or LEZ `[patch]`. |
 | O45.2 | Keep submit helper; operator pin. Removal = optional later. |
-| O45.3 | Execution gate: rebase census; stop and defer rebase if API re-adaptation needed. |
+| O45.3 | Execution gate: rebase census; stop and defer rebase if **unexpected** further API redesign beyond D45.13 / D45.19 / D45.20. Delivery eligibility base = D45.19 (upstream-module pin era, not tip-of-master / not post–Jul-31 event ABI). |
 | O45.4 | Module eligibility stays on personal fork. |
 | O45.5 | Keep AT hex as documented config; drop in Step 48. Out of Step 45: script-harden all entrypoints to auto-fill AT; module runtime `getProgramIds`. |
 | O45.6 | Execution gate: record program-graph FFI AT id, operator `v0.2.4` AT id, live testnet AT id. |
@@ -84,14 +86,49 @@ Do this sequence. Verification details are under [Verification](#verification-ph
 3. Spel `v0.6.0` (unless C-fails); drop vendor; guest build; ImageID + ELF; IDL two-run identical; **`make full-reset-localnet`**; local fixture sweep (manifest below). Public `deploy-testnet` / testnet fixture sync deferred to Step 48.
 4. Phase 1 verification (soft-only).
 5. Pre-rebase Store hermetic on new ImageID + **old** delivery pins (`SKIP_LIBLOGOSDELIVERY_OVERLAY=1`).
-6. Pre-rebase refs; rebase delivery → org feature branch; rebase delivery-module (D45.13) → personal fork feature branch (or stop per O45.3); re-lock; flake.lock = pins tip. Force-push feature branches only after Phase 2 green. Never push `master`/`main`.
-7. Phase 2. Phase 3 deferred to Step 48.
-8. D45.18 required cleanups; optional Tier C archive / helper removal.
-9. Pins freeze; old-ImageID grep-clean; move packet to `completed/`; update index / AGENTS (fix stale `072a26cc` in AGENTS).
+6. Delivery eligibility: reset/rebase onto **D45.19** parent (upstream-module pin `f8b03659…` / ~2026-07-30 + eligibility), not current delivery `master` and not post–Jul-31 event ABI. Keep pre-step45 ref. Do not force-push until Phase 2 green.
+7. Delivery-module: keep D45.13 rename; apply **D45.20** (`interfaces/` + `interface_dependencies` + `bind_*`, `std::string` methods, drop `modules().api` and `getPluginMethods` gate); re-lock flake to D45.19 delivery tip; align stubs with that pin’s `liblogosdelivery.h` (`FFICallBack`, flat ABI). Force-push feature branches only after Phase 2 green. Never push `master`/`main`.
+8. Phase 2. Phase 3 deferred to Step 48.
+9. D45.18 required cleanups; optional Tier C archive / helper removal.
+10. Pins freeze; old-ImageID grep-clean; move packet to `completed/`; update index / AGENTS (fix stale `072a26cc` in AGENTS).
+
+## Phase 2 course correction (locked intent)
+
+Context: a throwaway rebase of delivery eligibility onto tip-of-master pulled in the
+2026-08-06 nim-ffi 0.3 typed C ABI. Upstream delivery-module still calls the flat ABI
+and pins delivery ~2026-07-30. Phase 2 nix builds failed on pin skew (`channel_exists`),
+stub typo, and `modules().api` (universal `LogosModules` has no `.api`).
+
+### Implementation picture (do in this order)
+
+1. Delivery feature branch
+   - Rebuild eligibility on D45.19 parent (upstream-module pin `f8b03659…` + eligibility).
+   - Discard or leave unpushed the tip-of-master + nim-ffi / post–Jul-31 event adaptation as non-freeze.
+   - Pre-step45 ref already pushed; new freeze tip gets a new pre-force-push ref if history rewrites again.
+2. Delivery-module feature branch
+   - Keep unpaid sync `storeQuery` and paid `storeQueryWithEligibility` (D45.13).
+   - Keep flat C call sites matching D45.19 library docs (`create_node`, `set_event_callback`, `bindApiCall` as today).
+   - Add `interfaces/<eligibility>.h` + `interface_dependencies` (D45.20); trampolines use
+     `modules().bind_<iface>(moduleName).…`; drop `LogosAPI*` / `invokeRemoteMethod` / `getPluginMethods` gate.
+   - Update unit-test stubs: `FFICallBack`; generated-style `LogosModules` with `bind_*` (no fake `.api`).
+3. Re-lock
+   - `logos-delivery-module` flake → D45.19 delivery eligibility tip.
+   - payment-streams Store pins / overlays → same tip after Phase 2 green + force-push.
+4. Verify Phase 2 cells (hermetic Store, module unit-tests, missing-proof fail-closed).
+
+### Locked resolutions (was Q45.1–Q45.5)
+
+| ID | Decision |
+| --- | --- |
+| Q45.1 → D45.19 | Parent = upstream delivery-module flake pin (~2026-07-30 / `f8b03659…`), not “latest before Aug 6”. |
+| Q45.2 → D45.20 | Interface uses `std::string`; adjust to LIDL only if bind/RPC proves a type mismatch; no payment_streams redesign. |
+| Q45.3 → D45.20 | Drop `getPluginMethods` pre-check; rely on bind/RPC errors. |
+| Q45.4 → D45.20 | Interface header only under `logos-delivery-module/interfaces/`. |
+| Q45.5 → D45.20 | Keep `interface_dependencies` + runtime `bind_*`; reject hard-coded `payment_streams_module` dep for this freeze. |
 
 ## Out of scope
 
-- Program-graph LEZ → `v0.2.4` / drop AT hex ([Step 48](step-48-program-graph-lez-unify.md)).
+- Program-graph LEZ → `v0.2.4` / drop AT hex ([Step 48](../waiting/step-48-program-graph-lez-unify.md)).
 - Forcing that unify via vendor, spel-fork, or LEZ `[patch]`.
 - Script-harden every testnet entrypoint to auto-fill AT hex; module runtime `getProgramIds`.
 - Required removal of `lez-testnet-submit`.
@@ -99,8 +136,9 @@ Do this sequence. Verification details are under [Verification](#verification-ph
 - Replacing patched wallet in Store before upstream signing APIs; LIP-155 wire renames.
 - Steps 20 / 46; parked raw TODOs; Tier C unless claimed.
 - Hard-delete of still-documented maintainer archives.
-- Delivery rebase that fails O45.3 (separate packet).
-- Public testnet Tier A cells (Phase 3) — deferred to [Step 48](step-48-program-graph-lez-unify.md).
+- Delivery eligibility freeze on post–2026-07-31 event ABI or post–2026-08-06 typed ABI
+  (D45.19); pioneering delivery-module migration to those ABIs.
+- Public testnet Tier A cells (Phase 3) — deferred to [Step 48](../waiting/step-48-program-graph-lez-unify.md).
 - Module real-prove / CLOCK_50 (soft-only freeze for Step 45).
 
 ## Verification (phased DoD)
@@ -150,22 +188,24 @@ Guardrails: no unrebased Store freeze claim; no force-push without pre-rebase
 refs; no force-push until Phase 2 green; never push `master`/`main`; no LEZ
 `[patch]` / re-vendor unless C-fails; live scripts must not call `scripts/archive/`.
 
-### Phase 2 — after delivery rebase + re-lock
+### Phase 2 — after D45.19 delivery tip + D45.20 module + re-lock
 
 Pre-rebase: Store hermetic on new ImageID + old delivery pins
-(`SKIP_LIBLOGOSDELIVERY_OVERLAY=1`, `E2E_CLAIM_OPTIONAL=0`).
+(`SKIP_LIBLOGOSDELIVERY_OVERLAY=1`, `E2E_CLAIM_OPTIONAL=0`) — already green.
 
-After rebase:
+After D45.19/D45.20 + re-lock:
 
-10. Same Store hermetic on new delivery pins.
-11. Module nix `tests` / `result-tests` (incl. thread probe, `storeQuery_*`).
-12. Delivery Nim store/eligibility/codec tests via `all_tests_waku.nim`.
+10. Same Store hermetic on new (D45.19) delivery pins.
+11. Module nix `checks…unit-tests` / `result-tests` (incl. thread probe, `storeQuery_*`).
+    Attr is `.#checks.<system>.unit-tests`, not `.#tests`.
+12. Delivery Nim store/eligibility/codec tests via `all_tests_waku.nim` on the D45.19 tip.
 13. flake.lock revs = pins tips (delivery-module + payment-streams-module/wrappers).
 14. `store_query_missing_proof` still fails closed.
+15. No `modules().api` in delivery-module; eligibility uses `bind_*` (D45.20).
 
 ### Phase 3 — public testnet (deferred to Step 48)
 
-15–16. `verify-module-testnet` and `verify-store-testnet` (`E2E_CLAIM_OPTIONAL=0`)
+16–17. `verify-module-testnet` and `verify-store-testnet` (`E2E_CLAIM_OPTIONAL=0`)
 with `PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX` **set** to live/operator AT id
 (O45.5). Two-consecutive-green only for these Tier A cells. Not required to close
 Step 45.
@@ -183,6 +223,7 @@ Step 45.
 
 - O45.1–O45.6 outcomes recorded (C or C-fails; helper kept; AT config kept;
   rebase proceed/defer; three AT hexes).
+- D45.19 delivery tip + D45.20 eligibility `bind_*` landed (Q45.1–Q45.5 locked as above).
 - Pins rewritten for the split; D45.17 freeze set landed; helper AT assert green;
   `LEZ_OP_REV` = operator SHA; D45.18 required cleanups done (`testnet-common`
   live under `scripts/lib/`; no live→archive script calls).

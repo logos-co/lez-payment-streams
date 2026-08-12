@@ -69,7 +69,14 @@ cmd_build() {
     ps_fatal "DELIVERY_MODULE_ROOT not found: $dm_root"
   fi
   local dm_out
-  dm_out="$(ps_nix_build "$dm_root#lgx-portable")"
+  local -a nix_extra=()
+  local ld_root_for_flake="${LOGOS_DELIVERY_ROOT:-$REPO_ROOT/../logos-delivery}"
+  if [[ -d "$ld_root_for_flake" && -f "$ld_root_for_flake/flake.nix" ]]; then
+    # Prefer local delivery tip for Store builds before the feature branch is
+    # force-pushed / re-locked (Step 45 Phase 2).
+    nix_extra+=(--override-input logos-delivery "path:${ld_root_for_flake}" --impure)
+  fi
+  dm_out="$(ps_nix_build "$dm_root#lgx-portable" "${nix_extra[@]}")"
   ps_install_lgx "$dm_out"/*.lgx "$modules_user"
   ps_install_lgx "$dm_out"/*.lgx "$modules_provider"
   
