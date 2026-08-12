@@ -44,3 +44,5 @@ deferred to Step 48; no Tier C; force-push feature branches only after Phase 2.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-08-12 | `7d51ce3` | full-reset-localnet | `.scaffold/snapshots/funded` | pass | `dea010d9…` | 366868 | 1 | op `47eba256` / graph `v0.2.0` / spel `0cb7e098` / helper `47eba256` | n/a | AT hex exported `fe96c422…`; vault already funded skip; snapshot lez_pin matches operator |
 | 2026-08-12 | `931a6a0` | module-local | `.scaffold/e2e/artifacts/module-e2e-20260812T172651.log` | pass | `dea010d9…` | 366868 | 1 | op/graph/spel/helper as Pins | n/a | soft; AT hex set |
+| 2026-08-12 | `1ec1263` | module-local-provider-close | `.scaffold/e2e/artifacts/module-e2e-20260812T173450.log` | pass | `dea010d9…` | 366868 | 1 | as Pins | n/a | soft; CLOSE_ROLE=provider |
+| 2026-08-12 | `1ec1263` | module-local-close-negatives | `.scaffold/e2e/artifacts/module-e2e-20260812T174317.log` | pass | `dea010d9…` | 366868 | 1 | as Pins | n/a | soft; MODULE_E2E_CLOSE_NEGATIVES=1 |
