@@ -126,6 +126,30 @@ bool hex32FromQString(const QString& hexIn, uint8_t out[32]) {
     return true;
 }
 
+// Prefer PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX when the live sequencer AT
+// ImageID differs from the payment_streams FFI pin (scaffold LEZ). Else use the
+// FFI helper baked into lez-payment-streams-ffi.
+bool fillAuthenticatedTransferProgramId(uint8_t out[32], QString* errorOut) {
+    const QByteArray envHex = qgetenv("PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX");
+    if (!envHex.isEmpty()) {
+        if (hex32FromQString(QString::fromLatin1(envHex), out)) {
+            return true;
+        }
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral(
+                "PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX must be 64 hex chars");
+        }
+        return false;
+    }
+    if (ps_ffi_authenticated_transfer_program_id(out) != kFfiSuccess) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("authenticated transfer program id FFI failed");
+        }
+        return false;
+    }
+    return true;
+}
+
 QString bytes32ToHexLower(const uint8_t* bytes) {
     return QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(bytes), 32).toHex());
 }
@@ -1122,9 +1146,8 @@ QString PaymentStreamsModuleImpl::deposit(const QVariant& ownerAccountIdBase58,
     if (!ownerBytesFromOwnerField(wallet, ownerAccountIdBase58.toString(), owner, &err)) {
         return makeErrorJson(err);
     }
-    if (ps_ffi_authenticated_transfer_program_id(transferPid) !=
-        kFfiSuccess) {
-        return makeErrorJson(QStringLiteral("authenticated transfer program id FFI failed"));
+    if (!fillAuthenticatedTransferProgramId(transferPid, &err)) {
+        return makeErrorJson(err);
     }
 
     QByteArray instruction;
