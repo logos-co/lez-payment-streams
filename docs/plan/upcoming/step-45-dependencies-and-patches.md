@@ -45,13 +45,13 @@ Other SHAs (reference only): LEZ `v0.2.1` `15144ddb…`, `v0.2.2` `d6e4ae69…`,
 | D45.8–D45.9 | Rebase delivery then delivery-module eligibility onto recorded `origin/master` SHAs (not delivery tag v0.38.1). Push **pre-rebase refs** before force-push. Apply D45.13 on the module rebase. |
 | D45.10 | Delivery eligibility on `logos-messaging`; module eligibility stays on personal fork `s-tikhomirov` (no org move). Contingency: re-fork + URL; re-lock flake by recorded rev after force-push. |
 | D45.11 | Patch-only delivery: rejected. |
-| D45.12 | Tier A required; Tier B = module real-prove only (when ImageID cuts); Store soft full privacy = Tier C. |
+| D45.12 | Tier A local required (Phase 1–2). Soft-only for this freeze (`RISC0_DEV_MODE=1`); module real-prove and Store soft full privacy = Tier C / later. Public testnet Tier A (Phase 3) deferred to Step 48. |
 | D45.13 | On module rebase: keep unpaid sync `storeQuery(…)` → kernel. Rename paid async path to `storeQueryWithEligibility` / `storeQueryWithEligibilityCompleted` (payload unchanged). Keep delivery C `logosdelivery_store_query`. Do not make paid path sync. Anti-bypass: `store_query_missing_proof` still fails closed. Update orchestrator checks for both old and new event names. |
 | D45.14 | Keep `PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX` as **documented testnet config** (required under the split: FFI AT id is program-graph `v0.2.0`, live sequencer is `v0.2.2+` / `fe96c422…`). Drop = Step 48. Keep `ps_ensure_wallet_statistics` / Python twin as supported ≥0.2.2 `open` args. Drop `wallet-v021.sh` and wallet-shim. Keep dual `NSSA_WALLET_HOME_DIR` + `LEE_WALLET_HOME_DIR` exports. |
 | D45.15 | Invert `ps_prepend_lez_wallet_path`: prefer scaffold `v0.2.4` `target/release` over `~/.cargo/bin/wallet`. Delete shim-dir + `wallet-v021.sh`. Phase 1: `command -v wallet` under scaffold cache (unless Phase 0 schema failure-branch recorded). |
 | D45.16 | **Keep** `lez-testnet-submit` (Required testnet bootstrap). Bump to operator LEZ `v0.2.4`. It is the AT **id and ELF** source for `bootstrap_testnet_fixture` / `ensure-testnet-vault` (no ELF override flag today). Rebuild release binary; assert `auth-transfer-program-id-hex` == O45.6 operator/live hex (stale `target/release` silently keeps old AT). Record helper LEZ rev in gate-log Pins. Rollback = revert helper crate/lockfile only. Removing the helper (WalletCore port) is **Tier C / later**, and must add AT hex + ELF inject flags first. |
 | D45.17 | Freeze pin sites: scaffold; program-graph Cargo + `nix/payment-streams-ffi.nix`; spel in core/guest/examples; lockfiles root + `examples/` + `methods/guest/` + `tools/lez-testnet-submit/`; Nix wallet/module/delivery locks. Delete `vendor/spel-*` unless C-fails. Rewrite pins doc for the split. |
-| D45.18 | Required: fix broken live `create-*-stream-fixture` fallbacks; drop `wallet-v021.sh`; set `testnet-common.sh` `LEZ_OP_REV` to operator `47eba256…` and note the file is a **live** dependency of Required testnet despite `archive/`. Optional later: demos, old `verify-step10*`–`18*`, helper removal. |
+| D45.18 | Required: fix broken live `create-*-stream-fixture` fallbacks without calling `scripts/archive/` (live code must not depend on archive); drop `wallet-v021.sh`; **move** `testnet-common.sh` out of `archive/` into live `scripts/lib/` and set `LEZ_OP_REV` to operator `47eba256…`. Optional later: demos, old `verify-step10*`–`18*`, helper removal. |
 
 Closed outcome IDs (same content as above; for gate-log cross-ref):
 
@@ -77,15 +77,15 @@ Do this sequence. Verification details are under [Verification](#verification-ph
    - O45.3 rebase census / throwaway rebase; apply stop rule.
    - O45.6 record three AT hexes.
    - Scratch `lgs setup` on LEZ `v0.2.4`.
-0b. Confirm no valued streams remain on old ImageID (**before** fixture sweep).
-1. Inventory + rewrite `feature-branch-pins.md` (split, nine patches, shims, helper AT id/ELF note, live `testnet-common`).
-2. Operator stack to `v0.2.4` + D45.6 module SHA; PATH invert (D45.15); bump + **rebuild** submit helper; AT id assert vs O45.6; set `LEZ_OP_REV` to operator SHA. Do **not** `full-reset-localnet` yet.
+0b. Skipped for this freeze (old ImageID streams not treated as valued).
+1. Inventory + rewrite `feature-branch-pins.md` (split, patch inventory, shims, helper AT id/ELF note, live `testnet-common`).
+2. Operator stack to `v0.2.4` + D45.6 module SHA; PATH invert (D45.15); bump + **rebuild** submit helper; AT id assert vs O45.6; move `testnet-common` live and set `LEZ_OP_REV` to operator SHA. Do **not** `full-reset-localnet` yet.
    Expected-red until step 3: snapshot `lez_pin` ≠ new scaffold pin — restores abort until `make full-reset-localnet`.
-3. Spel `v0.6.0` (unless C-fails); drop vendor; guest build; ImageID + ELF; IDL two-run identical; **`make full-reset-localnet`**; fixture sweep (manifest below); `deploy-testnet`; sync testnet fixtures.
-4. Phase 1 verification.
+3. Spel `v0.6.0` (unless C-fails); drop vendor; guest build; ImageID + ELF; IDL two-run identical; **`make full-reset-localnet`**; local fixture sweep (manifest below). Public `deploy-testnet` / testnet fixture sync deferred to Step 48.
+4. Phase 1 verification (soft-only).
 5. Pre-rebase Store hermetic on new ImageID + **old** delivery pins (`SKIP_LIBLOGOSDELIVERY_OVERLAY=1`).
-6. Pre-rebase refs; rebase delivery → org; rebase delivery-module (D45.13) → personal fork (or stop per O45.3); re-lock; flake.lock = pins tip.
-7. Phase 2 then Phase 3.
+6. Pre-rebase refs; rebase delivery → org feature branch; rebase delivery-module (D45.13) → personal fork feature branch (or stop per O45.3); re-lock; flake.lock = pins tip. Force-push feature branches only after Phase 2 green. Never push `master`/`main`.
+7. Phase 2. Phase 3 deferred to Step 48.
 8. D45.18 required cleanups; optional Tier C archive / helper removal.
 9. Pins freeze; old-ImageID grep-clean; move packet to `completed/`; update index / AGENTS (fix stale `072a26cc` in AGENTS).
 
@@ -100,6 +100,8 @@ Do this sequence. Verification details are under [Verification](#verification-ph
 - Steps 20 / 46; parked raw TODOs; Tier C unless claimed.
 - Hard-delete of still-documented maintainer archives.
 - Delivery rebase that fails O45.3 (separate packet).
+- Public testnet Tier A cells (Phase 3) — deferred to [Step 48](step-48-program-graph-lez-unify.md).
+- Module real-prove / CLOCK_50 (soft-only freeze for Step 45).
 
 ## Verification (phased DoD)
 
@@ -142,13 +144,11 @@ archive copies under `scripts/archive/{bootstrap-testnet,create-testnet-stream-f
 4. `make check-terminology`.
 5–7. `verify-module-local`, `verify-module-local-payee-close`,
    `verify-module-local-close-negatives`.
-8–9. Tier B (if ImageID cut): `verify-module-local-privacy`; real-prove
-   `RISC0_DEV_MODE=0` + CLOCK_50.
+8–9. Soft privacy / real-prove: Tier C for this freeze (not required).
 
-Guardrails: no fixture sweep before 0b drain; no unrebased Store freeze claim;
-no testnet green on operator scaffold still at `v0.2.0`; no Phase 3 before
-deploy + fixture sync; no force-push without pre-rebase refs; no LEZ `[patch]` /
-re-vendor unless C-fails; try-B does not block Phase 3.
+Guardrails: no unrebased Store freeze claim; no force-push without pre-rebase
+refs; no force-push until Phase 2 green; never push `master`/`main`; no LEZ
+`[patch]` / re-vendor unless C-fails; live scripts must not call `scripts/archive/`.
 
 ### Phase 2 — after delivery rebase + re-lock
 
@@ -163,14 +163,16 @@ After rebase:
 13. flake.lock revs = pins tips (delivery-module + payment-streams-module/wrappers).
 14. `store_query_missing_proof` still fails closed.
 
-### Phase 3 — public testnet
+### Phase 3 — public testnet (deferred to Step 48)
 
 15–16. `verify-module-testnet` and `verify-store-testnet` (`E2E_CLAIM_OPTIONAL=0`)
 with `PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX` **set** to live/operator AT id
-(O45.5). Two-consecutive-green only for these Tier A cells.
+(O45.5). Two-consecutive-green only for these Tier A cells. Not required to close
+Step 45.
 
 ### Tier C — optional
 
+- Soft module privacy / real-prove (`RISC0_DEV_MODE=0` + CLOCK_50).
 - Store soft full privacy; testnet real-prove privacy; `verify-store-local-lifecycle`;
   full USER_JOURNEY re-walk.
 - Remove `lez-testnet-submit` after WalletCore port + AT hex/ELF inject flags;
@@ -182,6 +184,7 @@ with `PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX` **set** to live/operator AT id
 - O45.1–O45.6 outcomes recorded (C or C-fails; helper kept; AT config kept;
   rebase proceed/defer; three AT hexes).
 - Pins rewritten for the split; D45.17 freeze set landed; helper AT assert green;
-  `LEZ_OP_REV` = operator SHA; D45.18 required cleanups done.
-- Phased Tier A (+ Tier B if ImageID cut) in the gate log.
+  `LEZ_OP_REV` = operator SHA; D45.18 required cleanups done (`testnet-common`
+  live under `scripts/lib/`; no live→archive script calls).
+- Phase 1 + Phase 2 Tier A (soft-only) in the gate log. Phase 3 deferred to Step 48.
 - Packet in `docs/plan/completed/`; index / AGENTS updated.
