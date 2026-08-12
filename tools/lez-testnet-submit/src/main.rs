@@ -15,6 +15,17 @@ use submit::{
 };
 use wallet::WalletCore;
 
+fn ensure_statistics_path(wallet_storage: &std::path::Path) -> Result<PathBuf> {
+    let path = wallet_storage
+        .parent()
+        .map(|p| p.join("statistics.json"))
+        .context("wallet_storage has no parent")?;
+    if !path.exists() {
+        std::fs::write(&path, "{}\n").with_context(|| format!("write {}", path.display()))?;
+    }
+    Ok(path)
+}
+
 #[derive(Parser)]
 #[command(name = "lez-testnet-submit", about = "Step 18 public-tx submit helper (jsonrpsee, rc5 LEZ)")]
 struct Cli {
@@ -103,11 +114,14 @@ async fn run() -> Result<()> {
             account_id_hex,
         } => {
             let id = parse_account_id_hex(&account_id_hex)?;
+            let statistics = ensure_statistics_path(&wallet_storage)?;
             let wallet = WalletCore::new_update_chain(
                 wallet_config.clone(),
                 wallet_storage,
+                statistics,
                 None,
             )
+            .await
             .context("open wallet")?;
             let acc = wallet
                 .get_account_public(id)

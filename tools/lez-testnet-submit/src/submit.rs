@@ -8,6 +8,17 @@ use wallet::WalletCore;
 
 use crate::sequencer_rpc::submit_public_with_wallet;
 
+fn ensure_statistics_path(wallet_storage: &Path) -> Result<PathBuf> {
+    let path = wallet_storage
+        .parent()
+        .map(|p| p.join("statistics.json"))
+        .context("wallet_storage has no parent")?;
+    if !path.exists() {
+        std::fs::write(&path, "{}\n").with_context(|| format!("write {}", path.display()))?;
+    }
+    Ok(path)
+}
+
 #[derive(Debug, Deserialize)]
 pub struct SubmitPayload {
     pub account_ids: Vec<String>,
@@ -107,11 +118,14 @@ pub async fn submit_public_tx(
     let instruction_bytes = hex::decode(payload.instruction_hex.trim()).context("instruction_hex")?;
     let instruction_words = instruction_words_from_le_bytes(&instruction_bytes)?;
 
+    let statistics = ensure_statistics_path(wallet_storage)?;
     let wallet = WalletCore::new_update_chain(
         wallet_config.to_path_buf(),
         wallet_storage.to_path_buf(),
+        statistics,
         None,
     )
+    .await
     .context("open wallet")?;
 
     submit_public_with_wallet(

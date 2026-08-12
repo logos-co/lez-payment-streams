@@ -12,7 +12,6 @@ use serde_json::Value;
 use url::Url;
 use lez_payment_streams_core::instruction_try_from_instruction_words;
 use wallet::WalletCore;
-use wallet::poller::TxPoller;
 
 #[derive(Clone)]
 pub struct SequencerRpc {
@@ -98,7 +97,7 @@ pub async fn submit_public_with_wallet(
     }
 
     let nonces = wallet
-        .get_accounts_nonces(signing_account_ids)
+        .get_accounts_nonces(&signing_account_ids)
         .await
         .context("get_accounts_nonces")?;
 
@@ -111,12 +110,12 @@ pub async fn submit_public_with_wallet(
         anyhow::bail!("witness set fails message-hash validation");
     }
     let tx = PublicTransaction::new(message, witness_set);
-    let tx_hash = wallet
-        .sequencer_client
+    let client = wallet.helm_owned();
+    let tx_hash = client
         .send_transaction(LeeTransaction::Public(tx))
         .await
         .context("sendTransaction")?;
-    let poller = TxPoller::new(wallet.config(), wallet.sequencer_client.clone());
+    let poller = wallet.poller_helm();
     poller
         .poll_tx(tx_hash)
         .await

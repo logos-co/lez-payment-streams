@@ -1,5 +1,5 @@
 {
-  description = "logos-execution-zone-module upstream main (Universal) + payment-streams wallet patches (LEZ v0.2.0)";
+  description = "logos-execution-zone-module upstream main (Universal) + payment-streams wallet patches (LEZ operator v0.2.4 + module 549cf115)";
 
   inputs = {
     # pyo3-build-config in wallet-ffi-deps needs a Python interpreter in nativeBuildInputs.

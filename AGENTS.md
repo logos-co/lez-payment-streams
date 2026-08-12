@@ -76,7 +76,7 @@ Steps 36–39 complete (product + local Store privacy + testnet privacy E2E):
 [step-38-store-privacy-e2e.md](docs/plan/completed/step-38-store-privacy-e2e.md),
 [step-39-testnet-privacy-e2e.md](docs/plan/completed/step-39-testnet-privacy-e2e.md).
 Gate log: [step-39-testnet-gate-log.md](docs/plan/completed/step-39-testnet-gate-log.md)
-(module + Store full privacy on ImageID `072a26cc…`, `RISC0_DEV_MODE=0`,
+(module + Store full privacy on ImageID `dea010d9…`, `RISC0_DEV_MODE=0`,
 `E2E_CLAIM_OPTIONAL=0`). Do not reopen Phase 1–3 greens (D39.23). CPU prove is
 valid without NVIDIA (D39.26).
 

@@ -20,18 +20,14 @@ borsh = "1.5"
 base58 = "0.2"
 url = "2.5"
 
-wallet = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", package = "wallet" }
-lee = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", package = "lee" }
-lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", package = "lee_core" }
-common = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", package = "common" }
-sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", package = "sequencer_service_rpc", features = ["client"] }
-programs = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", package = "programs", default-features = false, features = ["artifacts"] }
-clock_core = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", package = "clock_core" }
+wallet = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "47eba256479f6f785acbd138834340703cd03401", package = "wallet" }
+lee = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "47eba256479f6f785acbd138834340703cd03401", package = "lee" }
+lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "47eba256479f6f785acbd138834340703cd03401", package = "lee_core" }
+common = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "47eba256479f6f785acbd138834340703cd03401", package = "common" }
+sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "47eba256479f6f785acbd138834340703cd03401", package = "sequencer_service_rpc", features = ["client"] }
+programs = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "47eba256479f6f785acbd138834340703cd03401", package = "programs", default-features = false, features = ["artifacts"] }
+clock_core = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "47eba256479f6f785acbd138834340703cd03401", package = "clock_core" }
 lez-payment-streams-core = { path = "../../lez-payment-streams-core" }
-
-[patch."https://github.com/logos-co/spel.git"]
-spel-framework-core = { path = "../../vendor/spel-framework-core" }
-spel-framework-macros = { path = "../../vendor/spel-framework-macros" }
 
 [dev-dependencies]
 tempfile = "3"

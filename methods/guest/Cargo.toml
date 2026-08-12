@@ -41,15 +41,15 @@ name = "lez_payment_streams"
 path = "src/bin/lez_payment_streams.rs"
 
 [dependencies]
-spel-framework = { git = "https://github.com/logos-co/spel.git", tag = "v0.5.0" }
-lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", default-features = false }
+spel-framework = { git = "https://github.com/logos-co/spel.git", tag = "v0.6.0", package = "spel-framework" }
+# Stock spel v0.6.0 macros expand to nssa_core::. Guest source keeps lee_core::
+# via `extern crate nssa_core as lee_core` (same package cannot have two Cargo names).
+# tag=v0.2.0 (not rev=) so Cargo unifies with spel-framework's nssa_core pin.
+nssa_core = { package = "lee_core", git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0", default-features = false }
 risc0-zkvm = { version = "=3.0.5", features = ["std"] }
+# Pin ruint below 1.18 (MSRV 1.90); risc0 guest toolchain is rustc 1.88. Matches lez-programs token guest.
+ruint = { version = "=1.17.0", default-features = false }
 lez-payment-streams-core = { path = "../../lez-payment-streams-core", default-features = false }
-authenticated_transfer_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a" }
+authenticated_transfer_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0" }
 serde = { version = "1.0", features = ["derive"] }
 borsh = "1.5"
-
-[patch."https://github.com/logos-co/spel.git"]
-spel-framework-core = { path = "../../vendor/spel-framework-core" }
-spel-framework-macros = { path = "../../vendor/spel-framework-macros" }
-spel-framework = { path = "../../vendor/spel-framework" }

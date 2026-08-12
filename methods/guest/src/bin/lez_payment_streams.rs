@@ -1,4 +1,9 @@
 #![no_main]
+// Stock spel v0.6.0 macros expand to nssa_core::. Guest source keeps lee_core::
+// via this alias (Cargo cannot name the same package twice).
+#[allow(unused_extern_crates)]
+extern crate nssa_core as lee_core;
+
 
 use spel_framework::prelude::*;
 

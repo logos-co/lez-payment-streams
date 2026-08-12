@@ -346,16 +346,7 @@ ps_vault_unallocated_lo() {
 
 # Prepend the pinned LEZ release dir (wallet, spel) to PATH if present.
 ps_prepend_lez_wallet_path() {
-  # Prefer a testnet-compatible wallet (remote getProgramIds / AT ImageID) over
-  # the scaffold v0.2.0 cache binary when the v0.2.2+ cargo wallet is installed.
-  local wrap="${REPO_ROOT}/scripts/bin/wallet-v021.sh"
-  local shim_dir="${REPO_ROOT}/.scaffold/e2e/wallet-shim"
-  if [[ -x "$wrap" && -x "${HOME}/.cargo/bin/wallet" ]]; then
-    mkdir -p "$shim_dir"
-    ln -sfn "$wrap" "$shim_dir/wallet"
-    export PATH="$shim_dir:$PATH"
-    return 0
-  fi
+  # Prefer scaffold operator LEZ release wallet (v0.2.4) over ~/.cargo/bin/wallet.
   local lez_release
   lez_release="$(ps_lez_cache)/target/release"
   if [[ -d "$lez_release" ]]; then

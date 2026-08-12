@@ -6,10 +6,6 @@ edition = "2021"
 [workspace]
 resolver = "2"
 
-[patch."https://github.com/logos-co/spel.git"]
-spel-framework-core = { path = "../vendor/spel-framework-core" }
-spel-framework-macros = { path = "../vendor/spel-framework-macros" }
-spel-framework = { path = "../vendor/spel-framework" }
 
 [[bin]]
 name = "generate_idl"
@@ -28,8 +24,8 @@ name = "bootstrap_testnet_fixture"
 path = "src/bin/bootstrap_testnet_fixture.rs"
 
 [dependencies]
-spel-framework = { git = "https://github.com/logos-co/spel.git", tag = "v0.5.0" }
-spel = { git = "https://github.com/logos-co/spel.git", tag = "v0.5.0" }
+spel-framework = { git = "https://github.com/logos-co/spel.git", tag = "v0.6.0", package = "spel-framework" }
+spel = { git = "https://github.com/logos-co/spel.git", tag = "v0.6.0", package = "spel" }
 lez-payment-streams-core = { path = "../lez-payment-streams-core" }
 serde_json = "1.0"
 tokio = { version = "1.28.2", features = ["net", "rt-multi-thread", "sync", "macros"] }
@@ -38,11 +34,11 @@ base58 = "0.2"
 clap = { version = "4.5", features = ["derive"] }
 hex = "0.4"
 # LEZ v0.2.0 (Step 26) — match scaffold.toml [repos.lez].pin (seed_localnet_fixture).
-lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a" }
-lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a" }
-common = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a" }
-sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", features = ["client"] }
-wallet = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a" }
-programs = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a", default-features = false, features = ["artifacts"] }
+lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0" }
+lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0" }
+common = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0" }
+sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0", features = ["client"] }
+wallet = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0" }
+programs = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0", default-features = false, features = ["artifacts"] }
 serde = { version = "1.0", features = ["derive"] }
 borsh = "1.5"

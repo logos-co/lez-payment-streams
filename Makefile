@@ -75,11 +75,11 @@ build: ## Build the guest binary
 	@echo "✅ Guest binary built: $(PROGRAM_BIN)"
 	@ls -la $(PROGRAM_BIN) 2>/dev/null || true
 
-idl: ## Generate IDL JSON from program source
+idl: ## Generate IDL JSON from program source (stock spel CLI)
 	@set -euo pipefail; \
 	tmp=$$(mktemp); \
 	trap 'rm -f "$$tmp"' EXIT; \
-	cargo run --manifest-path examples/Cargo.toml --bin generate_idl > "$$tmp"; \
+	spel generate-idl methods/guest/src/bin/lez_payment_streams.rs > "$$tmp"; \
 	mv "$$tmp" $(IDL_FILE)
 	@echo "✅ IDL written to $(IDL_FILE)"
 
@@ -224,7 +224,7 @@ prepare-localnet: ## Step 17b restore funded baseline (scripts/e2e.sh local prep
 	SKIP_BUILD=1 CHAIN=local ./scripts/e2e.sh local prepare
 
 verify-step18-testnet-read-smoke: ## Step 18 dual-pin read smoke (scripts/archive/verify-step18-testnet-read-smoke.sh)
-	chmod +x scripts/archive/verify-step18-testnet-read-smoke.sh scripts/archive/testnet-common.sh
+	chmod +x scripts/archive/verify-step18-testnet-read-smoke.sh scripts/lib/testnet-common.sh
 	./scripts/archive/verify-step18-testnet-read-smoke.sh
 
 deploy-testnet: ## Step 18 one-time program deploy (Part B)
@@ -232,9 +232,9 @@ deploy-testnet: ## Step 18 one-time program deploy (Part B)
 	./scripts/deploy-testnet.sh
 
 bootstrap-testnet: ## Step 18 one-time fixture bootstrap (Part B; scripts/archive/bootstrap-testnet.sh)
-	chmod +x scripts/archive/bootstrap-testnet.sh scripts/archive/testnet-common.sh
+	chmod +x scripts/archive/bootstrap-testnet.sh scripts/lib/testnet-common.sh
 	./scripts/archive/bootstrap-testnet.sh
 
 bootstrap-testnet-module: ## One-time fixture for module-only testnet (reuses testnet owner)
-	chmod +x scripts/bootstrap-testnet-module.sh scripts/archive/testnet-common.sh
+	chmod +x scripts/bootstrap-testnet-module.sh scripts/lib/testnet-common.sh
 	./scripts/bootstrap-testnet-module.sh

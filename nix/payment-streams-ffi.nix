@@ -9,7 +9,7 @@
 }:
 
 let
-  # LEZ v0.2.0 — operational pin (matches scaffold.toml).
+  # LEZ v0.2.0 — program-graph pin (Step 45 split; operator scaffold is v0.2.4).
   logosExecutionZoneSrc = fetchFromGitHub {
     owner = "logos-blockchain";
     repo = "logos-execution-zone";

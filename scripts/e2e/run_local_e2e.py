@@ -2224,9 +2224,10 @@ def precreate_stream_before_daemons(
     t0_total = time.monotonic()
     wallet_home = Path(os.environ.get("LEE_WALLET_HOME_DIR", repo / ".scaffold" / "wallet"))
     apply_e2e_wallet_poll_overrides(wallet_home)
-    # Use unified fixture.sh for stream creation
+    # Use unified fixture.sh for stream creation (no archive fallbacks).
     fixture = repo / "scripts" / "fixture.sh"
-    script = repo / "scripts" / "create-localnet-stream-fixture.sh"
+    if not fixture.is_file():
+        raise E2EError(f"missing live fixture entrypoint: {fixture}")
     env = os.environ.copy()
     env["FIXTURE_MANIFEST"] = str(manifest_path)
     env["REPO"] = str(repo)
@@ -2238,11 +2239,7 @@ def precreate_stream_before_daemons(
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
     release_logoscore_wallet(cfg_user)
     try:
-        if fixture.is_file():
-            proc = run(["bash", str(fixture), "stream", "create", "0"], cwd=repo, env=env, timeout=e2e_subprocess_timeout_s())
-        else:
-            # Fallback to legacy script during transition
-            proc = run(["bash", str(script)], cwd=repo, env=env, timeout=e2e_subprocess_timeout_s())
+        proc = run(["bash", str(fixture), "stream", "create", "0"], cwd=repo, env=env, timeout=e2e_subprocess_timeout_s())
     finally:
         reopen_logoscore_wallet(cfg_user, seq_url)
         reload_payment_streams_wallet(cfg_user, seq_url)
@@ -3372,7 +3369,8 @@ def create_demo_stream_for_run(
             env["CREATE_FORCE"] = "1"
             env["E2E_PER_RUN_STREAM"] = "1"
             fixture = repo / "scripts" / "fixture.sh"
-            script = repo / "scripts" / "create-localnet-stream-fixture.sh"
+            if not fixture.is_file():
+                raise E2EError(f"missing live fixture entrypoint: {fixture}")
             proc = None
             for attempt in range(3):
                 attempt_t0 = time.monotonic()
@@ -3403,10 +3401,7 @@ def create_demo_stream_for_run(
                     env["LEE_WALLET_HOME_DIR"] = str(tmp_wallet)
                 if attempt > 0:
                     time.sleep(5 * attempt)
-                if fixture.is_file():
-                    proc = run(["bash", str(fixture), "stream", "create", str(vault_id)], cwd=repo, env=env, timeout=subproc_timeout)
-                else:
-                    proc = run(["bash", str(script)], cwd=repo, env=env, timeout=subproc_timeout)
+                proc = run(["bash", str(fixture), "stream", "create", str(vault_id)], cwd=repo, env=env, timeout=subproc_timeout)
                 attempt_elapsed = round(time.monotonic() - attempt_t0, 2)
                 if proc.returncode == 0:
                     log_artifact(
@@ -3554,11 +3549,9 @@ def create_demo_stream_for_run(
             env["CREATE_FORCE"] = "1"
             env["E2E_PER_RUN_STREAM"] = "1"
             fixture = repo / "scripts" / "fixture.sh"
-            script = repo / "scripts" / "create-testnet-stream-fixture.sh"
-            if fixture.is_file():
-                proc = run(["bash", str(fixture), "stream", "create", str(vault_id)], cwd=repo, env=env, timeout=subproc_timeout)
-            else:
-                proc = run(["bash", str(script)], cwd=repo, env=env, timeout=subproc_timeout)
+            if not fixture.is_file():
+                raise E2EError(f"missing live fixture entrypoint: {fixture}")
+            proc = run(["bash", str(fixture), "stream", "create", str(vault_id)], cwd=repo, env=env, timeout=subproc_timeout)
             ok_create = proc.returncode == 0
             log_artifact(
                 artifact,

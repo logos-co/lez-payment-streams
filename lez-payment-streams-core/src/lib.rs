@@ -4,6 +4,10 @@
 //! module (Step 3a: `fold_stream`, `proposal_satisfies_policy`, `stream_satisfies_policy`, ...),
 //! plus public-transaction helpers ([`instruction_wire`], [`instruction_accounts`]; Step 5).
 
+// Stock spel v0.6.0 macros expand to nssa_core::. Source keeps lee_core:: via alias.
+#[allow(unused_extern_crates)]
+extern crate nssa_core as lee_core;
+
 #[cfg(test)]
 mod harness_seeds;
 

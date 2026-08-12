@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "sequencer_url": "https://testnet.lez.logos.co/",
-  "program_id_hex": "ee2cfb7466c239c51ef5c60222f4216d45df4de4664bae5c976c1b29f3da2ed1",
+  "program_id_hex": "dea010d9cb75887e8350f3dbd45b0efb8517e822fa105bc3e7b9fa2c9a2908ba",
   "guest_deploy_date": "2026-08-12",
   "guest_deploy_source_commit": "c9dd6bb345d53663d8a7dc4820664796e377cea5",
   "guest_elf_bytes": 366716,

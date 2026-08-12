@@ -19,7 +19,7 @@ on 2026-07-22 from freeze commit
 `c1f5b605705a8d8d2030d2c547ec7b9b9e77236a` (tree includes clock normalization after
 `6772238b`; pinned `methods/guest/Cargo.lock` for Docker guest-builder rustc 1.88).
 ImageID / `program_id_hex`:
-`ee2cfb7466c239c51ef5c60222f4216d45df4de4664bae5c976c1b29f3da2ed1` (release ELF 366716 bytes).
+`dea010d9cb75887e8350f3dbd45b0efb8517e822fa105bc3e7b9fa2c9a2908ba` (release ELF 366868 bytes).
 SSOT fixture: [fixtures/testnet-module.json](fixtures/testnet-module.json). After changing guest
 source or release profile, rebuild (`make build`), redeploy (`make deploy-testnet`), refresh
 fixtures and bootstrap helpers, then re-run module testnet E2E.

@@ -5,8 +5,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# shellcheck source=scripts/archive/testnet-common.sh
-source "$REPO_ROOT/scripts/archive/testnet-common.sh"
+# shellcheck source=scripts/lib/testnet-common.sh
+source "$REPO_ROOT/scripts/lib/testnet-common.sh"
 
 require_testnet_rpc
 ensure_testnet_wallet
@@ -15,7 +15,7 @@ export TESTNET_SKIP_PINATA="${TESTNET_SKIP_PINATA:-1}"
 export TESTNET_AUTH_TRANSFER_ELF_PATH="${TESTNET_AUTH_TRANSFER_ELF_PATH:-$(testnet_auth_transfer_elf_path)}"
 
 MANIFEST="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/testnet-module.json}"
-PROGRAM_ID_HEX="${TESTNET_PROGRAM_ID_HEX:-ee2cfb7466c239c51ef5c60222f4216d45df4de4664bae5c976c1b29f3da2ed1}"
+PROGRAM_ID_HEX="${TESTNET_PROGRAM_ID_HEX:-dea010d9cb75887e8350f3dbd45b0efb8517e822fa105bc3e7b9fa2c9a2908ba}"
 VAULT_ID="${VAULT_ID:-1}"
 
 # Reuse owner/provider from existing testnet.json if available.

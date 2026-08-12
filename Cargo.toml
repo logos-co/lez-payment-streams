@@ -1,4 +1,4 @@
-# LEZ git pin for host/guest/tests: rev a58fbce2 (v0.2.0). See docs/plan/upcoming/step-26-testnet-v02-migration.md.
+# LEZ git pin for host/guest/tests: tag v0.2.0 (program graph). Operator stack is v0.2.4 (Step 45). See docs/plan/upcoming/step-26-testnet-v02-migration.md.
 [workspace]
 members = [
     "lez-payment-streams-core",
@@ -11,10 +11,6 @@ exclude = [
 ]
 resolver = "2"
 
-[patch."https://github.com/logos-co/spel.git"]
-spel-framework-core = { path = "vendor/spel-framework-core" }
-spel-framework-macros = { path = "vendor/spel-framework-macros" }
-spel-framework = { path = "vendor/spel-framework" }
 
 # Workspace lint policy. Matches the lez-programs convention: deny the groups
 # where a new lint should always be a hard error (correctness/suspicious/perf),

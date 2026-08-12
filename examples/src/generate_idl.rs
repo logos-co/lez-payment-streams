@@ -1,9 +1,10 @@
-// Generate IDL JSON for the lez-payment-streams program.
-//
-// Usage (from repo root):
-//   make idl
-//
-// Path is relative to this crate's manifest dir (examples/); spel also emits
-// include_str! paths that must resolve from this file's directory (examples/src/).
+// Legacy entrypoint retained for discovery.
+// Step 45: `make idl` uses stock `spel generate-idl` (tag v0.6.0 path) so we
+// do not depend on `generate_idl!` include_str path quirks from examples/src.
 
-spel_framework::generate_idl!("../methods/guest/src/bin/lez_payment_streams.rs");
+fn main() {
+    eprintln!(
+        "use: make idl  (spel generate-idl methods/guest/src/bin/lez_payment_streams.rs)"
+    );
+    std::process::exit(2);
+}
