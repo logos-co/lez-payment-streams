@@ -322,6 +322,10 @@ Step 1 sets `VAULT_ID=0`.
 After Step 7 you have a new owner, so vault 0 is usually free.
 If `initializeVault` fails because that vault already exists for `$OWNER`, set `VAULT_ID` to the next free id and repeat.
 
+Omit `token_id`.
+The module records the native vault token (32 zero octets).
+The guest rejects any other `token_id`.
+
 ```bash
 h0=$(last_block)
 line=$(logoscore call payment_streams_module chainAction initializeVault \

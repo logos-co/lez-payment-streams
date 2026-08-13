@@ -48,6 +48,8 @@ The transport treats proof and status bytes as opaque.
 5. Policy and `service_id`.
    Register the protocol’s `service_id` and policy (minimum rate, minimum allocation, deadline delay).
    Store demo: `service_id` `/vac/waku/store-query/3.0.0`.
+   Policy minima live in one native `accepted_tokens` row.
+   `VaultProof.token_id` is 32 zero octets on this path.
 
 ## Check
 

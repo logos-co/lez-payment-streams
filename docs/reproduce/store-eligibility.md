@@ -22,6 +22,8 @@ Configs under `.scaffold/e2e/user/` and `.scaffold/e2e/provider/`.
 
 Claim is required (`E2E_CLAIM_OPTIONAL=0`).
 Settlement is close then claim on the run’s `stream_id`.
+Omit `token_id` on `initializeVault`.
+The native identity is 32 zero octets, stored as one `accepted_tokens` policy row.
 
 ## Cold start
 

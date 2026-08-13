@@ -1,6 +1,8 @@
 # Step 49 — LIP-155 multi-token type alignment (native-only demo)
 
-Upcoming. Index: [index.md](../index.md).
+Types and wire landed on `feat/step-49-native-token-spec-alignment`.
+ImageID-cut local and testnet dogfood pending.
+Index: [index.md](../index.md).
 Closes [Step 41](../completed/step-41-non-native-token-policy-spec.md) D41.6 for
 types, wire, and policy shape.
 Does not implement a non-native Token custody path.

@@ -51,7 +51,10 @@ PP circuit `output_index` follows private slot order. PP `deposit` chains
 `authenticated_transfer_program` via `ProgramWithDependencies`; owner commitment for PP deposit
 must belong to authenticated transfer, not a PP withdraw from payment-streams.
 
-Optional LIP extensions (multi-token vaults, auto-pause, receipts, etc.) are not implemented here.
+`VaultConfig.token_id` is recorded at `initialize_vault`.
+This guest accepts only the native identity (32 zero octets).
+Vault holding PDA seed 3 is that 32-byte `token_id`.
+Callers that omit `token_id` on `initializeVault` get native.
 
 ## Verify (Rust)
 

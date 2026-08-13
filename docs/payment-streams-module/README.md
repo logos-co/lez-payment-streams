@@ -92,7 +92,7 @@ Walkthrough = exercised in [payment-streams.md](../reproduce/payment-streams.md)
 
 | operation | JSON keys | Semantics | Walkthrough |
 | --- | --- | --- | --- |
-| `initializeVault` | `owner`, `vault_id` | Create empty vault PDA for owner | yes |
+| `initializeVault` | `owner`, `vault_id` | Create empty native vault. Optional `privacy_tier`. Optional `token_id` (64-hex or base58). Omit `token_id` for native (32 zero octets). | yes |
 | `deposit` | `owner`, `vault_id`, `amount_lo`, `amount_hi` | Credit vault from owner balance | yes |
 | `withdraw` | `owner`, `vault_id`, `amount_lo`, `amount_hi`, optional `withdraw_to` | Debit vault to owner or `withdraw_to` | no |
 | `createStream` | `owner`, `vault_id`, `stream_id`, `provider`, `rate`, `allocation_lo`, `allocation_hi` | Open stream to provider (`provider` base58) | yes |
