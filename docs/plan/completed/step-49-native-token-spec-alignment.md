@@ -1,15 +1,16 @@
 # Step 49 — LIP-155 multi-token type alignment (native-only demo)
 
+Index: [index.md](../index.md). Status: complete (2026-08).
+Gate log: [step-49-gate-log.md](step-49-gate-log.md).
+
 Types, wire, FFI, module, and living-doc delta landed on
 `feat/step-49-native-token-spec-alignment`.
-Fast verification, local-public, and testnet-public dogfood passed 2026-08-13
-([gate log](../completed/step-49-gate-log.md)).
-Index: [index.md](../index.md).
-Closes [Step 41](../completed/step-41-non-native-token-policy-spec.md) D41.6 for
+Fast verification, local-public, and testnet-public dogfood passed 2026-08-13.
+Closes [Step 41](step-41-non-native-token-policy-spec.md) D41.6 for
 types, wire, and policy shape.
 Does not implement a non-native Token custody path.
 
-Prerequisite: [Step 46](step-46-docs-unify-and-forum-post.md) (living docs already
+Prerequisite: [Step 46](../upcoming/step-46-docs-unify-and-forum-post.md) (living docs already
 on reproduce / integrate surfaces).
 [Step 48](../wontfix/step-48-program-graph-lez-unify.md) is not a prerequisite.
 
@@ -79,7 +80,7 @@ Out of scope:
 - Wrapped-native unification ([raw TODO](../raw-todos/wrapped-native-token-unification.md)).
 - Discovery / advertised policy on the wire (Step 42 wontfix).
 - Demo command or phase changes (still vault → deposit → create → close → claim).
-- [Step 50](step-50-consistency-and-clarity.md) refactors (clock helper,
+- [Step 50](../upcoming/step-50-consistency-and-clarity.md) refactors (clock helper,
   C++ sharing, orchestrator extract).
 - `lee_core` alias removal (Step 48 / spel, wontfix).
 - Renaming `user-journey-*.sh` (D46.14).
@@ -137,14 +138,13 @@ Out of scope:
 - Holding PDAs use 32-byte `token_id` seeds.
 - Demo and E2E omit `token_id` and still complete native happy path.
 - Spec comments cite `anoncomms`; manifest pin updated (D49.9).
-- Gate log: [step-49-gate-log.md](../completed/step-49-gate-log.md) (create when
-  closing) with ImageID via README / fixtures citation, local-public and
-  testnet-public artifacts.
+- Gate log: [step-49-gate-log.md](step-49-gate-log.md) with ImageID via README /
+  fixtures citation, local-public and testnet-public artifacts.
 
 ## Related
 
-- [step-41-non-native-token-policy-spec.md](../completed/step-41-non-native-token-policy-spec.md)
-- [step-46-docs-unify-and-forum-post.md](step-46-docs-unify-and-forum-post.md)
-- [step-50-consistency-and-clarity.md](step-50-consistency-and-clarity.md)
+- [step-41-non-native-token-policy-spec.md](step-41-non-native-token-policy-spec.md)
+- [step-46-docs-unify-and-forum-post.md](../upcoming/step-46-docs-unify-and-forum-post.md)
+- [step-50-consistency-and-clarity.md](../upcoming/step-50-consistency-and-clarity.md)
 - [wrapped-native-token-unification.md](../raw-todos/wrapped-native-token-unification.md)
 - [feature-branch-pins.md](../../reference/feature-branch-pins.md)

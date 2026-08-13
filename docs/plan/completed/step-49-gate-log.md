@@ -1,6 +1,6 @@
 # Step 49 gate log
 
-Packet: [step-49-native-token-spec-alignment.md](../upcoming/step-49-native-token-spec-alignment.md).
+Packet: [step-49-native-token-spec-alignment.md](step-49-native-token-spec-alignment.md).
 D49.11 ImageID-cut bar (`fast` + `local-public` + `testnet-public`) is recorded below.
 Program identity: README [Public testnet guest program](../../../README.md#public-testnet-guest-program)
 and [fixtures/testnet-module.json](../../../fixtures/testnet-module.json).

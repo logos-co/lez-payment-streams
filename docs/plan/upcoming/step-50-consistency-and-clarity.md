@@ -3,8 +3,8 @@
 Upcoming. Index: [index.md](../index.md).
 
 Prerequisite: [Step 46](step-46-docs-unify-and-forum-post.md) (living docs IA)
-and [Step 49](step-49-native-token-spec-alignment.md) (token_id / policy types
-and ImageID cut already landed).
+and [Step 49](../completed/step-49-native-token-spec-alignment.md) (token_id /
+policy types and ImageID cut landed 2026-08).
 [Step 48](../wontfix/step-48-program-graph-lez-unify.md) is not a prerequisite.
 
 ## Goal
@@ -13,9 +13,10 @@ Make the tree easier to enter and internally consistent without adding
 structure for its own sake, and without changing demo outcomes.
 
 Step 46 owns documentation IA and journey-name retirement.
-Step 49 owns LIP multi-token types.
+Step 49 owns LIP multi-token types (complete; do not recut ImageID here).
 This step owns remaining naming drift, duplicated glue, API warts, and
-maintainer-surface clutter identified in the post-47 clarity review.
+maintainer-surface clutter identified in the post-47 clarity review,
+plus persist/E2E glue exposed by the Step 49 ImageID-cut dogfood.
 
 ## Problem
 
@@ -30,9 +31,15 @@ After 46 and 49, product docs and token types are aligned, but:
   sequencer wait + state poll.
 - Makefile still leads with archived `verify-step10a`… targets and
   `payee-close` aliases.
-- Plan index / Cargo.toml comments still point at moved packets; `handoff.md`
-  is a leftover front door.
+- `Cargo.toml` still comments `upcoming/step-26-…`; `handoff.md` still reads
+  as a third product front door.
 - FFI still exports `payment_streams_ffi_ping`.
+- `rediscoverStreams` `persistIfDirty` writes in-memory inventory and can wipe
+  disk-seeded `provider_acceptances` (Step 49 testnet Store:
+  `PROOF_INVALID` / session public key unknown). E2E now seeds after rediscover
+  (`12f93bd`). That order is a workaround, not a module fix.
+- Bootstrap and `ensure-testnet-vault` still hardcode `PROGRAM_ID_HEX` defaults
+  that drift on every ImageID cut.
 
 ## Scope
 
@@ -43,7 +50,7 @@ No ImageID change unless a defect forces a guest edit (D50.1).
 Out of scope:
 
 - Step 46 doc IA, forum post, journey redirects.
-- Step 49 token types / PDA / non-native reject.
+- Step 49 token types / PDA / non-native reject / guest ImageID.
 - Token program custody path.
 - Merging bash and Python orchestrators into one language.
 - Splitting the guest binary into many files by default (only if a helper
@@ -62,10 +69,11 @@ Out of scope:
   or drop from help (keep targets if still invoked).
 - Remove or document `verify-module-local-payee-close*` as aliases of
   `provider-close` (terminology gate already special-cases them).
-- Fix `plan/index.md` outcomes row that still marks Step 45 upcoming.
 - `Cargo.toml` comment: `completed/step-26-…`, not `upcoming/`.
 - `handoff.md`: keep as redirect or fold the duplicate pins link; it must
   not read as a third product front door.
+- Bootstrap / `ensure-testnet-vault` `PROGRAM_ID_HEX` defaults: read the
+  fixture or `make program-id`, do not keep a second hardcoded hex.
 
 ### B. Shared invariants
 
@@ -87,6 +95,9 @@ Out of scope:
   one-function files.
 - Drop unused `getVaultStatus` `streamId`; `chainAction` already passes `{}`.
   Catalogue and C++ signature must match.
+- `rediscoverStreams`: load or merge disk `provider_acceptances` (and
+  `peer_mappings`) before `persistIfDirty`, so an on-disk seed survives
+  inventory persist. Do not treat E2E seed-after-rediscover as the only fix.
 
 ### D. Orchestrators
 
@@ -96,12 +107,16 @@ Out of scope:
 - Do not rewrite `run_local_e2e.py` (5100 lines) in this step.
 - Leave `user-journey-*.sh` filenames; comments may say “manual protocol
   path” now that Step 46 dropped living journey nav.
+- Keep exporting live AT ImageID into logoscore before it starts (Step 49
+  e2e). Do not restore an operator-override path.
+- Keep seeding provider session after `rediscoverStreams` until workstream C
+  persist merge lands. Do not revert to seed-then-rediscover.
 
 ### E. FFI / comments
 
 - Remove `payment_streams_ffi_ping` if nothing in-tree links it.
-- Off-chain / policy comments that still say Step 3a / `ift-ts` after 49:
-  sweep leftovers.
+- Leftover off-chain / policy comments that still say Step 3a / `ift-ts`
+  after 49’s `anoncomms` sweep. Do not reopen the token_id / wire change.
 - Do not macro-generate per-instruction FFI planners (cbindgen constraint
   stands).
 
@@ -132,6 +147,6 @@ Out of scope:
 
 - [step-46-docs-unify-and-forum-post.md](step-46-docs-unify-and-forum-post.md)
 - [step-47-unify-role-terminology.md](../completed/step-47-unify-role-terminology.md)
-- [step-49-native-token-spec-alignment.md](step-49-native-token-spec-alignment.md)
+- [step-49-native-token-spec-alignment.md](../completed/step-49-native-token-spec-alignment.md)
 - [naming-conventions.md](../../reference/naming-conventions.md)
 - [verification-matrix.md](../../reference/verification-matrix.md)

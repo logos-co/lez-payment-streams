@@ -53,8 +53,8 @@ In scope:
 
 Owned elsewhere (cite only):
 
-- Multi-token guest / FFI / module implementation — [Step 49](../upcoming/step-49-native-token-spec-alignment.md)
-  (native-only demo; D41.6).
+- Multi-token guest / FFI / module implementation — [Step 49](step-49-native-token-spec-alignment.md)
+  (complete; native-only demo; D41.6).
 - E2E, ImageIDs, dogfood — verification steps after implementation exists.
 - Wrapped-native unification —
   [raw TODO](../raw-todos/wrapped-native-token-unification.md); adopt into
@@ -102,7 +102,7 @@ The tip under review includes:
 | D41.3 | Native vs `accepted_tokens` shape | Closed — unify; native and non-native minima live in `TokenStreamPolicy` / `accepted_tokens` only. |
 | D41.4 | Publication bar for U9 | Closed — merged to `master` at `f09f9e9e` (#379); optional `lip.logos.co` follow-up like Step 19. |
 | D41.5 | Integration-repo pin update | Closed — cite `f09f9e9e` on `master` for multi-token policy ([feature-branch-pins.md](../../reference/feature-branch-pins.md)). |
-| D41.6 | Implementation follow-up | Scheduled as [Step 49](../upcoming/step-49-native-token-spec-alignment.md) (native-only types/wire; no Token custody path). |
+| D41.6 | Implementation follow-up | Closed — [Step 49](step-49-native-token-spec-alignment.md) (native-only types/wire; no Token custody path). |
 | D41.7 | Wrapped-native | Optional — remain in raw TODO until this step or a later step adopts it. |
 
 ## Definition of done
@@ -110,7 +110,7 @@ The tip under review includes:
 - LIP-155 on the chosen branch/rev specifies that a provider policy can list
   accepted non-native tokens and how verifiers apply those thresholds (F8).
 - That tip is published under the bar in D41.4 (U9).
-- Decision log closed for D41.1–D41.5 (D41.6–D41.7 optional).
+- Decision log closed for D41.1–D41.6 (D41.7 optional).
 - This integration repo pins the rev when it is the citation tip.
 - Roadmap Specs checklist can link the PR and/or merged rev.
 - Close is docs-only (LIP + optional pin).
@@ -126,7 +126,7 @@ in the LIP file. Docs review is sufficient (no `make verify-*` gate).
 - [step-40-lip155-privacy-workflow-spec.md](step-40-lip155-privacy-workflow-spec.md)
   (parallel LIP branch; merged independently)
 - [wrapped-native-token-unification.md](../raw-todos/wrapped-native-token-unification.md)
-- Implementation follow-up (D41.6): [step-49-native-token-spec-alignment.md](../upcoming/step-49-native-token-spec-alignment.md)
+- Implementation follow-up (D41.6): [step-49-native-token-spec-alignment.md](step-49-native-token-spec-alignment.md)
 - [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)
 - [incentivisation_v0.3](https://roadmap.logos.co/anoncomms/roadmap/testnet_v0.3/incentivisation_v0.3)
 - [feature-branch-pins.md](../../reference/feature-branch-pins.md)

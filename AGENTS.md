@@ -41,10 +41,10 @@ SSOT: [docs/reproduce/payment-streams.md](docs/reproduce/payment-streams.md),
 [docs/reproduce/store-eligibility.md](docs/reproduce/store-eligibility.md),
 [docs/integrate/eligibility.md](docs/integrate/eligibility.md).
 Step 35 (complete) supplies integrate-doc substance.
-After 46: [Step 49](docs/plan/upcoming/step-49-native-token-spec-alignment.md)
-(native-only LIP token_id / `accepted_tokens`; ImageID cut), then
-[Step 50](docs/plan/upcoming/step-50-consistency-and-clarity.md) (glue and
-naming polish).
+[Step 49](docs/plan/completed/step-49-native-token-spec-alignment.md) is complete
+(native-only LIP token_id / `accepted_tokens`; ImageID cut).
+Next polish: [Step 50](docs/plan/upcoming/step-50-consistency-and-clarity.md)
+(glue and naming).
 
 Historical protocol CLI (complete):
 [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370);
@@ -53,13 +53,13 @@ Historical protocol CLI (complete):
 [Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
 Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
 [Step 46](docs/plan/upcoming/step-46-docs-unify-and-forum-post.md) (docs unify + forum),
-[Step 49](docs/plan/upcoming/step-49-native-token-spec-alignment.md) (native-only
-multi-token types),
 [Step 50](docs/plan/upcoming/step-50-consistency-and-clarity.md) (consistency and
-clarity). Address 46 then 49 then 50.
+clarity). Address 46 then 50 (49 complete).
 Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer and payee close),
 [Step 45](docs/plan/completed/step-45-dependencies-and-patches.md) (deps and patches),
-[Step 47](docs/plan/completed/step-47-unify-role-terminology.md) (role terminology).
+[Step 47](docs/plan/completed/step-47-unify-role-terminology.md) (role terminology),
+[Step 49](docs/plan/completed/step-49-native-token-spec-alignment.md) (native-only
+multi-token types).
 Wontfix: [Step 20](docs/plan/wontfix/step-20-developer-journey.md) (formal logos-docs integrator publish),
 [Step 23](docs/plan/wontfix/step-23-public-store-provider.md) (public Store provider),
 [Step 25](docs/plan/wontfix/step-25-demo-coordination-module.md) (demo coordinator),

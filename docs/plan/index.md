@@ -12,8 +12,8 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | Path | Contents |
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
-| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44–45, 47) |
-| [upcoming/](upcoming/) | Steps 21, 46, 49, 50 |
+| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44–45, 47, 49) |
+| [upcoming/](upcoming/) | Steps 21, 46, 50 |
 | [waiting/](waiting/) | Empty |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43, 48 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
@@ -29,16 +29,17 @@ Documentation tracks ([N18](../reference/integration-decisions.md#n18-integratio
 | Protocol-only CLI | Complete as historical track; living path | [payment-streams.md](../reproduce/payment-streams.md); [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370); Steps 22, 28, 34; Step 46 |
 | Protocol UI (Basecamp) | Upcoming | Step 21 |
 | Docs unify + forum post | Upcoming | Step 46; draft [forum-post.md](../external/forum-post.md) |
-| Multi-token type alignment (native-only demo) | Upcoming | Step 49 |
+| Multi-token type alignment (native-only demo) | Complete | Step 49 |
 | Consistency and clarity polish | Upcoming | Step 50 |
 
 Engineering: Steps 26–33 complete; Steps 36–41 complete
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
-Steps 21, 46, 49, 50 upcoming (Basecamp UI; docs unify + forum post;
-native-only multi-token type alignment; consistency and clarity polish).
+Steps 21, 46, 50 upcoming (Basecamp UI; docs unify + forum post;
+consistency and clarity polish).
 Step 48 wontfix (program-graph LEZ unify / AT config drop).
-Address 46 then 49 then 50 (49 is an ImageID cut; 50 must not collide with it).
+Address 46 then 50 (49 complete, ImageID cut already landed; 50 must not
+collide with it).
 Step 44 complete (payer/payee close). Step 45 complete (deps and patches freeze).
 Step 47 complete (role terminology).
 Step 20 wontfix (formal Developer Journey logos-docs publish; replaced by Step 46 docs + forum).
@@ -94,7 +95,7 @@ paid Store mode on the provider.
 | Docs unify + forum post (reproduce / integrate / README Testing / forum links) | 46 (upcoming; after 45) |
 | Unify module JSON terminology (`owner` / `provider`) | 47 (complete) |
 | Program-graph LEZ unify + drop AT hex config | 48 (wontfix) |
-| LIP-155 multi-token type alignment (native-only demo) | 49 (upcoming; after 46) |
+| LIP-155 multi-token type alignment (native-only demo) | 49 (complete) |
 | Consistency and clarity polish | 50 (upcoming; after 49) |
 
 Step 25 (in-process demo coordinator module) is wontfix
@@ -138,6 +139,7 @@ Dual-host demo coordination stays in host scripts
 | 44 | E2E closeStream payer and payee close | [step-44-payer-and-payee-close.md](completed/step-44-payer-and-payee-close.md) |
 | 45 | Revisit dependencies and patches | [step-45-dependencies-and-patches.md](completed/step-45-dependencies-and-patches.md) |
 | 47 | Unify role terminology (module, journey, policy, layouts) | [step-47-unify-role-terminology.md](completed/step-47-unify-role-terminology.md) |
+| 49 | LIP-155 multi-token type alignment (native-only demo) | [step-49-native-token-spec-alignment.md](completed/step-49-native-token-spec-alignment.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
 [step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33),
@@ -145,7 +147,8 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 [step-44-gate-log.md](completed/step-44-gate-log.md) (Step 44),
 [step-45-gate-log.md](completed/step-45-gate-log.md) (Step 45),
 [step-46-gate-log.md](completed/step-46-gate-log.md) (Step 46, dogfood pending),
-[step-47-gate-log.md](completed/step-47-gate-log.md) (Step 47).
+[step-47-gate-log.md](completed/step-47-gate-log.md) (Step 47),
+[step-49-gate-log.md](completed/step-49-gate-log.md) (Step 49).
 
 ## Upcoming steps
 
@@ -153,7 +156,6 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | --- | --- | --- |
 | 21 | User Journey: Basecamp UI plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
 | 46 | Docs unify + forum post | Upcoming — [step-46-docs-unify-and-forum-post.md](upcoming/step-46-docs-unify-and-forum-post.md) |
-| 49 | LIP-155 multi-token type alignment (native-only demo) | Upcoming — [step-49-native-token-spec-alignment.md](upcoming/step-49-native-token-spec-alignment.md) |
 | 50 | Consistency and clarity polish | Upcoming — [step-50-consistency-and-clarity.md](upcoming/step-50-consistency-and-clarity.md) |
 
 ## Waiting steps
