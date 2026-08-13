@@ -15,6 +15,7 @@
 #include <logos_sdk.h>
 
 #include "payment_streams_ffi_bridge.h"
+#include "payment_streams_module_kit.h"
 #include "payment_streams_privacy_policy.h"
 
 #include <cstring>
@@ -192,6 +193,16 @@ bool saveStateToDisk() {
     if (path.isEmpty()) {
         return false;
     }
+    QJsonObject disk;
+    QFile diskFile(path);
+    if (diskFile.open(QIODevice::ReadOnly)) {
+        QJsonParseError err{};
+        const QJsonDocument doc = QJsonDocument::fromJson(diskFile.readAll(), &err);
+        if (err.error == QJsonParseError::NoError && doc.isObject()) {
+            disk = doc.object();
+        }
+    }
+    s.root = payment_streams_kit::mergePersistedDiskKeys(s.root, disk);
     QDir().mkpath(s.dir);
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly)) {
