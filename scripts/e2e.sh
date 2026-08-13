@@ -251,6 +251,7 @@ cmd_prepare_testnet() {
 
 cmd_run() {
   ps_log_info "Starting E2E run..."
+  ps_export_authenticated_transfer_program_id_hex
 
   # Flow A (module only): single-host happy path, no Store / dual-host / N8.
   if ps_is_module_mode; then
