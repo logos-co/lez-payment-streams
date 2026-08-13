@@ -23,6 +23,8 @@ pub enum OffChainError {
     InvalidPublicKey,
     /// Derived public-account id from `owner_public_key` does not match the on-chain vault owner.
     OwnerKeyMismatch,
+    /// `VaultProof.token_id` does not match the on-chain vault token identity.
+    TokenIdMismatch,
     /// Schnorr verification failed for the expected 32-byte LEZ canonical payload digest.
     BadSignature,
 }

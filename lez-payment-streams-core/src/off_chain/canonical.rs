@@ -22,6 +22,7 @@ struct VaultOwnerAuthBorshBody {
     provider_id: [u8; 32],
     owner_public_key: [u8; 32],
     service_id: String,
+    token_id: [u8; 32],
     rate: u64,
     allocation: u128,
     create_stream_deadline: u64,
@@ -170,9 +171,9 @@ pub fn store_eligibility_canonical_payload_digest_from_n8_wire(
     let head = wire.get(..prefix_len);
     let body = wire.get(prefix_len..);
     match (head, body) {
-        (Some(h), Some(b)) if h == STORE_ELIGIBILITY_DOMAIN_PREFIX.as_slice() => {
-            Ok(lez_canonical_payload_digest(&STORE_ELIGIBILITY_DOMAIN_PREFIX, b))
-        }
+        (Some(h), Some(b)) if h == STORE_ELIGIBILITY_DOMAIN_PREFIX.as_slice() => Ok(
+            lez_canonical_payload_digest(&STORE_ELIGIBILITY_DOMAIN_PREFIX, b),
+        ),
         _ => Err(super::wire_error::WireError::InvalidWireFrame),
     }
 }
@@ -182,6 +183,7 @@ pub fn vault_owner_auth_canonical_payload(
     vault_id: u64,
     provider_id: &[u8; 32],
     owner_public_key: &[u8; 32],
+    token_id: &[u8; 32],
     params: &StreamParams,
     session_public_key: &[u8; 32],
 ) -> Result<Vec<u8>, VaultOwnerAuthCanonicalError> {
@@ -193,6 +195,7 @@ pub fn vault_owner_auth_canonical_payload(
         provider_id: *provider_id,
         owner_public_key: *owner_public_key,
         service_id,
+        token_id: *token_id,
         rate: params.rate,
         allocation: params.allocation,
         create_stream_deadline: params.create_stream_deadline,
@@ -207,6 +210,7 @@ pub fn vault_owner_auth_canonical_payload_digest(
     vault_id: u64,
     provider_id: &[u8; 32],
     owner_public_key: &[u8; 32],
+    token_id: &[u8; 32],
     params: &StreamParams,
     session_public_key: &[u8; 32],
 ) -> Result<[u8; 32], VaultOwnerAuthCanonicalError> {
@@ -214,6 +218,7 @@ pub fn vault_owner_auth_canonical_payload_digest(
         vault_id,
         provider_id,
         owner_public_key,
+        token_id,
         params,
         session_public_key,
     )?;
@@ -250,9 +255,15 @@ mod tests {
     #[test]
     fn vault_owner_payload_rejects_non_utf8_service_id() {
         let params = StreamParams::new(1, 2, 3, vec![0xFF, 0xFE, 0xFD]);
-        let err =
-            vault_owner_auth_canonical_payload(9, &[7_u8; 32], &[8_u8; 32], &params, &[3_u8; 32])
-                .expect_err("invalid utf-8 service id must fail");
+        let err = vault_owner_auth_canonical_payload(
+            9,
+            &[7_u8; 32],
+            &[8_u8; 32],
+            &crate::NATIVE_TOKEN_ID,
+            &params,
+            &[3_u8; 32],
+        )
+        .expect_err("invalid utf-8 service id must fail");
         assert!(matches!(
             err,
             VaultOwnerAuthCanonicalError::InvalidServiceIdUtf8
@@ -267,8 +278,8 @@ mod tests {
         assert_eq!(
             digest,
             [
-                65, 191, 241, 41, 255, 102, 85, 126, 128, 47, 231, 66, 240, 218, 71, 20, 131,
-                131, 208, 86, 116, 168, 252, 230, 30, 83, 237, 26, 164, 157, 140, 56,
+                65, 191, 241, 41, 255, 102, 85, 126, 128, 47, 231, 66, 240, 218, 71, 20, 131, 131,
+                208, 86, 116, 168, 252, 230, 30, 83, 237, 26, 164, 157, 140, 56,
             ]
         );
         let wire = n8_reference_store_eligibility_wire();

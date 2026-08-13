@@ -33,6 +33,7 @@ mod field_numbers {
     pub const VAULT_PROOF_PROVIDER_ID: u32 = 2;
     pub const VAULT_PROOF_OWNER_PUBLIC_KEY: u32 = 3;
     pub const VAULT_PROOF_OWNER_SIGNATURE: u32 = 4;
+    pub const VAULT_PROOF_TOKEN_ID: u32 = 5;
 
     pub const STREAM_PARAMS_SERVICE_ID: u32 = 1;
     pub const STREAM_PARAMS_RATE: u32 = 2;
@@ -56,6 +57,8 @@ pub struct VaultProofWire {
     pub provider_id: [u8; 32],
     pub owner_public_key: [u8; 32],
     pub owner_signature: [u8; 64],
+    /// LIP-155 vault token identity. All-zeroes is native.
+    pub token_id: [u8; 32],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -269,6 +272,7 @@ pub fn parse_vault_proof(bytes: &[u8]) -> Result<VaultProofWire, WireError> {
     let mut provider: Option<&[u8]> = None;
     let mut owner_pk: Option<&[u8]> = None;
     let mut owner_sig: Option<&[u8]> = None;
+    let mut token_id: Option<&[u8]> = None;
 
     let mut cursor = 0_usize;
     while let Some((field, wire)) = read_tag(&mut cursor, bytes)? {
@@ -285,6 +289,9 @@ pub fn parse_vault_proof(bytes: &[u8]) -> Result<VaultProofWire, WireError> {
             (field_numbers::VAULT_PROOF_OWNER_SIGNATURE, WIRE_LEN_DELIM) => {
                 owner_sig = Some(read_len_delim(&mut cursor, bytes)?)
             }
+            (field_numbers::VAULT_PROOF_TOKEN_ID, WIRE_LEN_DELIM) => {
+                token_id = Some(read_len_delim(&mut cursor, bytes)?)
+            }
             (_, _) => skip_field(&mut cursor, bytes, wire)?,
         }
     }
@@ -297,10 +304,12 @@ pub fn parse_vault_proof(bytes: &[u8]) -> Result<VaultProofWire, WireError> {
     let provider_slice = provider.ok_or(WireError::InvalidWireFrame)?;
     let owner_pk_slice = owner_pk.ok_or(WireError::InvalidWireFrame)?;
     let owner_sig_slice = owner_sig.ok_or(WireError::InvalidWireFrame)?;
+    let token_id_slice = token_id.ok_or(WireError::InvalidWireFrame)?;
 
     verify_fixed_bytes(provider_slice, LEZ_ACCOUNT_RAW_LEN)?;
     verify_fixed_bytes(owner_pk_slice, LEZ_ACCOUNT_RAW_LEN)?;
     verify_fixed_bytes(owner_sig_slice, LEZ_SCHNORR_SIGNATURE_LEN)?;
+    verify_fixed_bytes(token_id_slice, LEZ_ACCOUNT_RAW_LEN)?;
 
     Ok(VaultProofWire {
         vault_id: vault_id_from_bytes(vault_label)?,
@@ -311,6 +320,9 @@ pub fn parse_vault_proof(bytes: &[u8]) -> Result<VaultProofWire, WireError> {
             .try_into()
             .map_err(|_| WireError::InvalidWireFrame)?,
         owner_signature: owner_sig_slice
+            .try_into()
+            .map_err(|_| WireError::InvalidWireFrame)?,
+        token_id: token_id_slice
             .try_into()
             .map_err(|_| WireError::InvalidWireFrame)?,
     })
@@ -337,6 +349,11 @@ pub fn serialize_vault_proof(vault: &VaultProofWire) -> Vec<u8> {
         &mut out,
         field_numbers::VAULT_PROOF_OWNER_SIGNATURE,
         &vault.owner_signature,
+    );
+    write_len_delim_bytes(
+        &mut out,
+        field_numbers::VAULT_PROOF_TOKEN_ID,
+        &vault.token_id,
     );
     out
 }
@@ -515,6 +532,7 @@ mod tests {
                 provider_id: [9_u8; 32],
                 owner_public_key: [8_u8; 32],
                 owner_signature: [7_u8; 64],
+                token_id: crate::NATIVE_TOKEN_ID,
             },
             params: StreamParams::new(15, 200, 999, b"/demo/service".to_vec()),
             session_public_key: [3_u8; 32],
@@ -523,5 +541,24 @@ mod tests {
         let bytes = serialize_stream_proposal(&original).expect("serializes");
         let decoded = parse_stream_proposal(&bytes).expect("round trip parses");
         assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn vault_proof_missing_token_id_field_fails() {
+        let original = VaultProofWire {
+            vault_id: 1,
+            provider_id: [2_u8; 32],
+            owner_public_key: [3_u8; 32],
+            owner_signature: [4_u8; 64],
+            token_id: crate::NATIVE_TOKEN_ID,
+        };
+        let mut bytes = serialize_vault_proof(&original);
+        let token_tag = ((field_numbers::VAULT_PROOF_TOKEN_ID << 3) | WIRE_LEN_DELIM) as u8;
+        let token_field_start = bytes
+            .iter()
+            .rposition(|&b| b == token_tag)
+            .expect("serialized vault proof includes token_id tag");
+        bytes.truncate(token_field_start);
+        assert_eq!(parse_vault_proof(&bytes), Err(WireError::InvalidWireFrame));
     }
 }

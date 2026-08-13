@@ -4,13 +4,12 @@ use core::slice;
 
 use lez_payment_streams_core::{
     generate_session_keypair, parse_eligibility_proof, parse_stream_proof, parse_stream_proposal,
-    serialize_eligibility_proof,
-    serialize_stream_proof, serialize_stream_proposal,
+    serialize_eligibility_proof, serialize_stream_proof, serialize_stream_proposal,
     sign_canonical_payload_digest, store_eligibility_canonical_payload_digest_from_n8_wire,
     vault_owner_auth_canonical_payload_digest, verify_canonical_payload_digest,
-    verify_stream_proof_for_store_query, verify_stream_proposal_vault_proof, CanonicalStoreQueryParts,
-    EligibilityProofWire, OffChainError, StreamProofWire, StreamProposalWire, VaultProofWire,
-    WireError,
+    verify_stream_proof_for_store_query, verify_stream_proposal_vault_proof,
+    CanonicalStoreQueryParts, EligibilityProofWire, OffChainError, StreamProofWire,
+    StreamProposalWire, VaultProofWire, WireError,
 };
 
 use lee::PrivateKey;
@@ -41,9 +40,9 @@ fn map_off_chain_err(err: OffChainError) -> PaymentStreamsFfiStatus {
         OffChainError::Wire(_) | OffChainError::InvalidPublicKey => {
             PaymentStreamsFfiStatus::Malformed
         }
-        OffChainError::OwnerKeyMismatch | OffChainError::BadSignature => {
-            PaymentStreamsFfiStatus::ProofInvalid
-        }
+        OffChainError::OwnerKeyMismatch
+        | OffChainError::BadSignature
+        | OffChainError::TokenIdMismatch => PaymentStreamsFfiStatus::ProofInvalid,
     }
 }
 
@@ -92,6 +91,7 @@ fn proposal_ffi_to_wire(
             provider_id: ffi_proposal.vault_proof.provider_id,
             owner_public_key: ffi_proposal.vault_proof.owner_public_key,
             owner_signature: ffi_proposal.vault_proof.owner_signature,
+            token_id: lez_payment_streams_core::NATIVE_TOKEN_ID,
         },
         params,
         session_public_key: ffi_proposal.session_public_key,
@@ -387,6 +387,7 @@ pub unsafe extern "C" fn payment_streams_ffi_vault_owner_auth_canonical_payload_
         wire.vault.vault_id,
         &wire.vault.provider_id,
         &wire.vault.owner_public_key,
+        &wire.vault.token_id,
         &wire.params,
         &wire.session_public_key,
     ) {
@@ -857,11 +858,11 @@ pub unsafe extern "C" fn payment_streams_ffi_serialize_eligibility_proof_stream_
 )]
 mod tests {
     use super::*;
+    use lee::PublicKey;
     use lez_payment_streams_core::{
         generate_session_keypair, parse_eligibility_proof, sign_stream_proof_for_store_query,
         sign_stream_proposal_vault_proof, StreamParams, VaultProofWire,
     };
-    use lee::PublicKey;
 
     #[test]
     fn ffi_round_trips_proposal_and_verifies_vault_proof() {
@@ -874,6 +875,7 @@ mod tests {
                 provider_id: [5_u8; 32],
                 owner_public_key: [0_u8; 32],
                 owner_signature: [0_u8; 64],
+                token_id: lez_payment_streams_core::NATIVE_TOKEN_ID,
             },
             params: StreamParams::new(12, 800, 1500, b"/demo/service".to_vec()),
             session_public_key: [9_u8; 32],
@@ -1077,7 +1079,8 @@ mod tests {
     #[test]
     fn ffi_parse_eligibility_proof_bytes_round_trip() {
         let inner = b"inner-proof-bytes".to_vec();
-        let wrapped = serialize_eligibility_proof(&EligibilityProofWire::StreamProof(inner.clone()));
+        let wrapped =
+            serialize_eligibility_proof(&EligibilityProofWire::StreamProof(inner.clone()));
         let mut arm = 0_u32;
         let mut inner_len = 0_usize;
         let mut out = vec![0_u8; 64];

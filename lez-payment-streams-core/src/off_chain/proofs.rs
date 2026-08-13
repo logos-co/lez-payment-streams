@@ -55,6 +55,7 @@ pub fn verify_stream_proposal_vault_signature(
         proposal.vault.vault_id,
         &proposal.vault.provider_id,
         &proposal.vault.owner_public_key,
+        &proposal.vault.token_id,
         &proposal.params,
         &proposal.session_public_key,
     )
@@ -72,6 +73,18 @@ pub fn verify_stream_proposal_vault_proof(
     proposal: &StreamProposalWire,
     vault_owner: &AccountId,
 ) -> Result<(), OffChainError> {
+    verify_stream_proposal_vault_proof_for_token(proposal, vault_owner, &crate::NATIVE_TOKEN_ID)
+}
+
+/// Like [`verify_stream_proposal_vault_proof`], with an explicit on-chain vault `token_id`.
+pub fn verify_stream_proposal_vault_proof_for_token(
+    proposal: &StreamProposalWire,
+    vault_owner: &AccountId,
+    on_chain_token_id: &[u8; 32],
+) -> Result<(), OffChainError> {
+    if proposal.vault.token_id != *on_chain_token_id {
+        return Err(OffChainError::TokenIdMismatch);
+    }
     owner_public_key_matches_vault_owner(&proposal.vault.owner_public_key, vault_owner)?;
     verify_stream_proposal_vault_signature(proposal)
 }
@@ -102,6 +115,7 @@ pub fn sign_stream_proposal_vault_proof(
         proposal.vault.vault_id,
         &proposal.vault.provider_id,
         &proposal.vault.owner_public_key,
+        &proposal.vault.token_id,
         &proposal.params,
         &proposal.session_public_key,
     )
@@ -151,6 +165,7 @@ mod tests {
                 provider_id: [5_u8; 32],
                 owner_public_key: [0_u8; 32],
                 owner_signature: [0_u8; 64],
+                token_id: crate::NATIVE_TOKEN_ID,
             },
             params,
             session_public_key: [4_u8; 32],
@@ -177,6 +192,13 @@ mod tests {
         assert!(matches!(
             verify_stream_proposal_vault_proof(&signed, &other_owner),
             Err(OffChainError::OwnerKeyMismatch)
+        ));
+
+        let mut other_token = crate::NATIVE_TOKEN_ID;
+        other_token[0] = 1;
+        assert!(matches!(
+            verify_stream_proposal_vault_proof_for_token(&signed, &owner_account, &other_token),
+            Err(OffChainError::TokenIdMismatch)
         ));
     }
 
@@ -234,6 +256,7 @@ mod tests {
                 provider_id: [2_u8; 32],
                 owner_public_key: [0_u8; 32],
                 owner_signature: [0_u8; 64],
+                token_id: crate::NATIVE_TOKEN_ID,
             },
             params,
             session_public_key: [6_u8; 32],
@@ -254,8 +277,7 @@ mod tests {
     #[test]
     fn pseudonymous_funding_vault_proof_signature_verifies_with_nsk() {
         let nullifier_secret_key = PrivateKey::new_os_random();
-        let nullifier_public_key =
-            *PublicKey::new_from_private_key(&nullifier_secret_key).value();
+        let nullifier_public_key = *PublicKey::new_from_private_key(&nullifier_secret_key).value();
 
         let params = StreamParams::new(10, 400, 1200, b"/vac/waku/store-query/3.0.0".to_vec());
         let proposal = StreamProposalWire {
@@ -264,6 +286,7 @@ mod tests {
                 provider_id: [5_u8; 32],
                 owner_public_key: [0_u8; 32],
                 owner_signature: [0_u8; 64],
+                token_id: crate::NATIVE_TOKEN_ID,
             },
             params,
             session_public_key: [4_u8; 32],
