@@ -40,6 +40,9 @@ consistency and clarity polish).
 Step 48 wontfix (program-graph LEZ unify / AT config drop).
 Address 46 then 50 (49 complete, ImageID cut already landed; 50 must not
 collide with it).
+After Step 50 closes, run the full README Testing matrix on the current
+ImageID (including privacy and testnet). That checkpoint is not Step 50’s
+gate and is not blocked on Step 21.
 Step 44 complete (payer/payee close). Step 45 complete (deps and patches freeze).
 Step 47 complete (role terminology).
 Step 20 wontfix (formal Developer Journey logos-docs publish; replaced by Step 46 docs + forum).

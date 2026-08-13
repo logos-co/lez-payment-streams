@@ -92,6 +92,8 @@ Out of scope:
 - Reviving archived step DoD scripts as living gates.
 - Sweeping `ift-ts` (already clean) or rewriting historical Step 3a cites in
   `integration-decisions.md`.
+- Full protocol matrix (privacy E2E, testnet public/private, extra close
+  cells). That is a wrap-up checkpoint after this step closes, not D50.7.
 
 ## Workstreams
 
@@ -197,7 +199,7 @@ Split confirmation into two layers.
 | D50.4 | Clock | Core function is SSOT; C++ matches `>= 1_000_000_000_000`. Purity only. |
 | D50.5 | Makefile | Living help from `##` comments; archive scripts stay in `scripts/archive/`. Remove `payee-close` aliases. |
 | D50.6 | Docs | Touch living surfaces only if an API wart still disagrees (getVaultStatus likely zero lines). No new reproduce doc. |
-| D50.7 | Verification | Commands below. No testnet unless D50.1 guest fix landed. Persist wipe is a module-state ordering bug, reproducible locally. |
+| D50.7 | Verification | Commands below. No testnet and no privacy E2E in this step’s gate unless D50.1 guest fix landed. Persist wipe is a module-state ordering bug, reproducible locally. |
 
 ## Done when
 
@@ -218,6 +220,22 @@ Split confirmation into two layers.
 README Testing handles `fast` / `local-public` map to the commands above.
 The verification matrix does not use those handle names; the gate is the
 commands.
+
+## After this step
+
+Once 50 is closed, run a wrap-up protocol matrix on the current ImageID.
+Step 49 proved public local and public testnet only. Privacy never ran on
+this cut. Record artifacts in the Step 50 gate log (or a short follow-up
+note there). Do not wait for Step 21.
+
+Handles: `fast`, `local-public` (module + store), `local-private` (stub
+receipts), `testnet-public`, then `testnet-private` (`RISC0_DEV_MODE=0`) if
+taking the Step 39 wrap-up dogfood. Optional extras: module provider-close
+and close-negatives. Persist Qt test plus public Store E2E already cover
+the `provider_acceptances` wipe; privacy E2E is for the private submit
+path and the post-49 vault-owner digest, not for re-proving persist.
+
+Step 46 dogfood can follow README Testing after Makefile help is stable.
 
 ## Related
 

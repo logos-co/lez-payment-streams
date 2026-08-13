@@ -55,6 +55,8 @@ Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
 [Step 46](docs/plan/upcoming/step-46-docs-unify-and-forum-post.md) (docs unify + forum),
 [Step 50](docs/plan/upcoming/step-50-consistency-and-clarity.md) (consistency and
 clarity). Address 46 then 50 (49 complete).
+After 50 closes: full README Testing matrix on the current ImageID
+(privacy + testnet). Not Step 50’s gate. Not blocked on Step 21.
 Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer and payee close),
 [Step 45](docs/plan/completed/step-45-dependencies-and-patches.md) (deps and patches),
 [Step 47](docs/plan/completed/step-47-unify-role-terminology.md) (role terminology),
