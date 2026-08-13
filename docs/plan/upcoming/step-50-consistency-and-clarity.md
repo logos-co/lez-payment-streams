@@ -51,8 +51,8 @@ After 46 and 49, product docs and token types are aligned, but:
   archived `verify-step10*`…`step13` lines, omits living
   `verify-module-local-close-negatives` (listed in the verification matrix),
   and omits `verify-step28-module-smoke`. `.PHONY` is a hand-maintained list
-  and still lists `payee-close` aliases. `scripts/check-terminology.sh`
-  special-cases `payee-close` until this step.
+  and still lists the retired-role close aliases.
+  `scripts/check-terminology.sh` special-cases those aliases until this step.
 - `Cargo.toml` still comments `upcoming/step-26-…`.
 - `handoff.md` is already retired (line 3). The remaining wart is a duplicated
   pins link (the same `feature-branch-pins.md` href twice).
@@ -110,8 +110,8 @@ Out of scope:
 - `.PHONY` is generated from every recipe target name in this Makefile
   (awk / `$(shell …)`), including aliases and archive wrappers. Do not
   hand-maintain a second list.
-- Remove `verify-module-local-payee-close*` aliases (do not keep them as
-  documented aliases). Same commit, drop the `payee-close` special case in
+- Remove the retired-role Makefile close aliases (do not keep them as
+  documented aliases). Same commit, drop the matching special case in
   `scripts/check-terminology.sh`.
 - `Cargo.toml` comment: `completed/step-26-…`, not `upcoming/`.
 - `handoff.md`: fold the duplicate pins link. Keep the retired redirect.
@@ -242,7 +242,7 @@ Split confirmation into two layers.
 | D50.2 | Orchestrators | E1 shares tx-inclusion (extracted Python `await_tx`, wall-clock budget). E2 keeps per-orchestrator state polls. Two entrypoints (`MODE=module` vs `MODE=store`). |
 | D50.3 | C++ sharing | One named-namespace `.h` / `.cpp` pair (`payment_streams_kit`), not a framework and not an anonymous-namespace header. |
 | D50.4 | Clock | Core function is SSOT; C++ matches `>= 1_000_000_000_000`. Purity only. Kit unit test covers the `>= 1e12` boundary. |
-| D50.5 | Makefile | Living help from `##` comments, skipping archive-invoking recipes. `.PHONY` generated from all recipe targets. Remove `payee-close` aliases. Do not edit `scripts/archive/`. |
+| D50.5 | Makefile | Living help from `##` comments, skipping archive-invoking recipes. `.PHONY` generated from all recipe targets. Remove the retired-role close aliases. Do not edit `scripts/archive/`. |
 | D50.6 | Docs | Touch living surfaces only if an API wart still disagrees (getVaultStatus likely zero lines). No new reproduce doc. |
 | D50.7 | Verification | `fast` only (`make check-terminology`, `RISC0_DEV_MODE=1 cargo test --workspace`, plus the new Qt kit tests via the module test binary if that is how the harness is invoked). No E2E in this step’s gate. Wrap-up matrix is Step 51. |
 | D50.8 | Persist test | Unit-test the merge helper with JSON fixtures. Do not call `rediscoverStreams` in Qt tests. |
@@ -257,7 +257,7 @@ Split confirmation into two layers.
 - Module JSON helpers exist once; `getVaultStatus` has no dummy `streamId`.
 - Persist merge has a Qt unit test (disk-only acceptance row survives merge).
 - Makefile `help` lists living targets; `.PHONY` is generated; matrix alias
-  list has no `payee-close`.
+  list has no retired-role close names.
 - cbindgen header regenerated; `c_header_smoke.c` links a real export.
 - `make check-terminology`.
 - `RISC0_DEV_MODE=1 cargo test --workspace`.
