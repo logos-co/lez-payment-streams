@@ -13,6 +13,8 @@ pub enum Instruction {
         vault_id: VaultId,
         /// Serialized as a single wire byte; see [`crate::VaultPrivacyTier`].
         privacy_tier: VaultPrivacyTier,
+        /// LIP-155 vault token identity. All-zeroes is native.
+        token_id: [u8; 32],
     },
     Deposit {
         vault_id: VaultId,
@@ -59,9 +61,18 @@ pub enum Instruction {
 
 impl Instruction {
     pub fn initialize_vault(vault_id: VaultId, privacy_tier: VaultPrivacyTier) -> Self {
+        Self::initialize_vault_with_token(vault_id, privacy_tier, crate::NATIVE_TOKEN_ID)
+    }
+
+    pub fn initialize_vault_with_token(
+        vault_id: VaultId,
+        privacy_tier: VaultPrivacyTier,
+        token_id: [u8; 32],
+    ) -> Self {
         Self::InitializeVault {
             vault_id,
             privacy_tier,
+            token_id,
         }
     }
 

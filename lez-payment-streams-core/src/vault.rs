@@ -103,6 +103,8 @@ pub struct VaultConfig {
     pub next_stream_id: StreamId,
     pub total_allocated: Balance,
     pub privacy_tier: VaultPrivacyTier,
+    /// LIP-155 vault token identity. All-zeroes is the LEZ native token.
+    pub token_id: [u8; 32],
 }
 
 impl VaultConfig {
@@ -123,7 +125,17 @@ impl VaultConfig {
             next_stream_id: StreamId::MIN,
             total_allocated: Balance::MIN,
             privacy_tier: privacy_tier.unwrap_or(VaultPrivacyTier::Public),
+            token_id: crate::NATIVE_TOKEN_ID,
         }
+    }
+}
+
+/// Guest and host reject any vault token other than [`crate::NATIVE_TOKEN_ID`] in this step.
+pub fn require_native_token_id(token_id: &[u8; 32]) -> Result<(), ErrorCode> {
+    if token_id == &crate::NATIVE_TOKEN_ID {
+        Ok(())
+    } else {
+        Err(ErrorCode::UnsupportedTokenId)
     }
 }
 

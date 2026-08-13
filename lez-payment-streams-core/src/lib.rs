@@ -42,8 +42,7 @@ pub use instruction_accounts::{
     pause_stream_instruction_accounts, resume_stream_instruction_accounts,
     top_up_stream_instruction_accounts, withdraw_instruction_accounts,
     ClaimStreamInstructionAccounts, DepositInstructionAccounts, InitializeVaultInstructionAccounts,
-    StreamOwnerInstructionAccounts, StreamProviderInstructionAccounts,
-    WithdrawInstructionAccounts,
+    StreamOwnerInstructionAccounts, StreamProviderInstructionAccounts, WithdrawInstructionAccounts,
 };
 #[cfg(feature = "host")]
 pub use instruction_wire::{
@@ -53,7 +52,9 @@ pub use instruction_wire::{
 };
 #[cfg(feature = "host")]
 pub use off_chain::*;
-pub use pda::{derive_stream_config_account_id, derive_vault_account_ids};
+pub use pda::{
+    derive_stream_config_account_id, derive_vault_account_ids, derive_vault_account_ids_for_token,
+};
 pub use policy::{
     create_stream_deadline_satisfies_policy_as_of, fold_stream, new_stream_satisfies_proposal,
     proposal_satisfies_policy, response_within_policy, stream_satisfies_policy,
@@ -62,11 +63,11 @@ pub use policy::{
 pub use stream_config::{StreamConfig, StreamState};
 pub use stream_provider_policy::{
     AcceptedStreamTerms, Balance, PolicyRejectReason, ProposalCheckInputs, StreamParams,
-    StreamProviderPolicy, MAX_SERVICE_ID_LEN,
+    StreamProviderPolicy, TokenStreamPolicy, MAX_SERVICE_ID_LEN,
 };
 pub use vault::{
-    checked_total_allocated_after_add, checked_total_allocated_after_release, VaultConfig,
-    VaultHolding, VaultPrivacyTier,
+    checked_total_allocated_after_add, checked_total_allocated_after_release,
+    require_native_token_id, VaultConfig, VaultHolding, VaultPrivacyTier,
 };
 
 // ---- Type aliases ---- //
@@ -94,6 +95,12 @@ pub const fn chain_timestamp_to_fold_seconds(ts: Timestamp) -> Timestamp {
 // ---- Version ---- //
 
 pub const DEFAULT_VERSION: VersionId = 1;
+
+/// LIP-155 native vault token identity: 32 zero octets.
+pub const NATIVE_TOKEN_ID: [u8; 32] = [0_u8; 32];
+
+/// LIP-155 recommended maximum length of [`StreamProviderPolicy::accepted_tokens`].
+pub const MAX_ACCEPTED_TOKENS: usize = 16;
 
 #[cfg(test)]
 mod chain_timestamp_tests {

@@ -101,12 +101,14 @@ pub fn proposal_satisfies_policy(
         vault_holding_balance,
         vault_total_allocated,
         now,
+        token_id,
     }: &ProposalCheckInputs<'_>,
 ) -> Result<(), PolicyRejectReason> {
-    if params.rate < policy.min_rate {
+    let token_policy = policy.token_policy(token_id)?;
+    if params.rate < token_policy.min_rate {
         return Err(PolicyRejectReason::RateBelowPolicyMin);
     }
-    if params.allocation < policy.min_allocation {
+    if params.allocation < token_policy.min_allocation {
         return Err(PolicyRejectReason::AllocationBelowPolicyMin);
     }
 
@@ -172,7 +174,10 @@ pub fn stream_satisfies_policy(
 
     stream_provider_binding_satisfies_expected_provider(folded_stream, accepted_terms.provider_id)?;
 
-    if folded_stream.rate < accepted_terms.policy_at_acceptance.min_rate {
+    let token_policy = accepted_terms
+        .policy_at_acceptance
+        .token_policy(&accepted_terms.token_id)?;
+    if folded_stream.rate < token_policy.min_rate {
         return Err(PolicyRejectReason::RateBelowPolicyMin);
     }
     if folded_stream.rate < accepted_terms.params.rate {
@@ -337,6 +342,7 @@ mod predicates_unit_tests {
                 vault_holding_balance: 10_000,
                 vault_total_allocated: 100,
                 now: 100,
+                token_id: crate::NATIVE_TOKEN_ID,
             }),
             Err(PolicyRejectReason::RateBelowPolicyMin)
         );
@@ -348,6 +354,7 @@ mod predicates_unit_tests {
                 vault_holding_balance: 10_000,
                 vault_total_allocated: 100,
                 now: 350,
+                token_id: crate::NATIVE_TOKEN_ID,
             }),
             Err(PolicyRejectReason::AllocationBelowPolicyMin)
         );
@@ -363,6 +370,7 @@ mod predicates_unit_tests {
             vault_holding_balance: 1_000,
             vault_total_allocated: 0,
             now: 100,
+            token_id: crate::NATIVE_TOKEN_ID,
         })
         .expect("Δ = 10 is inclusive at the provider window");
 
@@ -372,6 +380,7 @@ mod predicates_unit_tests {
             vault_holding_balance: 1_000,
             vault_total_allocated: 0,
             now: 100,
+            token_id: crate::NATIVE_TOKEN_ID,
         })
         .is_err());
 
@@ -382,6 +391,7 @@ mod predicates_unit_tests {
                 vault_holding_balance: 1_000,
                 vault_total_allocated: 0,
                 now: 100,
+                token_id: crate::NATIVE_TOKEN_ID,
             }),
             Err(PolicyRejectReason::CreateStreamDeadlineInvalid)
         );
@@ -400,6 +410,7 @@ mod predicates_unit_tests {
             vault_holding_balance: 1_000,
             vault_total_allocated: 0,
             now: 100,
+            token_id: crate::NATIVE_TOKEN_ID,
         })
         .expect("finite deadline within overflow-pinned window");
     }
@@ -415,6 +426,7 @@ mod predicates_unit_tests {
                 vault_holding_balance: 600,
                 vault_total_allocated: /* leaves 189 unallocated */ 411,
                 now: 50,
+                token_id: crate::NATIVE_TOKEN_ID,
             }),
             Err(PolicyRejectReason::UnallocatedInsufficient)
         );
@@ -425,6 +437,7 @@ mod predicates_unit_tests {
             vault_holding_balance: 600,
             vault_total_allocated: 411,
             now: 50,
+            token_id: crate::NATIVE_TOKEN_ID,
         })
         .expect("exact unallocated parity should authorize the proposal floor");
     }
@@ -503,6 +516,7 @@ mod predicates_unit_tests {
             params,
             provider_id: provider,
             policy_at_acceptance: policy,
+            token_id: crate::NATIVE_TOKEN_ID,
         }
     }
 
@@ -604,6 +618,25 @@ mod predicates_unit_tests {
         assert_eq!(
             response_within_policy(129, &policy),
             Err(PolicyRejectReason::ResponseTooLarge)
+        );
+    }
+
+    #[test]
+    fn proposal_rejects_when_token_id_is_not_in_accepted_tokens() {
+        let policy = StreamProviderPolicy::new(1, 1, 1_000, 65_536);
+        let mut other_token = crate::NATIVE_TOKEN_ID;
+        other_token[0] = 1;
+
+        assert_eq!(
+            proposal_satisfies_policy(&ProposalCheckInputs {
+                params: &StreamParams::new(1, 1, 200, vec![]),
+                policy: &policy,
+                vault_holding_balance: 1_000,
+                vault_total_allocated: 0,
+                now: 100,
+                token_id: other_token,
+            }),
+            Err(PolicyRejectReason::TokenNotAccepted)
         );
     }
 }

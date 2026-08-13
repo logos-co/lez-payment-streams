@@ -61,6 +61,7 @@ fn test_initialize_vault_then_reinitialize_fails() {
     assert_eq!(vault_config.next_stream_id, StreamId::MIN);
     assert_eq!(vault_config.total_allocated, 0 as Balance);
     assert_eq!(vault_config.privacy_tier, crate::VaultPrivacyTier::Public);
+    assert_eq!(vault_config.token_id, crate::NATIVE_TOKEN_ID);
     let vault_holding_account = state.get_account_by_id(vault_holding_account_id);
     let vault_holding = borsh::from_slice::<VaultHolding>(&vault_holding_account.data)
         .expect("valid vault holding bytes");
@@ -162,6 +163,46 @@ fn test_initialize_vault_pseudonymous_funding_succeeds() {
         borsh::from_slice::<VaultConfig>(&state.get_account_by_id(vault_config_account_id).data)
             .expect("vault config");
     assert_eq!(vc.privacy_tier, VaultPrivacyTier::PseudonymousFunding);
+    assert_eq!(vc.token_id, crate::NATIVE_TOKEN_ID);
+}
+
+#[test]
+fn test_initialize_vault_non_native_token_id_fails() {
+    let owner_genesis_balance = DEFAULT_OWNER_GENESIS_BALANCE;
+    let (owner_private_key, owner_account_id) = create_keypair(SEED_OWNER);
+    let initial_accounts_data = vec![(owner_account_id, owner_genesis_balance)];
+    let (mut state, guest_program) = create_state_with_guest_program(&initial_accounts_data)
+        .expect(
+            "guest image present (cargo build -p lez_payment_streams-methods) and state genesis ok",
+        );
+    let program_id = guest_program.id();
+
+    let vault_id = VaultId::from(1u64);
+    let mut token_id = crate::NATIVE_TOKEN_ID;
+    token_id[0] = 1;
+    let (vault_config_account_id, vault_holding_account_id) =
+        crate::derive_vault_account_ids_for_token(
+            &program_id,
+            owner_account_id,
+            vault_id,
+            token_id,
+        );
+    let account_ids = [
+        vault_config_account_id,
+        vault_holding_account_id,
+        owner_account_id,
+    ];
+
+    let tx = build_signed_public_tx(
+        program_id,
+        Instruction::initialize_vault_with_token(vault_id, VaultPrivacyTier::Public, token_id),
+        &account_ids,
+        &[Nonce(0)],
+        &[&owner_private_key],
+    );
+    let result =
+        state.transition_from_public_transaction(&tx, 1 as BlockId, TEST_PUBLIC_TX_TIMESTAMP);
+    super::common::assert_execution_failed_with_code(result, crate::ErrorCode::UnsupportedTokenId);
 }
 
 #[cfg(feature = "pp-program-tests")]
@@ -169,8 +210,8 @@ mod pp_program_tests {
     use super::*;
 
     use crate::program_tests::pp_common::{
-        decrypt_account, encapsulate, identity_authorized_update, identity_public,
-        fund_private_account_via_pp_withdraw, owner_npk, owner_vpk, private_account_id,
+        decrypt_account, encapsulate, fund_private_account_via_pp_withdraw,
+        identity_authorized_update, identity_public, owner_npk, owner_vpk, private_account_id,
         vault_fixture_public_tier_funded_via_deposit, OWNER_NSK, PP4_FUND_EPK_SCALAR,
         PP4_INIT_EPK_SCALAR, PP4_OWNER_FUND_AMOUNT,
     };
@@ -294,6 +335,7 @@ mod pp_program_tests {
         );
         assert_eq!(vault_config_after.total_allocated, 0);
         assert_eq!(vault_config_after.next_stream_id, 0);
+        assert_eq!(vault_config_after.token_id, crate::NATIVE_TOKEN_ID);
 
         assert!(borsh::from_slice::<VaultHolding>(
             &fx.state.get_account_by_id(vault_holding_b_id).data

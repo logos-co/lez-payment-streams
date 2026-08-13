@@ -15,35 +15,66 @@ pub use lee_core::account::Balance;
 /// Core does not reject longer `Vec`s here; callers (module / Step 4) should enforce before signing.
 pub const MAX_SERVICE_ID_LEN: usize = 128;
 
+/// Per-token minima inside [`StreamProviderPolicy::accepted_tokens`] (LIP-155).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TokenStreamPolicy {
+    /// Vault token identity. All-zeroes is the LEZ native token.
+    pub token_id: [u8; 32],
+    /// Minimum accepted rate (`TokensPerSecond` scale) for this token.
+    pub min_rate: TokensPerSecond,
+    /// Minimum accepted allocation (`Balance` scale) for this token.
+    pub min_allocation: Balance,
+}
+
+impl TokenStreamPolicy {
+    /// Native-token row used by the demo and by [`StreamProviderPolicy::new`].
+    #[must_use]
+    pub const fn native(min_rate: TokensPerSecond, min_allocation: Balance) -> Self {
+        Self {
+            token_id: crate::NATIVE_TOKEN_ID,
+            min_rate,
+            min_allocation,
+        }
+    }
+}
+
 /// Rules a provider advertises and that clients and on-chain terms must satisfy.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamProviderPolicy {
-    /// Minimum accepted rate (`TokensPerSecond` scale).
-    pub min_rate: TokensPerSecond,
-    /// Minimum accepted allocation (`Balance` scale).
-    pub min_allocation: Balance,
     /// Upper bound on how far in the future `create_stream_deadline` may be
     /// relative to the LEZ clock-account timestamp `now` at proposal verification.
     pub max_create_stream_deadline_delay: Timestamp,
     /// Hard cap on outbound vault-proof response payload size enforced by demo providers.
     pub vault_proof_max_response_bytes: u64,
+    /// Per-token floors. LIP-155 requires at least one row and unique `token_id`s.
+    pub accepted_tokens: Vec<TokenStreamPolicy>,
 }
 
 impl StreamProviderPolicy {
-    /// Convenience constructor used in tests (not an on-chain discriminator).
+    /// Convenience constructor used in tests: one native [`TokenStreamPolicy`] row.
     #[must_use]
-    pub const fn new(
+    pub fn new(
         min_rate: TokensPerSecond,
         min_allocation: Balance,
         max_create_stream_deadline_delay: Timestamp,
         vault_proof_max_response_bytes: u64,
     ) -> Self {
         Self {
-            min_rate,
-            min_allocation,
             max_create_stream_deadline_delay,
             vault_proof_max_response_bytes,
+            accepted_tokens: vec![TokenStreamPolicy::native(min_rate, min_allocation)],
         }
+    }
+
+    /// Row whose `token_id` equals `token_id`, or [`PolicyRejectReason::TokenNotAccepted`].
+    pub fn token_policy(
+        &self,
+        token_id: &[u8; 32],
+    ) -> Result<&TokenStreamPolicy, PolicyRejectReason> {
+        self.accepted_tokens
+            .iter()
+            .find(|row| row.token_id == *token_id)
+            .ok_or(PolicyRejectReason::TokenNotAccepted)
     }
 }
 
@@ -88,6 +119,8 @@ pub struct AcceptedStreamTerms {
     pub params: StreamParams,
     pub provider_id: AccountId,
     pub policy_at_acceptance: StreamProviderPolicy,
+    /// Vault token identity pinned at acceptance (matches `VaultProof.token_id`).
+    pub token_id: [u8; 32],
 }
 
 /// Inputs required to validate an off-chain `StreamProposal` against a pinned provider policy row.
@@ -103,6 +136,8 @@ pub struct ProposalCheckInputs<'a> {
     /// LEZ clock-account timestamp when this proposal is evaluated (same domain as [`crate::StreamConfig::at_time`]).
     /// This is not the on-chain stream start time; that exists only after `create_stream` (see [`crate::StreamConfig::accrued_as_of`]).
     pub now: Timestamp,
+    /// Vault token identity to match against [`StreamProviderPolicy::accepted_tokens`].
+    pub token_id: [u8; 32],
 }
 
 impl<'a> ProposalCheckInputs<'a> {
@@ -120,6 +155,7 @@ impl<'a> ProposalCheckInputs<'a> {
             vault_holding_balance,
             vault_total_allocated,
             now,
+            token_id: crate::NATIVE_TOKEN_ID,
         }
     }
 }
@@ -151,4 +187,6 @@ pub enum PolicyRejectReason {
     StreamNotActive = 7,
     /// Outbound vault-proof response exceeds `vault_proof_max_response_bytes`.
     ResponseTooLarge = 8,
+    /// No `accepted_tokens` row matches the vault `token_id`.
+    TokenNotAccepted = 9,
 }

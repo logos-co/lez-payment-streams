@@ -2,13 +2,13 @@
 //!
 //! Keeps arithmetic in [`lez_payment_streams_core`]; this module only reshapes structs and forwards.
 
+use lee_core::account::{AccountId, Balance};
 use lez_payment_streams_core::{
     create_stream_deadline_satisfies_policy_as_of, fold_stream, new_stream_satisfies_proposal,
     proposal_satisfies_policy, response_within_policy, stream_satisfies_policy,
     AcceptedStreamTerms, ErrorCode, PolicyRejectReason, ProposalCheckInputs, StreamConfig,
-    StreamParams, StreamProviderPolicy, StreamState,
+    StreamParams, StreamProviderPolicy, StreamState, NATIVE_TOKEN_ID,
 };
-use lee_core::account::{AccountId, Balance};
 
 use crate::stream_state_repr;
 use crate::{
@@ -146,6 +146,7 @@ fn accepted_terms_from_ffi(
         policy_at_acceptance: stream_provider_policy_from_ffi(
             &ffi_accepted_terms.policy_at_acceptance,
         ),
+        token_id: NATIVE_TOKEN_ID,
     })
 }
 
@@ -186,28 +187,28 @@ pub unsafe extern "C" fn payment_streams_ffi_fold_stream(
         Ok(stream_config_snapshot) => {
             let as_of_seconds = chain_timestamp_to_fold_seconds(as_of);
             match fold_stream(&stream_config_snapshot, as_of_seconds) {
-            Ok(stream_fold_snapshot) => {
-                let accrued_parts = crate::balance_pair(stream_fold_snapshot.accrued);
-                let unaccrued_parts = crate::balance_pair(stream_fold_snapshot.unaccrued);
-                let ffi_out_fold_mut = &mut *ffi_out_fold;
-                fill_decoded_stream_config(
-                    &stream_fold_snapshot.stream_config,
-                    &mut ffi_out_fold_mut.folded_stream,
-                );
-                ffi_out_fold_mut.accrued_lo = accrued_parts.0;
-                ffi_out_fold_mut.accrued_hi = accrued_parts.1;
-                ffi_out_fold_mut.unaccrued_lo = unaccrued_parts.0;
-                ffi_out_fold_mut.unaccrued_hi = unaccrued_parts.1;
-                ffi_out_fold_mut.as_of = stream_fold_snapshot.as_of;
-                PaymentStreamsFfiStatus::Success
-            }
-            Err(guest_err) => {
-                // Fine-grained context for C callers travels through optional `guest_error_out`; [`PaymentStreamsFfiStatus`] stays coarse.
-                if !guest_error_out.is_null() {
-                    *guest_error_out = guest_error_repr(guest_err);
+                Ok(stream_fold_snapshot) => {
+                    let accrued_parts = crate::balance_pair(stream_fold_snapshot.accrued);
+                    let unaccrued_parts = crate::balance_pair(stream_fold_snapshot.unaccrued);
+                    let ffi_out_fold_mut = &mut *ffi_out_fold;
+                    fill_decoded_stream_config(
+                        &stream_fold_snapshot.stream_config,
+                        &mut ffi_out_fold_mut.folded_stream,
+                    );
+                    ffi_out_fold_mut.accrued_lo = accrued_parts.0;
+                    ffi_out_fold_mut.accrued_hi = accrued_parts.1;
+                    ffi_out_fold_mut.unaccrued_lo = unaccrued_parts.0;
+                    ffi_out_fold_mut.unaccrued_hi = unaccrued_parts.1;
+                    ffi_out_fold_mut.as_of = stream_fold_snapshot.as_of;
+                    PaymentStreamsFfiStatus::Success
                 }
-                PaymentStreamsFfiStatus::StreamFoldFailed
-            }
+                Err(guest_err) => {
+                    // Fine-grained context for C callers travels through optional `guest_error_out`; [`PaymentStreamsFfiStatus`] stays coarse.
+                    if !guest_error_out.is_null() {
+                        *guest_error_out = guest_error_repr(guest_err);
+                    }
+                    PaymentStreamsFfiStatus::StreamFoldFailed
+                }
             }
         }
     }
@@ -420,7 +421,10 @@ mod timestamp_tests {
 
     #[test]
     fn lez_510_ms_clock_normalized_to_seconds() {
-        assert_eq!(chain_timestamp_to_fold_seconds(1_781_710_693_910), 1_781_710_693);
+        assert_eq!(
+            chain_timestamp_to_fold_seconds(1_781_710_693_910),
+            1_781_710_693
+        );
         assert_eq!(chain_timestamp_to_fold_seconds(105), 105);
     }
 

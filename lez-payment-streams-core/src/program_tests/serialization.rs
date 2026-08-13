@@ -38,6 +38,7 @@ fn test_vault_config_roundtrip_serialization_succeeds() {
     let serialized = borsh::to_vec(&vault_config).unwrap();
     let deserialized = borsh::from_slice::<VaultConfig>(&serialized).unwrap();
     assert_eq!(vault_config, deserialized);
+    assert_eq!(vault_config.token_id, crate::NATIVE_TOKEN_ID);
 }
 
 #[test]

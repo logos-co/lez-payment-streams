@@ -1,4 +1,4 @@
-//! Stable numeric codes for SPEL custom errors (`6001`–`6027`).
+//! Stable numeric codes for SPEL custom errors (`6001`–`6028`).
 //!
 //! `ErrorCode` is `#[repr(u32)]` for type-safe use in core return types and test assertions.
 //! Code 6011 (`InvalidMockTimestamp`) was removed; all codes that were above it shifted down by one.
@@ -40,4 +40,6 @@ pub enum ErrorCode {
     InvalidPrivacyTier = 6026,
     /// `create_stream` when `provider` equals the vault owner account id (D44.16).
     ProviderEqualsOwner = 6027,
+    /// Vault `token_id` is not the LEZ native all-zeroes identity (Step 49 native-only guest).
+    UnsupportedTokenId = 6028,
 }

@@ -25,20 +25,20 @@ mod policy_abi;
 mod proof_abi;
 
 pub use instruction_abi::*;
+pub use lee_core::account::AccountId;
+pub use lee_core::program::ProgramId;
 pub use lez_payment_streams_core::{
     derive_stream_config_account_id, derive_vault_account_ids, VaultConfig,
     CLOCK_01_PROGRAM_ACCOUNT_ID, CLOCK_10_PROGRAM_ACCOUNT_ID, CLOCK_50_PROGRAM_ACCOUNT_ID,
 };
-pub use lee_core::account::AccountId;
-pub use lee_core::program::ProgramId;
 pub use policy_abi::*;
 pub use proof_abi::*;
 
 use core::slice;
 
 use decode::DecodeFault;
-use lez_payment_streams_core::{StreamState, VaultPrivacyTier};
 use lee_core::account::Balance;
+use lez_payment_streams_core::{StreamState, VaultPrivacyTier};
 
 /// Outcome codes returned from `payment_streams_*` FFI functions (`Success` plus failures; stable
 /// `repr(u32)` enumerators in `lez_payment_streams_ffi.h` from cbindgen).
@@ -643,14 +643,14 @@ mod tests {
     use lez_payment_streams_core::VaultPrivacyTier;
     use std::str::FromStr;
 
-    /// Base58 fixtures from the scaffold localnet notes in this repo (same deploy program wire as
-    /// [`doc_scaffold_program_id`], canonical owner, and PDAs for `vault_id` / `stream_id` below (LEE
-    /// `AccountId::for_public_pda` @ PR 510 pin).
+    /// Base58 fixtures for the scaffold localnet program wire, owner, and PDAs for
+    /// `vault_id` / `stream_id` below. Holding PDA uses the LIP-155 native `token_id` seed
+    /// (32 zero octets), not the former `seed_from_str("native")` string.
     const DOC_SCAFFOLD_OWNER_BASE58: &str = "8UUCxCrkZAiP8A6g6rQAVMmk6bVxfurKqYi8aFxfEZqf";
     const DOC_SCAFFOLD_VAULT_CONFIG_PDA_BASE58: &str =
         "9UrfkYQvoVcX6EFAV1RzqZHGf6529rR5mCEr3sxvBcG2";
     const DOC_SCAFFOLD_VAULT_HOLDING_PDA_BASE58: &str =
-        "7s5h6pSAk9s1yuc3uJJDng5n9VJ6PRDTjLmYuL8DEJ6k";
+        "5NzDb97n3cNeoJPL4oNgrwvgbfwcxo4cQ2V8zC9xre1N";
     const DOC_SCAFFOLD_STREAM_CONFIG_PDA_BASE58: &str =
         "9FTDqNjoMAnDsb1dqaQC8qdNUor8KNgqoBULTkZ5SDj";
 
@@ -909,9 +909,12 @@ mod tests {
         fn ffi_provider_policy_fixture(
             policy_snapshot: &StreamProviderPolicy,
         ) -> PaymentStreamsFfiStreamProviderPolicy {
-            let min_alloc_halves = balance_pair(policy_snapshot.min_allocation);
+            let native = policy_snapshot
+                .token_policy(&lez_payment_streams_core::NATIVE_TOKEN_ID)
+                .expect("test policies include a native accepted_tokens row");
+            let min_alloc_halves = balance_pair(native.min_allocation);
             PaymentStreamsFfiStreamProviderPolicy {
-                min_rate: policy_snapshot.min_rate,
+                min_rate: native.min_rate,
                 min_allocation_lo: min_alloc_halves.0,
                 min_allocation_hi: min_alloc_halves.1,
                 max_create_stream_deadline_delay: policy_snapshot.max_create_stream_deadline_delay,
@@ -992,14 +995,8 @@ mod tests {
         #[test]
         fn ffi_fold_matches_core_vectors() {
             let provider_binding = marker_account(9);
-            let stream_snapshot = stream_fixture_row(
-                0,
-                1_000,
-                10,
-                100,
-                StreamState::Active,
-                provider_binding,
-            );
+            let stream_snapshot =
+                stream_fixture_row(0, 1_000, 10, 100, StreamState::Active, provider_binding);
             let decoded_snapshot = decoded_stream_fixture_row(&stream_snapshot);
             let mut fold_scratch = zero_fold_outcome_scratch();
             let mut guest_error_slot = 0_u32;
@@ -1040,14 +1037,8 @@ mod tests {
         #[test]
         fn ffi_fold_surfaces_time_regression_through_guest_slot() {
             let provider_binding = marker_account(8);
-            let stream_snapshot = stream_fixture_row(
-                0,
-                1_000,
-                10,
-                100,
-                StreamState::Active,
-                provider_binding,
-            );
+            let stream_snapshot =
+                stream_fixture_row(0, 1_000, 10, 100, StreamState::Active, provider_binding);
             let decoded_snapshot = decoded_stream_fixture_row(&stream_snapshot);
             let mut fold_scratch = zero_fold_outcome_scratch();
             let mut guest_error_slot = 0_u32;
@@ -1145,6 +1136,7 @@ mod tests {
                 params: accepted_params_snapshot.clone(),
                 provider_id: provider_binding,
                 policy_at_acceptance: accepted_policy_snapshot.clone(),
+                token_id: lez_payment_streams_core::NATIVE_TOKEN_ID,
             };
 
             let accepted_terms_bundle = PaymentStreamsFfiAcceptedStreamTerms {
@@ -1155,14 +1147,8 @@ mod tests {
                 ),
             };
 
-            let folded_paused_stream_snapshot = stream_fixture_row(
-                100,
-                100,
-                10,
-                10,
-                StreamState::Paused,
-                provider_binding,
-            );
+            let folded_paused_stream_snapshot =
+                stream_fixture_row(100, 100, 10, 10, StreamState::Paused, provider_binding);
             let decoded_paused_fold = decoded_stream_fixture_row(&folded_paused_stream_snapshot);
             let mut reject_slot = PaymentStreamsFfiPolicyRejectReason::RateBelowPolicyMin;
 
