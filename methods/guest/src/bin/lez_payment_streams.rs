@@ -411,8 +411,8 @@ mod lez_payment_streams {
     pub fn deposit(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
         vault_config: AccountWithMetadata,
-        // const("") is seed_from_str empty = LIP-155 native token_id (32 zeroes).
-        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), const("")])]
+        // literal("\0") is seed_from_str empty = LIP-155 native token_id (32 zeroes).
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("\0")])]
         vault_holding: AccountWithMetadata,
         #[account(mut, signer)] owner: AccountWithMetadata,
         vault_id: VaultId,
@@ -457,7 +457,7 @@ mod lez_payment_streams {
     pub fn withdraw(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
         vault_config: AccountWithMetadata,
-        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), const("")])]
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("\0")])]
         vault_holding: AccountWithMetadata,
         #[account(mut, signer)] owner: AccountWithMetadata,
         #[account(mut)] withdraw_to: AccountWithMetadata,
@@ -550,7 +550,7 @@ mod lez_payment_streams {
     pub fn create_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
         vault_config: AccountWithMetadata,
-        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), const("")])]
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("\0")])]
         vault_holding: AccountWithMetadata,
         #[account(init, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
         stream_config: AccountWithMetadata,
@@ -639,7 +639,7 @@ mod lez_payment_streams {
     pub fn pause_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
         vault_config: AccountWithMetadata,
-        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), const("")])]
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("\0")])]
         vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
         stream_config: AccountWithMetadata,
@@ -688,7 +688,7 @@ mod lez_payment_streams {
     pub fn resume_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
         vault_config: AccountWithMetadata,
-        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), const("")])]
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("\0")])]
         vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
         stream_config: AccountWithMetadata,
@@ -734,7 +734,7 @@ mod lez_payment_streams {
     pub fn top_up_stream(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
         vault_config: AccountWithMetadata,
-        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), const("")])]
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("\0")])]
         vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
         stream_config: AccountWithMetadata,
@@ -807,7 +807,7 @@ mod lez_payment_streams {
     pub fn close_stream_by_owner(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
         vault_config: AccountWithMetadata,
-        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), const("")])]
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("\0")])]
         vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
         stream_config: AccountWithMetadata,
@@ -848,7 +848,7 @@ mod lez_payment_streams {
     pub fn claim(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
         vault_config: AccountWithMetadata,
-        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), const("")])]
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("\0")])]
         vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
         stream_config: AccountWithMetadata,
@@ -929,7 +929,7 @@ mod lez_payment_streams {
     pub fn close_stream_by_provider(
         #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
         vault_config: AccountWithMetadata,
-        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), const("")])]
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("\0")])]
         vault_holding: AccountWithMetadata,
         #[account(mut, pda = [literal("stream_config"), account("vault_config"), arg("stream_id")])]
         stream_config: AccountWithMetadata,

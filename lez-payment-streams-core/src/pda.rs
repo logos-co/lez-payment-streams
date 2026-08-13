@@ -113,6 +113,11 @@ mod pda_seed_tests {
         };
 
         assert_eq!(native_holding, zero_token_holding);
+        assert_eq!(
+            seed_from_str("\0"),
+            NATIVE_TOKEN_ID,
+            "guest later-op holding seed literal NUL pads to native token_id"
+        );
         assert_ne!(native_holding, legacy_string_holding);
         assert_eq!(
             derive_vault_account_ids_for_token(&program_id, owner, vault_id, NATIVE_TOKEN_ID).1,
