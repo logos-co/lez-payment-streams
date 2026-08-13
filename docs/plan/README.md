@@ -32,7 +32,7 @@ integrate pointers, Testing recipes; drops living “journey” branding.
 Forum post: Step 51 (upcoming) — orientation with links into those docs.
 Multi-token type alignment (native-only demo): Step 49 (complete).
 Consistency and clarity polish: Step 50 (upcoming; after 49).
-User Journey UI: Step 21 (upcoming). Public hosted Store: Step 23 (wontfix).
+Protocol UI (Basecamp): Step 21 (upcoming). Public hosted Store: Step 23 (wontfix).
 Wrap-up polish: Step 45 complete (deps/patches); Step 48 wontfix (program-graph LEZ
 unify + drop AT hex config); Step 44 complete (payer and payee close).
 

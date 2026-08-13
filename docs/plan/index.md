@@ -75,7 +75,7 @@ paid Store mode on the provider.
 | Developer Journey: protocol-agnostic eligibility guide | 35 (complete) |
 | User Journey: CLI doc packet ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)) | 22 (complete) |
 | User Journey: testnet manual walkthrough | 34 (complete) |
-| User Journey UI: Basecamp plugin | 21 (upcoming) |
+| Protocol UI: Basecamp plugin (vaults and streams) | 21 (upcoming) |
 | Public hosted Store provider | 23 (wontfix) |
 | LEZ in-process harness (`program_tests`, rc5 `lee`) | 24 + 24b (complete) |
 | Deterministic demo lifecycle | 24c (complete) |
@@ -161,7 +161,7 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 
 | Step | Focus | Status |
 | --- | --- | --- |
-| 21 | User Journey: Basecamp UI plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
+| 21 | Protocol UI: Basecamp plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
 | 50 | Consistency and clarity polish | Upcoming — [step-50-consistency-and-clarity.md](upcoming/step-50-consistency-and-clarity.md) |
 | 51 | Forum post | Upcoming — [step-51-forum-post.md](upcoming/step-51-forum-post.md) |
 
@@ -215,7 +215,7 @@ when creating the branch. Both delivery repos must use the same string.
 | `logos-delivery` / `liblogosdelivery` | Store protocol + eligibility hooks (14-15) |
 | `logos-delivery-module` | `delivery_module` + routing (16) |
 | `scripts/e2e.sh`, `scripts/e2e/run_local_e2e.py` | Store integration: dual-host orchestration (Step 17; in-repo SSOT) |
-| `payment_streams_ui` (upcoming) | Protocol UI: Basecamp over `payment_streams_module` only (Step 21) |
+| `payment_streams_ui` (upcoming) | Protocol UI: Basecamp over `payment_streams_module` only (Step 21). Vaults and streams as a payment mechanism; no Store. |
 | `lgs` / `logoscore` / `lgpm` / `lm` | Localnet, host, install, introspection |
 
 Detail: [`logos-architecture-overview.md`](../archive/reference/logos-architecture-overview.md).

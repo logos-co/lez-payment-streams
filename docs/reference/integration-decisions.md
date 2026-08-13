@@ -739,9 +739,9 @@ Dual-host paid Store demo coordination stays on the **host**, not in a Logos mod
   (Delivery + Store eligibility track only —
   [N18](#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
   Formal logos-docs publish is Step 20 wontfix; high-level public narrative is Step 51.
-- **Step 21 (upcoming UI), Step 22 (complete doc):** payment streams protocol — User Journey CLI
-  doc packet ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)), Basecamp UI
-  upcoming — not Store integration; see
+- **Step 21 (upcoming UI), Step 22 (complete CLI packet):** payment streams protocol —
+  historical CLI doc ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)),
+  Basecamp UI upcoming — not Store integration; see
   [N18](#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06). No demo coordinator module.
 
 ### N18, Integration demo vs payment streams UI tracks (2026-06)
@@ -787,22 +787,27 @@ Living doc names move under [Step 46](../plan/completed/step-46-docs-unify-and-f
   can claim.
 - **Audience:** end users exploring payment streams via CLI; cross-link Store reproduce /
   Step 46 for Store eligibility, do not duplicate Store steps.
-- **Future enhancement:** if Step 21 (Basecamp UI, currently upcoming) ships, the
-  protocol docs may gain UI screenshots and Basecamp-specific paths. Additive — the CLI
-  path remains valid.
+- **Future enhancement:** if Step 21 (Basecamp UI, currently upcoming) ships,
+  [payment-streams.md](../reproduce/payment-streams.md) may gain UI screenshots
+  and Basecamp-specific paths. Additive — the CLI path remains valid.
 
-**User Journey UI — Step 21 (upcoming)**
+**Protocol UI — Step 21 (upcoming)**
 
-- **Story:** Same as User Journey (payment streams protocol only), but delivered as a Basecamp
-  `ui_qml` plugin for GUI users.
-- **Status:** [upcoming packet](../plan/upcoming/step-21-basecamp-ui.md) — resurrected from
-  wontfix.
-- **Mechanism:** Thin UI over `payment_streams_module` (+ wallet). Single-host; out-of-band
+- **Story:** Payment streams protocol only (vaults, streams, accrual, close,
+  claim), delivered as a Basecamp `ui_qml` plugin. Not Store, eligibility, or
+  `delivery_module`.
+- **Status:** [upcoming packet](../plan/upcoming/step-21-basecamp-ui.md).
+- **Mechanism:** Thin UI over `payment_streams_module` and the patched
+  `logos_execution_zone` wallet. Single Basecamp process; out-of-band
   counterparty coordination.
-- **Owner side:** same flows as User Journey, but via buttons/forms in Basecamp.
-- **Audience:** end users who prefer GUI over CLI.
-- **Relationship to Step 22:** Step 21 is independent. When Step 21 ships, Step 22 may be
-  updated to include UI content, but Step 22 does not require Step 21.
+- **Owner side:** initialize vault, deposit, create stream, list and read
+  status, optional pause/resume/top-up/close/withdraw, via forms in Basecamp.
+- **Provider side:** optional paste-ids `claim` (and optional provider-close).
+  Stream identity is shared out of band.
+- **Audience:** operators who prefer GUI over CLI.
+- **Relationship to the CLI track:** Step 21 is independent of Step 22 /
+  logos-docs#370. When Step 21 ships, the living reproduce doc may gain UI
+  notes. The CLI path remains valid. Step 51 is not blocked on Step 21.
 
 ### N16, Step 18b rc5 operational pin (2026-06) — superseded by Step 26 v0.2.0 pin
 
