@@ -16,6 +16,26 @@ export TESTNET_WALLET_DIR="${TESTNET_WALLET_DIR:-$(ps_e2e_testnet_wallet_dir)}"
 export TESTNET_WALLET_PASSWORD="${TESTNET_WALLET_PASSWORD:-testnet-dev}"
 export PROGRAM_BIN="${PROGRAM_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
 
+# TESTNET_PROGRAM_ID_HEX override, else derive from the built guest via make -s program-id.
+# Does not auto-build (D50.10).
+ps_testnet_program_id_hex() {
+  if [[ -n "${TESTNET_PROGRAM_ID_HEX:-}" ]]; then
+    printf '%s\n' "$TESTNET_PROGRAM_ID_HEX"
+    return 0
+  fi
+  if [[ ! -f "$PROGRAM_BIN" ]]; then
+    echo "ERROR: guest binary missing at $PROGRAM_BIN (run make build); cannot derive program id" >&2
+    return 1
+  fi
+  local id
+  id="$(make -s -C "$REPO_ROOT" program-id | sed -n 's/.*ImageID (hex bytes): //p' | tr -d ' ')"
+  if [[ -z "$id" || "${#id}" -ne 64 ]]; then
+    echo "ERROR: make -s program-id did not print ImageID (hex bytes)" >&2
+    return 1
+  fi
+  printf '%s\n' "$id"
+}
+
 export WALLET_CONFIG="${WALLET_CONFIG:-$TESTNET_WALLET_DIR/wallet_config.json}"
 export WALLET_STORAGE="${WALLET_STORAGE:-$TESTNET_WALLET_DIR/storage.json}"
 export NSSA_WALLET_HOME_DIR="${NSSA_WALLET_HOME_DIR:-$TESTNET_WALLET_DIR}"

@@ -56,7 +56,9 @@ require_testnet_rpc
 ensure_testnet_wallet
 
 PROGRAM_BIN="${PROGRAM_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
-PROGRAM_ID_HEX="${PROGRAM_ID_HEX:-c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a}"
+if [[ -z "$PROGRAM_ID_HEX" && -n "${TESTNET_PROGRAM_ID_HEX:-}" ]]; then
+  PROGRAM_ID_HEX="$TESTNET_PROGRAM_ID_HEX"
+fi
 WALLET_CONFIG_PATH="${WALLET_CONFIG_PATH:-$TESTNET_WALLET_DIR/wallet_config.json}"
 WALLET_STORAGE_PATH="${WALLET_STORAGE_PATH:-$TESTNET_WALLET_DIR/storage.json}"
 SEQUENCER_URL="${SEQUENCER_URL:-$(python3 -c "import json; print(json.load(open('$MANIFEST')).get('sequencer_url','').strip() or 'https://testnet.lez.logos.co/')")}"
@@ -85,6 +87,9 @@ PY
 fi
 
 [[ -f "$PROGRAM_BIN" ]] || ps_fatal "missing program bin: $PROGRAM_BIN"
+if [[ -z "$PROGRAM_ID_HEX" ]]; then
+  PROGRAM_ID_HEX="$(ps_testnet_program_id_hex)"
+fi
 
 echo "=== ensure-testnet-vault vault=$VAULT_ID_ARG deposit=$DEPOSIT_AMOUNT owner=$OWNER ==="
 

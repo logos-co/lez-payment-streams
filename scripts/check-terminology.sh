@@ -83,10 +83,6 @@ scan_pattern() {
     if [[ "$line" == *step-36-payer* || "$line" == *step-37-payee* || "$line" == *step-44-payer* ]]; then
       continue
     fi
-    # Legacy Makefile aliases until Step 50.
-    if [[ "$line" == *payee-close* ]]; then
-      continue
-    fi
     note "  $line"
     hit=1
   done <"$tmp"

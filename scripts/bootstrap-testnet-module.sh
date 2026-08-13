@@ -15,7 +15,11 @@ export TESTNET_SKIP_PINATA="${TESTNET_SKIP_PINATA:-1}"
 export TESTNET_AUTH_TRANSFER_ELF_PATH="${TESTNET_AUTH_TRANSFER_ELF_PATH:-$(testnet_auth_transfer_elf_path)}"
 
 MANIFEST="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/testnet-module.json}"
-PROGRAM_ID_HEX="${TESTNET_PROGRAM_ID_HEX:-c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a}"
+if [[ ! -f "$PROGRAM_BIN" ]]; then
+  echo "ERROR: guest binary missing at $PROGRAM_BIN (run make build)" >&2
+  exit 1
+fi
+PROGRAM_ID_HEX="$(ps_testnet_program_id_hex)"
 VAULT_ID="${VAULT_ID:-1}"
 
 # Reuse owner/provider from existing testnet.json if available.
@@ -49,10 +53,6 @@ if [[ -z "$PROVIDER" ]]; then
   echo "Created provider Public/$PROVIDER"
 else
   echo "Reusing provider Public/$PROVIDER"
-fi
-
-if [[ ! -f "$PROGRAM_BIN" ]]; then
-  make build
 fi
 
 SUBMIT_BIN="$(lez_testnet_submit_bin)"

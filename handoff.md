@@ -7,5 +7,4 @@ This file is retired. Start at:
 - [docs/plan/index.md](docs/plan/index.md) — program scope and upcoming steps
 
 Store eligibility uses delivery forks on branch `feat/payment-streams-store-eligibility`
-(see [docs/reference/feature-branch-pins.md](docs/reference/feature-branch-pins.md) or
-[docs/reference/feature-branch-pins.md](docs/reference/feature-branch-pins.md)).
+(see [docs/reference/feature-branch-pins.md](docs/reference/feature-branch-pins.md)).

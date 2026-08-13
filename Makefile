@@ -20,49 +20,25 @@ define save_var
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
 endef
 
-.PHONY: help build idl cli deploy setup program-id status clean seed-fixture wallet-lgx verify-step10a verify-step10b verify-step11a verify-step11d verify-step12 verify-step13 verify-module-local verify-module-local-provider-close verify-module-local-provider-close-privacy verify-module-local-payee-close verify-module-local-payee-close-privacy verify-store-local verify-store-testnet verify-store-local-lifecycle check-terminology verify-step17 verify-step17-back-to-back verify-step18 verify-step18-testnet-read-smoke deploy-testnet bootstrap-testnet prepare-localnet full-reset-localnet debug-sequencer-latency
+PHONY_TARGETS := $(shell awk -F: '/^[a-zA-Z0-9][a-zA-Z0-9_.-]*:/ { gsub(/ .*/, "", $$1); print $$1 }' Makefile | sort -u)
+.PHONY: $(PHONY_TARGETS)
 
 help: ## Show this help
 	@echo "lez-payment-streams — SPEL Program"
 	@echo ""
-	@echo "  make build       Build the guest binary (needs risc0 toolchain)"
-	@echo "  make idl         Generate IDL from program source"
-	@echo "  make cli ARGS=   Run the IDL-driven CLI (pass args via ARGS=)"
-	@echo "  make deploy      Deploy program to sequencer"
-	@echo "  make setup       Create accounts needed for the program"
-	@echo "  make program-id  Show ProgramId for built binary"
-	@echo "  make status      Show saved state and binary info"
-	@echo "  make seed-fixture Run Step 10a localnet seed script"
-	@echo "  make wallet-lgx    Build Step 10b patched logos_execution_zone .lgx"
-	@echo "  make verify-step10a Run Step 10a DoD script"
-	@echo "  make verify-step10b Run Step 10b DoD script"
-	@echo "  make verify-step11a Run Step 11a DoD script"
-	@echo "  make verify-step11d Run Step 11d DoD script (LEZ 510 wallet)"
-	@echo "  make verify-step12  Run Step 12 DoD script (archived)"
-	@echo "  make verify-step13  Run Step 13 DoD script (archived)"
+	@awk ' \
+	  /^[a-zA-Z0-9][a-zA-Z0-9_.-]*:/ { \
+	    if (tgt != "" && help != "" && !arch) printf "  make %-42s %s\n", tgt, help; \
+	    split($$0, parts, ":"); tgt=parts[1]; \
+	    help=""; arch=0; \
+	    if (match($$0, /## /)) help=substr($$0, RSTART+3); \
+	    next; \
+	  } \
+	  /scripts\/archive\// { arch=1 } \
+	  END { if (tgt != "" && help != "" && !arch) printf "  make %-42s %s\n", tgt, help } \
+	' $(MAKEFILE_LIST)
 	@echo ""
-	@echo "  Verification — see docs/reference/verification-matrix.md (canonical: scripts/e2e.sh):"
-	@echo "  make check-terminology         Role terminology gate (Step 47)"
-	@echo "  make verify-module-local       Module verification, localnet"
-	@echo "  make verify-module-local-privacy  Module owner privacy (OWNER_PRIVACY=1)"
-	@echo "  make verify-module-local-provider-privacy  Module provider privacy (PROVIDER_PRIVACY=1)"
-	@echo "  make verify-module-testnet     Module verification, testnet"
-	@echo "  make verify-store-local        Store integration, localnet"
-	@echo "  make verify-store-local-owner-privacy  Store owner privacy (OWNER_PRIVACY=1)"
-	@echo "  make verify-store-local-provider-privacy  Store provider privacy (PROVIDER_PRIVACY=1)"
-	@echo "  make verify-store-local-full-privacy  Store full privacy (both flags)"
-	@echo "  make verify-store-testnet      Store integration, testnet"
-	@echo "  make verify-store-local-lifecycle  Maintainer: two runs on one ledger"
-	@echo "  (legacy aliases: verify-step17, verify-step18, verify-step17-back-to-back)"
-	@echo ""
-	@echo "  make full-reset-localnet  Rebuild funded snapshot (prefund, no stream)"
-	@echo "  make debug-sequencer-latency  RPC + block-rate probe (local 3040)"
-	@echo "  make verify-step18-testnet-read-smoke  Testnet read smoke (rc5; skips if RPC down)"
-	@echo "  make deploy-testnet One-time guest deploy on public testnet (Part B)"
-	@echo "  make bootstrap-testnet One-time vault/stream bootstrap (Part B)"
-	@echo "  make bootstrap-testnet-module One-time fixture for module-only testnet"
-	@echo "  make prepare-localnet  Step 17b restore + create stream (scripts/e2e.sh local prepare)"
-	@echo "  make clean       Remove saved state"
+	@echo "Historical DoD scripts: scripts/archive/"
 	@echo ""
 	@echo "Example:"
 	@echo "  make build idl deploy"
@@ -161,11 +137,6 @@ verify-module-local-provider-close: ## Step 44 thin provider-close cell (CLOSE_R
 verify-module-local-provider-close-privacy: ## Step 44 PF provider-close (CLOSE_ROLE=provider OWNER_PRIVACY=1)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
 	MODE=module CLOSE_ROLE=provider OWNER_PRIVACY=1 ./scripts/e2e.sh local run
-
-# Legacy aliases (Step 47 role terminology); prefer *-provider-close.
-verify-module-local-payee-close: verify-module-local-provider-close
-
-verify-module-local-payee-close-privacy: verify-module-local-provider-close-privacy
 
 verify-module-local-privacy: ## Owner privacy (OWNER_PRIVACY=1) PseudonymousFunding lifecycle on localnet
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
