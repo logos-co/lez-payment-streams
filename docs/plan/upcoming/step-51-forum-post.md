@@ -5,7 +5,7 @@ Upcoming. Index: [index.md](../index.md).
 Spun out of [Step 46](../completed/step-46-docs-unify-and-forum-post.md)
 so living-docs IA can close without waiting on outbound publish.
 Prerequisite: Step 46 complete (reproduce / integrate / README Testing).
-[Step 50](step-50-consistency-and-clarity.md) should close first so
+[Step 50](../completed/step-50-consistency-and-clarity.md) is complete, so
 Makefile help and persist merge are in the tree the wrap-up runs against.
 [Step 48](../wontfix/step-48-program-graph-lez-unify.md) is not a prerequisite.
 [Step 21](step-21-basecamp-ui.md) is not a prerequisite.
@@ -109,6 +109,6 @@ Out of scope:
 ## Related
 
 - [step-46-docs-unify-and-forum-post.md](../completed/step-46-docs-unify-and-forum-post.md)
-- [step-50-consistency-and-clarity.md](step-50-consistency-and-clarity.md)
+- [step-50-consistency-and-clarity.md](../completed/step-50-consistency-and-clarity.md)
 - [forum-post.md](../../external/forum-post.md)
 - [README Testing](../../../README.md#testing)

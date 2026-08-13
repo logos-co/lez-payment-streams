@@ -80,7 +80,7 @@ Out of scope:
 - Wrapped-native unification ([raw TODO](../raw-todos/wrapped-native-token-unification.md)).
 - Discovery / advertised policy on the wire (Step 42 wontfix).
 - Demo command or phase changes (still vault → deposit → create → close → claim).
-- [Step 50](../upcoming/step-50-consistency-and-clarity.md) refactors (clock helper,
+- [Step 50](step-50-consistency-and-clarity.md) refactors (clock helper,
   C++ sharing, orchestrator extract).
 - `lee_core` alias removal (Step 48 / spel, wontfix).
 - Renaming `user-journey-*.sh` (D46.14).
@@ -145,6 +145,6 @@ Out of scope:
 
 - [step-41-non-native-token-policy-spec.md](step-41-non-native-token-policy-spec.md)
 - [step-46-docs-unify-and-forum-post.md](step-46-docs-unify-and-forum-post.md)
-- [step-50-consistency-and-clarity.md](../upcoming/step-50-consistency-and-clarity.md)
+- [step-50-consistency-and-clarity.md](step-50-consistency-and-clarity.md)
 - [wrapped-native-token-unification.md](../raw-todos/wrapped-native-token-unification.md)
 - [feature-branch-pins.md](../../reference/feature-branch-pins.md)

@@ -60,7 +60,7 @@ Product gates: [verification-matrix.md](../reference/verification-matrix.md).
 | 47 | Unify role terminology | Complete -- [step-47-unify-role-terminology.md](../plan/completed/step-47-unify-role-terminology.md) |
 | 48 | Program-graph LEZ unify + drop AT hex config | Wontfix -- [step-48-program-graph-lez-unify.md](../plan/wontfix/step-48-program-graph-lez-unify.md) |
 | 49 | LIP-155 multi-token type alignment (native-only demo) | Complete -- [step-49-native-token-spec-alignment.md](../plan/completed/step-49-native-token-spec-alignment.md); gate [step-49-gate-log.md](../plan/completed/step-49-gate-log.md) |
-| 50 | Consistency and clarity polish | Upcoming -- [step-50-consistency-and-clarity.md](../plan/upcoming/step-50-consistency-and-clarity.md) |
+| 50 | Consistency and clarity polish | Complete -- [step-50-consistency-and-clarity.md](../plan/completed/step-50-consistency-and-clarity.md); gate [step-50-gate-log.md](../plan/completed/step-50-gate-log.md) |
 | 51 | Forum post | Upcoming -- [step-51-forum-post.md](../plan/upcoming/step-51-forum-post.md) |
 
 ## Completed steps -- summary

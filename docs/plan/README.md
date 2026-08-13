@@ -11,8 +11,8 @@ This file is retained as a short redirect.
 | --- | --- |
 | [index.md](index.md) | Program scope, upcoming steps, delivery forks, components, onboarding |
 | [../../AGENTS.md](../../AGENTS.md) | Agent read order |
-| [completed/](completed/) | Normative excerpts (12-16), completed Steps 17-19, 22, 24, 24b, 24c, 26-41, 44–47, 49 |
-| [upcoming/](upcoming/) | Steps 21, 50, 51 |
+| [completed/](completed/) | Normative excerpts (12-16), completed Steps 17-19, 22, 24, 24b, 24c, 26-41, 44–47, 49–50 |
+| [upcoming/](upcoming/) | Steps 21, 51 |
 | [waiting/](waiting/) | Empty |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43, 48 |
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |
@@ -31,7 +31,7 @@ Docs unify: Step 46 (complete) — README, reproduce paths,
 integrate pointers, Testing recipes; drops living “journey” branding.
 Forum post: Step 51 (upcoming) — orientation with links into those docs.
 Multi-token type alignment (native-only demo): Step 49 (complete).
-Consistency and clarity polish: Step 50 (upcoming; after 49).
+Consistency and clarity polish: Step 50 (complete).
 Protocol UI (Basecamp): Step 21 (upcoming). Public hosted Store: Step 23 (wontfix).
 Wrap-up polish: Step 45 complete (deps/patches); Step 48 wontfix (program-graph LEZ
 unify + drop AT hex config); Step 44 complete (payer and payee close).

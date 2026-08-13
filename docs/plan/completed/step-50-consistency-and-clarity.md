@@ -1,13 +1,18 @@
 # Step 50 — consistency and clarity polish
 
-Upcoming. Index: [index.md](../index.md).
+Index: [index.md](../index.md). Status: complete (2026-08).
+Gate log: [step-50-gate-log.md](step-50-gate-log.md).
 
-Prerequisite: [Step 46](../completed/step-46-docs-unify-and-forum-post.md)
+Workstreams A–F landed on `feat/step-50-consistency-and-clarity`.
+Fast verification recorded 2026-08-13. No ImageID cut (D50.1).
+Wrap-up matrix remains [Step 51](../upcoming/step-51-forum-post.md).
+
+Prerequisite: [Step 46](step-46-docs-unify-and-forum-post.md)
 (living docs IA, complete) and
-[Step 49](../completed/step-49-native-token-spec-alignment.md)
+[Step 49](step-49-native-token-spec-alignment.md)
 (token_id / policy types and ImageID cut landed 2026-08).
 [Step 48](../wontfix/step-48-program-graph-lez-unify.md) is not a prerequisite.
-[Step 51](step-51-forum-post.md) (forum publish + wrap-up matrix) is not a
+[Step 51](../upcoming/step-51-forum-post.md) (forum publish + wrap-up matrix) is not a
 prerequisite. This step does not wait on it.
 
 ## Goal
@@ -261,25 +266,24 @@ Split confirmation into two layers.
 - cbindgen header regenerated; `c_header_smoke.c` links a real export.
 - `make check-terminology`.
 - `RISC0_DEV_MODE=1 cargo test --workspace`.
-- Gate log: [step-50-gate-log.md](../completed/step-50-gate-log.md) (create
-  when closing).
+- Gate log: [step-50-gate-log.md](step-50-gate-log.md).
 
 No `MODE=module` / `MODE=store` E2E in this gate. README Testing handle
 `fast` maps to the commands above.
 
 ## After this step
 
-[Step 51](step-51-forum-post.md) runs the wrap-up protocol matrix on the
+[Step 51](../upcoming/step-51-forum-post.md) runs the wrap-up protocol matrix on the
 current ImageID (D51.1) and publishes the forum post. Step 49 proved public
 local and public testnet only. Privacy never ran on this cut.
 Do not wait for Step 21.
 
 ## Related
 
-- [step-46-docs-unify-and-forum-post.md](../completed/step-46-docs-unify-and-forum-post.md)
-- [step-51-forum-post.md](step-51-forum-post.md)
-- [step-47-unify-role-terminology.md](../completed/step-47-unify-role-terminology.md)
-- [step-49-native-token-spec-alignment.md](../completed/step-49-native-token-spec-alignment.md)
+- [step-46-docs-unify-and-forum-post.md](step-46-docs-unify-and-forum-post.md)
+- [step-51-forum-post.md](../upcoming/step-51-forum-post.md)
+- [step-47-unify-role-terminology.md](step-47-unify-role-terminology.md)
+- [step-49-native-token-spec-alignment.md](step-49-native-token-spec-alignment.md)
 - [naming-conventions.md](../../reference/naming-conventions.md)
 - [verification-matrix.md](../../reference/verification-matrix.md)
 - [payment-streams-module README](../../payment-streams-module/README.md)

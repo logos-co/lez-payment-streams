@@ -12,8 +12,8 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | Path | Contents |
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
-| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44–47, 49) |
-| [upcoming/](upcoming/) | Steps 21, 50, 51 |
+| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44–47, 49–50) |
+| [upcoming/](upcoming/) | Steps 21, 51 |
 | [waiting/](waiting/) | Empty |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43, 48 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
@@ -31,19 +31,18 @@ Documentation tracks ([N18](../reference/integration-decisions.md#n18-integratio
 | Docs unify | Complete | Step 46 |
 | Forum post | Upcoming | Step 51; draft [forum-post.md](../external/forum-post.md) |
 | Multi-token type alignment (native-only demo) | Complete | Step 49 |
-| Consistency and clarity polish | Upcoming | Step 50 |
+| Consistency and clarity polish | Complete | Step 50 |
 
 Engineering: Steps 26–33 complete; Steps 36–41 complete
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
-Steps 21, 50, 51 upcoming (Basecamp UI; consistency and clarity polish;
-forum post).
+Steps 21, 51 upcoming (Basecamp UI; forum post).
 Step 48 wontfix (program-graph LEZ unify / AT config drop).
-Step 46 complete (living docs IA). Address 50 then 51 (49 complete, ImageID
-cut already landed; 50 must not collide with it).
-After Step 50 closes, Step 51 runs the full README Testing matrix on the
+Step 46 complete (living docs IA). Step 49 complete (ImageID cut).
+Step 50 complete (consistency and clarity polish).
+Step 51 runs the full README Testing matrix on the
 current ImageID (including privacy and testnet) and publishes the forum post.
-That checkpoint is not Step 50’s gate and is not blocked on Step 21.
+That checkpoint is not blocked on Step 21.
 Step 44 complete (payer/payee close). Step 45 complete (deps and patches freeze).
 Step 47 complete (role terminology).
 Step 20 wontfix (formal Developer Journey logos-docs publish; replaced by Step 46
@@ -101,7 +100,7 @@ paid Store mode on the provider.
 | Unify module JSON terminology (`owner` / `provider`) | 47 (complete) |
 | Program-graph LEZ unify + drop AT hex config | 48 (wontfix) |
 | LIP-155 multi-token type alignment (native-only demo) | 49 (complete) |
-| Consistency and clarity polish | 50 (upcoming; after 49) |
+| Consistency and clarity polish | 50 (complete) |
 | Forum post | 51 (upcoming; after 50) |
 
 Step 25 (in-process demo coordinator module) is wontfix
@@ -147,6 +146,7 @@ Dual-host demo coordination stays in host scripts
 | 46 | Docs unify (reproduce / integrate / README Testing) | [step-46-docs-unify-and-forum-post.md](completed/step-46-docs-unify-and-forum-post.md) |
 | 47 | Unify role terminology (module, journey, policy, layouts) | [step-47-unify-role-terminology.md](completed/step-47-unify-role-terminology.md) |
 | 49 | LIP-155 multi-token type alignment (native-only demo) | [step-49-native-token-spec-alignment.md](completed/step-49-native-token-spec-alignment.md) |
+| 50 | Consistency and clarity polish | [step-50-consistency-and-clarity.md](completed/step-50-consistency-and-clarity.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
 [step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33),
@@ -155,14 +155,14 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 [step-45-gate-log.md](completed/step-45-gate-log.md) (Step 45),
 [step-46-gate-log.md](completed/step-46-gate-log.md) (Step 46),
 [step-47-gate-log.md](completed/step-47-gate-log.md) (Step 47),
-[step-49-gate-log.md](completed/step-49-gate-log.md) (Step 49).
+[step-49-gate-log.md](completed/step-49-gate-log.md) (Step 49),
+[step-50-gate-log.md](completed/step-50-gate-log.md) (Step 50).
 
 ## Upcoming steps
 
 | Step | Focus | Status |
 | --- | --- | --- |
 | 21 | Protocol UI: Basecamp plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
-| 50 | Consistency and clarity polish | Upcoming — [step-50-consistency-and-clarity.md](upcoming/step-50-consistency-and-clarity.md) |
 | 51 | Forum post | Upcoming — [step-51-forum-post.md](upcoming/step-51-forum-post.md) |
 
 ## Waiting steps

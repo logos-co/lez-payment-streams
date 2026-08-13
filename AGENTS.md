@@ -45,8 +45,9 @@ SSOT: [docs/reproduce/payment-streams.md](docs/reproduce/payment-streams.md),
 Step 35 (complete) supplies integrate-doc substance.
 [Step 49](docs/plan/completed/step-49-native-token-spec-alignment.md) is complete
 (native-only LIP token_id / `accepted_tokens`; ImageID cut).
-Next polish: [Step 50](docs/plan/upcoming/step-50-consistency-and-clarity.md)
+[Step 50](docs/plan/completed/step-50-consistency-and-clarity.md) is complete
 (glue and naming).
+Next: [Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum publish + wrap-up matrix).
 
 Historical protocol CLI (complete):
 [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370);
@@ -54,18 +55,17 @@ Historical protocol CLI (complete):
 [Step 34](docs/plan/completed/step-34-user-journey-manual-walkthrough.md);
 [Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
 Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
-[Step 50](docs/plan/upcoming/step-50-consistency-and-clarity.md) (consistency and
-clarity),
 [Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post).
-Address 50 then 51 (46 and 49 complete).
-After 50 closes: Step 51 runs the full README Testing matrix on the current ImageID
-(privacy + testnet) and publishes the forum post. Not Step 50’s gate. Not blocked on Step 21.
+Step 51 runs the full README Testing matrix on the current ImageID
+(privacy + testnet) and publishes the forum post. Not blocked on Step 21.
 Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer and payee close),
 [Step 45](docs/plan/completed/step-45-dependencies-and-patches.md) (deps and patches),
 [Step 46](docs/plan/completed/step-46-docs-unify-and-forum-post.md) (docs unify),
 [Step 47](docs/plan/completed/step-47-unify-role-terminology.md) (role terminology),
 [Step 49](docs/plan/completed/step-49-native-token-spec-alignment.md) (native-only
-multi-token types).
+multi-token types),
+[Step 50](docs/plan/completed/step-50-consistency-and-clarity.md) (consistency and
+clarity).
 Wontfix: [Step 20](docs/plan/wontfix/step-20-developer-journey.md) (formal logos-docs integrator publish),
 [Step 23](docs/plan/wontfix/step-23-public-store-provider.md) (public Store provider),
 [Step 25](docs/plan/wontfix/step-25-demo-coordination-module.md) (demo coordinator),
