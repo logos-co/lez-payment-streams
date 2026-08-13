@@ -1,7 +1,10 @@
 # Step 49 — LIP-155 multi-token type alignment (native-only demo)
 
-Types and wire landed on `feat/step-49-native-token-spec-alignment`.
-ImageID-cut local and testnet dogfood pending.
+Types, wire, FFI, module, and living-doc delta landed on
+`feat/step-49-native-token-spec-alignment`.
+Fast verification passed 2026-08-13 (`534704e`).
+ImageID-cut local-public and testnet dogfood pending
+([gate log](../completed/step-49-gate-log.md)).
 Index: [index.md](../index.md).
 Closes [Step 41](../completed/step-41-non-native-token-policy-spec.md) D41.6 for
 types, wire, and policy shape.
