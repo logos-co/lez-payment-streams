@@ -861,7 +861,7 @@ mod tests {
     use super::*;
     use lee::PublicKey;
     use lez_payment_streams_core::{
-        generate_session_keypair, parse_eligibility_proof, sign_stream_proof_for_store_query,
+        parse_eligibility_proof, sign_stream_proof_for_store_query,
         sign_stream_proposal_vault_proof, StreamParams, VaultProofWire,
     };
 
