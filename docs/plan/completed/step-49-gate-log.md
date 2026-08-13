@@ -1,13 +1,9 @@
 # Step 49 gate log
 
-Upcoming until `testnet-public` (module + store) is recorded after
-`make deploy-testnet`.
 Packet: [step-49-native-token-spec-alignment.md](../upcoming/step-49-native-token-spec-alignment.md).
-
-Local ImageID-cut dogfood is recorded below.
-README [Public testnet guest program](../../../README.md#public-testnet-guest-program)
-and [fixtures/testnet-module.json](../../../fixtures/testnet-module.json) still
-cite the previous public deploy (`dea010d9…`) until testnet redeploy.
+D49.11 ImageID-cut bar (`fast` + `local-public` + `testnet-public`) is recorded below.
+Program identity: README [Public testnet guest program](../../../README.md#public-testnet-guest-program)
+and [fixtures/testnet-module.json](../../../fixtures/testnet-module.json).
 
 ## Spec pin (D49.9)
 
@@ -59,9 +55,28 @@ Repo commit `534704e`. `RISC0_DEV_MODE=1`.
 Store artifact includes `store_query_success`, `store_query_missing_proof`, and
 `claim`. Paid query status 200.
 
-## Testnet (not run)
+## Testnet deploy (2026-08-13)
 
-| Handle | Command | Result |
-| --- | --- | --- |
-| `testnet-public` module | `MODE=module ./scripts/e2e.sh testnet run` | pending (`make deploy-testnet` first) |
-| `testnet-public` store | `MODE=store ./scripts/e2e.sh testnet run` | pending |
+`make deploy-testnet` on `feat/step-49-native-token-spec-alignment`.
+
+| Field | Value |
+| --- | --- |
+| ImageID (hex bytes) | `c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a` |
+| ELF size | 373916 |
+| Deploy tx | `229dddd92e5184f4a44816ddda711b1eac51476248620a686807e091ffefba8b` |
+| Block | 5873 |
+| Freeze commit | `8a0e374a7e7171cd5b60ad20d46b9510b057dfe3` |
+
+Fixture sweep: `24c1f48`.
+
+## Testnet-public dogfood (D49.11)
+
+`SKIP_BUILD=1`. Live AT hex `fe96c422…`. Default proving (`RISC0_DEV_MODE` unset).
+
+| Date (UTC) | Cell | Artifact | Result | Notes |
+| --- | --- | --- | --- | --- |
+| 2026-08-13 | module-testnet | `.scaffold/e2e/artifacts/module-e2e-20260813T171430.log` | pass | vault 0, stream 0. `MODULE_E2E_SKIP_FUND=1` |
+| 2026-08-13 | store-testnet | `.scaffold/e2e/artifacts/e2e-20260813T172600.log` | fail | `PROOF_INVALID` / session public key unknown. `rediscoverStreams` persist wiped the disk seed |
+| 2026-08-13 | store-testnet | `.scaffold/e2e/artifacts/e2e-20260813T173906.log` | pass | after `12f93bd`. vault 0 stream 2. query status 200, missing-proof reject, close, claim |
+
+Store pass artifact includes `store_query_success`, `store_query_missing_proof`, and `claim`.

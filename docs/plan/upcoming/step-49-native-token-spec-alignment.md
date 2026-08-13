@@ -2,9 +2,8 @@
 
 Types, wire, FFI, module, and living-doc delta landed on
 `feat/step-49-native-token-spec-alignment`.
-Fast verification and local-public dogfood passed 2026-08-13
+Fast verification, local-public, and testnet-public dogfood passed 2026-08-13
 ([gate log](../completed/step-49-gate-log.md)).
-Testnet deploy and `testnet-public` still pending.
 Index: [index.md](../index.md).
 Closes [Step 41](../completed/step-41-non-native-token-policy-spec.md) D41.6 for
 types, wire, and policy shape.
