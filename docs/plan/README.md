@@ -13,8 +13,8 @@ This file is retained as a short redirect.
 | [../../AGENTS.md](../../AGENTS.md) | Agent read order |
 | [completed/](completed/) | Normative excerpts (12-16), completed Steps 17-19, 22, 24, 24b, 24c, 26-41, 44–45, 47 |
 | [upcoming/](upcoming/) | Steps 21, 46, 49, 50 |
-| [waiting/](waiting/) | Step 48 (upstream spel / AT trigger) |
-| [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43 |
+| [waiting/](waiting/) | Empty |
+| [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43, 48 |
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
@@ -33,7 +33,7 @@ integrate pointers, Testing recipes, forum orientation with links; drops living
 Multi-token type alignment (native-only demo): Step 49 (upcoming; after 46).
 Consistency and clarity polish: Step 50 (upcoming; after 49).
 User Journey UI: Step 21 (upcoming). Public hosted Store: Step 23 (wontfix).
-Wrap-up polish: Step 45 complete (deps/patches); Step 48 waiting (program-graph LEZ
-unify + drop AT hex config; upstream trigger); Step 44 complete (payer and payee close).
+Wrap-up polish: Step 45 complete (deps/patches); Step 48 wontfix (program-graph LEZ
+unify + drop AT hex config); Step 44 complete (payer and payee close).
 
 Runbooks ([store-eligibility.md](../reproduce/store-eligibility.md), [archive/steps/local-store-dual-host-runbook.md](../archive/steps/local-store-dual-host-runbook.md)) hold operator commands. Product gates in [verification-matrix.md](../reference/verification-matrix.md).

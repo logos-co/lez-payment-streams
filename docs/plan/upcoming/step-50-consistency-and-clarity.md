@@ -5,7 +5,7 @@ Upcoming. Index: [index.md](../index.md).
 Prerequisite: [Step 46](step-46-docs-unify-and-forum-post.md) (living docs IA)
 and [Step 49](step-49-native-token-spec-alignment.md) (token_id / policy types
 and ImageID cut already landed).
-[Step 48](../waiting/step-48-program-graph-lez-unify.md) is not a prerequisite.
+[Step 48](../wontfix/step-48-program-graph-lez-unify.md) is not a prerequisite.
 
 ## Goal
 
@@ -49,7 +49,7 @@ Out of scope:
 - Splitting the guest binary into many files by default (only if a helper
   is already duplicated with core).
 - Renaming `user-journey-*.sh` (D46.14).
-- Dropping `extern crate nssa_core as lee_core` (blocked on spel / Step 48).
+- Dropping `extern crate nssa_core as lee_core` (blocked on spel / Step 48, wontfix).
 - Step 21 UI.
 - Reviving archived step DoD scripts as living gates.
 

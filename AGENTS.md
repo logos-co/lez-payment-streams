@@ -18,7 +18,7 @@ Living docs: [docs/reproduce/](docs/reproduce/),
 [docs/integrate/eligibility.md](docs/integrate/eligibility.md),
 [docs/external/forum-post.md](docs/external/forum-post.md)
 ([Step 46](docs/plan/upcoming/step-46-docs-unify-and-forum-post.md);
-Step 48 waiting).
+Step 48 wontfix).
 Historical protocol CLI track is complete
 ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)).
 Protocol UI (Step 21) is upcoming. Public hosted Store (Step 23) is wontfix.
@@ -31,7 +31,7 @@ Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conven
 ### Documentation and integration
 
 Docs unify + forum ([Step 46](docs/plan/upcoming/step-46-docs-unify-and-forum-post.md),
-upcoming; not blocked on Step 48):
+upcoming):
 README Testing recipes, `docs/reproduce/`, `docs/integrate/eligibility.md`,
 `docs/external/forum-post.md`.
 Formal logos-docs integrator publish remains wontfix
@@ -57,14 +57,13 @@ Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
 multi-token types),
 [Step 50](docs/plan/upcoming/step-50-consistency-and-clarity.md) (consistency and
 clarity). Address 46 then 49 then 50.
-Waiting: [Step 48](docs/plan/waiting/step-48-program-graph-lez-unify.md) (program-graph LEZ
-unify + drop AT hex config; upstream trigger).
 Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer and payee close),
 [Step 45](docs/plan/completed/step-45-dependencies-and-patches.md) (deps and patches),
 [Step 47](docs/plan/completed/step-47-unify-role-terminology.md) (role terminology).
 Wontfix: [Step 20](docs/plan/wontfix/step-20-developer-journey.md) (formal logos-docs integrator publish),
 [Step 23](docs/plan/wontfix/step-23-public-store-provider.md) (public Store provider),
-[Step 25](docs/plan/wontfix/step-25-demo-coordination-module.md) (demo coordinator).
+[Step 25](docs/plan/wontfix/step-25-demo-coordination-module.md) (demo coordinator),
+[Step 48](docs/plan/wontfix/step-48-program-graph-lez-unify.md) (program-graph LEZ unify).
 Raw TODOs (unscheduled ideas): [docs/plan/raw-todos/](docs/plan/raw-todos/).
 
 ### E2E and migration (Steps 26-33)

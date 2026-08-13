@@ -14,8 +14,8 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44–45, 47) |
 | [upcoming/](upcoming/) | Steps 21, 46, 49, 50 |
-| [waiting/](waiting/) | Step 48 (upstream spel / AT ImageID trigger) |
-| [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43 |
+| [waiting/](waiting/) | Empty |
+| [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43, 48 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
 | [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |
@@ -37,12 +37,12 @@ Engineering: Steps 26–33 complete; Steps 36–41 complete
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
 Steps 21, 46, 49, 50 upcoming (Basecamp UI; docs unify + forum post;
 native-only multi-token type alignment; consistency and clarity polish).
-Step 48 waiting (program-graph LEZ unify / AT config drop; upstream trigger).
+Step 48 wontfix (program-graph LEZ unify / AT config drop).
 Address 46 then 49 then 50 (49 is an ImageID cut; 50 must not collide with it).
 Step 44 complete (payer/payee close). Step 45 complete (deps and patches freeze).
 Step 47 complete (role terminology).
 Step 20 wontfix (formal Developer Journey logos-docs publish; replaced by Step 46 docs + forum).
-Step 46 is not blocked on Step 48.
+Step 46 is not blocked on Step 48 (wontfix).
 Steps 42–43 wontfix (Testnet v0.3 incentivisation research / spec).
 Public hosted Store provider: Step 23 (wontfix).
 
@@ -93,7 +93,7 @@ paid Store mode on the provider.
 | Revisit dependencies and patches | 45 (complete) |
 | Docs unify + forum post (reproduce / integrate / README Testing / forum links) | 46 (upcoming; after 45) |
 | Unify module JSON terminology (`owner` / `provider`) | 47 (complete) |
-| Program-graph LEZ unify + drop AT hex config | 48 (waiting; upstream trigger) |
+| Program-graph LEZ unify + drop AT hex config | 48 (wontfix) |
 | LIP-155 multi-token type alignment (native-only demo) | 49 (upcoming; after 46) |
 | Consistency and clarity polish | 50 (upcoming; after 49) |
 
@@ -158,11 +158,7 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 
 ## Waiting steps
 
-Blocked on external input before the step can progress.
-
-| Step | Focus | Packet |
-| --- | --- | --- |
-| 48 | Program-graph LEZ unify + drop AT hex config | [step-48-program-graph-lez-unify.md](waiting/step-48-program-graph-lez-unify.md) |
+None. `waiting/` is empty.
 
 ## Wontfix steps
 
@@ -175,6 +171,7 @@ Not planned near-term. May move to `upcoming/` if resurrected.
 | 25 | Demo coordination Logos module | [step-25-demo-coordination-module.md](wontfix/step-25-demo-coordination-module.md) |
 | 42 | Discovery + payment policy advertisement | [step-42-discovery-payment-policy-advertisement.md](wontfix/step-42-discovery-payment-policy-advertisement.md) |
 | 43 | Shared payment pool model research | [step-43-shared-payment-pool-research.md](wontfix/step-43-shared-payment-pool-research.md) |
+| 48 | Program-graph LEZ unify + drop AT hex config | [step-48-program-graph-lez-unify.md](wontfix/step-48-program-graph-lez-unify.md) |
 
 Ideas not yet steps: [raw-todos/](raw-todos/).
 

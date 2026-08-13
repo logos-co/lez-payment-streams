@@ -12,7 +12,7 @@ Does not implement a non-native Token custody path.
 
 Prerequisite: [Step 46](step-46-docs-unify-and-forum-post.md) (living docs already
 on reproduce / integrate surfaces).
-[Step 48](../waiting/step-48-program-graph-lez-unify.md) is not a prerequisite.
+[Step 48](../wontfix/step-48-program-graph-lez-unify.md) is not a prerequisite.
 
 Spec pin: LIP-155 `docs/anoncomms/raw/payment-streams.md` on `logos-lips` `master`
 at a rev that contains [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)
@@ -82,7 +82,7 @@ Out of scope:
 - Demo command or phase changes (still vault → deposit → create → close → claim).
 - [Step 50](step-50-consistency-and-clarity.md) refactors (clock helper,
   C++ sharing, orchestrator extract).
-- `lee_core` alias removal (Step 48 / spel).
+- `lee_core` alias removal (Step 48 / spel, wontfix).
 - Renaming `user-journey-*.sh` (D46.14).
 
 ## Demo contract (must not change)

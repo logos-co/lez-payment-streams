@@ -15,7 +15,9 @@ async `storeQuery`) is complete on the module fork. The module flake pins `logos
 the integration branch; locked revs in the table below.
 
 Step 45 freezes a deliberate split between operator-stack LEZ and program-graph LEZ.
-Do not treat that divergence as a bug. Unification is [Step 48](../plan/waiting/step-48-program-graph-lez-unify.md).
+The operator vs program-graph LEZ split stays.
+Unification was [Step 48](../plan/wontfix/step-48-program-graph-lez-unify.md)
+(wontfix).
 Pins SSOT for the freeze packet:
 [step-45-dependencies-and-patches.md](plan/completed/step-45-dependencies-and-patches.md).
 
@@ -109,7 +111,8 @@ scripts; until then the branch ref in `flake.nix` plus a committed lock is the s
 ## Split LEZ pin policy (Step 45)
 
 Two LEZ pins on purpose. Do not force them equal.
-Host and guest unification (and dropping the AT hex override) is Step 48.
+Host and guest unification (and dropping the AT hex override) was Step 48
+(wontfix).
 
 | Layer | LEZ | Spel | What pins it |
 | --- | --- | --- | --- |
@@ -175,7 +178,8 @@ from program-graph LEZ `v0.2.0`.
 
 Keep `PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX` as documented testnet config (D45.14).
 Under the split, program-graph FFI embeds the `v0.2.0` AT id, while the live sequencer
-(and operator LEZ `v0.2.2+`) use `fe96c422…`. Dropping the override is Step 48.
+(and operator LEZ `v0.2.2+`) use `fe96c422…`. Dropping the override was Step 48
+(wontfix).
 
 `tools/lez-testnet-submit` is the AT id and ELF source for `bootstrap_testnet_fixture` /
 `ensure-testnet-vault` (no ELF override flag today). Rebuild the release binary on
@@ -307,7 +311,7 @@ and [step-18b-rc5-unify-handoff.md](plan/completed/step-18b-rc5-unify-handoff.md
 | `lez-testnet-submit` | `47eba256` (v0.2.4) | Required bootstrap; AT id/ELF source; assert vs live `fe96c422…` |
 | PATH `wallet` CLI | scaffold cache @ `47eba256` | `make deploy-testnet`, bootstrap, Piñata |
 | Guest / FFI / core | `a58fbce2` (v0.2.0) | ImageID, PDAs, program-graph types |
-| `PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX` | documented config → live `fe96c422…` | Required under the split until Step 48 |
+| `PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX` | documented config → live `fe96c422…` | Required under the split (Step 48 wontfix) |
 
 Guest `program_id_hex` on testnet: org deploy recorded in step packet; example in
 `fixtures/testnet.json.example`.

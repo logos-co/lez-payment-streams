@@ -4,11 +4,10 @@ Docs landed. Dogfood pending (D46.11). Index: [index.md](../index.md).
 Gate log: [step-46-gate-log.md](../completed/step-46-gate-log.md).
 
 Prerequisite [Step 45](../completed/step-45-dependencies-and-patches.md) is complete.
-[Step 48](../waiting/step-48-program-graph-lez-unify.md) is waiting on an upstream
-trigger and is not a prerequisite.
+[Step 48](../wontfix/step-48-program-graph-lez-unify.md) is wontfix
+and is not a prerequisite.
 Reproduction docs and dogfood assume the post-45 tree.
-Document AT hex / split-era config as it exists after 45; when Step 48 later
-completes, re-check testnet sections and re-run dogfood legs (D46.13).
+Document AT hex / split-era config as it exists after 45.
 
 ## Goal
 
@@ -244,7 +243,7 @@ Out of scope:
 
 - Step 20 logos-docs packet.
 - Step 21 UI screenshots unless already shipped.
-- Step 48 (waiting); do not block on it.
+- Step 48 (wontfix); do not block on it.
 - New backend features.
 - Living manual dual-host Store tutorial.
 - Full protocol-integration tutorial in `integrate/eligibility.md`.
@@ -285,7 +284,7 @@ Step 20 stays wontfix.
 
 | ID | Topic | Decision |
 | --- | --- | --- |
-| D46.1 | Packet ownership | Docs unify + forum post; after Step 45 only (48 waiting) |
+| D46.1 | Packet ownership | Docs unify + forum post; after Step 45 only (48 wontfix) |
 | D46.2 | Repo vs forum | Repo owns reproduction and integrate pointers; forum owns orientation and links |
 | D46.3 | Two reproduce paths | Protocol (manual) vs Store (orchestrator); N18 split without journey names |
 | D46.4 | Integrate doc | High-level + fixed pointer list; post-45 Store event names; not a full tutorial |
@@ -297,7 +296,7 @@ Step 20 stays wontfix.
 | D46.10 | Testing docs | Handles `fast` / `local-public` / `local-private` / `testnet-public` / `testnet-private`; no “tier”; no user-facing `CHAIN=` duplication; matrix relabeled in this step |
 | D46.11 | Dogfood | Legs remain: `local-private` (module + store; stub receipts, `RISC0_DEV_MODE=1`) + `testnet-public` (module + store) + one wrap-up `testnet-private` Store leg (`RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0`) on final post-45 pins. Forum draft ships with explicit `TODO: wait for results of …` until those legs exist; do not claim them in outbound prose beforehand. Gate log records artifacts and ImageID when run. |
 | D46.12 | Journey names | Remove from living docs and nav. Delete `docs/journeys/`. Archive / completed plan packets may keep historical wording. |
-| D46.13 | Step 48 | Not a prerequisite; ship against post-45 AT-config / split-era; re-dogfood when 48 completes |
+| D46.13 | Step 48 | Not a prerequisite; ship against post-45 AT-config / split-era; 48 is wontfix |
 | D46.14 | `user-journey-*.sh` | Keep filenames as stable CLI; document historical names in reproduce docs |
 | D46.15 | Program identity | No ImageID / `program_id_hex` in reproduce or integrate prose; cite README guest section + fixtures |
 | D46.16 | Old paths | No compatibility stubs. Fold then delete. Restructure for clarity now. |

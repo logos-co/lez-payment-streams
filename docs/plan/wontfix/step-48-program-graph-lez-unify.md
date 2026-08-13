@@ -1,10 +1,14 @@
 # Step 48 — program-graph LEZ unify and AT config drop
 
-Waiting — blocked on upstream spel + LEZ AT ImageID match (see Trigger).
+Wontfix. Not planned near-term.
 Index: [index.md](../index.md).
-Depends on: [Step 45](../completed/step-45-dependencies-and-patches.md) freeze complete
-(operator vs program-graph LEZ split; documented AT hex config).
-Not a prerequisite for [Step 46](../upcoming/step-46-docs-unify-and-forum-post.md).
+The operator vs program-graph LEZ split from
+[Step 45](../completed/step-45-dependencies-and-patches.md) stays.
+`PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX` remains required testnet config.
+May move back to `upcoming/` if resurrected.
+
+Original trigger was a published spel release whose LEZ AT ImageID matches live
+testnet. That pairing is not expected soon.
 
 ## Goal
 

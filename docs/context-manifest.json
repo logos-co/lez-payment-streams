@@ -10,10 +10,10 @@
   "program_index": "docs/plan/index.md",
   "verification_matrix": "docs/reference/verification-matrix.md",
   "active_steps": [],
-  "waiting_steps": [48],
+  "waiting_steps": [],
   "paused_steps": [],
   "upcoming_steps": [21, 46, 49, 50],
-  "wontfix_steps": [20, 23, 25, 42, 43],
+  "wontfix_steps": [20, 23, 25, 42, 43, 48],
   "optional_stretch_steps": [],
   "optional_steps": [],
   "step_packets": {
@@ -54,7 +54,7 @@
     "45": "docs/plan/completed/step-45-dependencies-and-patches.md",
     "46": "docs/plan/upcoming/step-46-docs-unify-and-forum-post.md",
     "47": "docs/plan/completed/step-47-unify-role-terminology.md",
-    "48": "docs/plan/waiting/step-48-program-graph-lez-unify.md",
+    "48": "docs/plan/wontfix/step-48-program-graph-lez-unify.md",
     "49": "docs/plan/upcoming/step-49-native-token-spec-alignment.md",
     "50": "docs/plan/upcoming/step-50-consistency-and-clarity.md"
   },
