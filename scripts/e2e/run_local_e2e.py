@@ -14,6 +14,9 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from await_tx import AwaitTxError, wait_for_sequencer_tx as await_sequencer_tx
+
 
 # Static sharding config - simpler for E2E demo without autosharding complexity
 # Autosharding requires content topic format: /app/{version}/content-type/encoding
@@ -1814,44 +1817,33 @@ def wait_for_sequencer_tx(
     *,
     label: str = "create_stream",
 ) -> None:
-    h = tx_hash.strip().lower().removeprefix("0x")
-    if len(h) != 64:
-        raise E2EError(f"invalid tx_hash for wait: {tx_hash!r}")
-    wait_s = e2e_tx_onchain_wait_s()
-    poll_s = float(os.environ.get("E2E_TX_ONCHAIN_POLL_S", "0.5"))
-    t0 = time.monotonic()
-    delay = max(0.25, poll_s)
-    attempt = 0
-    while time.monotonic() - t0 <= wait_s:
-        attempt += 1
-        try:
-            found = sequencer_json_rpc(seq_url, "getTransaction", [h])
-        except E2EError:
-            found = None
-        if found is not None:
-            log_artifact(
-                artifact,
-                "wait_tx_on_chain",
-                True,
-                label=label,
-                tx_hash=h,
-                attempts=attempt,
-                elapsed_s=round(time.monotonic() - t0, 2),
-            )
-            narrator.txid(h, label)
-            return
-        time.sleep(delay)
-        delay = min(delay * 1.5, 5.0)
+    try:
+        result = await_sequencer_tx(
+            seq_url,
+            tx_hash,
+            wait_s=float(e2e_tx_onchain_wait_s()),
+        )
+    except AwaitTxError as exc:
+        log_artifact(
+            artifact,
+            "wait_tx_on_chain",
+            False,
+            label=label,
+            tx_hash=exc.tx_hash,
+            attempts=exc.attempts,
+            elapsed_s=exc.elapsed_s,
+        )
+        raise E2EError(str(exc)) from exc
     log_artifact(
         artifact,
         "wait_tx_on_chain",
-        False,
+        True,
         label=label,
-        tx_hash=h,
-        attempts=attempt,
-        elapsed_s=round(time.monotonic() - t0, 2),
+        tx_hash=result["tx_hash"],
+        attempts=result["attempts"],
+        elapsed_s=result["elapsed_s"],
     )
-    raise E2EError(f"transaction {h} never appeared on sequencer (waited {wait_s}s)")
+    narrator.txid(result["tx_hash"], label)
 
 
 def ensure_sequencer_advancing(repo: Path, seq_url: str, artifact: Path) -> None:

@@ -7,18 +7,6 @@ set -euo pipefail
 [[ -n "${PS_CHAIN_POLL_SOURCED:-}" ]] && return 0
 PS_CHAIN_POLL_SOURCED=1
 
-# Defaults match module-e2e.sh (local 20×5s, testnet 45×2s when CHAIN is set).
-ps_inclusion_defaults() {
-  if ps_is_testnet; then
-    INCLUSION_ATTEMPTS="${INCLUSION_ATTEMPTS:-45}"
-    INCLUSION_SLEEP="${INCLUSION_SLEEP:-2}"
-  else
-    INCLUSION_ATTEMPTS="${INCLUSION_ATTEMPTS:-20}"
-    INCLUSION_SLEEP="${INCLUSION_SLEEP:-5}"
-  fi
-  export INCLUSION_ATTEMPTS INCLUSION_SLEEP
-}
-
 # seq_tx_included <tx_hash> -> 0 if getTransaction returns a non-null result.
 seq_tx_included() {
   local hash="$1" res
@@ -37,15 +25,10 @@ sys.exit(0 if ok else 1)
 ' "$res" 2>/dev/null
 }
 
-# await_inclusion <tx_hash> -> poll until included or budget exhausted.
+# await_inclusion <tx_hash> -> poll until included or E2E_TX_ONCHAIN_WAIT_S exhausted.
+# Inclusion budget lives in scripts/e2e/await_tx.py (default 110s). INCLUSION_ATTEMPTS
+# and INCLUSION_SLEEP are no longer the inclusion budget.
 await_inclusion() {
-  ps_inclusion_defaults
-  local hash="$1" attempt
-  for attempt in $(seq 1 "${INCLUSION_ATTEMPTS}"); do
-    if seq_tx_included "$hash"; then
-      return 0
-    fi
-    sleep "${INCLUSION_SLEEP}"
-  done
-  return 1
+  local hash="$1"
+  python3 "${REPO_ROOT}/scripts/e2e/await_tx.py" --seq-url "$(ps_seq_url)" "$hash"
 }

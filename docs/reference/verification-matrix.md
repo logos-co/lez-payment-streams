@@ -86,7 +86,8 @@ When a later step reads state that a `chainAction` wrote, the harness confirms o
 
 Two checks:
 
-- `wait_for_sequencer_tx` polls sequencer `getTransaction` until the tx appears.
+- `wait_for_sequencer_tx` ([await_tx.py](../../scripts/e2e/await_tx.py)) polls sequencer `getTransaction` until the tx appears.
+  Override the wall-clock budget with `E2E_TX_ONCHAIN_WAIT_S` (default 110s).
 - A state poll then reads the account the next step depends on (`getVaultStatus`, `readStreamConfigDecoded`, `getAccount`, and similar) until the expected state is visible.
 
 `await_chain_action_inclusion` always polls the sequencer on localnet.
