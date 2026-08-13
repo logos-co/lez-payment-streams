@@ -49,7 +49,7 @@ Makefile targets use `verify-module-*` and `verify-store-*`.
 
 | Term | Meaning |
 | --- | --- |
-| N18 | Protocol vs Store eligibility tracks. Step 20 formal logos-docs publish wontfix (logos-docs#369). Historical protocol CLI complete (Step 22 / logos-docs#370). Protocol UI Step 21 upcoming. Step 46: reproduce + integrate docs + forum links. Formerly User Journey / Developer Journey as living labels. |
+| N18 | Protocol vs Store eligibility tracks. Step 20 formal logos-docs publish wontfix (logos-docs#369). Historical protocol CLI complete (Step 22 / logos-docs#370). Protocol UI Step 21 upcoming. Step 46: reproduce + integrate docs. Step 51: forum links. Formerly User Journey / Developer Journey as living labels. |
 
 ## Logos and protocol names
 

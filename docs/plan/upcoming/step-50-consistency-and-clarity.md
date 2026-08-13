@@ -2,21 +2,22 @@
 
 Upcoming. Index: [index.md](../index.md).
 
-Prerequisite: [Step 46](step-46-docs-unify-and-forum-post.md) (living docs IA)
-and [Step 49](../completed/step-49-native-token-spec-alignment.md) (token_id /
-policy types and ImageID cut landed 2026-08).
+Prerequisite: [Step 46](../completed/step-46-docs-unify-and-forum-post.md)
+(living docs IA, complete) and
+[Step 49](../completed/step-49-native-token-spec-alignment.md)
+(token_id / policy types and ImageID cut landed 2026-08).
 [Step 48](../wontfix/step-48-program-graph-lez-unify.md) is not a prerequisite.
-
-Workstream A (Makefile help) shares a surface with Step 46 README Testing
-recipes. Persist, clock, and the C++ kit do not wait on 46 dogfood.
+[Step 51](step-51-forum-post.md) (forum publish + wrap-up matrix) is not a
+prerequisite. This step does not wait on it.
 
 ## Goal
 
 Make the tree easier to enter and internally consistent without adding
 structure for its own sake, and without changing demo outcomes.
 
-Step 46 owns documentation IA and journey-name retirement.
+Step 46 owns documentation IA and journey-name retirement (complete).
 Step 49 owns LIP multi-token types (complete; do not recut ImageID here).
+Step 51 owns forum publish and the full Testing-handle matrix.
 This step owns remaining naming drift, duplicated glue, API warts, and
 maintainer-surface clutter identified in the post-47 clarity review,
 plus persist/E2E glue exposed by the Step 49 ImageID-cut dogfood.
@@ -49,9 +50,9 @@ After 46 and 49, product docs and token types are aligned, but:
 - Makefile `help` is hand-written `@echo` and has drifted. It leads with
   archived `verify-step10*`…`step13` lines, omits living
   `verify-module-local-close-negatives` (listed in the verification matrix),
-  and omits `verify-step28-module-smoke`. `.PHONY` still lists `payee-close`
-  aliases. `scripts/check-terminology.sh` special-cases `payee-close` until
-  this step.
+  and omits `verify-step28-module-smoke`. `.PHONY` is a hand-maintained list
+  and still lists `payee-close` aliases. `scripts/check-terminology.sh`
+  special-cases `payee-close` until this step.
 - `Cargo.toml` still comments `upcoming/step-26-…`.
 - `handoff.md` is already retired (line 3). The remaining wart is a duplicated
   pins link (the same `feature-branch-pins.md` href twice).
@@ -79,7 +80,8 @@ Timebox the C++ kit to the listed helpers plus the error variants.
 
 Out of scope:
 
-- Step 46 doc IA, forum post, journey redirects.
+- Step 46 doc IA, journey redirects.
+- Step 51 forum post and wrap-up matrix.
 - Step 49 token types / PDA / non-native reject / guest ImageID.
 - Token program custody path.
 - Merging bash and Python orchestrators into one language.
@@ -89,34 +91,57 @@ Out of scope:
 - Renaming `user-journey-*.sh` (D46.14).
 - Dropping `extern crate nssa_core as lee_core` (blocked on spel / Step 48, wontfix).
 - Step 21 UI.
+- Editing files under `scripts/archive/`.
+- Re-homing living Makefile targets that still invoke archive scripts
+  (flagged below; do not add new callers).
 - Reviving archived step DoD scripts as living gates.
 - Sweeping `ift-ts` (already clean) or rewriting historical Step 3a cites in
   `integration-decisions.md`.
 - Full protocol matrix (privacy E2E, testnet public/private, extra close
-  cells). That is a wrap-up checkpoint after this step closes, not D50.7.
+  cells). That is Step 51 (D51.1), not this step’s gate.
 
 ## Workstreams
 
 ### A. Maintainer surfaces
 
-- Generate living `help` from `##` target comments so omitted living targets
-  cannot drift. Keep one explicit line for historical DoD (`scripts/archive/`).
+- Generate living `help` from `##` target comments. Omit targets whose recipe
+  invokes `scripts/archive/` (do not list each archived DoD). Keep one explicit
+  line pointing at `scripts/archive/` for historical DoD.
+- `.PHONY` is generated from every recipe target name in this Makefile
+  (awk / `$(shell …)`), including aliases and archive wrappers. Do not
+  hand-maintain a second list.
 - Remove `verify-module-local-payee-close*` aliases (do not keep them as
   documented aliases). Same commit, drop the `payee-close` special case in
-  `scripts/check-terminology.sh` and edit `.PHONY`.
+  `scripts/check-terminology.sh`.
 - `Cargo.toml` comment: `completed/step-26-…`, not `upcoming/`.
 - `handoff.md`: fold the duplicate pins link. Keep the retired redirect.
-- Bootstrap / `ensure-testnet-vault` `PROGRAM_ID_HEX` defaults: copy the
-  `deploy-testnet.sh` pattern (`make -s program-id` when `TESTNET_PROGRAM_ID_HEX`
-  is unset). Keep the env override. Fail clearly if the guest binary is
-  absent. Leave hardcoded hex in `scripts/archive/` frozen.
+- Living bootstrap / `ensure-testnet-vault` `PROGRAM_ID_HEX` defaults: derive
+  via `make -s program-id` when `TESTNET_PROGRAM_ID_HEX` is unset. Keep the
+  env override. Fail clearly if the guest binary is absent (do not auto-build).
+  Align `ensure-testnet-vault.sh` on `TESTNET_PROGRAM_ID_HEX` (it currently
+  uses `PROGRAM_ID_HEX`). Do not edit `scripts/archive/`.
+
+Living Makefile recipes that still invoke `scripts/archive/` (do not touch
+those scripts in this step):
+
+| Make target | Archive script | Role today |
+| --- | --- | --- |
+| `wallet-lgx` | `build-wallet-lgx.sh` | Documented in feature-branch-pins |
+| `verify-store-local-lifecycle` | `verify-store-local-lifecycle.sh` | Maintainer lifecycle cell |
+| `bootstrap-testnet` | `bootstrap-testnet.sh` | Store testnet fixture (still hardcoded ImageID) |
+| `verify-step18-testnet-read-smoke` | `verify-step18-testnet-read-smoke.sh` | Historical smoke |
+| `verify-step10a` … `verify-step13` | matching `verify-step*-dod.sh` | Historical DoD |
+
+`make bootstrap-testnet` therefore keeps the archive hardcoded ImageID.
+Only the living `bootstrap-testnet-module.sh` and `ensure-testnet-vault.sh`
+paths get derive-and-fail.
 
 ### B. Shared invariants
 
-- One C++ clock helper with `>= 1_000_000_000_000`, comment citing
-  `chain_timestamp_to_fold_seconds`. Replace both `foldClockForPolicy` and
-  `chainTimestampToFoldSeconds`. Do not route wall-clock folds through FFI
-  decode.
+- One C++ clock helper in the kit (workstream D) with
+  `>= 1_000_000_000_000`, comment citing `chain_timestamp_to_fold_seconds`.
+  Replace both `foldClockForPolicy` and `chainTimestampToFoldSeconds`.
+  Do not route wall-clock folds through FFI decode.
 - Python and `seed_localnet_fixture` already match core. Add a one-line
   comment pointing at core. No behavior change.
 - Account-id parse (hex-64 then base58) stays one helper per language
@@ -125,44 +150,62 @@ Out of scope:
 ### C. Persist merge (first)
 
 Land in its own commit, before mechanical helper moves (same spirit as D50.1).
+Create the kit `.h` / `.cpp` in this commit with the merge helper (and
+optionally the clock helper). Remaining kit symbols land in commit 2.
 
 - Choke point is `persistIfDirty` / `saveStateToDisk`, not `rediscoverStreams`
   alone. Before write, merge disk `provider_acceptances` and `peer_mappings`
   for keys memory lacks. Memory wins on conflict.
+- Acceptance identity is `(vault_id, provider_id_hex)` (same as
+  `findProviderAcceptanceIndex` and `seed_provider_acceptance.py`).
+  `peer_mappings` merge by peer-id object key.
+  Do not merge `negotiations` / `inventory` unless a second wipe shows up.
 - Keep the verify-path `loadStateFromDisk` fallback on session miss.
 - Regression test in the module Qt harness
-  (`logos-payment-streams-module/tests/`): seed acceptances on disk, call
-  rediscover (or any persist writer), assert the row survives.
+  (`logos-payment-streams-module/tests/`): compile the kit `.cpp` the same
+  way `test_privacy_submit_policy.cpp` compiles `payment_streams_privacy_policy.cpp`.
+  Feed memory JSON and disk JSON into the merge helper. Assert a disk-only
+  acceptance row survives and that a memory row wins on the same key.
+  Do not instantiate `PaymentStreamsModuleImpl` or call `rediscoverStreams`
+  (the current harness does not link wallet / FFI).
 - Keep E2E seed-after-rediscover until this merge lands. Do not revert to
   seed-then-rediscover. After the merge, the E2E order may stay as defense
   in depth.
 
 ### D. Module helper kit
 
-- One `.h` / `.cpp` pair with a named namespace (true sharing, matches D50.3).
-  An anonymous-namespace header would duplicate per translation unit.
-- Kit list: `makeErrorJson` / `makeOkJson`, `walletAccountIdHexFromBase58`,
-  `parseWalletAccountJson`, `hex32FromQString`, fixture path lookup,
-  two-phase FFI buffer helpers, plus `makePlainError` /
-  `makeEligibilityError` / `makeVerifyEligibilityError`.
-- `parseWalletAccountJson`: decide one signature (superset with optional
-  `errorOut` and `balanceHexOut`, or two functions). Do not pick one copy
-  blindly.
-- Drop unused `getVaultStatus` `streamId` from the C++ signature. Dispatch
-  already passes `{}`. README chainAction table already matches
-  (`owner`, `vault_id`). Expect zero living-doc lines.
+- One `.h` / `.cpp` pair with namespace `payment_streams_kit` (true sharing,
+  matches D50.3). An anonymous-namespace header would duplicate per
+  translation unit. Add the files to module `CMakeLists.txt` `SOURCES` and to
+  tests `MODULE_SOURCES`.
+- Kit list: clock fold, persist merge, `makeErrorJson` / `makeOkJson`,
+  `walletAccountIdHexFromBase58`, `parseWalletAccountJson`, `hex32FromQString`,
+  `variantToU64`, fixture path lookup, two-phase FFI buffer helper, plus
+  `makePlainError` / `makeEligibilityError` / `makeVerifyEligibilityError`.
+- `parseWalletAccountJson`: one superset. Optional `errorOut` and
+  `balanceHexOut`. Require a non-empty `data` field only when `dataOut` is
+  non-null (holding-balance callers pass `dataOut == nullptr`).
+- Drop unused `getVaultStatus` `streamId` from the private C++ signature.
+  Dispatch already passes `{}`. LogosAPI `chainAction` is unchanged.
+  README chainAction table already matches (`owner`, `vault_id`).
+  Expect zero living-doc lines.
 
 ### E. Orchestrators
 
 Split confirmation into two layers.
 
-- E1. Shared tx-inclusion wait. One Python `await_tx` entrypoint that both
-  orchestrators invoke (bash `seq_tx_included` already shells to `python3`).
-  Pick the wall-clock budget model (better under testnet latency variance).
-  Module-e2e retry budgets will shift slightly. Keep artifact logging.
+- E1. Extract `wait_for_sequencer_tx` from `run_local_e2e.py` into a small
+  shared module (for example `scripts/e2e/await_tx.py`) with a CLI entry
+  `await_tx`. Wall-clock budget (`E2E_TX_ONCHAIN_WAIT_S`), exponential
+  backoff, `0x`/case hash normalize. Optional artifact path; omit from bash
+  if there is no JSONL handle. `chain_poll.sh` `await_inclusion` shells to
+  that CLI. `run_local_e2e.py` imports the function (do not rewrite the
+  5100-line orchestrator).
+- Retire `INCLUSION_ATTEMPTS` / `INCLUSION_SLEEP` as the inclusion budget.
+  Document `E2E_TX_ONCHAIN_WAIT_S` as the override. Module-e2e retry budgets
+  will shift slightly toward the Python default (~110s).
 - E2. State polls stay per-orchestrator (logoscore JSON vs `call_ps` + jq),
   aligned only through the matrix on-chain confirmation principle.
-- Do not rewrite `run_local_e2e.py` (5100 lines) in this step.
 - Leave `user-journey-*.sh` filenames; comments may say “manual protocol
   path” now that Step 46 dropped living journey nav.
 - Keep exporting live AT ImageID into logoscore before it starts. Do not
@@ -170,9 +213,10 @@ Split confirmation into two layers.
 
 ### F. FFI
 
-- Remove `payment_streams_ffi_ping`. Repoint `c_header_smoke.c` at a real
-  export. Regenerate `lez_payment_streams_ffi.h` via cbindgen in the same
-  commit.
+- Remove `payment_streams_ffi_ping`. Repoint `c_header_smoke.c` at an
+  existing export (empty-input `payment_streams_ffi_decode_vault_config_bytes`
+  is enough). Regenerate `lez_payment_streams_ffi.h` via cbindgen in the
+  same commit (`lez-payment-streams-ffi/build.rs` already runs it).
 - Rustdoc only: replace remaining “Step 3a” cites in
   `lez-payment-streams-core` and `lez-payment-streams-ffi` with a living
   pointer (policy module / LIP). Leave `integration-decisions.md`.
@@ -181,12 +225,13 @@ Split confirmation into two layers.
 
 ## Implementor order
 
-1. Persist merge (C), own commit, own Qt test.
-2. Clock helper plus kit (B, D).
-3. Makefile / `.PHONY` / terminology special-case / `Cargo.toml` / `handoff.md`
-   / program-id defaults (A). Remove aliases before rewriting help so help
-   matches the final target list.
-4. FFI ping + cbindgen + smoke (F), isolated because it touches a generated
+1. Persist merge (C) in the new kit files, own commit, own Qt unit test.
+2. Clock helper plus remaining kit symbols (B, D), including `getVaultStatus`.
+3. Shared `await_tx` (E).
+4. Makefile help / generated `.PHONY` / terminology special-case /
+   `Cargo.toml` / `handoff.md` / program-id defaults (A). Remove aliases
+   before rewriting help so help matches the final target list.
+5. FFI ping + cbindgen + smoke (F), isolated because it touches a generated
    header.
 
 ## Decisions
@@ -194,52 +239,45 @@ Split confirmation into two layers.
 | ID | Topic | Decision |
 | --- | --- | --- |
 | D50.1 | Guest / ImageID | No intentional ImageID cut. If a guest bug is found, split a tiny fix and record it; do not bundle with helper moves. Clock `>` vs `>=` is not a guest bug. |
-| D50.2 | Orchestrators | E1 shares tx-inclusion (Python entrypoint, wall-clock budget). E2 keeps per-orchestrator state polls. Two entrypoints (`MODE=module` vs `MODE=store`). |
-| D50.3 | C++ sharing | One named-namespace `.h` / `.cpp` pair, not a framework and not an anonymous-namespace header. |
-| D50.4 | Clock | Core function is SSOT; C++ matches `>= 1_000_000_000_000`. Purity only. |
-| D50.5 | Makefile | Living help from `##` comments; archive scripts stay in `scripts/archive/`. Remove `payee-close` aliases. |
+| D50.2 | Orchestrators | E1 shares tx-inclusion (extracted Python `await_tx`, wall-clock budget). E2 keeps per-orchestrator state polls. Two entrypoints (`MODE=module` vs `MODE=store`). |
+| D50.3 | C++ sharing | One named-namespace `.h` / `.cpp` pair (`payment_streams_kit`), not a framework and not an anonymous-namespace header. |
+| D50.4 | Clock | Core function is SSOT; C++ matches `>= 1_000_000_000_000`. Purity only. Kit unit test covers the `>= 1e12` boundary. |
+| D50.5 | Makefile | Living help from `##` comments, skipping archive-invoking recipes. `.PHONY` generated from all recipe targets. Remove `payee-close` aliases. Do not edit `scripts/archive/`. |
 | D50.6 | Docs | Touch living surfaces only if an API wart still disagrees (getVaultStatus likely zero lines). No new reproduce doc. |
-| D50.7 | Verification | Commands below. No testnet and no privacy E2E in this step’s gate unless D50.1 guest fix landed. Persist wipe is a module-state ordering bug, reproducible locally. |
+| D50.7 | Verification | `fast` only (`make check-terminology`, `RISC0_DEV_MODE=1 cargo test --workspace`, plus the new Qt kit tests via the module test binary if that is how the harness is invoked). No E2E in this step’s gate. Wrap-up matrix is Step 51. |
+| D50.8 | Persist test | Unit-test the merge helper with JSON fixtures. Do not call `rediscoverStreams` in Qt tests. |
+| D50.9 | `parseWalletAccountJson` | One superset (optional `errorOut` and `balanceHexOut`; data required only when `dataOut` is non-null). |
+| D50.10 | Program id | Derive-and-fail via `make -s program-id` when `TESTNET_PROGRAM_ID_HEX` is unset. No auto-build. |
 
 ## Done when
 
 - Workstreams A–F landed or explicitly deferred in this packet with a reason.
-- Clock conversion matches core in every living caller. Module test covers
+- Clock conversion matches core in every living caller. Kit test covers
   the `>= 1e12` boundary.
 - Module JSON helpers exist once; `getVaultStatus` has no dummy `streamId`.
-- Persist merge has a Qt regression test (disk seed survives rediscover).
-- Makefile `help`, `.PHONY`, and the matrix alias list agree.
+- Persist merge has a Qt unit test (disk-only acceptance row survives merge).
+- Makefile `help` lists living targets; `.PHONY` is generated; matrix alias
+  list has no `payee-close`.
 - cbindgen header regenerated; `c_header_smoke.c` links a real export.
 - `make check-terminology`.
 - `RISC0_DEV_MODE=1 cargo test --workspace`.
-- `MODE=module ./scripts/e2e.sh local run` (no privacy flags).
-- `MODE=store ./scripts/e2e.sh local run` (no privacy flags).
 - Gate log: [step-50-gate-log.md](../completed/step-50-gate-log.md) (create
   when closing).
 
-README Testing handles `fast` / `local-public` map to the commands above.
-The verification matrix does not use those handle names; the gate is the
-commands.
+No `MODE=module` / `MODE=store` E2E in this gate. README Testing handle
+`fast` maps to the commands above.
 
 ## After this step
 
-Once 50 is closed, run a wrap-up protocol matrix on the current ImageID.
-Step 49 proved public local and public testnet only. Privacy never ran on
-this cut. Record artifacts in the Step 50 gate log (or a short follow-up
-note there). Do not wait for Step 21.
-
-Handles: `fast`, `local-public` (module + store), `local-private` (stub
-receipts), `testnet-public`, then `testnet-private` (`RISC0_DEV_MODE=0`) if
-taking the Step 39 wrap-up dogfood. Optional extras: module provider-close
-and close-negatives. Persist Qt test plus public Store E2E already cover
-the `provider_acceptances` wipe; privacy E2E is for the private submit
-path and the post-49 vault-owner digest, not for re-proving persist.
-
-Step 46 dogfood can follow README Testing after Makefile help is stable.
+[Step 51](step-51-forum-post.md) runs the wrap-up protocol matrix on the
+current ImageID (D51.1) and publishes the forum post. Step 49 proved public
+local and public testnet only. Privacy never ran on this cut.
+Do not wait for Step 21.
 
 ## Related
 
-- [step-46-docs-unify-and-forum-post.md](step-46-docs-unify-and-forum-post.md)
+- [step-46-docs-unify-and-forum-post.md](../completed/step-46-docs-unify-and-forum-post.md)
+- [step-51-forum-post.md](step-51-forum-post.md)
 - [step-47-unify-role-terminology.md](../completed/step-47-unify-role-terminology.md)
 - [step-49-native-token-spec-alignment.md](../completed/step-49-native-token-spec-alignment.md)
 - [naming-conventions.md](../../reference/naming-conventions.md)

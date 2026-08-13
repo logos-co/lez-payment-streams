@@ -17,7 +17,8 @@ integrator publish is wontfix ([Step 20](docs/plan/wontfix/step-20-developer-jou
 Living docs: [docs/reproduce/](docs/reproduce/),
 [docs/integrate/eligibility.md](docs/integrate/eligibility.md),
 [docs/external/forum-post.md](docs/external/forum-post.md)
-([Step 46](docs/plan/upcoming/step-46-docs-unify-and-forum-post.md);
+([Step 46](docs/plan/completed/step-46-docs-unify-and-forum-post.md) docs;
+[Step 51](docs/plan/upcoming/step-51-forum-post.md) forum;
 Step 48 wontfix).
 Historical protocol CLI track is complete
 ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)).
@@ -30,10 +31,11 @@ Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conven
 
 ### Documentation and integration
 
-Docs unify + forum ([Step 46](docs/plan/upcoming/step-46-docs-unify-and-forum-post.md),
-upcoming):
-README Testing recipes, `docs/reproduce/`, `docs/integrate/eligibility.md`,
-`docs/external/forum-post.md`.
+Docs unify ([Step 46](docs/plan/completed/step-46-docs-unify-and-forum-post.md),
+complete):
+README Testing recipes, `docs/reproduce/`, `docs/integrate/eligibility.md`.
+Forum draft remains at `docs/external/forum-post.md`
+([Step 51](docs/plan/upcoming/step-51-forum-post.md)).
 Formal logos-docs integrator publish remains wontfix
 ([Step 20](docs/plan/wontfix/step-20-developer-journey.md);
 [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)).
@@ -52,13 +54,15 @@ Historical protocol CLI (complete):
 [Step 34](docs/plan/completed/step-34-user-journey-manual-walkthrough.md);
 [Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
 Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
-[Step 46](docs/plan/upcoming/step-46-docs-unify-and-forum-post.md) (docs unify + forum),
 [Step 50](docs/plan/upcoming/step-50-consistency-and-clarity.md) (consistency and
-clarity). Address 46 then 50 (49 complete).
-After 50 closes: full README Testing matrix on the current ImageID
-(privacy + testnet). Not Step 50’s gate. Not blocked on Step 21.
+clarity),
+[Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post).
+Address 50 then 51 (46 and 49 complete).
+After 50 closes: Step 51 runs the full README Testing matrix on the current ImageID
+(privacy + testnet) and publishes the forum post. Not Step 50’s gate. Not blocked on Step 21.
 Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer and payee close),
 [Step 45](docs/plan/completed/step-45-dependencies-and-patches.md) (deps and patches),
+[Step 46](docs/plan/completed/step-46-docs-unify-and-forum-post.md) (docs unify),
 [Step 47](docs/plan/completed/step-47-unify-role-terminology.md) (role terminology),
 [Step 49](docs/plan/completed/step-49-native-token-spec-alignment.md) (native-only
 multi-token types).

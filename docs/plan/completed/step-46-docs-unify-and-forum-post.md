@@ -1,18 +1,22 @@
-# Step 46 — docs unify and forum post
+# Step 46 — docs unify
 
-Docs landed. Dogfood pending (D46.11). Index: [index.md](../index.md).
-Gate log: [step-46-gate-log.md](../completed/step-46-gate-log.md).
+Index: [index.md](../index.md). Status: complete (2026-08).
+Gate log: [step-46-gate-log.md](step-46-gate-log.md).
 
-Prerequisite [Step 45](../completed/step-45-dependencies-and-patches.md) is complete.
+Forum publish and wrap-up dogfood moved to
+[Step 51](../upcoming/step-51-forum-post.md).
+This packet is the living-docs IA (reproduce / integrate / README Testing /
+journey-name retirement).
+
+Prerequisite [Step 45](step-45-dependencies-and-patches.md) is complete.
 [Step 48](../wontfix/step-48-program-graph-lez-unify.md) is wontfix
 and is not a prerequisite.
-Reproduction docs and dogfood assume the post-45 tree.
+Reproduction docs assume the post-45 tree.
 Document AT hex / split-era config as it exists after 45.
 
 ## Goal
 
-Unify in-repo documentation around a clear audience split, then publish a forum
-progress report that orients readers and links into that documentation.
+Unify in-repo documentation around a clear audience split.
 
 Drop living “journey” branding (User Journey, Developer Journey, E2E.md as a
 standalone brand). Keep the N18 conceptual split (protocol vs Store eligibility)
@@ -35,7 +39,8 @@ Step 46 does not revive it.
 | [verification-matrix.md](../../reference/verification-matrix.md) | Maintainers | Flag detail, artifacts, make aliases, cold-start depth; on-chain confirmation principle; MODE labels without journey names | Human walkthrough prose |
 | `docs/external/` | Outbound communications | Forum draft and other docs written for venues outside this repo | Operator runbooks; LIP rewrite; verification-matrix |
 
-N18 preserved as two reproduce docs plus distinct plain-English tracks in the forum.
+N18 preserved as two reproduce docs plus distinct plain-English tracks
+(forum copy lives in Step 51).
 Not preserved as journey packet names or logos-docs journey genre.
 
 ## Information architecture
@@ -50,7 +55,7 @@ docs/
   integrate/
     eligibility.md                 high-level protocol-integrator pointers
   external/
-    forum-post.md                  outbound forum draft (dogfood TODOs until D46.11)
+    forum-post.md                  outbound forum draft (Step 51 owns publish)
   reference/                       contracts, decisions, verification-matrix (keep; relabel)
   plan/                            step packets (this file lives here)
 ```
@@ -137,7 +142,7 @@ Axes (no “tier” vocabulary in README or matrix support headings):
 User-facing commands never duplicate network selection
 (never `CHAIN=testnet ./scripts/e2e.sh testnet run`).
 
-Stable recipe handles (cite these from forum and reproduce docs):
+Stable recipe handles (cite these from the Step 51 forum draft and reproduce docs):
 
 | Handle | Purpose | Commands |
 | --- | --- | --- |
@@ -145,7 +150,7 @@ Stable recipe handles (cite these from forum and reproduce docs):
 | `local-public` | Local E2E public | `MODE=module ./scripts/e2e.sh local run`; `MODE=store ./scripts/e2e.sh local run` |
 | `local-private` | Local privacy path with stub receipts (`RISC0_DEV_MODE=1` default) | Same with `OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`. Exercises privacy account flow and module IPC; not real proving. |
 | `testnet-public` | Public testnet (real network) | `MODE=module ./scripts/e2e.sh testnet run`; `MODE=store ./scripts/e2e.sh testnet run` |
-| `testnet-private` | Testnet full privacy with real proving | `RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0` plus full privacy flags; one wrap-up dogfood leg (D46.11). Listed because Step 46 runs it once, not as everyday policy. |
+| `testnet-private` | Testnet full privacy with real proving | `RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0` plus full privacy flags; one wrap-up dogfood leg (Step 51). Listed because the wrap-up runs it once, not as everyday policy. |
 
 `docs/README.md` Verify block becomes links to root README Testing and the matrix only.
 
@@ -170,34 +175,10 @@ Renaming is out of scope for Step 46.
 
 ## Forum post
 
-### Audience and tone
-
-Logos / AnonComms forum readers.
-Progress report, not a LIP rewrite.
-Plain English; technically able audience unfamiliar with payment streams.
-
-### Outline
-
-1. Intro — payment streams on LEZ; module; Store eligibility as one application;
-   wrap-up status; public and private LEZ execution supported (one sentence +
-   link to reproduce Private execution notes / Testing recipes). Until D46.11
-   legs have been run, mark wrap-up claims as `TODO: wait for results of
-   local-private / testnet-public / testnet-private` (D46.11). Do not invent
-   evidence.
-2. As a protocol user (plain English) — fund → vault → deposit → open stream → …
-   → close / claim.
-3. As a protocol developer (plain English) — eligibility pattern at high level
-   (proof on request, verify before serve); not a Store command tutorial.
-4. Links — root README (install + Testing); `reproduce/payment-streams.md`;
-   `reproduce/store-eligibility.md`; `integrate/eligibility.md`; LIP-155.
-   Do not link verification-matrix as a primary forum pointer (maintainer doc).
-5. No command spoiler. At most two clone-and-run lines, copied verbatim from
-   README Testing recipes (D46.5). Prefer links only when the venue allows.
-
-Draft path (fixed): [../../external/forum-post.md](../../external/forum-post.md).
-Stays under `docs/external/` after publish (outbound tree, not a plan packet).
-Gate log still goes under `completed/` when the step closes.
-Venue TBD at publish time.
+Extracted to [Step 51](../upcoming/step-51-forum-post.md).
+Draft path stays [forum-post.md](../../external/forum-post.md).
+Outline, D46.5 command rule, D46.11 dogfood, D46.17 path, and venue TBD
+moved with that packet. Do not publish wrap-up claims from this step.
 
 ## Prerequisites
 
@@ -209,9 +190,9 @@ Venue TBD at publish time.
 
 | Source | Fold into |
 | --- | --- |
-| [USER_JOURNEY.md](../../journeys/USER_JOURNEY.md), [Step 34](../completed/step-34-user-journey-manual-walkthrough.md) | `reproduce/payment-streams.md` |
+| [USER_JOURNEY.md](../../journeys/USER_JOURNEY.md), [Step 34](step-34-user-journey-manual-walkthrough.md) | `reproduce/payment-streams.md` |
 | [E2E.md](../../journeys/E2E.md), [store-integration/README.md](../../store-integration/README.md) | `store-eligibility.md` + scripts README; confirmation principle → matrix |
-| [DEVELOPER_JOURNEY.md](../../journeys/DEVELOPER_JOURNEY.md), [Step 35](../completed/step-35-developer-journey-generalization.md) | `integrate/eligibility.md` (high-level + fixed pointers; post-45 names) |
+| [DEVELOPER_JOURNEY.md](../../journeys/DEVELOPER_JOURNEY.md), [Step 35](step-35-developer-journey-generalization.md) | `integrate/eligibility.md` (high-level + fixed pointers; post-45 names) |
 | [PRIVACY_ENHANCED_JOURNEY.md](../../journeys/PRIVACY_ENHANCED_JOURNEY.md), Steps 36–39 | Per-doc Private execution notes |
 | LIP-155, contracts, fixtures / README guest section | Citations only |
 
@@ -222,7 +203,7 @@ In scope:
 - README front door (overview, install section, Testing recipes with handles).
 - `docs/README.md` map; Verify → links only.
 - Two reproduce docs + one integrate doc as above.
-- `docs/external/forum-post.md`.
+- Draft stub at `docs/external/forum-post.md` (publish is Step 51).
 - Delete `docs/journeys/` (and `docs/store-integration/`) after folding; no
   redirect stubs.
 - Sweep living pillar / reference docs listed in the migration table.
@@ -233,11 +214,8 @@ In scope:
 - Grep gate: no live script stdout, comment, or doc link to retired paths outside
   allowlisted historical trees (fix `e2e.sh` privacy hint, `run_local_e2e.py` E2E cite,
   `user-journey-reset.sh` banner text, etc.).
-- Forum draft at fixed path + publish (or ready-to-post).
-- Dogfood + [step-46-gate-log.md](../completed/step-46-gate-log.md) (create when closing).
 - Rework plan index tracks table and AGENTS read-order / active-work rows onto new
-  surfaces (not only a forum URL note).
-- Index / AGENTS forum URL when published.
+  surfaces.
 
 Out of scope:
 
@@ -251,12 +229,13 @@ Out of scope:
 - Requiring `testnet-private` after every prior engineering step.
 - Preserving old GitHub / logos-docs URLs (including logos-docs#370).
 - Slides / asciinema / `docs/journeys/slides/` (D46.18).
+- Forum publish and wrap-up matrix dogfood (Step 51).
 
 ## Relationship to Step 20
 
 Step 20 was formal Store / integrator journey publish.
-Step 46 replaces that public need with in-repo reproduce + integrate docs and a
-forum orientation post with links.
+Step 46 replaces that public need with in-repo reproduce + integrate docs.
+Forum orientation with links is Step 51.
 Step 20 stays wontfix.
 
 ## Deliver
@@ -265,7 +244,7 @@ Step 20 stays wontfix.
 - `docs/reproduce/payment-streams.md`
 - `docs/reproduce/store-eligibility.md`
 - `docs/integrate/eligibility.md`
-- `docs/external/forum-post.md` (dogfood TODOs until D46.11 results exist).
+- Stub at `docs/external/forum-post.md` (Step 51 owns publish).
 - `docs/journeys/` and `docs/store-integration/` gone; hub maps to reproduce /
   integrate / on-chain / payment-streams-module / plan.
 - Living sweeps: payment-streams-module README, naming-conventions MODE section,
@@ -274,18 +253,17 @@ Step 20 stays wontfix.
   `CHAIN=` sweep on Makefile / usage / module-e2e header.
 - `check-terminology.sh` path + journey-name living scan updates.
 - Script/doc grep gate for retired paths.
-- Forum draft at `docs/external/forum-post.md`; published post or ready-to-post.
-- `docs/plan/completed/step-46-gate-log.md` with artifact paths and ImageID
-  (cite README / fixtures; do not paste hex into reproduce prose).
+- [step-46-gate-log.md](step-46-gate-log.md) records docs landed.
+  Wrap-up artifacts are Step 51.
 - Plan index tracks section reworked; AGENTS read-order and active-work flipped
-  to new surfaces; forum URL note when published.
+  to new surfaces.
 
 ## Decisions
 
 | ID | Topic | Decision |
 | --- | --- | --- |
-| D46.1 | Packet ownership | Docs unify + forum post; after Step 45 only (48 wontfix) |
-| D46.2 | Repo vs forum | Repo owns reproduction and integrate pointers; forum owns orientation and links |
+| D46.1 | Packet ownership | Docs unify after Step 45 only (48 wontfix). Forum publish extracted to Step 51 (2026-08). |
+| D46.2 | Repo vs forum | Repo owns reproduction and integrate pointers; forum owns orientation and links (Step 51) |
 | D46.3 | Two reproduce paths | Protocol (manual) vs Store (orchestrator); N18 split without journey names |
 | D46.4 | Integrate doc | High-level + fixed pointer list; post-45 Store event names; not a full tutorial |
 | D46.5 | Commands in forum | Links preferred; at most two lines verbatim from README Testing; no spoiler SSOT |
@@ -294,13 +272,13 @@ Step 20 stays wontfix.
 | D46.8 | Network primary | Per-doc: testnet for `payment-streams.md`; local for `store-eligibility.md` (testnet follow-up) |
 | D46.9 | Install | README section first; split only if too long |
 | D46.10 | Testing docs | Handles `fast` / `local-public` / `local-private` / `testnet-public` / `testnet-private`; no “tier”; no user-facing `CHAIN=` duplication; matrix relabeled in this step |
-| D46.11 | Dogfood | Legs remain: `local-private` (module + store; stub receipts, `RISC0_DEV_MODE=1`) + `testnet-public` (module + store) + one wrap-up `testnet-private` Store leg (`RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0`) on final post-45 pins. Forum draft ships with explicit `TODO: wait for results of …` until those legs exist; do not claim them in outbound prose beforehand. Gate log records artifacts and ImageID when run. |
+| D46.11 | Dogfood | Moved to Step 51 (D51.1). Same legs; do not claim wrap-up in outbound prose beforehand. |
 | D46.12 | Journey names | Remove from living docs and nav. Delete `docs/journeys/`. Archive / completed plan packets may keep historical wording. |
 | D46.13 | Step 48 | Not a prerequisite; ship against post-45 AT-config / split-era; 48 is wontfix |
 | D46.14 | `user-journey-*.sh` | Keep filenames as stable CLI; document historical names in reproduce docs |
 | D46.15 | Program identity | No ImageID / `program_id_hex` in reproduce or integrate prose; cite README guest section + fixtures |
 | D46.16 | Old paths | No compatibility stubs. Fold then delete. Restructure for clarity now. |
-| D46.17 | Forum draft path | `docs/external/forum-post.md`; remains there after publish |
+| D46.17 | Forum draft path | `docs/external/forum-post.md`; remains there after publish (Step 51) |
 | D46.18 | Slides | Out of scope. Do not migrate, document, or commit `docs/journeys/slides/`. |
 
 ## Done when
@@ -313,10 +291,6 @@ Step 20 stays wontfix.
 - `check-terminology.sh` covers new trees; living journey-name scan in place.
 - Grep gate clean for retired path references in live scripts/docs.
 - Index tracks table and AGENTS surfaces reworked off living journey nav.
-- Dogfood recorded in `docs/plan/completed/step-46-gate-log.md`:
-  - `local-private`: module + store
-  - `testnet-public`: module + store
-  - `testnet-private`: one Store wrap-up leg with real proving
-- Forum draft at the fixed path; post published or ready-to-post (outline above).
+- Forum publish and wrap-up dogfood are Step 51, not this packet.
 - Step 20 remains wontfix.
 - Terminology gate clean for touched living prose.

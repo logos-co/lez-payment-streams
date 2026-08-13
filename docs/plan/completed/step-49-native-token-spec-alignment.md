@@ -10,7 +10,7 @@ Closes [Step 41](step-41-non-native-token-policy-spec.md) D41.6 for
 types, wire, and policy shape.
 Does not implement a non-native Token custody path.
 
-Prerequisite: [Step 46](../upcoming/step-46-docs-unify-and-forum-post.md) (living docs already
+Prerequisite: [Step 46](step-46-docs-unify-and-forum-post.md) (living docs already
 on reproduce / integrate surfaces).
 [Step 48](../wontfix/step-48-program-graph-lez-unify.md) is not a prerequisite.
 
@@ -144,7 +144,7 @@ Out of scope:
 ## Related
 
 - [step-41-non-native-token-policy-spec.md](step-41-non-native-token-policy-spec.md)
-- [step-46-docs-unify-and-forum-post.md](../upcoming/step-46-docs-unify-and-forum-post.md)
+- [step-46-docs-unify-and-forum-post.md](step-46-docs-unify-and-forum-post.md)
 - [step-50-consistency-and-clarity.md](../upcoming/step-50-consistency-and-clarity.md)
 - [wrapped-native-token-unification.md](../raw-todos/wrapped-native-token-unification.md)
 - [feature-branch-pins.md](../../reference/feature-branch-pins.md)

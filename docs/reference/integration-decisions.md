@@ -738,7 +738,7 @@ Dual-host paid Store demo coordination stays on the **host**, not in a Logos mod
   [eligibility.md](../integrate/eligibility.md)
   (Delivery + Store eligibility track only —
   [N18](#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
-  Formal logos-docs publish is Step 20 wontfix; high-level public narrative is Step 46.
+  Formal logos-docs publish is Step 20 wontfix; high-level public narrative is Step 51.
 - **Step 21 (upcoming UI), Step 22 (complete doc):** payment streams protocol — User Journey CLI
   doc packet ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)), Basecamp UI
   upcoming — not Store integration; see
@@ -747,7 +747,7 @@ Dual-host paid Store demo coordination stays on the **host**, not in a Logos mod
 ### N18, Integration demo vs payment streams UI tracks (2026-06)
 
 Two demonstration tracks; do not merge them in copy or scope.
-Living doc names move under [Step 46](../plan/upcoming/step-46-docs-unify-and-forum-post.md)
+Living doc names move under [Step 46](../plan/completed/step-46-docs-unify-and-forum-post.md)
 (`reproduce/payment-streams.md`, `reproduce/store-eligibility.md`,
 `integrate/eligibility.md`); historical “journey” labels below remain for older packets.
 
@@ -761,7 +761,7 @@ Living doc names move under [Step 46](../plan/upcoming/step-46-docs-unify-and-fo
   [store-eligibility.md](../reproduce/store-eligibility.md) /
   [eligibility.md](../integrate/eligibility.md).
   Forum orientation:
-  [Step 46](../plan/upcoming/step-46-docs-unify-and-forum-post.md).
+  [Step 51](../plan/upcoming/step-51-forum-post.md).
 - **Mechanism:** external script orchestration ([N17](#n17-demo-orchestration-stays-external-script-2026-06));
   dual local `logoscore` hosts; `payment_streams_module` + `delivery_module` +
   `logos_execution_zone`.

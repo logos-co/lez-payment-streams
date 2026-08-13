@@ -12,7 +12,7 @@
   "active_steps": [],
   "waiting_steps": [],
   "paused_steps": [],
-  "upcoming_steps": [21, 46, 50],
+  "upcoming_steps": [21, 50, 51],
   "wontfix_steps": [20, 23, 25, 42, 43, 48],
   "optional_stretch_steps": [],
   "optional_steps": [],
@@ -52,11 +52,12 @@
     "43": "docs/plan/wontfix/step-43-shared-payment-pool-research.md",
     "44": "docs/plan/completed/step-44-payer-and-payee-close.md",
     "45": "docs/plan/completed/step-45-dependencies-and-patches.md",
-    "46": "docs/plan/upcoming/step-46-docs-unify-and-forum-post.md",
+    "46": "docs/plan/completed/step-46-docs-unify-and-forum-post.md",
     "47": "docs/plan/completed/step-47-unify-role-terminology.md",
     "48": "docs/plan/wontfix/step-48-program-graph-lez-unify.md",
     "49": "docs/plan/completed/step-49-native-token-spec-alignment.md",
-    "50": "docs/plan/upcoming/step-50-consistency-and-clarity.md"
+    "50": "docs/plan/upcoming/step-50-consistency-and-clarity.md",
+    "51": "docs/plan/upcoming/step-51-forum-post.md"
   },
   "completed_normative": {
     "12": "docs/plan/completed/step-12-normative.md",
