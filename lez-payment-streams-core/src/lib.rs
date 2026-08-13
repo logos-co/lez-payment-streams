@@ -1,8 +1,8 @@
 //! LEZ payment streams.
 //!
 //! Vault PDAs, stream accrual, [`Instruction`] types for the guest and tests, the [`policy`]
-//! module (Step 3a: `fold_stream`, `proposal_satisfies_policy`, `stream_satisfies_policy`, ...),
-//! plus public-transaction helpers ([`instruction_wire`], [`instruction_accounts`]; Step 5).
+//! module (`fold_stream`, `proposal_satisfies_policy`, `stream_satisfies_policy`, ...),
+//! plus public-transaction helpers ([`instruction_wire`], [`instruction_accounts`]).
 
 // Stock spel v0.6.0 macros expand to nssa_core::. Source keeps lee_core:: via alias.
 extern crate nssa_core as lee_core;

@@ -299,11 +299,6 @@ typedef struct PaymentStreamsFfiPaymentStreamsFfiCanonicalStoreQuery {
 } PaymentStreamsFfiPaymentStreamsFfiCanonicalStoreQuery;
 
 /**
- * Placeholder linkage smoke (may be removed once the FFI surface is fully wired).
- */
-PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_ping(void);
-
-/**
  * Decode serialized `VaultConfig` bytes copied from sequencer account payload.
  *
  * `vault_cfg_decoded` is Borsh + version-checked core state; writes the flattened `repr(C)` struct via

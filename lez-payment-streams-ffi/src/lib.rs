@@ -366,12 +366,6 @@ pub(crate) unsafe fn borrow_input<'a>(
     })
 }
 
-/// Placeholder linkage smoke (may be removed once the FFI surface is fully wired).
-#[no_mangle]
-pub extern "C" fn payment_streams_ffi_ping() -> PaymentStreamsFfiStatus {
-    PaymentStreamsFfiStatus::Success
-}
-
 /// Decode serialized `VaultConfig` bytes copied from sequencer account payload.
 ///
 /// `vault_cfg_decoded` is Borsh + version-checked core state; writes the flattened `repr(C)` struct via
@@ -852,7 +846,7 @@ mod tests {
         assert_eq!(rendered, *CLOCK_10_PROGRAM_ACCOUNT_ID.value());
     }
 
-    // Predicate vectors mirror `lez_payment_streams_core` policy unit tests (integration plan "Step 3a/3b").
+    // Predicate vectors mirror `lez_payment_streams_core` policy unit tests.
     mod policy_ffi_abi_vectors {
         use super::*;
         use lez_payment_streams_core::{

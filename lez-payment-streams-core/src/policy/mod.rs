@@ -1,4 +1,4 @@
-//! Stream folding facade and deterministic provider predicates (`docs/plan/index.md` Step 3a).
+//! Stream folding facade and deterministic provider predicates (LIP-155).
 
 mod predicates;
 
