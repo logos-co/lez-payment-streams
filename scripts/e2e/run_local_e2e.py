@@ -4983,15 +4983,17 @@ def main() -> int:
             narrator.concept("Proof derives from on-chain stream state, valid for current block")
             proof_hex = user_prepare_proof(cfg_user, manifest, n8_wire, peer_id, artifact)
             narrator.ok(f"Proof generated: {len(proof_hex) // 2} bytes, stream_id={stream_id}")
-            seed_provider_session_from_user(persist_user, persist_provider, manifest_path, repo)
             # Do not unload/reload payment_streams here: delivery_module's
             # embedded Lp stack loses the target across reload (null verify).
             # PS re-reads provider_acceptances from disk on session miss.
+            # Seed after rediscoverStreams: that call persistIfDirty() from
+            # in-memory inventory and would wipe a prior disk seed.
             sync_wallet(cfg_provider, seq_url)
             vault_id = int(manifest.get("vault_id", 0))
             logoscore_cmd(
                 cfg_provider, "call", "payment_streams_module", "rediscoverStreams", str(vault_id)
             )
+            seed_provider_session_from_user(persist_user, persist_provider, manifest_path, repo)
 
             narrator.phase("Paid Store Query")
             narrator.step("User sends Store query with eligibility proof attached")
