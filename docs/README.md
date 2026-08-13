@@ -1,50 +1,42 @@
 # Documentation
 
-Entry for integrators and maintainers. Protocol text lives in
-[LIP-155](https://lip.logos.co/anoncomms/raw/payment-streams.html); cite the LIP instead of
-duplicating semantics here.
+Entry for integrators and maintainers.
+Protocol text lives in [LIP-155](https://lip.logos.co/anoncomms/raw/payment-streams.html).
+Cite the LIP for semantics.
 
 ## Choose a path
 
-| Pillar | When |
+| Path | When |
 | --- | --- |
 | [on-chain](on-chain/) | Guest program, Rust tests, review order |
-| [payment-streams-module](payment-streams-module/) | Logos module, module verification |
-| [store-integration](store-integration/) | Store eligibility, dual-host demo |
+| [payment-streams-module](payment-streams-module/) | Logos module, `chainAction` catalogue |
+| [reproduce/payment-streams.md](reproduce/payment-streams.md) | Manual LIP-155 via the module (testnet primary) |
+| [reproduce/store-eligibility.md](reproduce/store-eligibility.md) | Paid Store + eligibility (`e2e.sh`, local primary) |
+| [integrate/eligibility.md](integrate/eligibility.md) | Eligibility for a request-response protocol |
+| [external/](external/) | Outbound forum draft |
 | [plan](plan/) | Program index, plan packets |
 
-## Verify (canonical)
+## Verify
 
-```bash
-MODE=module CHAIN=local ./scripts/e2e.sh local run   # module — Required
-./scripts/e2e.sh local run                           # Store — Required
-MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run  # Store — Advanced
-```
-
-Details: [reference/verification-matrix.md](reference/verification-matrix.md) (includes
-[cold start](reference/verification-matrix.md#cold-start-first-time-on-a-machine)),
-[journeys/E2E.md](journeys/E2E.md) (run recipes),
-[journeys/USER_JOURNEY.md](journeys/USER_JOURNEY.md) (testnet manual walkthrough),
-[scripts/README.md](../scripts/README.md).
-
-Machine and toolchain prerequisites for running these commands:
-[../README.md](../README.md#prerequisites).
+Testing recipes: [root README Testing](../README.md#testing).
+Maintainer flags, artifacts, cold start: [reference/verification-matrix.md](reference/verification-matrix.md).
+Scripts: [scripts/README.md](../scripts/README.md).
 
 ## Reference
 
 | Doc | Role |
 | --- | --- |
 | [integration-contracts.md](reference/integration-contracts.md) | Cross-repo APIs, tag 30 |
-| [integration-decisions.md](reference/integration-decisions.md) | Integration decisions (trimmed) |
+| [integration-decisions.md](reference/integration-decisions.md) | Integration decisions |
 | [feature-branch-pins.md](reference/feature-branch-pins.md) | Fork branches and flakes |
 | [naming-conventions.md](reference/naming-conventions.md) | `MODE` values, Makefile names, [scaffold layout](reference/naming-conventions.md#scaffold-layout) |
-| [verification-matrix.md](reference/verification-matrix.md) | Mode × chain matrix |
+| [verification-matrix.md](reference/verification-matrix.md) | Mode × network matrix |
 
 ## Archive
 
 Historical step runbooks and operator notes: [archive/](archive/).
+Point-in-time notes: [presentation.md](presentation.md), [handoff-deposit-zero-instruction.md](handoff-deposit-zero-instruction.md).
 
 ## Maintainers
 
-[AGENTS.md](../AGENTS.md), [plan/](plan/), lifecycle regression:
-`make verify-store-local-lifecycle`.
+[AGENTS.md](../AGENTS.md), [plan/](plan/), lifecycle regression: `make verify-store-local-lifecycle`.

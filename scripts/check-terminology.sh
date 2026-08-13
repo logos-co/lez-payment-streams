@@ -23,6 +23,19 @@ is_allowlisted_path() {
   esac
 }
 
+# Step 46: living docs must not use User Journey / Developer Journey as product labels.
+is_journey_name_allowlisted() {
+  local f="$1"
+  case "$f" in
+    docs/plan/*|docs/archive/*) return 0 ;;
+    docs/presentation.md|docs/handoff-*) return 0 ;;
+    docs/reference/integration-decisions.md) return 0 ;;
+    scripts/check-terminology.sh) return 0 ;;
+    .scaffold/*|target/*|vendor/*|nimbledeps/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 # rg over living trees; print matches that are not path-allowlisted.
 scan_pattern() {
   local pattern="$1"
@@ -70,6 +83,10 @@ scan_pattern() {
     if [[ "$line" == *step-36-payer* || "$line" == *step-37-payee* || "$line" == *step-44-payer* ]]; then
       continue
     fi
+    # Legacy Makefile aliases until Step 50.
+    if [[ "$line" == *payee-close* ]]; then
+      continue
+    fi
     note "  $line"
     hit=1
   done <"$tmp"
@@ -115,13 +132,13 @@ scan_pattern \
 scan_pattern \
   'requesterPeerId|requester_peer_id' \
   'requesterPeerId living names' \
-  logos-payment-streams-module/ docs/reference/ docs/journeys/ docs/presentation.md docs/store-integration/ docs/payment-streams-module/
+  logos-payment-streams-module/ docs/reference/ docs/reproduce/ docs/integrate/ docs/external/ docs/presentation.md docs/payment-streams-module/
 
 # 5) Journey env PAYER/PAYEE.
 scan_pattern \
   '\bPAYER\b|\bPAYEE\b' \
   'PAYER/PAYEE env tokens' \
-  docs/journeys/ scripts/ docs/reference/ docs/payment-streams-module/ README.md AGENTS.md
+  docs/reproduce/ scripts/ docs/reference/ docs/payment-streams-module/ README.md AGENTS.md
 
 # 6) Living informal payer/payee (word tokens); allow meta + historical paths.
 scan_pattern \
@@ -133,9 +150,10 @@ scan_pattern \
   lez-payment-streams-core/src/instruction_accounts.rs \
   lez-payment-streams-ffi/ \
   scripts/ \
-  docs/journeys/ \
+  docs/reproduce/ \
+  docs/integrate/ \
+  docs/external/ \
   docs/reference/ \
-  docs/store-integration/ \
   docs/on-chain/ \
   docs/payment-streams-module/ \
   docs/plan/upcoming/ \
@@ -147,6 +165,107 @@ scan_pattern \
   'payee_binding|expected_payee|proposal_payee|_payee_' \
   'policy *payee* symbols' \
   lez-payment-streams-core/src lez-payment-streams-ffi/
+
+# 8) Living journey-name scan (Step 46 D46.12).
+scan_journey_names() {
+  local tmp
+  tmp="$(mktemp)"
+  local paths=(
+    README.md
+    AGENTS.md
+    docs/README.md
+    docs/reproduce/
+    docs/integrate/
+    docs/external/
+    docs/on-chain/
+    docs/payment-streams-module/
+    docs/reference/
+    scripts/README.md
+    scripts/e2e.sh
+    scripts/module-e2e.sh
+    scripts/module-e2e-local.sh
+    scripts/module-e2e-privacy.sh
+    scripts/e2e/run_local_e2e.py
+    scripts/user-journey-reset.sh
+    scripts/user-journey-shell.sh
+    scripts/lib/user-journey-env.sh
+    scripts/lib/common.sh
+  )
+  if ! rg -n --no-heading -e 'User Journey' -e 'Developer Journey' -e 'E2E\.md' \
+      "${paths[@]}" \
+      --glob '!target/**' --glob '!.scaffold/**' \
+      >"$tmp" 2>/dev/null; then
+    rm -f "$tmp"
+    ok "living journey-name scan (0 matches)"
+    return 0
+  fi
+  local hit=0
+  while IFS= read -r line; do
+    local file="${line%%:*}"
+    if is_journey_name_allowlisted "$file"; then
+      continue
+    fi
+    if [[ "$file" == "docs/reference/naming-conventions.md" && "$line" == *"Formerly"* ]]; then
+      continue
+    fi
+    note "  $line"
+    hit=1
+  done <"$tmp"
+  rm -f "$tmp"
+  if [[ "$hit" -eq 1 ]]; then
+    fail "living User Journey / Developer Journey / E2E.md labels"
+  else
+    ok "living journey-name scan (allowlisted only)"
+  fi
+}
+scan_journey_names
+
+# 9) Retired path grep (Step 46 D46.16).
+scan_retired_paths() {
+  local tmp
+  tmp="$(mktemp)"
+  local paths=(
+    README.md
+    AGENTS.md
+    Makefile
+    docs/README.md
+    docs/reproduce/
+    docs/integrate/
+    docs/external/
+    docs/on-chain/
+    docs/payment-streams-module/
+    docs/reference/
+    docs/context-manifest.json
+    scripts/
+  )
+  if ! rg -n --no-heading -e 'docs/journeys' -e 'docs/store-integration' \
+      "${paths[@]}" \
+      --glob '!target/**' --glob '!.scaffold/**' --glob '!scripts/archive/**' \
+      --glob '!scripts/check-terminology.sh' \
+      >"$tmp" 2>/dev/null; then
+    rm -f "$tmp"
+    ok "retired path grep (0 matches)"
+    return 0
+  fi
+  local hit=0
+  while IFS= read -r line; do
+    local file="${line%%:*}"
+    case "$file" in
+      docs/plan/*|docs/archive/*|docs/presentation.md|docs/handoff-*|scripts/check-terminology.sh)
+        continue
+        ;;
+    esac
+    note "  $line"
+    hit=1
+  done <"$tmp"
+  rm -f "$tmp"
+  if [[ "$hit" -eq 1 ]]; then
+    fail "retired docs/journeys or docs/store-integration paths"
+  else
+    ok "retired path grep (allowlisted only)"
+  fi
+}
+scan_retired_paths
 
 if [[ "$failures" -ne 0 ]]; then
   note "=== $failures check(s) failed ==="

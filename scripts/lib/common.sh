@@ -527,7 +527,7 @@ ps_e2e_testnet_wallet_dir() {
   echo "$(ps_scaffold_e2e_dir)/testnet-wallet"
 }
 
-# User Journey localnet: isolated wallet reset each module-e2e run (fresh owner/provider).
+# Module localnet: isolated wallet reset each module-e2e run (fresh owner/provider).
 ps_e2e_user_wallet_local_dir() {
   echo "$(ps_scaffold_e2e_dir)/user/wallet-local"
 }

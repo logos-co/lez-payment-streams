@@ -3,7 +3,7 @@
 Cross-step APIs and wire shapes. Normative detail: [integration-decisions.md](integration-decisions.md)
 (D1, D2, N3a–N3c, N8, N11, N12). Step 16 bridge summary:
 [step-16.md](../plan/completed/step-16.md#resolved-implementation-decisions-2025-06-18).
-Operator commands: [verification-matrix.md](../reference/verification-matrix.md) and pillar runbooks under [store-integration/](../store-integration/) and [payment-streams-module/](../payment-streams-module/). Historical step runbooks live under [archive/completed-steps-index.md](../archive/completed-steps-index.md).
+Operator commands: [verification-matrix.md](verification-matrix.md) and pillar runbooks under [reproduce/store-eligibility.md](../reproduce/store-eligibility.md) and [payment-streams-module/](../payment-streams-module/). Historical step runbooks live under [archive/completed-steps-index.md](../archive/completed-steps-index.md).
 
 ## Store wire (Step 14 — D1)
 
@@ -48,7 +48,7 @@ completion event ([N3a](integration-decisions.md#n3a-step-16-threading--approach
 | Method | Role |
 | --- | --- |
 | `prepareEligibilityProofWithStreamProposalForStoreQuery` | User / outbound (Step 16 delivery): vault proposal → `"kind":"stream_proposal"`. Two args: `canonical_request_hex`, `provider_peer_id`. |
-| `prepareEligibilityProofWithStreamProofForStoreQuery` | Developer Journey E2E: stream proof → `"kind":"stream_proof"`. Three args; third = `stream_id`. See [Prepare methods](#prepare-methods--step-24c). |
+| `prepareEligibilityProofWithStreamProofForStoreQuery` | Store E2E: stream proof → `"kind":"stream_proof"`. Three args; third = `stream_id`. See [Prepare methods](#prepare-methods--step-24c). |
 | `verifyEligibilityForStoreQuery` | Provider / inbound: returns `eligibility` verdict |
 | `registerProviderMapping` | User routing: `PeerId` → provider base58 (host before outbound queries; Step 17 demo) |
 | `listMyStreams`, `rediscoverStreams` | Inventory / refresh |
@@ -87,7 +87,7 @@ are separate methods:
 
 - `logoscore call` forwards every token after `<module> <method>` as a JSON argument array.
 - Step 16 / delivery outbound prepare calls **`prepareEligibilityProofWithStreamProposalForStoreQuery`** (two args).
-- Developer Journey E2E orchestrator calls **`prepareEligibilityProofWithStreamProofForStoreQuery`** after per-run `create_stream`.
+- Store E2E orchestrator calls **`prepareEligibilityProofWithStreamProofForStoreQuery`** after per-run `create_stream`.
 - Smoke: `lm methods` on the plugin must list **both** method names with distinct signatures.
 
 Examples:
@@ -104,7 +104,7 @@ logoscore call payment_streams_module prepareEligibilityProofWithStreamProofForS
 
 Close then claim for the **run’s** `stream_id` (not a fixed stream 0).
 
-E2E scripts (User Journey and Developer Journey) treat settlement as **close the
+E2E scripts (`MODE=module` and `MODE=store`) treat settlement as **close the
 stream, then claim residual accrued on the closed stream**. That matches how
 unaccrued allocation returns to the vault at close while accrued remains
 claimable until the provider claims. Integrators may still claim on an active
@@ -160,7 +160,7 @@ Success shapes use `"status":"ok"` inside `result` with `"kind":"stream_proposal
 - Missing proof on inbound Store: Step 16 passes empty `proofBytes`; paid demo expects a
   verdict failure, not OK ([N3c](integration-decisions.md#n3c-inbound-missing-proof-null-proof_hex-2025-06-18))
 - Step 17 demo: provider runs paid-only (verifier always on); users learn provider PeerId
-  off-band ([store-integration/README.md](../store-integration/README.md))
+  off-band ([store-eligibility.md](../reproduce/store-eligibility.md))
 
 ## Fixture and provider binding
 

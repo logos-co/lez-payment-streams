@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# module-e2e.sh — User Journey (Flow A, module only) single-host happy path.
+# module-e2e.sh — module verification, single-host happy path.
 #
 # Exercises payment_streams_module chainAction end-to-end through logoscore:
 # vault init, deposit, stream create, optional pause/resume/top-up, accrual,
@@ -8,7 +8,7 @@
 # PROVIDER_PRIVACY=1 enables private provider / shielded claim (Step 37; independent).
 # PRIVACY=1 remains an alias for OWNER_PRIVACY=1.
 # No delivery_module, no Store, no eligibility. This is the module-only cell of
-# the 2x2 verification matrix (Flow A x localnet or testnet), with optional
+# the 2x2 verification matrix (localnet or testnet), with optional
 # privacy profile overlays.
 #
 # Scenario: Alice creates a payment stream to Bob, funds accrue, Alice closes
@@ -18,7 +18,7 @@
 #   CHAIN=local   ./scripts/module-e2e.sh   (default)
 #   CHAIN=testnet ./scripts/module-e2e.sh
 #   ./scripts/module-e2e.sh --verbosity quiet|normal|verbose
-# Driven by: MODE=module CHAIN=<chain> ./scripts/e2e.sh <chain> run
+# Driven by: MODE=module ./scripts/e2e.sh <chain> run
 # Owner privacy (Step 36): OWNER_PRIVACY=1 (or PRIVACY=1) / module-e2e-privacy.sh
 # Provider privacy (Step 37): PROVIDER_PRIVACY=1
 set -euo pipefail
@@ -73,7 +73,7 @@ narr_header() {
   local line="============================================"
   echo "" >&2
   echo "[$(_narr_ts)] $line" >&2
-  echo "[$(_narr_ts)] Payment Streams E2E: User Journey ($([ "$CHAIN" = "testnet" ] && echo TestNet || echo LocalNet))$(ps_is_any_privacy_e2e && echo " — privacy profile ($(ps_privacy_profile_label))" || true)" >&2
+  echo "[$(_narr_ts)] Payment Streams E2E: module verification ($([ "$CHAIN" = "testnet" ] && echo TestNet || echo LocalNet))$(ps_is_any_privacy_e2e && echo " — privacy profile ($(ps_privacy_profile_label))" || true)" >&2
   echo "[$(_narr_ts)] Scenario: Alice creates a stream to Bob, funds accrue," >&2
   echo "[$(_narr_ts)]          Alice closes stream, Bob claims residual accrued" >&2
   echo "[$(_narr_ts)] $line" >&2

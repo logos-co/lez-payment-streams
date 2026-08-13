@@ -17,4 +17,4 @@ if [[ -d "$WALLET_HOME" ]]; then
 fi
 
 echo "Cleared: $MODULES (contents), $WALLET_HOME"
-echo "Next: ./scripts/user-journey-shell.sh, then USER_JOURNEY from Step 1."
+echo "Next: ./scripts/user-journey-shell.sh, then docs/reproduce/payment-streams.md from Step 1."

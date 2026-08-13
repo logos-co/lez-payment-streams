@@ -1,6 +1,7 @@
 # Step 46 — docs unify and forum post
 
-Upcoming. Index: [index.md](../index.md).
+Docs landed. Dogfood pending (D46.11). Index: [index.md](../index.md).
+Gate log: [step-46-gate-log.md](../completed/step-46-gate-log.md).
 
 Prerequisite [Step 45](../completed/step-45-dependencies-and-patches.md) is complete.
 [Step 48](../waiting/step-48-program-graph-lez-unify.md) is waiting on an upstream
@@ -33,7 +34,7 @@ Step 46 does not revive it.
 | `docs/integrate/eligibility.md` | Authors of request–response protocols (Store-like) | High-level eligibility integration approach; fixed pointer list | Full integration tutorial; full command dump; pasted program identity hex |
 | `docs/README.md` | Doc navigators | Map of docs pillars and the surfaces above; Verify collapses to links only (README Testing + verification-matrix) | Command encyclopedia; duplicate Verify command block |
 | [verification-matrix.md](../../reference/verification-matrix.md) | Maintainers | Flag detail, artifacts, make aliases, cold-start depth; on-chain confirmation principle; MODE labels without journey names | Human walkthrough prose |
-| Forum post | Logos / AnonComms readers (technically able, not PS-specialists) | Progress report; plain-English protocol and eligibility tracks; links into repo | Command novel; spoiler SSOT; verification-matrix as a primary link |
+| `docs/external/` | Outbound communications | Forum draft and other docs written for venues outside this repo | Operator runbooks; LIP rewrite; verification-matrix |
 
 N18 preserved as two reproduce docs plus distinct plain-English tracks in the forum.
 Not preserved as journey packet names or logos-docs journey genre.
@@ -45,28 +46,32 @@ README.md                          product front door + install + Testing recipe
 docs/
   README.md                        doc map (Verify = links only)
   reproduce/
-    payment-streams.md             protocol-only SSOT (manual; depth ≈ old USER_JOURNEY)
-    store-eligibility.md           Store eligibility SSOT (orchestrator-primary; absorbs E2E.md)
+    payment-streams.md             protocol-only SSOT (manual)
+    store-eligibility.md           Store eligibility SSOT (orchestrator-primary)
   integrate/
     eligibility.md                 high-level protocol-integrator pointers
+  external/
+    forum-post.md                  outbound forum draft (dogfood TODOs until D46.11)
   reference/                       contracts, decisions, verification-matrix (keep; relabel)
   plan/                            step packets (this file lives here)
 ```
 
+No `docs/journeys/` after this step. Do not keep redirect stubs for old paths
+(D46.16). logos-docs#370 and prior GitHub blob URLs are not a constraint.
+
 ### Migration of legacy living surfaces
 
-After content moves, leave a five-line redirect stub at each retired path
-(no new content under `docs/journeys/`). Stubs keep external GitHub / logos-docs
-links alive.
+Fold substance, then delete the old files and the `docs/journeys/` directory.
+Hub links go to the new paths. Living grep must not point at retired paths.
 
 | Legacy | Disposition |
 | --- | --- |
-| `docs/journeys/USER_JOURNEY.md` | Fold into `reproduce/payment-streams.md`; redirect stub |
-| `docs/journeys/DEVELOPER_JOURNEY.md` | Fold high-level recipe into `integrate/eligibility.md`; Store run into `store-eligibility.md`; redirect stub |
-| `docs/journeys/E2E.md` | Merge recipes into `store-eligibility.md` + scripts README; move “On-chain confirmation principle” into verification-matrix (normative home for both orchestrators); redirect stub |
-| `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` | Fold deltas into each reproduce doc’s Private execution notes; redirect stub; no fourth living path |
-| `docs/store-integration/README.md` | Redirect stub to `reproduce/store-eligibility.md` + `integrate/eligibility.md` |
-| `docs/journeys/slides/` | Historical presentation assets; keep under archive or leave in place with a one-line README that they are point-in-time and may use retired journey names; not living operator docs |
+| `docs/journeys/USER_JOURNEY.md` | Fold into `reproduce/payment-streams.md`; delete |
+| `docs/journeys/DEVELOPER_JOURNEY.md` | Fold high-level recipe into `integrate/eligibility.md`; Store run into `store-eligibility.md`; delete |
+| `docs/journeys/E2E.md` | Merge recipes into `store-eligibility.md` + scripts README; move “On-chain confirmation principle” into verification-matrix; delete |
+| `docs/journeys/PRIVACY_ENHANCED_JOURNEY.md` | Fold deltas into each reproduce doc’s Private execution notes; delete; no fourth living path |
+| `docs/journeys/` (directory) | Remove after the four files are folded. Slides under it are out of scope (D46.18) |
+| `docs/store-integration/` | Fold into `store-eligibility.md` + `integrate/eligibility.md`; drop the pillar. Hub Choose-a-path lists reproduce / integrate instead |
 | `docs/presentation.md` | Point-in-time historical; keep wording; not a living front door |
 | `docs/handoff-deposit-zero-instruction.md` | Point-in-time historical; keep wording |
 | `docs/payment-streams-module/README.md` | Living pillar — sweep journey links and “UJ” legend to reproduce / integrate names |
@@ -176,8 +181,10 @@ Plain English; technically able audience unfamiliar with payment streams.
 
 1. Intro — payment streams on LEZ; module; Store eligibility as one application;
    wrap-up status; public and private LEZ execution supported (one sentence +
-   link to reproduce Private execution notes / Testing recipes). Wording must
-   match D46.11 evidence (includes one `testnet-private` wrap-up leg on final pins).
+   link to reproduce Private execution notes / Testing recipes). Until D46.11
+   legs have been run, mark wrap-up claims as `TODO: wait for results of
+   local-private / testnet-public / testnet-private` (D46.11). Do not invent
+   evidence.
 2. As a protocol user (plain English) — fund → vault → deposit → open stream → …
    → close / claim.
 3. As a protocol developer (plain English) — eligibility pattern at high level
@@ -188,8 +195,9 @@ Plain English; technically able audience unfamiliar with payment streams.
 5. No command spoiler. At most two clone-and-run lines, copied verbatim from
    README Testing recipes (D46.5). Prefer links only when the venue allows.
 
-Draft path (fixed): [step-46-forum-draft.md](step-46-forum-draft.md) beside this
-packet until publish; then archive next to the gate log under `completed/`.
+Draft path (fixed): [../../external/forum-post.md](../../external/forum-post.md).
+Stays under `docs/external/` after publish (outbound tree, not a plan packet).
+Gate log still goes under `completed/` when the step closes.
 Venue TBD at publish time.
 
 ## Prerequisites
@@ -215,8 +223,9 @@ In scope:
 - README front door (overview, install section, Testing recipes with handles).
 - `docs/README.md` map; Verify → links only.
 - Two reproduce docs + one integrate doc as above.
-- Redirect stubs for four journey files + store-integration README;
-  no new content under `docs/journeys/`.
+- `docs/external/forum-post.md`.
+- Delete `docs/journeys/` (and `docs/store-integration/`) after folding; no
+  redirect stubs.
 - Sweep living pillar / reference docs listed in the migration table.
 - Relabel verification-matrix Terminology / support heading; move confirmation principle.
 - `CHAIN=` dedupe in docs, Makefile `verify-*`, `e2e.sh` usage, `module-e2e.sh` header.
@@ -241,6 +250,8 @@ Out of scope:
 - Full protocol-integration tutorial in `integrate/eligibility.md`.
 - Renaming `user-journey-*.sh` (D46.14).
 - Requiring `testnet-private` after every prior engineering step.
+- Preserving old GitHub / logos-docs URLs (including logos-docs#370).
+- Slides / asciinema / `docs/journeys/slides/` (D46.18).
 
 ## Relationship to Step 20
 
@@ -255,14 +266,16 @@ Step 20 stays wontfix.
 - `docs/reproduce/payment-streams.md`
 - `docs/reproduce/store-eligibility.md`
 - `docs/integrate/eligibility.md`
-- Redirect stubs for retired journey + store-integration fronts.
+- `docs/external/forum-post.md` (dogfood TODOs until D46.11 results exist).
+- `docs/journeys/` and `docs/store-integration/` gone; hub maps to reproduce /
+  integrate / on-chain / payment-streams-module / plan.
 - Living sweeps: payment-streams-module README, naming-conventions MODE section,
-  historical classification for presentation / handoff / slides.
+  historical classification for presentation / handoff.
 - Testing recipes with stable handles; matrix + scripts README aligned;
   `CHAIN=` sweep on Makefile / usage / module-e2e header.
 - `check-terminology.sh` path + journey-name living scan updates.
 - Script/doc grep gate for retired paths.
-- Forum draft at `docs/plan/upcoming/step-46-forum-draft.md`; published post.
+- Forum draft at `docs/external/forum-post.md`; published post or ready-to-post.
 - `docs/plan/completed/step-46-gate-log.md` with artifact paths and ImageID
   (cite README / fixtures; do not paste hex into reproduce prose).
 - Plan index tracks section reworked; AGENTS read-order and active-work flipped
@@ -282,18 +295,18 @@ Step 20 stays wontfix.
 | D46.8 | Network primary | Per-doc: testnet for `payment-streams.md`; local for `store-eligibility.md` (testnet follow-up) |
 | D46.9 | Install | README section first; split only if too long |
 | D46.10 | Testing docs | Handles `fast` / `local-public` / `local-private` / `testnet-public` / `testnet-private`; no “tier”; no user-facing `CHAIN=` duplication; matrix relabeled in this step |
-| D46.11 | Dogfood | `local-private` (module + store; stub receipts, `RISC0_DEV_MODE=1`) + `testnet-public` (module + store) + one wrap-up `testnet-private` leg (`MODE=store`, `RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0`) on final post-45 pins; gate log records artifacts and ImageID |
-| D46.12 | Journey names | Remove from living docs and nav; redirect stubs; archive / historical files may keep wording |
+| D46.11 | Dogfood | Legs remain: `local-private` (module + store; stub receipts, `RISC0_DEV_MODE=1`) + `testnet-public` (module + store) + one wrap-up `testnet-private` Store leg (`RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0`) on final post-45 pins. Forum draft ships with explicit `TODO: wait for results of …` until those legs exist; do not claim them in outbound prose beforehand. Gate log records artifacts and ImageID when run. |
+| D46.12 | Journey names | Remove from living docs and nav. Delete `docs/journeys/`. Archive / completed plan packets may keep historical wording. |
 | D46.13 | Step 48 | Not a prerequisite; ship against post-45 AT-config / split-era; re-dogfood when 48 completes |
 | D46.14 | `user-journey-*.sh` | Keep filenames as stable CLI; document historical names in reproduce docs |
 | D46.15 | Program identity | No ImageID / `program_id_hex` in reproduce or integrate prose; cite README guest section + fixtures |
-| D46.16 | Redirects | Five-line stubs for four journey files + store-integration README; no new journeys content |
-| D46.17 | Forum draft path | `docs/plan/upcoming/step-46-forum-draft.md` until publish |
+| D46.16 | Old paths | No compatibility stubs. Fold then delete. Restructure for clarity now. |
+| D46.17 | Forum draft path | `docs/external/forum-post.md`; remains there after publish |
+| D46.18 | Slides | Out of scope. Do not migrate, document, or commit `docs/journeys/slides/`. |
 
 ## Done when
 
-- IA above is in place; retired fronts are redirect stubs only; no new
-  `docs/journeys/` content.
+- IA above is in place; `docs/journeys/` and `docs/store-integration/` are gone.
 - README has overview, install (or link), Testing recipes with handles, and links
   into reproduce / integrate; `docs/README.md` Verify is links-only.
 - Verification-matrix Terminology / support heading relabeled; confirmation

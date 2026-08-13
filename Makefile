@@ -152,15 +152,15 @@ check-terminology: ## Step 47 role-terminology gate
 
 verify-module-local: ## Flow A (module only) local happy path (MODE=module scripts/e2e.sh local run)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
-	MODE=module CHAIN=local ./scripts/e2e.sh local run
+	MODE=module ./scripts/e2e.sh local run
 
 verify-module-local-provider-close: ## Step 44 thin provider-close cell (CLOSE_ROLE=provider)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
-	MODE=module CHAIN=local CLOSE_ROLE=provider ./scripts/e2e.sh local run
+	MODE=module CLOSE_ROLE=provider ./scripts/e2e.sh local run
 
 verify-module-local-provider-close-privacy: ## Step 44 PF provider-close (CLOSE_ROLE=provider OWNER_PRIVACY=1)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
-	MODE=module CHAIN=local CLOSE_ROLE=provider OWNER_PRIVACY=1 ./scripts/e2e.sh local run
+	MODE=module CLOSE_ROLE=provider OWNER_PRIVACY=1 ./scripts/e2e.sh local run
 
 # Legacy aliases (Step 47 role terminology); prefer *-provider-close.
 verify-module-local-payee-close: verify-module-local-provider-close
@@ -169,11 +169,11 @@ verify-module-local-payee-close-privacy: verify-module-local-provider-close-priv
 
 verify-module-local-privacy: ## Owner privacy (OWNER_PRIVACY=1) PseudonymousFunding lifecycle on localnet
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
-	MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
+	MODE=module OWNER_PRIVACY=1 ./scripts/e2e.sh local run
 
 verify-module-local-provider-privacy: ## Provider privacy (PROVIDER_PRIVACY=1) shielded claim on localnet
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh
-	MODE=module CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+	MODE=module PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
 
 verify-module-local-close-negatives: ## Step 44 asserted close/create reject tokens on localnet
 	chmod +x scripts/module-e2e-close-negatives.sh
@@ -181,27 +181,27 @@ verify-module-local-close-negatives: ## Step 44 asserted close/create reject tok
 
 verify-module-testnet: ## Flow A (module only) testnet happy path
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
-	MODE=module CHAIN=testnet ./scripts/e2e.sh testnet run
+	MODE=module ./scripts/e2e.sh testnet run
 
 verify-store-local: ## Store integration local dual-host E2E (scripts/e2e.sh local run)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
-	MODE=store CHAIN=local ./scripts/e2e.sh local run
+	MODE=store ./scripts/e2e.sh local run
 
 verify-store-local-owner-privacy: ## Store local OWNER_PRIVACY=1 (PseudonymousFunding vault, public provider)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
-	MODE=store CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
+	MODE=store OWNER_PRIVACY=1 ./scripts/e2e.sh local run
 
 verify-store-local-provider-privacy: ## Store local PROVIDER_PRIVACY=1 (public vault, private provider claim)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
-	MODE=store CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+	MODE=store PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
 
 verify-store-local-full-privacy: ## Store local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
-	MODE=store CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+	MODE=store OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
 
 verify-store-testnet: ## Store integration public sequencer E2E (scripts/e2e.sh testnet run)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
-	MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run
+	MODE=store ./scripts/e2e.sh testnet run
 
 verify-store-local-lifecycle: ## Maintainer: two Store runs on one ledger (scripts/archive/verify-store-local-lifecycle.sh)
 	chmod +x scripts/archive/verify-store-local-lifecycle.sh
@@ -214,7 +214,7 @@ verify-step17-back-to-back: verify-store-local-lifecycle ## legacy alias
 verify-step18: verify-store-testnet ## legacy alias
 
 verify-step28-module-smoke: ## Step 28 module testnet read smoke
-	MODE=module CHAIN=testnet ./scripts/e2e.sh testnet prepare
+	MODE=module ./scripts/e2e.sh testnet prepare
 
 debug-sequencer-latency: ## Probe sequencer RPC latency and block production (scripts/e2e/sequencer_latency_probe.py)
 	chmod +x scripts/e2e/sequencer_latency_probe.py
@@ -222,11 +222,11 @@ debug-sequencer-latency: ## Probe sequencer RPC latency and block production (sc
 
 full-reset-localnet: ## Step 17b stage A — reseed funded baseline + snapshot (scripts/e2e.sh local prepare)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh
-	FULL_RESET=1 SKIP_BUILD=1 CHAIN=local ./scripts/e2e.sh local prepare
+	FULL_RESET=1 SKIP_BUILD=1 ./scripts/e2e.sh local prepare
 
 prepare-localnet: ## Step 17b restore funded baseline (scripts/e2e.sh local prepare)
 	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh
-	SKIP_BUILD=1 CHAIN=local ./scripts/e2e.sh local prepare
+	SKIP_BUILD=1 ./scripts/e2e.sh local prepare
 
 verify-step18-testnet-read-smoke: ## Step 18 dual-pin read smoke (scripts/archive/verify-step18-testnet-read-smoke.sh)
 	chmod +x scripts/archive/verify-step18-testnet-read-smoke.sh scripts/lib/testnet-common.sh

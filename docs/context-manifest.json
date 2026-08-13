@@ -12,7 +12,7 @@
   "active_steps": [],
   "waiting_steps": [48],
   "paused_steps": [],
-  "upcoming_steps": [21, 46],
+  "upcoming_steps": [21, 46, 49, 50],
   "wontfix_steps": [20, 23, 25, 42, 43],
   "optional_stretch_steps": [],
   "optional_steps": [],
@@ -20,7 +20,7 @@
     "16": "docs/plan/completed/step-16.md",
     "17": "docs/plan/completed/step-17.md",
     "17b": "docs/plan/completed/step-17b-localnet-snapshot-restore.md",
-    "17_runbook": "docs/store-integration/README.md",
+    "17_runbook": "docs/reproduce/store-eligibility.md",
     "18": "docs/plan/completed/step-18-public-testnet-demo.md",
     "18b": "docs/plan/completed/step-18b-rc5-unify-handoff.md",
     "19": "docs/plan/completed/step-19-lip155-onchain-spec.md",
@@ -54,7 +54,9 @@
     "45": "docs/plan/completed/step-45-dependencies-and-patches.md",
     "46": "docs/plan/upcoming/step-46-docs-unify-and-forum-post.md",
     "47": "docs/plan/completed/step-47-unify-role-terminology.md",
-    "48": "docs/plan/waiting/step-48-program-graph-lez-unify.md"
+    "48": "docs/plan/waiting/step-48-program-graph-lez-unify.md",
+    "49": "docs/plan/upcoming/step-49-native-token-spec-alignment.md",
+    "50": "docs/plan/upcoming/step-50-consistency-and-clarity.md"
   },
   "completed_normative": {
     "12": "docs/plan/completed/step-12-normative.md",

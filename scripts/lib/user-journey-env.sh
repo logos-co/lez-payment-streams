@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared pins and guards for docs/journeys/USER_JOURNEY.md scripts.
+# Shared pins and guards for docs/reproduce/payment-streams.md scripts.
 [[ -n "${USER_JOURNEY_ENV_SOURCED:-}" ]] && return 0
 USER_JOURNEY_ENV_SOURCED=1
 
@@ -17,7 +17,7 @@ readonly USER_JOURNEY_LGPM_FLAKE="github:logos-co/logos-package-manager/205d6bb2
 
 user_journey_require_shell() {
   if [[ "${USER_JOURNEY_SHELL:-}" != 1 ]]; then
-    echo "Run this from the journey toolchain shell: ./scripts/user-journey-shell.sh" >&2
+    echo "Run this from the toolchain shell: ./scripts/user-journey-shell.sh" >&2
     exit 1
   fi
 }

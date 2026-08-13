@@ -271,7 +271,7 @@ cmd_run() {
       # Private submit proves in-process; stub receipts keep the module IPC
       # path inside the extended Timeout used by submitGenericPrivateViaFfi.
       export RISC0_DEV_MODE="${RISC0_DEV_MODE:-1}"
-      ps_log_info "Privacy profile ($(ps_privacy_profile_label)) — RISC0_DEV_MODE=$RISC0_DEV_MODE; see PRIVACY_ENHANCED_JOURNEY.md"
+      ps_log_info "Privacy profile ($(ps_privacy_profile_label)) — RISC0_DEV_MODE=$RISC0_DEV_MODE; see docs/reproduce/"
     fi
     MODULES="$MODULES_USER" ARTIFACT="$ARTIFACT" \
       OWNER_PRIVACY="$OWNER_PRIVACY" PROVIDER_PRIVACY="$PROVIDER_PRIVACY" PRIVACY="$PRIVACY" \
@@ -415,9 +415,9 @@ Categories:
   build              — Build all modules
 
 Environment:
-  CHAIN              — local or testnet (default: local)
-  MODE               — store (dual-host Store, Flow B) or module
-                       (single-host payment-streams happy path, Flow A);
+  CHAIN              — local or testnet (set by the local|testnet subcommand)
+  MODE               — store (dual-host Store) or module
+                       (single-host payment-streams happy path);
                        default: store.
   SKIP_BUILD         — Skip module build (default: 0)
   SKIP_TEARDOWN      — Skip cleanup (default: 0)
@@ -433,19 +433,19 @@ Flags:
                        normal: phase headers + values; verbose: full
                        narrative with concept explanations.
 
-Verification matrix (mode x chain):
-  MODE=module CHAIN=local  $0 local run   # module verification, localnet
-  MODE=module CHAIN=local OWNER_PRIVACY=1 $0 local run   # Step 36 PseudonymousFunding (PRIVACY=1 alias OK)
-  MODE=module CHAIN=local PROVIDER_PRIVACY=1 $0 local run  # Step 37 private provider claim
-  MODE=store  CHAIN=local  $0 local run   # Store integration, localnet
-  MODE=store  CHAIN=testnet $0 testnet run # Store integration, testnet
-  MODE=module CHAIN=testnet                # module verification, testnet
+Verification matrix (mode x network):
+  MODE=module $0 local run                 # module verification, localnet
+  MODE=module OWNER_PRIVACY=1 $0 local run # PseudonymousFunding (PRIVACY=1 alias OK)
+  MODE=module PROVIDER_PRIVACY=1 $0 local run  # private provider claim
+  MODE=store  $0 local run                 # Store integration, localnet
+  MODE=store  $0 testnet run               # Store integration, testnet
+  MODE=module $0 testnet run               # module verification, testnet
 
 Examples:
   $0 local run                    # Full local E2E (Store)
   $0 local prepare                # Just setup
   MODE=module $0 local run        # Module-only happy path
-  CHAIN=testnet $0 testnet run    # Testnet E2E
+  MODE=store $0 testnet run       # Testnet E2E
   $0 build                        # Build modules only
 EOF
 }

@@ -6,7 +6,7 @@ Universal Logos module (`payment_streams_module`) exposing LIP-155 vault and str
 ## Required verification
 
 ```bash
-MODE=module CHAIN=local ./scripts/e2e.sh local run
+MODE=module ./scripts/e2e.sh local run
 ```
 
 Testnet:
@@ -18,17 +18,17 @@ make verify-module-testnet
 
 Success: exit code 0 and JSON-lines under `.scaffold/e2e/artifacts/` (`module-e2e-*.log`) with phases
 `vault_init`, `deposit`, `create_stream`, `close_stream`, `claim`, `module_e2e_complete`
-(close then claim). Localnet module E2E uses `e2e/user/wallet-local`; testnet uses
+(close then claim). Localnet module E2E uses `e2e/user/wallet-local`. Testnet uses
 `e2e/testnet-wallet`. Layout:
 [naming-conventions.md](../reference/naming-conventions.md#scaffold-layout).
 
-Recipes: [journeys/E2E.md](../journeys/E2E.md).
-Hands-on testnet walkthrough: [journeys/USER_JOURNEY.md](../journeys/USER_JOURNEY.md).
+Orchestrated recipes: [reproduce/store-eligibility.md](../reproduce/store-eligibility.md).
+Manual testnet walkthrough: [reproduce/payment-streams.md](../reproduce/payment-streams.md).
 
 Prepare only:
 
 ```bash
-MODE=module CHAIN=local ./scripts/e2e.sh local prepare
+MODE=module ./scripts/e2e.sh local prepare
 ```
 
 Orchestrator: [scripts/module-e2e.sh](../../scripts/module-e2e.sh).
@@ -53,7 +53,7 @@ Scaffold: `lgs init`, `lgs setup`, `lgs localnet start`. `make seed-fixture` for
 Build module (no delivery):
 
 ```bash
-MODE=module CHAIN=local ./scripts/e2e.sh build
+MODE=module ./scripts/e2e.sh build
 # or: nix build ./logos-payment-streams-module#lgx
 ```
 
@@ -71,7 +71,7 @@ Set `PAYMENT_STREAMS_GUEST_BIN` on the logoscore daemon process before writes.
 ## Host boundary
 
 One logoscore process loads `logos_execution_zone` and `payment_streams_module`. Store integration
-adds `delivery_module` on provider/user hosts — see [store-integration](../store-integration/).
+adds `delivery_module` on provider and user hosts. See [reproduce/store-eligibility.md](../reproduce/store-eligibility.md).
 
 ## chainAction catalogue
 
@@ -81,16 +81,16 @@ SSOT for module I/O. Invoke:
 logoscore call payment_streams_module chainAction <operation> '<paramsJson>'
 ```
 
-`paramsJson` is a compact JSON object. Writes return submit JSON (`status`, `tx_hash`, …); callers
+`paramsJson` is a compact JSON object. Writes return submit JSON (`status`, `tx_hash`, …). Callers
 sync via `logos_execution_zone sync_to_block` and poll status ops below.
 Historical step runbook: [archive/steps/module-chain-writes-runbook.md](../archive/steps/module-chain-writes-runbook.md)
 (points here).
 
-Legend: **UJ** = exercised in [USER_JOURNEY.md](../journeys/USER_JOURNEY.md) testnet walkthrough.
+Walkthrough = exercised in [payment-streams.md](../reproduce/payment-streams.md).
 
 ### Writes
 
-| operation | JSON keys | Semantics | UJ |
+| operation | JSON keys | Semantics | Walkthrough |
 | --- | --- | --- | --- |
 | `initializeVault` | `owner`, `vault_id` | Create empty vault PDA for owner | yes |
 | `deposit` | `owner`, `vault_id`, `amount_lo`, `amount_hi` | Credit vault from owner balance | yes |
@@ -99,12 +99,12 @@ Legend: **UJ** = exercised in [USER_JOURNEY.md](../journeys/USER_JOURNEY.md) tes
 | `pauseStream` | `owner`, `vault_id`, `stream_id` | Pause accrual | no |
 | `resumeStream` | `owner`, `vault_id`, `stream_id` | Resume paused stream | no |
 | `topUpStream` | `owner`, `vault_id`, `stream_id`, `increase_lo`, `increase_hi` | Increase stream allocation | no |
-| `closeStream` | `owner`, `vault_id`, `stream_id`, optional `provider` | Close stream; unaccrued returns to vault. Omit `provider` (or match `owner`) for owner-close. Distinct `provider` selects provider-close after stream pre-read. | yes |
+| `closeStream` | `owner`, `vault_id`, `stream_id`, optional `provider` | Close stream. Unaccrued returns to vault. Omit `provider` (or match `owner`) for owner-close. Distinct `provider` selects provider-close after stream pre-read. | yes |
 | `claim` | `owner`, `provider`, `vault_id`, `stream_id` | Provider claims accrued on stream | yes |
 
 ### Reads (via chainAction)
 
-| operation | JSON keys | Semantics | UJ |
+| operation | JSON keys | Semantics | Walkthrough |
 | --- | --- | --- | --- |
 | `getVaultStatus` | `owner`, `vault_id` | Vault holding balance hex + config (e.g. `total_allocated_lo`) | yes |
 | `getStreamStatus` | `owner`, `vault_id`, `stream_id` | `accrued_lo`, `unaccrued_lo`, `stream_state` (0 Active, 1 Paused, 2 Closed) | yes |
@@ -123,6 +123,7 @@ Legend: **UJ** = exercised in [USER_JOURNEY.md](../journeys/USER_JOURNEY.md) tes
 
 [archive/operator/localnet-recovery.md](../archive/operator/localnet-recovery.md).
 
-## Out of scope
+## Related
 
-- Store eligibility — [store-integration](../store-integration/)
+Store eligibility: [reproduce/store-eligibility.md](../reproduce/store-eligibility.md).
+Eligibility for other protocols: [integrate/eligibility.md](../integrate/eligibility.md).

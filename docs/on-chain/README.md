@@ -68,5 +68,5 @@ see [payment-streams-module](../payment-streams-module/).
 ## Related
 
 - [Payment streams module](../payment-streams-module/) — LogosAPI `chainAction`
-- [Store integration](../store-integration/) — eligibility on Store requests
+- [Store eligibility](../reproduce/store-eligibility.md) — paid Store queries
 - [Verification matrix](../reference/verification-matrix.md)

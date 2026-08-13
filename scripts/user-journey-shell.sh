@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Toolchain shell for docs/journeys/USER_JOURNEY.md (pinned logoscore + lgpm, auto lgs).
+# Toolchain shell for docs/reproduce/payment-streams.md (pinned logoscore + lgpm, auto lgs).
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/lib/user-journey-env.sh

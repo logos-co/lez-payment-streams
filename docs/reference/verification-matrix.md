@@ -1,20 +1,22 @@
-# Verification matrix (flow x chain)
+# Verification matrix (mode × network)
 
-Canonical entry point: [`scripts/e2e.sh`](../../scripts/e2e.sh) with `MODE` and `CHAIN`.
+Canonical entry: [`scripts/e2e.sh`](../../scripts/e2e.sh).
+The first argument (`local` or `testnet`) sets the network.
 Each `local run` / `testnet run` performs prepare, run, and teardown unless `SKIP_TEARDOWN=1`.
 
-See [naming-conventions.md](naming-conventions.md) for `MODE` values vs Journey names.
+`MODE` values: [naming-conventions.md](naming-conventions.md).
+Orchestrated recipes: [reproduce/store-eligibility.md](../reproduce/store-eligibility.md).
+Manual protocol path: [reproduce/payment-streams.md](../reproduce/payment-streams.md).
+Testing handles: [root README Testing](../../README.md#testing).
 
 ## Cold start (first time on a machine)
 
-Optional one-time setup before the commands below. `local run` calls prepare, which builds
-modules unless `SKIP_BUILD=1`.
+Optional one-time setup before the commands below.
+`local run` calls prepare, which builds modules unless `SKIP_BUILD=1`.
 
-1. Host: [Nix](https://nixos.org/download/) with flakes enabled; Rust + RISC Zero toolchain for
-   the guest ELF (`cargo risczero build --manifest-path methods/guest/Cargo.toml`, or `make build`
-   in this repo).
-2. Logos scaffold CLI `lgs` on `PATH` (install per your Logos workspace; many setups use
-   `~/.cargo/bin` after installing `lgs`).
+1. Host: [Nix](https://nixos.org/download/) with flakes enabled.
+   Rust + RISC Zero toolchain for the guest ELF (`cargo risczero build --manifest-path methods/guest/Cargo.toml`, or `make build`).
+2. Logos scaffold CLI `lgs` on `PATH` (often `~/.cargo/bin` after installing `lgs`).
 3. Run verification inside a shell that provides `logoscore` and `lgpm`:
 
 ```bash
@@ -31,114 +33,89 @@ lgs init      # if .scaffold/ is missing
 lgs setup     # if scaffold.toml / layout is missing
 ```
 
-5. Store integration only: clone `logos-delivery-module` at the default path
-   `../logos-delivery-module` (or set `DELIVERY_MODULE_ROOT`) on the branch in
-   [feature-branch-pins.md](feature-branch-pins.md).
-   E2E does not clone it; build fails if the directory is missing.
-   A `../logos-delivery` sibling is optional (local `liblogosdelivery` overlay only; Nix
-   fetches the locked delivery input when building the module).
-   Module verification (`MODE=module`) does not need delivery checkouts.
-6. First local run (builds `.lgx` via Nix, starts localnet, installs modules). Expect a long
-   first build; later runs can use `SKIP_BUILD=1` when `.scaffold/e2e/*/modules` are already
-   populated.
+5. Store integration: clone `logos-delivery-module` at `../logos-delivery-module` (or set `DELIVERY_MODULE_ROOT`) on the branch in [feature-branch-pins.md](feature-branch-pins.md).
+   E2E does not clone it.
+   Build fails if the directory is missing.
+   A `../logos-delivery` sibling is optional (local `liblogosdelivery` overlay).
+   Nix fetches the locked delivery input when building the module.
+   `MODE=module` skips delivery checkouts.
+6. First local run builds `.lgx` via Nix, starts localnet, and installs modules.
+   Later runs can use `SKIP_BUILD=1` when `.scaffold/e2e/*/modules` are already populated.
 
-`e2e.sh` sets `PAYMENT_STREAMS_GUEST_BIN` to the guest path under `methods/guest/target/...`
-when the file exists; build the guest before Store prepare if seed/fixture steps fail.
+`e2e.sh` sets `PAYMENT_STREAMS_GUEST_BIN` to the guest path under `methods/guest/target/...` when the file exists.
+Build the guest before Store prepare if seed/fixture steps fail.
 
 Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-recovery.md).
 
 ## Terminology
 
-- `MODE=module` — User Journey (module verification).
+- `MODE=module` — module verification.
   Single-host path through `payment_streams_module` `chainAction` (vault, stream, claim).
-  No Store or eligibility.
-- `MODE=store` (default) — Developer Journey (Store integration verification).
-  Dual-host paid Store query with LIP-155 eligibility proof;
-  orchestrator [`scripts/e2e/run_local_e2e.py`](../../scripts/e2e/run_local_e2e.py).
+- `MODE=store` (default) — Store integration verification.
+  Dual-host paid Store query with LIP-155 eligibility proof.
+  Orchestrator [`scripts/e2e/run_local_e2e.py`](../../scripts/e2e/run_local_e2e.py).
 
 ## The matrix
 
-|  | Localnet (`CHAIN=local`) | Testnet (`CHAIN=testnet`) |
+|  | Localnet (`./scripts/e2e.sh local …`) | Testnet (`./scripts/e2e.sh testnet …`) |
 | --- | --- | --- |
-| User Journey — module | Required | Required |
-| Developer Journey — Store | Required | Required |
+| Module (`MODE=module`) | Required | Required |
+| Store (`MODE=store`) | Required | Required |
 
-## Support tiers
+## Support
 
-- Required — both journeys on both chains.
-  Localnet needs no fixture; clone and verify on your machine.
-  Testnet needs `fixtures/testnet.json` (one-time `make bootstrap-testnet`); module-only
-  users can use `fixtures/testnet-module.json` (one-time `make bootstrap-testnet-module`).
-  Store runs use a fresh vault per run (Step 33); set `VAULT_ID` to pin a vault id
-  or `E2E_REUSE_BASELINE_VAULT=1` for the legacy vault-0 lifecycle path.
-- Claim is required on both chains for the module (User Journey). The v0.2.0
-  testnet upgrade resolved the previous claim reliability issue; see
-  [archive/operator/testnet-claim-known-issue.md](../archive/operator/testnet-claim-known-issue.md).
-- Developer Journey Store claim is strict by default (`E2E_CLAIM_OPTIONAL=0`;
-  Step 32 D3 closed). Artifact phase is `claim` only (`demo_claim` alias removed).
-  Step 39 privacy testnet gates also use `E2E_CLAIM_OPTIONAL=0` with real proving
-  (`RISC0_DEV_MODE=0`); see optional rows below and
-  [step-39-testnet-gate-log.md](../plan/completed/step-39-testnet-gate-log.md).
+Required: both modes on both networks.
+Localnet needs no fixture.
+Clone and verify on your machine.
+Testnet needs `fixtures/testnet.json` (one-time `make bootstrap-testnet`).
+Module-only users can use `fixtures/testnet-module.json` (one-time `make bootstrap-testnet-module`).
+Store runs use a fresh vault per run.
+Set `VAULT_ID` to pin a vault id, or `E2E_REUSE_BASELINE_VAULT=1` for the vault-0 lifecycle path.
 
-## Commands (canonical)
+Claim is required on both networks for the module.
+Store claim is strict by default (`E2E_CLAIM_OPTIONAL=0`).
+Artifact phase is `claim`.
+Privacy testnet gates use `E2E_CLAIM_OPTIONAL=0` with real proving (`RISC0_DEV_MODE=0`).
+See [step-39-testnet-gate-log.md](../plan/completed/step-39-testnet-gate-log.md).
 
-Per-cell prepare, bootstrap one-liners, verbosity flags, and expected artifacts:
-[journeys/E2E.md](../journeys/E2E.md).
+## On-chain confirmation principle
 
-Make convenience aliases: `verify-module-local`, `verify-module-testnet`,
-`verify-module-local-provider-close`, `verify-module-local-provider-close-privacy`,
-`verify-module-local-close-negatives`,
-`verify-store-local`, `verify-store-testnet`. Legacy names `verify-step17` / `verify-step18`
-still work.
+`chainAction` submits are asynchronous.
+Wallet success means the transaction was accepted locally.
+When a later step reads state that a `chainAction` wrote, the harness confirms on-chain status directly.
 
-Maintainer-only (not integrator gates): `make verify-store-local-lifecycle` or
-[`scripts/archive/verify-store-local-lifecycle.sh`](../../scripts/archive/verify-store-local-lifecycle.sh).
+Two checks:
+
+- `wait_for_sequencer_tx` polls sequencer `getTransaction` until the tx appears.
+- A state poll then reads the account the next step depends on (`getVaultStatus`, `readStreamConfigDecoded`, `getAccount`, and similar) until the expected state is visible.
+
+`await_chain_action_inclusion` always polls the sequencer on localnet.
+Non-local chains where `getTransaction` lags may set `E2E_ALLOW_FIRE_AND_FORGET=1`.
+The downstream state poll remains the gate.
+Applies to `MODE=store` ([e2e/run_local_e2e.py](../../scripts/e2e/run_local_e2e.py)) and `MODE=module` ([module-e2e.sh](../../scripts/module-e2e.sh)).
+
+Manual walkthrough: wait until `last_block` is past the submit height, then read status.
+See [reproduce/payment-streams.md](../reproduce/payment-streams.md#on-chain-confirmation).
+
+## Commands
+
+Per-cell prepare, bootstrap, verbosity, and expected artifacts: [reproduce/store-eligibility.md](../reproduce/store-eligibility.md).
+
+Make aliases: `verify-module-local`, `verify-module-testnet`, `verify-module-local-provider-close`, `verify-module-local-provider-close-privacy`, `verify-module-local-close-negatives`, `verify-store-local`, `verify-store-testnet`.
+Legacy names `verify-step17` / `verify-step18` still work.
+
+Maintainer-only: `make verify-store-local-lifecycle` or [`scripts/archive/verify-store-local-lifecycle.sh`](../../scripts/archive/verify-store-local-lifecycle.sh).
 
 ## Notes
 
-- Store local prepare restores a funded snapshot (identity + policy only, no
-  program vault) and writes `fixtures/localnet.json` from owner/provider markers.
-  The orchestrator scans for a fresh vault id and ensures it (init + deposit)
-  before stream creation. Set `E2E_REUSE_BASELINE_VAULT=1` to use the legacy
-  vault-0 reuse path (used by `verify-store-local-lifecycle`).
-- On-chain confirmation principle: every `chainAction` op whose next step reads
-  the state it writes is verified on-chain (sequencer inclusion + state poll),
-  not by the wallet submit acknowledgement. See
-  [journeys/E2E.md#on-chain-confirmation-principle](../journeys/E2E.md#on-chain-confirmation-principle).
-  This applies to both `MODE=module` and `MODE=store` orchestrators.
-- Module flow only ensures localnet is up and skips `delivery_module` build.
-- Testnet gate: two consecutive green passes (Store + Module) on the public
-  sequencer are recorded in
-  [step-33-testnet-gate-log.md](../plan/completed/step-33-testnet-gate-log.md).
-  Module testnet uses `VAULT_ID` to pin a fresh vault (default fixture vault 0
-  accumulates stale streams across runs).
+- Store local prepare restores a funded snapshot (identity + policy, no program vault) and writes `fixtures/localnet.json` from owner/provider markers.
+  The orchestrator scans for a fresh vault id and ensures it (init + deposit) before stream creation.
+  `E2E_REUSE_BASELINE_VAULT=1` selects vault-0 reuse (`verify-store-local-lifecycle`).
+- Module flow ensures localnet is up and skips `delivery_module` build.
+- Testnet gate history: [step-33-testnet-gate-log.md](../plan/completed/step-33-testnet-gate-log.md).
+  Module testnet uses `VAULT_ID` to pin a fresh vault.
 - Artifacts: `.scaffold/e2e/artifacts/` JSON-lines logs.
   Layout: [naming-conventions.md#scaffold-layout](naming-conventions.md#scaffold-layout).
   Module: `module-e2e-*.log` (`vault_init`, `deposit`, `create_stream`, `claim`, …).
-  Owner-privacy optional gate:
-  `MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run`
-  (or `make verify-module-local-privacy`; `PRIVACY=1` alias still works).
-  Phases include `pre_shield` when pre-shielding runs.
-  Provider-privacy optional gate:
-  `MODE=module CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run`
-  (or `make verify-module-local-provider-privacy`). Claim confirms via
-  `vault_holding` drop when the provider is private.
-  Store owner-privacy optional gate (Step 38 Phase A):
-  `MODE=store CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run`
-  (or `make verify-store-local-owner-privacy`). Phases include
-  `owner_privacy_accounts`, `pre_shield`, and `privacy_tier=1` vault init.
-  Store provider-privacy optional gate (Step 38 Phase B):
-  `MODE=store CHAIN=local PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run`
-  (or `make verify-store-local-provider-privacy`). Claim confirms via
-  `vault_holding` drop; mapping phase `register_provider_mapping`.
-  Store full-privacy optional gate:
-  `MODE=store CHAIN=local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run`
-  (or `make verify-store-local-full-privacy`).
   Store: `e2e-*.log` (`store_query_success`, `store_query_missing_proof`, `claim`, …).
-  Module full-privacy testnet optional gate (Step 39; real prove, strict claim):
-  `SKIP_BUILD=1 MODULE_E2E_SKIP_FUND=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 MODE=module CHAIN=testnet OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh testnet run`
-  (wallet-CLI shield; gate log
-  [step-39-testnet-gate-log.md](../plan/completed/step-39-testnet-gate-log.md)).
-  Store full-privacy testnet optional gate (Step 39; real prove, strict claim,
-  vault_holding drop):
-  `SKIP_BUILD=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 MODE=store CHAIN=testnet OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh testnet run`.
+  Privacy overlays and env flags: [reproduce/store-eligibility.md](../reproduce/store-eligibility.md#privacy-overlays).

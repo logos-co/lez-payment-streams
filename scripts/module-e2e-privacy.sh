@@ -6,7 +6,7 @@
 #
 # Usage:
 #   ./scripts/module-e2e-privacy.sh
-#   MODE=module CHAIN=local OWNER_PRIVACY=1 ./scripts/e2e.sh local run
+#   MODE=module OWNER_PRIVACY=1 ./scripts/e2e.sh local run
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

@@ -367,7 +367,7 @@ class Narrator:
             return
         line = "=" * 44
         print(f"\n[{self._ts()}] {line}", file=sys.stderr)
-        print(f"[{self._ts()}] Payment Streams E2E: Developer Journey ({self._chain_label})", file=sys.stderr)
+        print(f"[{self._ts()}] Payment Streams E2E: Store integration ({self._chain_label})", file=sys.stderr)
         print(f"[{self._ts()}] {scenario}", file=sys.stderr)
         print(f"[{self._ts()}] {line}", file=sys.stderr)
 
@@ -1608,8 +1608,8 @@ def await_chain_action_inclusion(
     # harness MUST verify inclusion directly against the sequencer instead of
     # trusting the wallet's submit-acknowledgement. "wallet.success == True"
     # only means the wallet accepted the submit, not that the tx is included
-    # or that the account mirror is readable. See docs/journeys/E2E.md
-    # ("On-chain confirmation principle").
+    # or that the account mirror is readable. See
+    # docs/reference/verification-matrix.md ("On-chain confirmation principle").
     #
     # Localnet: always poll the sequencer (getTransaction is reliable here).
     # Non-local chains where getTransaction lags may opt back into the legacy

@@ -8,7 +8,7 @@
 # scripts/archive/step11b-logoscore-e2e.sh onto the unified script stack.
 #
 # Usage: ./scripts/module-e2e-local.sh
-# Driven by: MODE=module CHAIN=local ./scripts/e2e.sh local run
+# Driven by: MODE=module ./scripts/e2e.sh local run
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

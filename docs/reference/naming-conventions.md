@@ -4,22 +4,21 @@ Use this vocabulary consistently in product docs and runbooks.
 
 ## Role layers (LIP-155 / module)
 
-Do not collapse service, chain, submitter, and funding into one word.
-Formerly `payer` / `payee` (journey slang) map as below; do not use them on
-living surfaces (see Step 47).
+Keep service, chain, submitter, and funding as separate layers.
+Formerly `payer` / `payee` map as below. Living surfaces use the table terms (see Step 47).
 
 | Layer | Terms | Use for |
 | --- | --- | --- |
 | Service / protocol (LIP Roles, Store hosts) | `user`, `provider` | Who requests service vs who delivers. `provider` is the same party as the chain-layer provider (cross-layer term). |
 | On-chain identity (guest, module JSON, manifests) | `owner`, `provider` | `VaultConfig.owner`, `StreamConfig.provider` / claim account. |
 | Tx submitter (derived) | `submitter` | Who signs/submits this tx. Not a module JSON key. Precedence for close/claim: `provider` > `owner`. Owner writes (`createStream`, …) keep owner as submitter even when `provider` appears as instruction data. |
-| Privacy funding (ops only) | `funder` / `PUBLIC_FUNDER` | Public account that shields into a private owner — not the vault owner. |
-| Informal (retired) | `payer`, `payee` | Historical journey slang only. |
+| Privacy funding (ops only) | `funder` / `PUBLIC_FUNDER` | Public account that shields into a private owner. Distinct from the vault owner. |
+| Informal (retired) | `payer`, `payee` | Historical slang only. |
 
-Module `chainAction` JSON (writes + close): vault owner id is `owner`; stream
+Module `chainAction` JSON (writes + close): vault owner id is `owner`. Stream
 provider id is `provider` (close). Store verify peer param is `userPeerId`
 (symmetry with `providerPeerId`). LEZ `#[account(signer)]` / IDL `"signer":
-true` means must-sign only — not the vault owner id.
+true` means must-sign only.
 
 Account-id write params accept base58 or 64-hex via one helper (fixed order):
 
@@ -27,7 +26,7 @@ Account-id write params accept base58 or 64-hex via one helper (fixed order):
 2. Else → decode as base58; require decoded length 32.
 3. Otherwise → error.
 
-Inventory (not renamed): localnet fixture state still keys `SIGNER_ID`; scripts
+Inventory (not renamed): localnet fixture state still keys `SIGNER_ID`. Scripts
 alias it to local `OWNER` at the state-file boundary.
 
 ## External product names
@@ -41,16 +40,16 @@ alias it to local `OWNER` at the state-file boundary.
 
 | Term | Meaning |
 | --- | --- |
-| User Journey | `MODE=module` on `scripts/e2e.sh`. Payment streams in isolation (no Store, no eligibility gate). |
-| Developer Journey | `MODE=store` (default). Dual-host demo with `delivery_module` and LIP-155 eligibility on Store. |
+| `MODE=module` | Payment streams in isolation (no Store, no eligibility gate). |
+| `MODE=store` | Default. Dual-host demo with `delivery_module` and LIP-155 eligibility on Store. |
 
-Makefile targets use the Journey names directly where applicable.
+Makefile targets use `verify-module-*` and `verify-store-*`.
 
 ## N18 demo tracks (plan index)
 
 | Term | Meaning |
 | --- | --- |
-| N18 | Protocol vs Store eligibility tracks (historical journey names retired by Step 46). Step 20 formal logos-docs publish wontfix (logos-docs#369). Historical User Journey CLI complete (Step 22 / logos-docs#370). User Journey UI Step 21 upcoming. Step 46: reproduce + integrate docs + forum links. |
+| N18 | Protocol vs Store eligibility tracks. Step 20 formal logos-docs publish wontfix (logos-docs#369). Historical protocol CLI complete (Step 22 / logos-docs#370). Protocol UI Step 21 upcoming. Step 46: reproduce + integrate docs + forum links. Formerly User Journey / Developer Journey as living labels. |
 
 ## Logos and protocol names
 
@@ -70,9 +69,9 @@ Primary (step-free):
 
 | Make target | Matrix cell |
 | --- | --- |
-| `make verify-module-local` | User Journey × localnet |
-| `make verify-store-local` | Developer Journey × localnet |
-| `make verify-store-testnet` | Developer Journey × testnet (advanced) |
+| `make verify-module-local` | Module × localnet |
+| `make verify-store-local` | Store × localnet |
+| `make verify-store-testnet` | Store × testnet |
 | `make verify-store-local-lifecycle` | Maintainer only (two runs, one ledger) |
 
 Legacy aliases: `verify-step17`, `verify-step18`, `verify-step17-back-to-back`.
@@ -85,17 +84,17 @@ Canonical commands: [verification-matrix.md](verification-matrix.md),
 Gitignored state under `$REPO_ROOT/.scaffold/`. Path helpers live in
 `scripts/lib/common.sh` (`ps_e2e_*`, `ps_scaffold_*`).
 
-| Path | Journey | Role |
+| Path | Mode | Role |
 | --- | --- | --- |
-| `e2e/user/modules` | User (+ Store client install) | `lgpm` install tree (`MODULES_USER`) |
-| `e2e/user/logoscore`, `e2e/user/persist` | User / Store client host | Dual-host logoscore daemon state |
-| `e2e/user/wallet-local` | User (localnet module E2E) | Isolated wallet; reset each `module-e2e.sh` local run (`WALLET_E2E_DIR`) |
-| `e2e/provider/modules`, `e2e/provider/logoscore`, `e2e/provider/persist` | Developer (Store provider) | Provider host |
-| `e2e/testnet-wallet` | User + Store (testnet) | Testnet wallet home (`ps_chain_wallet_home` when `CHAIN=testnet`) |
+| `e2e/user/modules` | module (+ Store client install) | `lgpm` install tree (`MODULES_USER`) |
+| `e2e/user/logoscore`, `e2e/user/persist` | module / Store client host | Dual-host logoscore daemon state |
+| `e2e/user/wallet-local` | module (localnet module E2E) | Isolated wallet; reset each `module-e2e.sh` local run (`WALLET_E2E_DIR`) |
+| `e2e/provider/modules`, `e2e/provider/logoscore`, `e2e/provider/persist` | Store provider | Provider host |
+| `e2e/testnet-wallet` | module + Store (testnet) | Testnet wallet home (`ps_chain_wallet_home` when `CHAIN=testnet`) |
 | `e2e/artifacts` | E2E verification | JSONL logs (`module-e2e-*.log`, `e2e-*.log`, …) |
-| `e2e/provider-advertisement.json` | Developer | Off-band provider ad file (orchestrator) |
+| `e2e/provider-advertisement.json` | Store | Off-band provider ad file (orchestrator) |
 | `wallet` | Localnet (scaffold) | Default localnet wallet when not using `e2e/user/wallet-local` |
 
 Override defaults with env vars (`MODULES_USER`, `MODULES_PROVIDER`, `WALLET_E2E_DIR`,
-`TESTNET_WALLET_DIR`, …). Manual User Journey on testnet uses the same paths as
-`MODE=module` E2E: [USER_JOURNEY.md](../journeys/USER_JOURNEY.md).
+`TESTNET_WALLET_DIR`, …). Manual protocol path on testnet uses the same paths as
+`MODE=module` E2E: [payment-streams.md](../reproduce/payment-streams.md).

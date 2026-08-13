@@ -13,7 +13,7 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44–45, 47) |
-| [upcoming/](upcoming/) | Steps 21, 46 |
+| [upcoming/](upcoming/) | Steps 21, 46, 49, 50 |
 | [waiting/](waiting/) | Step 48 (upstream spel / AT ImageID trigger) |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
@@ -24,17 +24,21 @@ Documentation tracks ([N18](../reference/integration-decisions.md#n18-integratio
 
 | Track | Status | Steps / links |
 | --- | --- | --- |
-| Store eligibility (historical “Developer Journey”) | Formal logos-docs publish wontfix; living docs in Step 46 | Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)); Step 46 `reproduce/store-eligibility.md` + `integrate/eligibility.md` |
-| Eligibility integration guide (Step 35) | Complete (substance → Step 46 integrate doc) | Step 35 |
-| Protocol-only CLI (historical “User Journey”) | Complete as historical track; living path in Step 46 | [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370); Steps 22, 28, 34; Step 46 `reproduce/payment-streams.md` |
+| Store eligibility | Formal logos-docs publish wontfix; living docs | [store-eligibility.md](../reproduce/store-eligibility.md), [eligibility.md](../integrate/eligibility.md); Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)); Step 46 |
+| Eligibility integration guide (Step 35) | Complete (substance in integrate doc) | [eligibility.md](../integrate/eligibility.md); Step 35 |
+| Protocol-only CLI | Complete as historical track; living path | [payment-streams.md](../reproduce/payment-streams.md); [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370); Steps 22, 28, 34; Step 46 |
 | Protocol UI (Basecamp) | Upcoming | Step 21 |
-| Docs unify + forum post | Upcoming | Step 46 |
+| Docs unify + forum post | Upcoming | Step 46; draft [forum-post.md](../external/forum-post.md) |
+| Multi-token type alignment (native-only demo) | Upcoming | Step 49 |
+| Consistency and clarity polish | Upcoming | Step 50 |
 
 Engineering: Steps 26–33 complete; Steps 36–41 complete
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
-Steps 21, 46 upcoming (Basecamp UI; docs unify + forum post).
+Steps 21, 46, 49, 50 upcoming (Basecamp UI; docs unify + forum post;
+native-only multi-token type alignment; consistency and clarity polish).
 Step 48 waiting (program-graph LEZ unify / AT config drop; upstream trigger).
+Address 46 then 49 then 50 (49 is an ImageID cut; 50 must not collide with it).
 Step 44 complete (payer/payee close). Step 45 complete (deps and patches freeze).
 Step 47 complete (role terminology).
 Step 20 wontfix (formal Developer Journey logos-docs publish; replaced by Step 46 docs + forum).
@@ -86,10 +90,12 @@ paid Store mode on the provider.
 | Discovery + payment policy advertisement (F6, F7, U8) | 42 (wontfix; Discovery support) |
 | Shared payment pool model research (F9–F11, U10) | 43 (wontfix) |
 | E2E payer-close and payee-close | 44 (complete) |
-| Revisit dependencies and patches | 45 (upcoming) |
+| Revisit dependencies and patches | 45 (complete) |
 | Docs unify + forum post (reproduce / integrate / README Testing / forum links) | 46 (upcoming; after 45) |
 | Unify module JSON terminology (`owner` / `provider`) | 47 (complete) |
 | Program-graph LEZ unify + drop AT hex config | 48 (waiting; upstream trigger) |
+| LIP-155 multi-token type alignment (native-only demo) | 49 (upcoming; after 46) |
+| Consistency and clarity polish | 50 (upcoming; after 49) |
 
 Step 25 (in-process demo coordinator module) is wontfix
 ([packet](wontfix/step-25-demo-coordination-module.md)).
@@ -138,6 +144,7 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 [step-39-testnet-gate-log.md](completed/step-39-testnet-gate-log.md) (Step 39),
 [step-44-gate-log.md](completed/step-44-gate-log.md) (Step 44),
 [step-45-gate-log.md](completed/step-45-gate-log.md) (Step 45),
+[step-46-gate-log.md](completed/step-46-gate-log.md) (Step 46, dogfood pending),
 [step-47-gate-log.md](completed/step-47-gate-log.md) (Step 47).
 
 ## Upcoming steps
@@ -146,6 +153,8 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | --- | --- | --- |
 | 21 | User Journey: Basecamp UI plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
 | 46 | Docs unify + forum post | Upcoming — [step-46-docs-unify-and-forum-post.md](upcoming/step-46-docs-unify-and-forum-post.md) |
+| 49 | LIP-155 multi-token type alignment (native-only demo) | Upcoming — [step-49-native-token-spec-alignment.md](upcoming/step-49-native-token-spec-alignment.md) |
+| 50 | Consistency and clarity polish | Upcoming — [step-50-consistency-and-clarity.md](upcoming/step-50-consistency-and-clarity.md) |
 
 ## Waiting steps
 
@@ -199,8 +208,8 @@ when creating the branch. Both delivery repos must use the same string.
 | `logos-payment-streams-module` | Universal Qt module, wallet via `logos_execution_zone` |
 | `logos-delivery` / `liblogosdelivery` | Store protocol + eligibility hooks (14-15) |
 | `logos-delivery-module` | `delivery_module` + routing (16) |
-| `scripts/e2e.sh`, `scripts/e2e/run_local_e2e.py` | Developer Journey: dual-host Store integration orchestration (Step 17; in-repo SSOT) |
-| `payment_streams_ui` (upcoming) | User Journey: Basecamp UI over `payment_streams_module` only (Step 21) |
+| `scripts/e2e.sh`, `scripts/e2e/run_local_e2e.py` | Store integration: dual-host orchestration (Step 17; in-repo SSOT) |
+| `payment_streams_ui` (upcoming) | Protocol UI: Basecamp over `payment_streams_module` only (Step 21) |
 | `lgs` / `logoscore` / `lgpm` / `lm` | Localnet, host, install, introspection |
 
 Detail: [`logos-architecture-overview.md`](../archive/reference/logos-architecture-overview.md).

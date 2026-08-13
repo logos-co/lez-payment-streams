@@ -11,15 +11,17 @@ Paid Store queries carry LIP-155 `EligibilityProof` (RFC 73 on Store tag `30`); 
 LEZ state before serving. Rust/FFI holds policy; `payment_streams_module` orchestrates wallet I/O;
 delivery forks add wire fields and hooks.
 
-Universal payment protocol vs Store eligibility use case. Formal logos-docs Developer
-Journey publish is wontfix ([Step 20](docs/plan/wontfix/step-20-developer-journey.md);
+Universal payment protocol vs Store eligibility use case. Formal logos-docs
+integrator publish is wontfix ([Step 20](docs/plan/wontfix/step-20-developer-journey.md);
 [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)).
-Living docs unify and forum orientation are
-[Step 46](docs/plan/upcoming/step-46-docs-unify-and-forum-post.md)
-(Step 48 waiting; drops living “journey” branding).
-Historical User Journey CLI track is complete
+Living docs: [docs/reproduce/](docs/reproduce/),
+[docs/integrate/eligibility.md](docs/integrate/eligibility.md),
+[docs/external/forum-post.md](docs/external/forum-post.md)
+([Step 46](docs/plan/upcoming/step-46-docs-unify-and-forum-post.md);
+Step 48 waiting).
+Historical protocol CLI track is complete
 ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)).
-User Journey UI (Step 21) is upcoming; public hosted Store (Step 23) is wontfix.
+Protocol UI (Step 21) is upcoming. Public hosted Store (Step 23) is wontfix.
 
 Program index: [docs/plan/index.md](docs/plan/index.md).
 Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conventions.md).
@@ -30,29 +32,37 @@ Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conven
 
 Docs unify + forum ([Step 46](docs/plan/upcoming/step-46-docs-unify-and-forum-post.md),
 upcoming; not blocked on Step 48):
-README + `docs/reproduce/` + `docs/integrate/eligibility.md` + forum links;
-retires living journey / E2E fronts.
-Formal logos-docs Developer Journey publish remains wontfix
+README Testing recipes, `docs/reproduce/`, `docs/integrate/eligibility.md`,
+`docs/external/forum-post.md`.
+Formal logos-docs integrator publish remains wontfix
 ([Step 20](docs/plan/wontfix/step-20-developer-journey.md);
 [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)).
-Until Step 46 lands, interim SSOT remains
-[docs/store-integration/README.md](docs/store-integration/README.md) and
-[docs/journeys/](docs/journeys/).
+SSOT: [docs/reproduce/payment-streams.md](docs/reproduce/payment-streams.md),
+[docs/reproduce/store-eligibility.md](docs/reproduce/store-eligibility.md),
+[docs/integrate/eligibility.md](docs/integrate/eligibility.md).
 Step 35 (complete) supplies integrate-doc substance.
+After 46: [Step 49](docs/plan/upcoming/step-49-native-token-spec-alignment.md)
+(native-only LIP token_id / `accepted_tokens`; ImageID cut), then
+[Step 50](docs/plan/upcoming/step-50-consistency-and-clarity.md) (glue and
+naming polish).
 
-Historical User Journey CLI (complete — not Store):
+Historical protocol CLI (complete):
 [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370);
 [Step 22](docs/plan/completed/step-22-ui-journey.md);
 [Step 34](docs/plan/completed/step-34-user-journey-manual-walkthrough.md);
 [Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
 Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
-[Step 46](docs/plan/upcoming/step-46-docs-unify-and-forum-post.md) (docs unify + forum).
+[Step 46](docs/plan/upcoming/step-46-docs-unify-and-forum-post.md) (docs unify + forum),
+[Step 49](docs/plan/upcoming/step-49-native-token-spec-alignment.md) (native-only
+multi-token types),
+[Step 50](docs/plan/upcoming/step-50-consistency-and-clarity.md) (consistency and
+clarity). Address 46 then 49 then 50.
 Waiting: [Step 48](docs/plan/waiting/step-48-program-graph-lez-unify.md) (program-graph LEZ
 unify + drop AT hex config; upstream trigger).
 Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer and payee close),
 [Step 45](docs/plan/completed/step-45-dependencies-and-patches.md) (deps and patches),
 [Step 47](docs/plan/completed/step-47-unify-role-terminology.md) (role terminology).
-Wontfix: [Step 20](docs/plan/wontfix/step-20-developer-journey.md) (formal Developer Journey publish),
+Wontfix: [Step 20](docs/plan/wontfix/step-20-developer-journey.md) (formal logos-docs integrator publish),
 [Step 23](docs/plan/wontfix/step-23-public-store-provider.md) (public Store provider),
 [Step 25](docs/plan/wontfix/step-25-demo-coordination-module.md) (demo coordinator).
 Raw TODOs (unscheduled ideas): [docs/plan/raw-todos/](docs/plan/raw-todos/).
@@ -121,7 +131,7 @@ Maintainer lifecycle regression: `make verify-store-local-lifecycle` /
 | Verify | verification-matrix → scripts/README |
 | Store wire | integration-contracts → integration-decisions D1/D2 |
 | Localnet failure | archive/operator/localnet-recovery.md |
-| Docs / reproduce / integrate | Step 46 packet; until it lands: store-integration + journeys/; Step 20 wontfix |
+| Docs / reproduce / integrate | docs/reproduce/, docs/integrate/eligibility.md, docs/external/forum-post.md |
 | Rust / guest | docs/on-chain/README.md |
 
 ## Always-on references

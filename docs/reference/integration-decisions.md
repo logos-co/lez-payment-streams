@@ -674,7 +674,7 @@ Wallet submit and module shape
   that derived PDAs are readable. Callers that depend on the just-written state
   must verify on-chain status directly (sequencer `getTransaction` plus a state
   poll of the affected account); they must not skip on `success`. See the
-  on-chain confirmation principle in [E2E.md](../journeys/E2E.md#on-chain-confirmation-principle).
+  on-chain confirmation principle in [verification-matrix.md](verification-matrix.md#on-chain-confirmation-principle).
   `./scripts/archive/verify-step11b-dod.sh` uses wallet `sync_to_block` when
   sequencer height is available and retries on status `chainAction`.
 
@@ -732,10 +732,10 @@ Dual-host paid Store demo coordination stays on the **host**, not in a Logos mod
   `payment_streams_module` + `delivery_module` ([integration-contracts.md](integration-contracts.md)).
   A future third-party Logos app module may compose those APIs; that is **not** part of this
   integration plan (Step 25 closed — [wontfix packet](../plan/wontfix/step-25-demo-coordination-module.md)).
-- **Developer journey (in-repo):** one-script E2E and equivalent step-by-step
+- **Store eligibility (in-repo):** one-script E2E and equivalent step-by-step
   `logoscore call` sequences per host live under
-  [store-integration/README.md](../store-integration/README.md) /
-  [DEVELOPER_JOURNEY.md](../journeys/DEVELOPER_JOURNEY.md)
+  [store-eligibility.md](../reproduce/store-eligibility.md) /
+  [eligibility.md](../integrate/eligibility.md)
   (Delivery + Store eligibility track only —
   [N18](#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
   Formal logos-docs publish is Step 20 wontfix; high-level public narrative is Step 46.
@@ -757,10 +757,10 @@ Living doc names move under [Step 46](../plan/upcoming/step-46-docs-unify-and-fo
   payment streams). Testing payment streams as an eligibility mechanism with Store queries.
 - **Formal packet:** [Step 20](../plan/wontfix/step-20-developer-journey.md) /
   [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369) — wontfix as a
-  standalone logos-docs journey. Until Step 46 lands, interim SSOT remains
-  [store-integration/README.md](../store-integration/README.md) /
-  [DEVELOPER_JOURNEY.md](../journeys/DEVELOPER_JOURNEY.md).
-  Target living surfaces and forum orientation:
+  standalone logos-docs journey. Living SSOT:
+  [store-eligibility.md](../reproduce/store-eligibility.md) /
+  [eligibility.md](../integrate/eligibility.md).
+  Forum orientation:
   [Step 46](../plan/upcoming/step-46-docs-unify-and-forum-post.md).
 - **Mechanism:** external script orchestration ([N17](#n17-demo-orchestration-stays-external-script-2026-06));
   dual local `logoscore` hosts; `payment_streams_module` + `delivery_module` +
@@ -777,8 +777,7 @@ Living doc names move under [Step 46](../plan/upcoming/step-46-docs-unify-and-fo
   Single-host; service/counterparty coordination **out of band**.
 - **Packet:** [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370);
   in-repo walkthrough [Step 34](../plan/completed/step-34-user-journey-manual-walkthrough.md) /
-  [USER_JOURNEY.md](../journeys/USER_JOURNEY.md); module×testnet E2E [Step 28](../plan/completed/step-28-user-journey-testnet.md).
-  Step 46 folds living commands into `reproduce/payment-streams.md`.
+  [payment-streams.md](../reproduce/payment-streams.md); module×testnet E2E [Step 28](../plan/completed/step-28-user-journey-testnet.md).
 - **Content:** install module, load wallet, owner path (vault, deposit, create stream, close),
   provider path (`chainAction claim`). CLI commands only — no UI required.
 - **Provider side:** `chainAction claim` after funds accrue (and after close in the published
@@ -820,7 +819,7 @@ builtin program ids aligned with the 510-era lineage, not rc3 dual-pin tooling.
   route through `submitGenericPublicViaFfi`. Retirement of `tools/lez-testnet-submit`,
   `chainUsesTestnetSubmit`, `submitGenericPublicViaTestnetHelper`, and `LEZ_TESTNET_SUBMIT`
   plumbing is pending live-testnet verification on the FFI path
-  (`MODE=store CHAIN=testnet ./scripts/e2e.sh testnet run`).
+  (`MODE=store ./scripts/e2e.sh testnet run`).
 - **Status (2026-06):** Step 26 bumped the operational pin from rc5 to v0.2.0 and moved the
   wallet module wrapper upstream from PR 19 to `main` (Universal).
 
