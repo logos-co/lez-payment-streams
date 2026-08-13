@@ -69,8 +69,7 @@ private:
                   const QVariant& vaultId,
                   const QVariant& streamId);
     QString getVaultStatus(const QVariant& ownerAccountIdBase58,
-                           const QVariant& vaultId,
-                           const QVariant& streamId);
+                           const QVariant& vaultId);
     QString getStreamStatus(const QVariant& ownerAccountIdBase58,
                             const QVariant& vaultId,
                             const QVariant& streamId);

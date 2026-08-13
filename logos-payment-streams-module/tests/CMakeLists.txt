@@ -12,6 +12,7 @@ logos_test(
         main.cpp
         test_privacy_submit_policy.cpp
         test_persist_merge.cpp
+        test_clock_fold.cpp
     EXTRA_INCLUDES
         ../src
 )

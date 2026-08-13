@@ -1,7 +1,6 @@
 #include "payment_streams_module_impl.h"
 #include "payment_streams_module_inventory.h"
 
-#include <QDir>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -20,17 +19,27 @@
 #include <logos_sdk.h>
 
 #include "payment_streams_ffi_bridge.h"
+#include "payment_streams_module_kit.h"
 #include "payment_streams_privacy_policy.h"
 
 #include <cstring>
 
 namespace {
 
-constexpr int kAccountIdHexLen = 64;
+using payment_streams_kit::ffiBufferTwoPhase;
+using payment_streams_kit::fixtureManifestPath;
+using payment_streams_kit::hex32FromQString;
+using payment_streams_kit::kAccountIdHexLen;
+using payment_streams_kit::kFfiSuccess;
+using payment_streams_kit::makeErrorJson;
+using payment_streams_kit::makeOkJson;
+using payment_streams_kit::parseWalletAccountJson;
+using payment_streams_kit::variantToU64;
+using payment_streams_kit::walletAccountIdHexFromBase58;
+
 constexpr uint8_t kPrivacyTierPublic = 0;
 constexpr uint8_t kPrivacyTierPseudonymousFunding = 1;
 constexpr uint8_t kPrivacyTierReadFromChain = 255;
-constexpr uint32_t kFfiSuccess = 0u;
 // Private submit runs the privacy-preserving prover. Default LogosAPIClient
 // Timeout is 20s, which is too short even for RISC0_DEV_MODE stub receipts on
 // a cold path and far too short for real proving.
@@ -45,30 +54,6 @@ enum class VaultIxLayout : uint8_t {
 QString parseWalletSubmitJson(const QString& walletJson, QJsonObject* fieldsOut, QString* errorOut);
 
 QByteArray accountDataBytesFromHex(LogosExecutionZone& wallet, const QString& accountHex, QString* errorOut);
-
-QString makeErrorJson(const QString& message) {
-    QJsonObject obj;
-    obj.insert(QStringLiteral("status"), QStringLiteral("error"));
-    obj.insert(QStringLiteral("message"), message);
-    return QJsonDocument(obj).toJson(QJsonDocument::Compact);
-}
-
-QString makeOkJson(const QJsonObject& payload) {
-    QJsonObject obj;
-    obj.insert(QStringLiteral("status"), QStringLiteral("ok"));
-    for (auto it = payload.begin(); it != payload.end(); ++it) {
-        obj.insert(it.key(), it.value());
-    }
-    return QJsonDocument(obj).toJson(QJsonDocument::Compact);
-}
-
-QString walletAccountIdHexFromBase58(LogosExecutionZone& wallet, const QString& accountIdBase58) {
-    const QString trimmed = accountIdBase58.trimmed();
-    if (trimmed.isEmpty()) {
-        return {};
-    }
-    return QString::fromStdString(wallet.account_id_from_base58(trimmed.toStdString()));
-}
 
 // Dynamic-dispatch fallback for wallet methods added by repo-local Qt
 // patches (sign_public_payload, send_generic_public_transaction_json).
@@ -113,19 +98,6 @@ QString invokeWalletQtString(LogosAPIClient* client,
     return result.toString();
 }
 
-bool hex32FromQString(const QString& hexIn, uint8_t out[32]) {
-    const QByteArray hex = hexIn.trimmed().toLatin1();
-    if (hex.size() != 64) {
-        return false;
-    }
-    const QByteArray bytes = QByteArray::fromHex(hex);
-    if (bytes.size() != 32) {
-        return false;
-    }
-    std::memcpy(out, bytes.constData(), 32);
-    return true;
-}
-
 // Prefer PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX when the live sequencer AT
 // ImageID differs from the payment_streams FFI pin (scaffold LEZ). Else use the
 // FFI helper baked into lez-payment-streams-ffi.
@@ -163,56 +135,6 @@ struct FixtureConfig {
 FixtureConfig& fixtureConfig() {
     static FixtureConfig cfg;
     return cfg;
-}
-
-QString resolveRepoRelativePath(const QString& path) {
-    if (QDir::isAbsolutePath(path)) {
-        return path;
-    }
-    const QByteArray repo = qgetenv("REPO");
-    if (!repo.isEmpty()) {
-        return QDir(QString::fromUtf8(repo)).filePath(path);
-    }
-    return path;
-}
-
-bool findRepoFile(const QString& relativePath, QString* absoluteOut) {
-    QDir dir(QDir::currentPath());
-    for (int depth = 0; depth < 10; ++depth) {
-        const QString candidate = dir.filePath(relativePath);
-        if (QFile::exists(candidate)) {
-            if (absoluteOut != nullptr) {
-                *absoluteOut = candidate;
-            }
-            return true;
-        }
-        if (!dir.cdUp()) {
-            break;
-        }
-    }
-    const QByteArray repo = qgetenv("REPO");
-    if (!repo.isEmpty()) {
-        const QString candidate = QDir(QString::fromUtf8(repo)).filePath(relativePath);
-        if (QFile::exists(candidate)) {
-            if (absoluteOut != nullptr) {
-                *absoluteOut = candidate;
-            }
-            return true;
-        }
-    }
-    return false;
-}
-
-QString fixtureManifestPath() {
-    const QByteArray env = qgetenv("FIXTURE_MANIFEST");
-    if (!env.isEmpty()) {
-        return resolveRepoRelativePath(QString::fromUtf8(env));
-    }
-    QString found;
-    if (findRepoFile(QStringLiteral("fixtures/localnet.json"), &found)) {
-        return found;
-    }
-    return QStringLiteral("fixtures/localnet.json");
 }
 
 bool ensureFixtureLoaded(QString* errorOut) {
@@ -261,42 +183,18 @@ bool programIdBytes(uint8_t out[32], QString* errorOut) {
     return hex32FromQString(fixtureConfig().programIdHex, out);
 }
 
-// D47.7: 64 hex chars → hex/32 bytes; else base58/32 bytes; else error.
-// Fixed order — do not try both without this check (64-char hex can be
-// charset-valid base58).
-bool isAccountIdHex64(const QString& trimmed) {
-    if (trimmed.size() != kAccountIdHexLen) {
-        return false;
-    }
-    for (QChar ch : trimmed) {
-        if (!ch.isDigit() && (ch.toLower() < QLatin1Char('a') || ch.toLower() > QLatin1Char('f'))) {
-            return false;
-        }
-    }
-    return true;
-}
-
 QString accountIdHexFromField(LogosExecutionZone& wallet, const QString& field, QString* errorOut) {
-    const QString trimmed = field.trimmed();
-    if (isAccountIdHex64(trimmed)) {
-        return trimmed.toLower();
-    }
-    const QString hex = walletAccountIdHexFromBase58(wallet, trimmed);
-    if (hex.size() != kAccountIdHexLen) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("invalid account id (expect 64-hex or base58)");
-        }
-        return {};
-    }
-    return hex.toLower();
+    return payment_streams_kit::accountIdHexFromField(
+        field,
+        [&wallet](const QString& id) { return walletAccountIdHexFromBase58(wallet, id); },
+        errorOut);
 }
 
 bool accountIdBytesFromField(LogosExecutionZone& wallet, const QString& field, uint8_t out[32], QString* errorOut) {
-    const QString hex = accountIdHexFromField(wallet, field, errorOut);
-    if (hex.size() != kAccountIdHexLen) {
-        return false;
-    }
-    return hex32FromQString(hex, out);
+    return payment_streams_kit::accountIdBytesFromField(
+        field, out,
+        [&wallet](const QString& id) { return walletAccountIdHexFromBase58(wallet, id); },
+        errorOut);
 }
 
 bool ownerBytesFromBase58(LogosExecutionZone& wallet, const QString& base58, uint8_t out[32], QString* errorOut) {
@@ -571,52 +469,22 @@ bool ffiPlanInitializeVault(const uint8_t programId[32],
     return true;
 }
 
-bool ffiSerializeTwoPhase(const std::function<uint32_t(
-                              uint8_t*, uintptr_t, uintptr_t*)>& call,
+bool ffiSerializeTwoPhase(const std::function<uint32_t(uint8_t*, size_t, size_t*)>& call,
                           QByteArray* out,
                           QString* errorOut) {
-    uintptr_t required = 0;
-    const auto sizing = call(nullptr, 0, &required);
-    if (sizing != kFfiSuccess) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("instruction serialize sizing failed (%1)").arg(static_cast<uint>(sizing));
-        }
-        return false;
-    }
-    out->resize(static_cast<int>(required));
-    const auto write = call(reinterpret_cast<uint8_t*>(out->data()), required, &required);
-    if (write != kFfiSuccess) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("instruction serialize failed (%1)").arg(static_cast<uint>(write));
-        }
-        return false;
-    }
-    out->resize(static_cast<int>(required));
-    return true;
+    return ffiBufferTwoPhase(
+        call, out, errorOut,
+        QStringLiteral("instruction serialize sizing failed (%1)"),
+        QStringLiteral("instruction serialize failed (%1)"));
 }
 
-bool ffiPlanAccountsTwoPhase(const std::function<uint32_t(
-                                 uint8_t*, uintptr_t, uintptr_t*)>& call,
+bool ffiPlanAccountsTwoPhase(const std::function<uint32_t(uint8_t*, size_t, size_t*)>& call,
                              QByteArray* hexOut,
                              QString* errorOut) {
-    uintptr_t required = 0;
-    const auto sizing = call(nullptr, 0, &required);
-    if (sizing != kFfiSuccess) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("plan accounts sizing failed (%1)").arg(static_cast<uint>(sizing));
-        }
-        return false;
-    }
-    hexOut->resize(static_cast<int>(required));
-    const auto write = call(reinterpret_cast<uint8_t*>(hexOut->data()), required, &required);
-    if (write != kFfiSuccess) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("plan accounts failed (%1)").arg(static_cast<uint>(write));
-        }
-        return false;
-    }
-    hexOut->resize(static_cast<int>(required));
-    return true;
+    return ffiBufferTwoPhase(
+        call, hexOut, errorOut,
+        QStringLiteral("plan accounts sizing failed (%1)"),
+        QStringLiteral("plan accounts failed (%1)"));
 }
 
 QStringList splitAccountsHex(const QByteArray& accountsHex) {
@@ -1034,32 +902,6 @@ QString buildAndSubmit(LogosExecutionZone& wallet,
     return submitGenericPublic(api, accountIds, signing, instructionList, programIdHex, errorOut);
 }
 
-quint64 variantToU64(const QVariant& value, bool* okOut) {
-    bool ok = false;
-    const qulonglong v = value.toULongLong(&ok);
-    if (okOut != nullptr) {
-        *okOut = ok;
-    }
-    return static_cast<quint64>(v);
-}
-
-bool parseWalletAccountJson(const QString& accountJson, QByteArray* dataOut, QString* balanceHexOut) {
-    QJsonParseError parseError{};
-    const QJsonDocument doc = QJsonDocument::fromJson(accountJson.toUtf8(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        return false;
-    }
-    const QJsonObject obj = doc.object();
-    const QString dataHex = obj.value(QStringLiteral("data")).toString().trimmed();
-    if (dataOut != nullptr && !dataHex.isEmpty()) {
-        *dataOut = QByteArray::fromHex(dataHex.toLatin1());
-    }
-    if (balanceHexOut != nullptr) {
-        *balanceHexOut = obj.value(QStringLiteral("balance")).toString().trimmed();
-    }
-    return true;
-}
-
 QByteArray accountDataBytesFromHex(LogosExecutionZone& wallet, const QString& accountHex, QString* errorOut) {
     const QString accountJson = QString::fromStdString(wallet.get_account_public(accountHex.toStdString()));
     if (accountJson.isEmpty()) {
@@ -1167,7 +1009,7 @@ QString PaymentStreamsModuleImpl::deposit(const QVariant& ownerAccountIdBase58,
 
     QByteArray instruction;
     if (!ffiSerializeTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_serialize_deposit(
                     vid, lo, hi, transferPid, ptr, cap, len);
             },
@@ -1177,7 +1019,7 @@ QString PaymentStreamsModuleImpl::deposit(const QVariant& ownerAccountIdBase58,
 
     QByteArray accountsHex;
     if (!ffiPlanAccountsTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_plan_deposit(
                     programId, owner, vid, ptr, cap, len);
             },
@@ -1229,7 +1071,7 @@ QString PaymentStreamsModuleImpl::withdraw(const QVariant& ownerAccountIdBase58,
 
     QByteArray instruction;
     if (!ffiSerializeTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_serialize_withdraw(vid, lo, hi, ptr, cap, len);
             },
             &instruction, &err)) {
@@ -1238,7 +1080,7 @@ QString PaymentStreamsModuleImpl::withdraw(const QVariant& ownerAccountIdBase58,
 
     QByteArray accountsHex;
     if (!ffiPlanAccountsTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_plan_withdraw(
                     programId, owner, vid, withdrawTo, ptr, cap, len);
             },
@@ -1291,7 +1133,7 @@ QString PaymentStreamsModuleImpl::createStream(const QVariant& ownerAccountIdBas
 
     QByteArray instruction;
     if (!ffiSerializeTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_serialize_create_stream(
                     vid, sid, provider, rate, allocLo, allocHi, ptr, cap, len);
             },
@@ -1301,7 +1143,7 @@ QString PaymentStreamsModuleImpl::createStream(const QVariant& ownerAccountIdBas
 
     QByteArray accountsHex;
     if (!ffiPlanAccountsTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_plan_create_stream(
                     programId, owner, vid, sid, clock, ptr, cap, len);
             },
@@ -1350,7 +1192,7 @@ QString PaymentStreamsModuleImpl::pauseStream(const QVariant& ownerAccountIdBase
 
     QByteArray instruction;
     if (!ffiSerializeTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_serialize_pause_stream(vid, sid, ptr, cap, len);
             },
             &instruction, &err)) {
@@ -1359,7 +1201,7 @@ QString PaymentStreamsModuleImpl::pauseStream(const QVariant& ownerAccountIdBase
 
     QByteArray accountsHex;
     if (!ffiPlanAccountsTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_plan_pause_stream(
                     programId, owner, vid, sid, clock, ptr, cap, len);
             },
@@ -1397,7 +1239,7 @@ QString PaymentStreamsModuleImpl::resumeStream(const QVariant& ownerAccountIdBas
 
     QByteArray instruction;
     if (!ffiSerializeTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_serialize_resume_stream(vid, sid, ptr, cap, len);
             },
             &instruction, &err)) {
@@ -1406,7 +1248,7 @@ QString PaymentStreamsModuleImpl::resumeStream(const QVariant& ownerAccountIdBas
 
     QByteArray accountsHex;
     if (!ffiPlanAccountsTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_plan_resume_stream(
                     programId, owner, vid, sid, clock, ptr, cap, len);
             },
@@ -1448,7 +1290,7 @@ QString PaymentStreamsModuleImpl::topUpStream(const QVariant& ownerAccountIdBase
 
     QByteArray instruction;
     if (!ffiSerializeTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_serialize_top_up_stream(vid, sid, lo, hi, ptr, cap, len);
             },
             &instruction, &err)) {
@@ -1457,7 +1299,7 @@ QString PaymentStreamsModuleImpl::topUpStream(const QVariant& ownerAccountIdBase
 
     QByteArray accountsHex;
     if (!ffiPlanAccountsTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_plan_top_up_stream(
                     programId, owner, vid, sid, clock, ptr, cap, len);
             },
@@ -1571,14 +1413,14 @@ QString PaymentStreamsModuleImpl::closeStream(const QVariant& ownerAccountIdBase
         ctx.layout = VaultIxLayout::StreamProvider6;
         submitterBase58 = providerField;
         if (!ffiSerializeTwoPhase(
-                [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+                [&](uint8_t* ptr, size_t cap, size_t* len) {
                     return ps_ffi_serialize_close_stream_by_provider(vid, sid, ptr, cap, len);
                 },
                 &instruction, &err)) {
             return makeErrorJson(err);
         }
         if (!ffiPlanAccountsTwoPhase(
-                [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+                [&](uint8_t* ptr, size_t cap, size_t* len) {
                     return ps_ffi_plan_close_stream_by_provider(
                         programId, owner, vid, sid, provider, clock, ptr, cap, len);
                 },
@@ -1589,14 +1431,14 @@ QString PaymentStreamsModuleImpl::closeStream(const QVariant& ownerAccountIdBase
         ctx.layout = VaultIxLayout::StreamOwner5;
         submitterBase58 = ownerField;
         if (!ffiSerializeTwoPhase(
-                [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+                [&](uint8_t* ptr, size_t cap, size_t* len) {
                     return ps_ffi_serialize_close_stream_by_owner(vid, sid, ptr, cap, len);
                 },
                 &instruction, &err)) {
             return makeErrorJson(err);
         }
         if (!ffiPlanAccountsTwoPhase(
-                [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+                [&](uint8_t* ptr, size_t cap, size_t* len) {
                     return ps_ffi_plan_close_stream_by_owner(
                         programId, owner, vid, sid, clock, ptr, cap, len);
                 },
@@ -1655,7 +1497,7 @@ QString PaymentStreamsModuleImpl::claim(const QVariant& ownerAccountIdBase58,
 
     QByteArray instruction;
     if (!ffiSerializeTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_serialize_claim(vid, sid, ptr, cap, len);
             },
             &instruction, &err)) {
@@ -1664,7 +1506,7 @@ QString PaymentStreamsModuleImpl::claim(const QVariant& ownerAccountIdBase58,
 
     QByteArray accountsHex;
     if (!ffiPlanAccountsTwoPhase(
-            [&](uint8_t* ptr, uintptr_t cap, uintptr_t* len) {
+            [&](uint8_t* ptr, size_t cap, size_t* len) {
                 return ps_ffi_plan_claim(
                     programId, owner, vid, sid, provider, clock, ptr, cap, len);
             },
@@ -1681,9 +1523,7 @@ QString PaymentStreamsModuleImpl::claim(const QVariant& ownerAccountIdBase58,
 }
 
 QString PaymentStreamsModuleImpl::getVaultStatus(const QVariant& ownerAccountIdBase58,
-                                                 const QVariant& vaultId,
-                                                 const QVariant& streamId) {
-    Q_UNUSED(streamId);
+                                                 const QVariant& vaultId) {
     LogosExecutionZone& wallet = modules().logos_execution_zone;
     bool ok = false;
     const quint64 vid = variantToU64(vaultId, &ok);
@@ -1720,7 +1560,7 @@ QString PaymentStreamsModuleImpl::getVaultStatus(const QVariant& ownerAccountIdB
 
     const QString holdingJson = QString::fromStdString(wallet.get_account_public(holdingHex.toStdString()));
     QString holdingBalanceHex;
-    parseWalletAccountJson(holdingJson, nullptr, &holdingBalanceHex);
+    parseWalletAccountJson(holdingJson, nullptr, nullptr, &holdingBalanceHex);
 
     QJsonObject payload;
     payload.insert(QStringLiteral("vault_id"), static_cast<qint64>(vid));
@@ -1861,7 +1701,7 @@ QString PaymentStreamsModuleImpl::chainAction(const QVariant& operation, const Q
         return claim(qv("owner"), qv("provider"), qv("vault_id"), qv("stream_id"));
     }
     if (op == QLatin1String("getVaultStatus")) {
-        return getVaultStatus(qv("owner"), qv("vault_id"), {});
+        return getVaultStatus(qv("owner"), qv("vault_id"));
     }
     if (op == QLatin1String("getStreamStatus")) {
         return getStreamStatus(qv("owner"), qv("vault_id"), qv("stream_id"));

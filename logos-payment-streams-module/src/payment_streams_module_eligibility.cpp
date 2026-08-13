@@ -20,12 +20,23 @@
 
 #include <cstring>
 #include <functional>
-#include <algorithm>
 
 namespace {
 
-constexpr uint32_t kFfiSuccess = 0u;
-constexpr int kAccountIdHexLen = 64;
+using payment_streams_kit::accountIdBytesFromField;
+using payment_streams_kit::chainTimestampToFoldSeconds;
+using payment_streams_kit::ffiBufferTwoPhase;
+using payment_streams_kit::hex32FromQString;
+using payment_streams_kit::kFfiSuccess;
+using payment_streams_kit::loadFixtureManifest;
+using payment_streams_kit::makeEligibilityError;
+using payment_streams_kit::makeOkJson;
+using payment_streams_kit::makePlainError;
+using payment_streams_kit::makeVerifyEligibilityError;
+using payment_streams_kit::parseWalletAccountJson;
+using payment_streams_kit::variantToU64;
+using payment_streams_kit::walletAccountIdHexFromBase58;
+
 constexpr uint8_t kStreamStateActive = 0u;
 constexpr uint8_t kStreamStatePaused = 1u;
 constexpr uint8_t kStreamStateClosed = 2u;
@@ -44,26 +55,11 @@ QString makeVerifyOk() {
     return QJsonDocument(obj).toJson(QJsonDocument::Compact);
 }
 
-QString makeVerifyEligibilityError(const QString& eligibility, const QString& message) {
-    QJsonObject obj;
-    obj.insert(QStringLiteral("status"), QStringLiteral("error"));
-    obj.insert(QStringLiteral("eligibility"), eligibility);
-    obj.insert(QStringLiteral("message"), message);
-    return QJsonDocument(obj).toJson(QJsonDocument::Compact);
-}
-
 // Demo bypass: accept proofs for depleted (fully accrued) streams. Honors only truthy values
 // so the always-exported default "0" means OFF; prepare and verify must agree on this.
 bool allowDepletedStreamProof() {
     const QByteArray raw = qgetenv("PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF").trimmed().toLower();
     return raw == "1" || raw == "true" || raw == "yes" || raw == "on";
-}
-
-quint64 foldClockForPolicy(quint64 rawTs) {
-    if (rawTs > 1'000'000'000'000ULL) {
-        return rawTs / 1000;
-    }
-    return rawTs;
 }
 
 void fillDemoProviderPolicy(PsFfiStreamProviderPolicy* policy) {
@@ -101,30 +97,6 @@ QString verdictForFfiStatus(uint32_t status) {
 constexpr quint64 kDemoAllocationNewStream = 15;
 constexpr quint64 kDemoAllocationFreshVault = 80;
 constexpr quint64 kDemoDeadlineOffset = 600;
-
-QString makeOkJson(const QJsonObject& payload) {
-    QJsonObject obj;
-    obj.insert(QStringLiteral("status"), QStringLiteral("ok"));
-    for (auto it = payload.begin(); it != payload.end(); ++it) {
-        obj.insert(it.key(), it.value());
-    }
-    return QJsonDocument(obj).toJson(QJsonDocument::Compact);
-}
-
-QString makeEligibilityError(const QString& code, const QString& message) {
-    QJsonObject obj;
-    obj.insert(QStringLiteral("status"), QStringLiteral("error"));
-    obj.insert(QStringLiteral("code"), code);
-    obj.insert(QStringLiteral("message"), message);
-    return QJsonDocument(obj).toJson(QJsonDocument::Compact);
-}
-
-QString makePlainError(const QString& message) {
-    QJsonObject obj;
-    obj.insert(QStringLiteral("status"), QStringLiteral("error"));
-    obj.insert(QStringLiteral("message"), message);
-    return QJsonDocument(obj).toJson(QJsonDocument::Compact);
-}
 
 struct PersistedState {
     QString dir;
@@ -222,79 +194,6 @@ void persistIfDirty() {
     }
 }
 
-QString resolveRepoRelativePath(const QString& path) {
-    if (QDir::isAbsolutePath(path)) {
-        return path;
-    }
-    const QByteArray repo = qgetenv("REPO");
-    if (!repo.isEmpty()) {
-        return QDir(QString::fromUtf8(repo)).filePath(path);
-    }
-    return path;
-}
-
-bool findRepoFile(const QString& relativePath, QString* absoluteOut) {
-    QDir dir(QDir::currentPath());
-    for (int depth = 0; depth < 10; ++depth) {
-        const QString candidate = dir.filePath(relativePath);
-        if (QFile::exists(candidate)) {
-            if (absoluteOut != nullptr) {
-                *absoluteOut = candidate;
-            }
-            return true;
-        }
-        if (!dir.cdUp()) {
-            break;
-        }
-    }
-    const QByteArray repo = qgetenv("REPO");
-    if (!repo.isEmpty()) {
-        const QString candidate = QDir(QString::fromUtf8(repo)).filePath(relativePath);
-        if (QFile::exists(candidate)) {
-            if (absoluteOut != nullptr) {
-                *absoluteOut = candidate;
-            }
-            return true;
-        }
-    }
-    return false;
-}
-
-QString fixtureManifestPath() {
-    const QByteArray env = qgetenv("FIXTURE_MANIFEST");
-    if (!env.isEmpty()) {
-        return resolveRepoRelativePath(QString::fromUtf8(env));
-    }
-    QString found;
-    if (findRepoFile(QStringLiteral("fixtures/localnet.json"), &found)) {
-        return found;
-    }
-    return QStringLiteral("fixtures/localnet.json");
-}
-
-bool loadFixtureManifest(QJsonObject* out, QString* errorOut) {
-    const QString path = fixtureManifestPath();
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("cannot open fixture manifest: %1").arg(path);
-        }
-        return false;
-    }
-    QJsonParseError parseError{};
-    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("fixture manifest JSON parse failed");
-        }
-        return false;
-    }
-    if (out != nullptr) {
-        *out = doc.object();
-    }
-    return true;
-}
-
 void seedInventoryFromFixtureIfEmpty() {
     ensureStateSchema();
     QJsonArray inventory = state().root.value(QStringLiteral("inventory")).toArray();
@@ -318,14 +217,6 @@ void seedInventoryFromFixtureIfEmpty() {
     state().root.insert(QStringLiteral("inventory"), inventory);
     state().dirty = true;
     persistIfDirty();
-}
-
-QString walletAccountIdHexFromBase58(LogosExecutionZone& wallet, const QString& accountIdBase58) {
-    const QString trimmed = accountIdBase58.trimmed();
-    if (trimmed.isEmpty()) {
-        return {};
-    }
-    return QString::fromStdString(wallet.account_id_from_base58(trimmed.toStdString()));
 }
 
 // Dynamic-dispatch fallback for wallet methods added by repo-local Qt
@@ -360,38 +251,8 @@ QString invokeWalletQtString(LogosAPIClient* client, const char* method, const Q
     return result.toString();
 }
 
-bool hex32FromQString(const QString& hexIn, uint8_t out[32]) {
-    const QByteArray hex = hexIn.trimmed().toLatin1();
-    if (hex.size() != 64) {
-        return false;
-    }
-    const QByteArray bytes = QByteArray::fromHex(hex);
-    if (bytes.size() != 32) {
-        return false;
-    }
-    std::memcpy(out, bytes.constData(), 32);
-    return true;
-}
-
 QString bytes32ToHexLower(const uint8_t* bytes) {
     return QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(bytes), 32).toHex());
-}
-
-bool parseWalletAccountJson(const QString& accountJson, QByteArray* dataOut, QString* balanceHexOut) {
-    QJsonParseError parseError{};
-    const QJsonDocument doc = QJsonDocument::fromJson(accountJson.toUtf8(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        return false;
-    }
-    const QJsonObject obj = doc.object();
-    const QString dataHex = obj.value(QStringLiteral("data")).toString().trimmed();
-    if (dataOut != nullptr && !dataHex.isEmpty()) {
-        *dataOut = QByteArray::fromHex(dataHex.toLatin1());
-    }
-    if (balanceHexOut != nullptr) {
-        *balanceHexOut = obj.value(QStringLiteral("balance")).toString().trimmed();
-    }
-    return true;
 }
 
 QByteArray accountDataBytesFromHex(LogosExecutionZone& wallet, const QString& accountHex, QString* errorOut) {
@@ -403,7 +264,7 @@ QByteArray accountDataBytesFromHex(LogosExecutionZone& wallet, const QString& ac
         return {};
     }
     QByteArray data;
-    if (!parseWalletAccountJson(accountJson, &data, nullptr) || data.isEmpty()) {
+    if (!parseWalletAccountJson(accountJson, &data) || data.isEmpty()) {
         if (errorOut != nullptr) {
             *errorOut = QStringLiteral("account data missing");
         }
@@ -428,28 +289,10 @@ bool programIdBytes(uint8_t out[32], QString* errorOut) {
 }
 
 bool ownerBytesFromBase58(LogosExecutionZone& wallet, const QString& base58, uint8_t out[32], QString* errorOut) {
-    // D47.7: accept 64-hex or base58 (hex first).
-    const QString trimmed = base58.trimmed();
-    if (trimmed.size() == kAccountIdHexLen) {
-        bool allHex = true;
-        for (QChar ch : trimmed) {
-            if (!ch.isDigit() && (ch.toLower() < QLatin1Char('a') || ch.toLower() > QLatin1Char('f'))) {
-                allHex = false;
-                break;
-            }
-        }
-        if (allHex) {
-            return hex32FromQString(trimmed, out);
-        }
-    }
-    const QString hex = walletAccountIdHexFromBase58(wallet, trimmed);
-    if (hex.size() != kAccountIdHexLen) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("invalid account id (expect 64-hex or base58)");
-        }
-        return false;
-    }
-    return hex32FromQString(hex, out);
+    return accountIdBytesFromField(
+        base58, out,
+        [&wallet](const QString& id) { return walletAccountIdHexFromBase58(wallet, id); },
+        errorOut);
 }
 
 bool clockBytes(uint8_t out[32], QString* errorOut) {
@@ -465,37 +308,6 @@ bool clockBytes(uint8_t out[32], QString* errorOut) {
         }
         return false;
     }
-    return true;
-}
-
-quint64 variantToU64(const QVariant& value, bool* okOut) {
-    bool ok = false;
-    const quint64 parsed = value.toULongLong(&ok);
-    if (okOut != nullptr) {
-        *okOut = ok;
-    }
-    return parsed;
-}
-
-bool ffiBufferTwoPhase(const std::function<uint32_t(uint8_t*, size_t, size_t*)>& call,
-                       QByteArray* out,
-                       QString* errorOut) {
-    size_t required = 0;
-    const auto sizing = call(nullptr, 0, &required);
-    if (sizing != kFfiSuccess) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("FFI sizing failed (status %1)").arg(static_cast<uint>(sizing));
-        }
-        return false;
-    }
-    out->resize(static_cast<int>(required));
-    if (call(reinterpret_cast<uint8_t*>(out->data()), required, &required) != kFfiSuccess) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("FFI encode failed");
-        }
-        return false;
-    }
-    out->resize(static_cast<int>(required));
     return true;
 }
 
@@ -656,7 +468,7 @@ bool readClock10Timestamp(LogosExecutionZone& wallet, quint64* outTs, QString* e
         }
         return false;
     }
-    *outTs = foldClockForPolicy(decoded.timestamp);
+    *outTs = chainTimestampToFoldSeconds(decoded.timestamp);
     return true;
 }
 
@@ -1107,7 +919,7 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForSt
 
     const QString holdingJson = QString::fromStdString(wallet.get_account_public(bytes32ToHexLower(vaultHoldingAccount).toStdString()));
     QString balanceHex;
-    if (!parseWalletAccountJson(holdingJson, nullptr, &balanceHex)) {
+    if (!parseWalletAccountJson(holdingJson, nullptr, nullptr, &balanceHex)) {
         return makeEligibilityError(QStringLiteral("CHAIN_READ_FAILED"), QStringLiteral("vault holding read failed"));
     }
     const quint64 holdingLo = u128LoFromHexBalance(balanceHex);
@@ -1145,7 +957,7 @@ QString PaymentStreamsModuleImpl::prepareEligibilityProofWithStreamProposalForSt
     fillServiceId(&proposal.params);
     proposal.params.rate = kDemoRate;
     proposal.params.allocation_lo = proposalAllocation;
-    const quint64 policyNow = foldClockForPolicy(now);
+    const quint64 policyNow = chainTimestampToFoldSeconds(now);
     proposal.params.create_stream_deadline = policyNow + kDemoDeadlineOffset;
     std::memcpy(proposal.session_public_key, sessionPublic, 32);
 
@@ -1469,7 +1281,7 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
     if (!readClock10Timestamp(wallet, &clockRaw, &fixtureErr)) {
         return makePlainError(fixtureErr);
     }
-    const quint64 policyNow = foldClockForPolicy(clockRaw);
+    const quint64 policyNow = chainTimestampToFoldSeconds(clockRaw);
 
     uint32_t arm = 0;
     QByteArray inner;
@@ -1547,7 +1359,7 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
         const QString holdingJson =
             QString::fromStdString(wallet.get_account_public(bytes32ToHexLower(vaultHoldingAccount).toStdString()));
         QString balanceHex;
-        if (!parseWalletAccountJson(holdingJson, nullptr, &balanceHex)) {
+        if (!parseWalletAccountJson(holdingJson, nullptr, nullptr, &balanceHex)) {
             return makePlainError(QStringLiteral("vault holding read failed"));
         }
 

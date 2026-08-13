@@ -1664,6 +1664,7 @@ def log_vault_liquidity(
 
 
 def chain_timestamp_to_fold_seconds(ts: int) -> int:
+    # Same threshold as lez_payment_streams_core::chain_timestamp_to_fold_seconds.
     if ts >= 1_000_000_000_000:
         return ts // 1000
     return ts

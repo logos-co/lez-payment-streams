@@ -1,8 +1,6 @@
 #include "payment_streams_module_impl.h"
 
-#include <QJsonDocument>
 #include <QJsonObject>
-#include <QJsonParseError>
 #include <QMetaType>
 #include <QVariant>
 
@@ -11,64 +9,17 @@
 #include <logos_sdk.h>
 
 #include "payment_streams_ffi_bridge.h"
+#include "payment_streams_module_kit.h"
 
 namespace {
 
+using payment_streams_kit::chainTimestampToFoldSeconds;
+using payment_streams_kit::makeErrorJson;
+using payment_streams_kit::makeOkJson;
+using payment_streams_kit::parseWalletAccountJson;
+using payment_streams_kit::walletAccountIdHexFromBase58;
+
 constexpr const char* kDefaultClock10Base58 = "4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWNU";
-
-QString makeErrorJson(const QString& message) {
-    QJsonObject obj;
-    obj.insert(QStringLiteral("status"), QStringLiteral("error"));
-    obj.insert(QStringLiteral("message"), message);
-    return QJsonDocument(obj).toJson(QJsonDocument::Compact);
-}
-
-QString makeOkJson(const QJsonObject& payload) {
-    QJsonObject obj;
-    obj.insert(QStringLiteral("status"), QStringLiteral("ok"));
-    for (auto it = payload.begin(); it != payload.end(); ++it) {
-        obj.insert(it.key(), it.value());
-    }
-    return QJsonDocument(obj).toJson(QJsonDocument::Compact);
-}
-
-QString walletAccountIdHexFromBase58(LogosExecutionZone& wallet, const QString& accountIdBase58) {
-    const QString trimmed = accountIdBase58.trimmed();
-    if (trimmed.isEmpty()) {
-        return {};
-    }
-    return QString::fromStdString(wallet.account_id_from_base58(trimmed.toStdString()));
-}
-
-bool parseWalletAccountJson(const QString& accountJson, QByteArray* dataOut, QString* errorOut) {
-    QJsonParseError parseError{};
-    const QJsonDocument doc = QJsonDocument::fromJson(accountJson.toUtf8(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("wallet account JSON parse failed: %1").arg(parseError.errorString());
-        }
-        return false;
-    }
-    const QJsonObject obj = doc.object();
-    const QString dataHex = obj.value(QStringLiteral("data")).toString().trimmed();
-    if (dataHex.isEmpty()) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("wallet account data field is empty");
-        }
-        return false;
-    }
-    QByteArray data = QByteArray::fromHex(dataHex.toLatin1());
-    if (data.isEmpty() && !dataHex.isEmpty()) {
-        if (errorOut != nullptr) {
-            *errorOut = QStringLiteral("wallet account data is not valid hex");
-        }
-        return false;
-    }
-    if (dataOut != nullptr) {
-        *dataOut = data;
-    }
-    return true;
-}
 
 QByteArray accountDataBytesFromBase58(LogosExecutionZone& wallet, const QString& accountIdBase58, QString* errorOut) {
     const QString accountIdHex = walletAccountIdHexFromBase58(wallet, accountIdBase58);
@@ -126,13 +77,6 @@ QJsonObject vaultHoldingToJson(const PsFfiDecodedVaultHolding& decoded) {
     QJsonObject obj;
     obj.insert(QStringLiteral("version"), static_cast<qint64>(decoded.version));
     return obj;
-}
-
-quint64 chainTimestampToFoldSeconds(quint64 ts) {
-    if (ts > 1'000'000'000'000ULL) {
-        return ts / 1000;
-    }
-    return ts;
 }
 
 QJsonObject streamConfigToJson(const PsFfiDecodedStreamConfig& decoded) {

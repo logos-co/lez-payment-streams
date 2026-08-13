@@ -524,6 +524,7 @@ async fn account_has_data(wallet: &WalletCore, account_id: LeeAccountId) -> Resu
 }
 
 fn chain_timestamp_to_unix_seconds(ts: u64) -> u64 {
+    // Same threshold as lez_payment_streams_core::chain_timestamp_to_fold_seconds.
     if ts >= 1_000_000_000_000 {
         ts / 1000
     } else {
