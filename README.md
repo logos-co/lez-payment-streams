@@ -15,8 +15,9 @@ Reproduce:
 
 ## Public testnet guest program
 
-The payment-streams guest on public testnet (`https://testnet.lez.logos.co/`) was last deployed on 2026-07-22 from freeze commit `c1f5b605705a8d8d2030d2c547ec7b9b9e77236a` (tree includes clock normalization after `6772238b`). Pinned `methods/guest/Cargo.lock` for Docker guest-builder rustc 1.88.
-ImageID / `program_id_hex`: `dea010d9cb75887e8350f3dbd45b0efb8517e822fa105bc3e7b9fa2c9a2908ba` (release ELF 366868 bytes).
+The payment-streams guest on public testnet (`https://testnet.lez.logos.co/`) was last deployed on 2026-08-13 from freeze commit `8a0e374a7e7171cd5b60ad20d46b9510b057dfe3` (Step 49 native `token_id` / holding PDA). Pinned `methods/guest/Cargo.lock` for Docker guest-builder rustc 1.88.
+ImageID / `program_id_hex`: `c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a` (release ELF 373916 bytes).
+Deploy transaction `229dddd92e5184f4a44816ddda711b1eac51476248620a686807e091ffefba8b` (block 5873).
 SSOT fixture: [fixtures/testnet-module.json](fixtures/testnet-module.json).
 After changing guest source or release profile, rebuild (`make build`), redeploy (`make deploy-testnet`), refresh fixtures and bootstrap helpers, then re-run module testnet E2E.
 

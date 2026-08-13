@@ -15,7 +15,7 @@ export TESTNET_SKIP_PINATA="${TESTNET_SKIP_PINATA:-1}"
 export TESTNET_AUTH_TRANSFER_ELF_PATH="${TESTNET_AUTH_TRANSFER_ELF_PATH:-$(testnet_auth_transfer_elf_path)}"
 
 MANIFEST="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/testnet-module.json}"
-PROGRAM_ID_HEX="${TESTNET_PROGRAM_ID_HEX:-dea010d9cb75887e8350f3dbd45b0efb8517e822fa105bc3e7b9fa2c9a2908ba}"
+PROGRAM_ID_HEX="${TESTNET_PROGRAM_ID_HEX:-c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a}"
 VAULT_ID="${VAULT_ID:-1}"
 
 # Reuse owner/provider from existing testnet.json if available.

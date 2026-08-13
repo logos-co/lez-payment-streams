@@ -56,7 +56,7 @@ require_testnet_rpc
 ensure_testnet_wallet
 
 PROGRAM_BIN="${PROGRAM_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
-PROGRAM_ID_HEX="${PROGRAM_ID_HEX:-dea010d9cb75887e8350f3dbd45b0efb8517e822fa105bc3e7b9fa2c9a2908ba}"
+PROGRAM_ID_HEX="${PROGRAM_ID_HEX:-c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a}"
 WALLET_CONFIG_PATH="${WALLET_CONFIG_PATH:-$TESTNET_WALLET_DIR/wallet_config.json}"
 WALLET_STORAGE_PATH="${WALLET_STORAGE_PATH:-$TESTNET_WALLET_DIR/storage.json}"
 SEQUENCER_URL="${SEQUENCER_URL:-$(python3 -c "import json; print(json.load(open('$MANIFEST')).get('sequencer_url','').strip() or 'https://testnet.lez.logos.co/')")}"
