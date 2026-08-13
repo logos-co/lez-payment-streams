@@ -19,41 +19,19 @@ Do not treat that divergence as a bug. Unification is [Step 48](../plan/waiting/
 Pins SSOT for the freeze packet:
 [step-45-dependencies-and-patches.md](plan/completed/step-45-dependencies-and-patches.md).
 
-## LIP-155 spec (Step 19, complete)
+## LIP-155 spec (Step 49 pin)
 
-Integration treats the on-chain LIP as done on the spec feature branch (merge to `main` optional).
-
-| Artifact | Branch ref | Locked rev |
-| --- | --- | --- |
-| `logos-lips` / `rfc-index` `docs/anoncomms/raw/payment-streams.md` | `feat/payment-streams-onchain-part` | `345c8eef` |
-
-Local clone: `lez-related/rfc-index`. Cite this branch/rev from in-repo Store SSOT and
-Step 46 until `main` catches up (Step 20 formal logos-docs publish is wontfix).
-
-## Multi-token provider policy (Step 41, complete)
-
-U9 / F8: `StreamProviderPolicy.accepted_tokens`, `TokenStreamPolicy`, vault `token_id`,
-and LEZ binding published on `logos-lips` `master`.
+Single citation pin for living docs and implementation comments.
+`logos-lips` `master` at a tip that contains Step 40 (`435a6f18`,
+[logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)) and Step 41
+(`f09f9e9e`, [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)).
 
 | Artifact | Ref | Locked rev |
 | --- | --- | --- |
-| `logos-lips` / `rfc-index` `docs/anoncomms/raw/payment-streams.md` (multi-token sections) | `master` | `f09f9e9e` ([logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)) |
+| `logos-lips` / `rfc-index` `docs/anoncomms/raw/payment-streams.md` | `master` | `32d7da4e` |
 
-Step 19 on-chain pin (`feat/payment-streams-onchain-part`) remains the baseline for
-demo program scope until explicitly rebased; multi-token policy prose cites `master`
-at the rev above.
-
-## Privacy-preserving workflows (Step 40, complete)
-
-User unlinkability and provider unlinkability workflow prose published on
-`logos-lips` `master` via [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397).
-
-| Artifact | Ref | Locked rev |
-| --- | --- | --- |
-| `logos-lips` / `rfc-index` `docs/anoncomms/raw/payment-streams.md` (privacy workflow sections) | `master` | `435a6f18` ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)) |
-
-Cite this rev for privacy-preserving user/provider workflow language. Multi-token
-sections remain at Step 41’s `f09f9e9e` until a later tip that contains both.
+Local clone: `lez-related/rfc-index`.
+Historical Step 19 work used `feat/payment-streams-onchain-part` at `345c8eef`.
 
 ## Delivery integration branches (Steps 14–18)
 

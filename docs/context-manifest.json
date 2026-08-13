@@ -73,9 +73,10 @@
   },
   "lip155_spec": {
     "repo": "logos-co/logos-lips",
-    "branch": "feat/payment-streams-onchain-part",
-    "rev": "345c8eef",
-    "path": "docs/anoncomms/raw/payment-streams.md"
+    "branch": "master",
+    "rev": "32d7da4e2cd28e1b0c7e69e46505e883b224442c",
+    "path": "docs/anoncomms/raw/payment-streams.md",
+    "contains": ["435a6f18", "f09f9e9e"]
   },
   "reference": "docs/reference/integration-decisions.md",
   "plan_layout": "docs/plan/README.md",

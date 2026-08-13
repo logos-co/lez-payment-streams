@@ -3,7 +3,7 @@
 //!
 //! Implementation is hand-rolled (varint + length-delimited only) to avoid a full `prost` stack and to
 //! apply LEZ `bytes` width checks in one place; field numbers must stay aligned with
-//! `rfc-index/docs/ift-ts/raw/payment-streams.md` (see module `field_numbers`).
+//! `rfc-index/docs/anoncomms/raw/payment-streams.md` (see module `field_numbers`).
 
 use lee_core::account::Balance;
 
@@ -27,7 +27,7 @@ const PROTOBUF_VARINT_CONTINUATION: u8 = 1u8 << PROTOBUF_VARINT_PAYLOAD_BITS;
 const PROTOBUF_TAG_WIRE_TYPE_BITS: u32 = 3;
 const PROTOBUF_TAG_WIRE_TYPE_MASK: u64 = (1u64 << PROTOBUF_TAG_WIRE_TYPE_BITS) - 1;
 
-/// Protobuf field numbers from LIP‑155 LEZ integration (`rfc-index/docs/ift-ts/raw/payment-streams.md`).
+/// Protobuf field numbers from LIP-155 LEZ integration (`rfc-index/docs/anoncomms/raw/payment-streams.md`).
 mod field_numbers {
     pub const VAULT_PROOF_VAULT_ID: u32 = 1;
     pub const VAULT_PROOF_PROVIDER_ID: u32 = 2;

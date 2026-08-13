@@ -1,6 +1,6 @@
 //! [`StreamProviderPolicy`], [`StreamParams`], and [`PolicyRejectReason`].
 //!
-//! These types mirror LIP-155 payment streams (see `rfc-index/docs/ift-ts/raw/payment-streams.md`).
+//! These types mirror LIP-155 payment streams (see `rfc-index/docs/anoncomms/raw/payment-streams.md`).
 //! Step 3a keeps them free of protobuf and wire parsing; higher layers supply parsed values.
 
 use lee_core::account::AccountId;
