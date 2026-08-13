@@ -67,10 +67,11 @@ quint64 foldClockForPolicy(quint64 rawTs) {
 
 void fillDemoProviderPolicy(PsFfiStreamProviderPolicy* policy) {
     std::memset(policy, 0, sizeof(*policy));
-    policy->min_rate = kDemoMinRate;
-    policy->min_allocation_lo = kDemoMinAllocation;
     policy->max_create_stream_deadline_delay = kDemoMaxDeadlineDelay;
     policy->vault_proof_max_response_bytes = kDemoVaultProofMaxResponseBytes;
+    policy->accepted_tokens_len = 1;
+    policy->accepted_tokens[0].min_rate = kDemoMinRate;
+    policy->accepted_tokens[0].min_allocation_lo = kDemoMinAllocation;
 }
 
 bool serviceIdMatchesParams(const PsFfiStreamParams& params) {
@@ -1547,8 +1548,9 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
         checkInputs.vault_total_allocated_lo = vaultCfg.total_allocated_lo;
         checkInputs.vault_total_allocated_hi = vaultCfg.total_allocated_hi;
         checkInputs.now = policyNow;
+        std::memcpy(checkInputs.token_id, vaultCfg.token_id, 32);
 
-        uint32_t rejectReason = 9u;
+        uint32_t rejectReason = 10u;
         if (ps_ffi_proposal_satisfies_policy(&checkInputs, &rejectReason) != kFfiSuccess) {
             return makeVerifyEligibilityError(verdictForPolicyReject(rejectReason),
                                               QStringLiteral("proposal policy check failed"));
@@ -1655,7 +1657,7 @@ QString PaymentStreamsModuleImpl::verifyEligibilityForStoreQuery(const QVariant&
     const bool streamIdBound =
         accIdx >= 0 && providerAcceptancesArray().at(accIdx).toObject().contains(QStringLiteral("stream_id"));
 
-    uint32_t rejectReason = 9u;
+    uint32_t rejectReason = 10u;
 
     if (!streamIdBound) {
         if (ps_ffi_new_stream_satisfies_proposal(&view.decoded, &acceptedParams, demoProvider, &rejectReason) !=

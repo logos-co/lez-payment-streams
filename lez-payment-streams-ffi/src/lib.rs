@@ -90,6 +90,7 @@ pub struct PaymentStreamsFfiDecodedVaultConfig {
     pub next_stream_id: u64,
     pub total_allocated_lo: u64,
     pub total_allocated_hi: u64,
+    pub token_id: [u8; 32],
 }
 
 #[repr(C)]
@@ -130,15 +131,28 @@ pub struct PaymentStreamsFfiDecodedClock {
 pub const PAYMENT_STREAMS_FFI_MAX_SERVICE_ID_LEN: usize =
     lez_payment_streams_core::MAX_SERVICE_ID_LEN;
 
+/// LIP-155 recommended maximum `accepted_tokens` length. Array sizes stay literals for cbindgen.
+pub const PAYMENT_STREAMS_FFI_MAX_ACCEPTED_TOKENS: usize = 16;
+
+/// One [`lez_payment_streams_core::TokenStreamPolicy`] row on the FFI boundary.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct PaymentStreamsFfiTokenStreamPolicy {
+    pub token_id: [u8; 32],
+    pub min_rate: u64,
+    pub min_allocation_lo: u64,
+    pub min_allocation_hi: u64,
+}
+
 /// [`StreamProviderPolicy`] snapshot crossing the FFI (wide balances split as `lo` / `hi` `u64` halves).
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct PaymentStreamsFfiStreamProviderPolicy {
-    pub min_rate: u64,
-    pub min_allocation_lo: u64,
-    pub min_allocation_hi: u64,
     pub max_create_stream_deadline_delay: u64,
     pub vault_proof_max_response_bytes: u64,
+    pub accepted_tokens: [PaymentStreamsFfiTokenStreamPolicy; 16],
+    pub accepted_tokens_len: u32,
+    pub _padding: u32,
 }
 
 /// Accepted / proposed [`StreamParams`] fields without heap indirection (`service_id` prefix + fixed buffer tail).
@@ -174,6 +188,7 @@ pub struct PaymentStreamsFfiDecodedVaultProof {
     pub provider_id: [u8; 32],
     pub owner_public_key: [u8; 32],
     pub owner_signature: [u8; 64],
+    pub token_id: [u8; 32],
 }
 
 /// Decoded protobuf `StreamProposal` mirrored for C hosts.
@@ -226,6 +241,7 @@ pub struct PaymentStreamsFfiProposalCheckInputs {
     pub vault_total_allocated_lo: u64,
     pub vault_total_allocated_hi: u64,
     pub now: u64,
+    pub token_id: [u8; 32],
 }
 
 /// Pinned session terms surfaced on the wire as [`lez_payment_streams_core::AcceptedStreamTerms`].
@@ -235,6 +251,7 @@ pub struct PaymentStreamsFfiAcceptedStreamTerms {
     pub params: PaymentStreamsFfiStreamParams,
     pub provider_id: [u8; 32],
     pub policy_at_acceptance: PaymentStreamsFfiStreamProviderPolicy,
+    pub token_id: [u8; 32],
 }
 
 /// [`lez_payment_streams_core::StreamFoldedAtTime`] mirrored for C callers.
@@ -253,8 +270,8 @@ pub struct PaymentStreamsFfiStreamFoldAtTime {
 
 /// Stable policy rejection codes for FFI consumers.
 ///
-/// Values `0..=8` mirror [`lez_payment_streams_core::PolicyRejectReason`] today (`repr(u32)`).
-/// `Unknown` (`9`) is reserved for forward compatibility when core adds `#[non_exhaustive]` variants
+/// Values `0..=9` mirror [`lez_payment_streams_core::PolicyRejectReason`] today (`repr(u32)`).
+/// `Unknown` (`10`) is reserved for forward compatibility when core adds `#[non_exhaustive]` variants
 /// before this FFI crate’s rejection mapping catches up.
 ///
 /// Hosts map these to Store-style eligibility buckets (see payment streams integration docs / LIP‑155):
@@ -272,11 +289,13 @@ pub enum PaymentStreamsFfiPolicyRejectReason {
     ProviderMismatch = 6,
     StreamNotActive = 7,
     ResponseTooLarge = 8,
+    TokenNotAccepted = 9,
     /// Core [`PolicyRejectReason`] variant not yet surfaced by this FFI layer.
-    Unknown = 9,
+    Unknown = 10,
 }
 
 const _: () = assert!(PAYMENT_STREAMS_FFI_MAX_SERVICE_ID_LEN == 128usize);
+const _: () = assert!(PAYMENT_STREAMS_FFI_MAX_ACCEPTED_TOKENS == 16usize);
 
 #[must_use]
 fn map_decode_fault(err: DecodeFault) -> PaymentStreamsFfiStatus {
@@ -388,6 +407,7 @@ pub unsafe extern "C" fn payment_streams_ffi_decode_vault_config_bytes(
                     ffi_out_decoded_mut.next_stream_id = vault_cfg_decoded.next_stream_id;
                     ffi_out_decoded_mut.total_allocated_lo = totals.0;
                     ffi_out_decoded_mut.total_allocated_hi = totals.1;
+                    ffi_out_decoded_mut.token_id = vault_cfg_decoded.token_id;
                     PaymentStreamsFfiStatus::Success
                 }
             },
@@ -793,6 +813,7 @@ mod tests {
             next_stream_id: 0,
             total_allocated_lo: 0,
             total_allocated_hi: 0,
+            token_id: [0; 32],
         };
 
         let status = unsafe {
@@ -808,6 +829,7 @@ mod tests {
         assert_eq!(ffi_out_decoded.vault_id, cfg.vault_id);
         assert_eq!(ffi_out_decoded.version, cfg.version);
         assert_eq!(ffi_out_decoded.privacy_tier, u8::from(cfg.privacy_tier));
+        assert_eq!(ffi_out_decoded.token_id, cfg.token_id);
     }
 
     #[test]
@@ -909,16 +931,28 @@ mod tests {
         fn ffi_provider_policy_fixture(
             policy_snapshot: &StreamProviderPolicy,
         ) -> PaymentStreamsFfiStreamProviderPolicy {
-            let native = policy_snapshot
-                .token_policy(&lez_payment_streams_core::NATIVE_TOKEN_ID)
-                .expect("test policies include a native accepted_tokens row");
-            let min_alloc_halves = balance_pair(native.min_allocation);
+            let mut accepted_tokens = [PaymentStreamsFfiTokenStreamPolicy {
+                token_id: [0; 32],
+                min_rate: 0,
+                min_allocation_lo: 0,
+                min_allocation_hi: 0,
+            }; 16];
+            let n = policy_snapshot.accepted_tokens.len().min(16);
+            for (idx, row) in policy_snapshot.accepted_tokens.iter().take(n).enumerate() {
+                let min_alloc_halves = balance_pair(row.min_allocation);
+                accepted_tokens[idx] = PaymentStreamsFfiTokenStreamPolicy {
+                    token_id: row.token_id,
+                    min_rate: row.min_rate,
+                    min_allocation_lo: min_alloc_halves.0,
+                    min_allocation_hi: min_alloc_halves.1,
+                };
+            }
             PaymentStreamsFfiStreamProviderPolicy {
-                min_rate: native.min_rate,
-                min_allocation_lo: min_alloc_halves.0,
-                min_allocation_hi: min_alloc_halves.1,
                 max_create_stream_deadline_delay: policy_snapshot.max_create_stream_deadline_delay,
                 vault_proof_max_response_bytes: policy_snapshot.vault_proof_max_response_bytes,
+                accepted_tokens,
+                accepted_tokens_len: n as u32,
+                _padding: 0,
             }
         }
 
@@ -983,13 +1017,17 @@ mod tests {
                     PolicyRejectReason::ResponseTooLarge,
                     PaymentStreamsFfiPolicyRejectReason::ResponseTooLarge,
                 ),
+                (
+                    PolicyRejectReason::TokenNotAccepted,
+                    PaymentStreamsFfiPolicyRejectReason::TokenNotAccepted,
+                ),
             ];
 
             for (reason_from_core_row, ffi_reason_row) in alignment_pairs {
                 assert_eq!(reason_from_core_row as u32, ffi_reason_row as u32);
             }
 
-            assert_eq!(PaymentStreamsFfiPolicyRejectReason::Unknown as u32, 9);
+            assert_eq!(PaymentStreamsFfiPolicyRejectReason::Unknown as u32, 10);
         }
 
         #[test]
@@ -1074,6 +1112,7 @@ mod tests {
                 vault_total_allocated_lo: total_allocated_halves.0,
                 vault_total_allocated_hi: total_allocated_halves.1,
                 now: 100,
+                token_id: lez_payment_streams_core::NATIVE_TOKEN_ID,
             };
 
             assert_eq!(
@@ -1145,6 +1184,7 @@ mod tests {
                 policy_at_acceptance: ffi_provider_policy_fixture(
                     &accepted_terms_host_view.policy_at_acceptance,
                 ),
+                token_id: lez_payment_streams_core::NATIVE_TOKEN_ID,
             };
 
             let folded_paused_stream_snapshot =

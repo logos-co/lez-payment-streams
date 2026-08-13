@@ -29,7 +29,10 @@ public:
 
 private:
     QString accountIdHexFromBase58(const QVariant& accountIdBase58);
-    QString initializeVault(const QVariant& ownerAccountIdBase58, const QVariant& vaultId, const QVariant& privacyTier);
+    QString initializeVault(const QVariant& ownerAccountIdBase58,
+                            const QVariant& vaultId,
+                            const QVariant& privacyTier,
+                            const QVariant& tokenId);
     QString deposit(const QVariant& ownerAccountIdBase58,
                     const QVariant& vaultId,
                     const QVariant& amountLo,

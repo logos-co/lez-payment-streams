@@ -58,6 +58,8 @@
 
 use core::slice;
 
+use lee_core::account::{AccountId, Balance};
+use lee_core::program::ProgramId;
 use lez_payment_streams_core::{
     claim_instruction_accounts, close_stream_by_owner_instruction_accounts,
     close_stream_by_provider_instruction_accounts, create_stream_instruction_accounts,
@@ -66,8 +68,6 @@ use lez_payment_streams_core::{
     resume_stream_instruction_accounts, top_up_stream_instruction_accounts,
     withdraw_instruction_accounts, Instruction, VaultPrivacyTier,
 };
-use lee_core::account::{AccountId, Balance};
-use lee_core::program::ProgramId;
 use programs::authenticated_transfer;
 
 use crate::policy_abi::balance_from_lo_hi;
@@ -286,6 +286,7 @@ pub unsafe extern "C" fn payment_streams_ffi_authenticated_transfer_program_id_b
 pub unsafe extern "C" fn payment_streams_ffi_serialize_initialize_vault_instruction(
     vault_id: u64,
     privacy_tier: u8,
+    token_id_bytes: *const u8,
     out_ptr: *mut u8,
     out_cap: usize,
     out_len: *mut usize,
@@ -294,7 +295,18 @@ pub unsafe extern "C" fn payment_streams_ffi_serialize_initialize_vault_instruct
         Ok(value) => value,
         Err(_) => return PaymentStreamsFfiStatus::Malformed,
     };
-    let instruction = Instruction::initialize_vault(vault_id, privacy);
+    let token_id = if token_id_bytes.is_null() {
+        lez_payment_streams_core::NATIVE_TOKEN_ID
+    } else {
+        match crate::borrow_input(token_id_bytes, 32) {
+            Err(err) => return err,
+            Ok(bytes) => match <[u8; 32]>::try_from(bytes) {
+                Ok(value) => value,
+                Err(_) => return PaymentStreamsFfiStatus::Malformed,
+            },
+        }
+    };
+    let instruction = Instruction::initialize_vault_with_token(vault_id, privacy, token_id);
     serialize_instruction_bytes(&instruction, out_ptr, out_cap, out_len)
 }
 
@@ -834,11 +846,11 @@ pub unsafe extern "C" fn payment_streams_ffi_plan_claim_instruction_accounts(
     reason = "FFI instruction_abi tests use known-good inputs"
 )]
 mod tests {
+    use lee_core::account::AccountId;
     use lez_payment_streams_core::{
         initialize_vault_instruction_accounts, instruction_try_from_instruction_words,
         instruction_words_from_bytes_le, Instruction, VaultPrivacyTier,
     };
-    use lee_core::account::AccountId;
     use programs::authenticated_transfer;
 
     #[test]
@@ -863,6 +875,7 @@ mod tests {
             super::payment_streams_ffi_serialize_initialize_vault_instruction(
                 1,
                 0xFF,
+                std::ptr::null(),
                 std::ptr::null_mut(),
                 0,
                 &mut out_len,
@@ -877,6 +890,7 @@ mod tests {
             super::payment_streams_ffi_serialize_initialize_vault_instruction(
                 1,
                 0,
+                std::ptr::null(),
                 std::ptr::null_mut(),
                 0,
                 std::ptr::null_mut(),
@@ -1011,6 +1025,7 @@ mod tests {
             super::payment_streams_ffi_serialize_initialize_vault_instruction(
                 9,
                 0,
+                std::ptr::null(),
                 std::ptr::null_mut(),
                 0,
                 &mut out_len,
@@ -1024,6 +1039,7 @@ mod tests {
             super::payment_streams_ffi_serialize_initialize_vault_instruction(
                 9,
                 0,
+                std::ptr::null(),
                 buf.as_mut_ptr(),
                 buf.len(),
                 &mut out_len,

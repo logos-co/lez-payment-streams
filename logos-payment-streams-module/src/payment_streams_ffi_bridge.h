@@ -16,6 +16,7 @@ typedef struct PsFfiDecodedVaultConfig {
     uint64_t next_stream_id;
     uint64_t total_allocated_lo;
     uint64_t total_allocated_hi;
+    uint8_t token_id[32];
 } PsFfiDecodedVaultConfig;
 
 typedef struct PsFfiDecodedVaultHolding {
@@ -78,6 +79,7 @@ uint32_t ps_ffi_fold_stream_at(const PsFfiDecodedStreamConfig* stream,
 
 uint32_t ps_ffi_serialize_initialize_vault(uint64_t vault_id,
                                            uint8_t privacy_tier,
+                                           const uint8_t* token_id_bytes,
                                            uint8_t* out_ptr,
                                            size_t out_cap,
                                            size_t* out_len);
@@ -237,6 +239,7 @@ typedef struct PsFfiDecodedVaultProof {
     uint8_t provider_id[32];
     uint8_t owner_public_key[32];
     uint8_t owner_signature[64];
+    uint8_t token_id[32];
 } PsFfiDecodedVaultProof;
 
 typedef struct PsFfiDecodedStreamProposal {
@@ -250,12 +253,19 @@ typedef struct PsFfiDecodedStreamProof {
     uint8_t signature[64];
 } PsFfiDecodedStreamProof;
 
-typedef struct PsFfiStreamProviderPolicy {
+typedef struct PsFfiTokenStreamPolicy {
+    uint8_t token_id[32];
     uint64_t min_rate;
     uint64_t min_allocation_lo;
     uint64_t min_allocation_hi;
+} PsFfiTokenStreamPolicy;
+
+typedef struct PsFfiStreamProviderPolicy {
     uint64_t max_create_stream_deadline_delay;
     uint64_t vault_proof_max_response_bytes;
+    PsFfiTokenStreamPolicy accepted_tokens[16];
+    uint32_t accepted_tokens_len;
+    uint32_t _padding;
 } PsFfiStreamProviderPolicy;
 
 typedef struct PsFfiProposalCheckInputs {
@@ -266,12 +276,14 @@ typedef struct PsFfiProposalCheckInputs {
     uint64_t vault_total_allocated_lo;
     uint64_t vault_total_allocated_hi;
     uint64_t now;
+    uint8_t token_id[32];
 } PsFfiProposalCheckInputs;
 
 typedef struct PsFfiAcceptedStreamTerms {
     PsFfiStreamParams params;
     uint8_t provider_id[32];
     PsFfiStreamProviderPolicy policy_at_acceptance;
+    uint8_t token_id[32];
 } PsFfiAcceptedStreamTerms;
 
 uint32_t ps_ffi_generate_session_keypair(uint8_t out_secret_key_32[32], uint8_t out_public_key_32[32]);

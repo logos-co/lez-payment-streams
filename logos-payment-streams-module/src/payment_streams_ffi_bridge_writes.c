@@ -73,11 +73,12 @@ uint32_t ps_ffi_fold_stream_at(const PsFfiDecodedStreamConfig* stream,
 
 uint32_t ps_ffi_serialize_initialize_vault(uint64_t vault_id,
                                            uint8_t privacy_tier,
+                                           const uint8_t* token_id_bytes,
                                            uint8_t* out_ptr,
                                            size_t out_cap,
                                            size_t* out_len) {
     return map_status(payment_streams_ffi_serialize_initialize_vault_instruction(
-        vault_id, privacy_tier, out_ptr, out_cap, out_len));
+        vault_id, privacy_tier, token_id_bytes, out_ptr, out_cap, out_len));
 }
 
 uint32_t ps_ffi_plan_initialize_vault(const uint8_t program_id_bytes[32],

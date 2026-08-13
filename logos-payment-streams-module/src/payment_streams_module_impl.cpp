@@ -117,6 +117,8 @@ QJsonObject vaultConfigToJson(const PsFfiDecodedVaultConfig& decoded) {
     obj.insert(QStringLiteral("next_stream_id"), static_cast<qint64>(decoded.next_stream_id));
     obj.insert(QStringLiteral("total_allocated_lo"), static_cast<qint64>(decoded.total_allocated_lo));
     obj.insert(QStringLiteral("total_allocated_hi"), static_cast<qint64>(decoded.total_allocated_hi));
+    obj.insert(QStringLiteral("token_id_hex"),
+               QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(decoded.token_id), 32).toHex()));
     return obj;
 }
 

@@ -9,6 +9,11 @@
 
 
 /**
+ * LIP-155 recommended maximum `accepted_tokens` length. Array sizes stay literals for cbindgen.
+ */
+#define PaymentStreamsFfiPAYMENT_STREAMS_FFI_MAX_ACCEPTED_TOKENS 16
+
+/**
  * Byte length of one account entry in `plan_*_instruction_accounts` output.
  *
  * Each account is encoded as **64** lowercase ASCII hex nibbles for the **32** raw id bytes
@@ -76,8 +81,8 @@ typedef uint32_t PaymentStreamsFfiClockAccountChoice;
 /**
  * Stable policy rejection codes for FFI consumers.
  *
- * Values `0..=8` mirror [`lez_payment_streams_core::PolicyRejectReason`] today (`repr(u32)`).
- * `Unknown` (`9`) is reserved for forward compatibility when core adds `#[non_exhaustive]` variants
+ * Values `0..=9` mirror [`lez_payment_streams_core::PolicyRejectReason`] today (`repr(u32)`).
+ * `Unknown` (`10`) is reserved for forward compatibility when core adds `#[non_exhaustive]` variants
  * before this FFI crate’s rejection mapping catches up.
  *
  * Hosts map these to Store-style eligibility buckets (see payment streams integration docs / LIP‑155):
@@ -98,10 +103,11 @@ enum PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_PROVIDER_MISMATCH = 6,
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_STREAM_NOT_ACTIVE = 7,
   PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_RESPONSE_TOO_LARGE = 8,
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_TOKEN_NOT_ACCEPTED = 9,
   /**
    * Core [`PolicyRejectReason`] variant not yet surfaced by this FFI layer.
    */
-  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_UNKNOWN = 9,
+  PAYMENT_STREAMS_FFI_PAYMENT_STREAMS_FFI_POLICY_REJECT_REASON_UNKNOWN = 10,
 };
 #if __STDC_VERSION__ >= 202311L
 typedef enum PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason PaymentStreamsFfiPaymentStreamsFfiPolicyRejectReason;
@@ -127,6 +133,7 @@ typedef struct PaymentStreamsFfiPaymentStreamsFfiDecodedVaultConfig {
   uint64_t next_stream_id;
   uint64_t total_allocated_lo;
   uint64_t total_allocated_hi;
+  uint8_t token_id[32];
 } PaymentStreamsFfiPaymentStreamsFfiDecodedVaultConfig;
 
 typedef struct PaymentStreamsFfiPaymentStreamsFfiDecodedVaultHolding {
@@ -187,14 +194,24 @@ typedef struct PaymentStreamsFfiPaymentStreamsFfiStreamParams {
 } PaymentStreamsFfiPaymentStreamsFfiStreamParams;
 
 /**
- * [`StreamProviderPolicy`] snapshot crossing the FFI (wide balances split as `lo` / `hi` `u64` halves).
+ * One [`lez_payment_streams_core::TokenStreamPolicy`] row on the FFI boundary.
  */
-typedef struct PaymentStreamsFfiPaymentStreamsFfiStreamProviderPolicy {
+typedef struct PaymentStreamsFfiPaymentStreamsFfiTokenStreamPolicy {
+  uint8_t token_id[32];
   uint64_t min_rate;
   uint64_t min_allocation_lo;
   uint64_t min_allocation_hi;
+} PaymentStreamsFfiPaymentStreamsFfiTokenStreamPolicy;
+
+/**
+ * [`StreamProviderPolicy`] snapshot crossing the FFI (wide balances split as `lo` / `hi` `u64` halves).
+ */
+typedef struct PaymentStreamsFfiPaymentStreamsFfiStreamProviderPolicy {
   uint64_t max_create_stream_deadline_delay;
   uint64_t vault_proof_max_response_bytes;
+  struct PaymentStreamsFfiPaymentStreamsFfiTokenStreamPolicy accepted_tokens[16];
+  uint32_t accepted_tokens_len;
+  uint32_t _padding;
 } PaymentStreamsFfiPaymentStreamsFfiStreamProviderPolicy;
 
 typedef struct PaymentStreamsFfiPaymentStreamsFfiProposalCheckInputs {
@@ -205,6 +222,7 @@ typedef struct PaymentStreamsFfiPaymentStreamsFfiProposalCheckInputs {
   uint64_t vault_total_allocated_lo;
   uint64_t vault_total_allocated_hi;
   uint64_t now;
+  uint8_t token_id[32];
 } PaymentStreamsFfiPaymentStreamsFfiProposalCheckInputs;
 
 /**
@@ -214,6 +232,7 @@ typedef struct PaymentStreamsFfiPaymentStreamsFfiAcceptedStreamTerms {
   struct PaymentStreamsFfiPaymentStreamsFfiStreamParams params;
   uint8_t provider_id[32];
   struct PaymentStreamsFfiPaymentStreamsFfiStreamProviderPolicy policy_at_acceptance;
+  uint8_t token_id[32];
 } PaymentStreamsFfiPaymentStreamsFfiAcceptedStreamTerms;
 
 /**
@@ -224,6 +243,7 @@ typedef struct PaymentStreamsFfiPaymentStreamsFfiDecodedVaultProof {
   uint8_t provider_id[32];
   uint8_t owner_public_key[32];
   uint8_t owner_signature[64];
+  uint8_t token_id[32];
 } PaymentStreamsFfiPaymentStreamsFfiDecodedVaultProof;
 
 /**
@@ -422,6 +442,7 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_authenticated_trans
  */
 PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_initialize_vault_instruction(uint64_t vault_id,
                                                                                                     uint8_t privacy_tier,
+                                                                                                    const uint8_t *token_id_bytes,
                                                                                                     uint8_t *out_ptr,
                                                                                                     uintptr_t out_cap,
                                                                                                     uintptr_t *out_len);
@@ -735,7 +756,7 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_fold_stream(const s
  * Proposal-phase policy gate (runs on user + provider before signing).
  *
  * On [`PaymentStreamsFfiStatus::PolicyRejected`], `ffi_out_policy_reject` carries a
- * [`crate::PaymentStreamsFfiPolicyRejectReason`] code (`0..=8` mirrors core; `Unknown` covers
+ * [`crate::PaymentStreamsFfiPolicyRejectReason`] code (`0..=9` mirrors core; `Unknown` covers
  * future [`lez_payment_streams_core::PolicyRejectReason`] variants not yet mapped explicitly).
  *
  * # Safety

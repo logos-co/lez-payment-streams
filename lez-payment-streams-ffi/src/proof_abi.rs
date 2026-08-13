@@ -69,6 +69,7 @@ fn proposal_wire_to_ffi(
     out.vault_proof.provider_id = wire.vault.provider_id;
     out.vault_proof.owner_public_key = wire.vault.owner_public_key;
     out.vault_proof.owner_signature = wire.vault.owner_signature;
+    out.vault_proof.token_id = wire.vault.token_id;
 
     out.params.rate = wire.params.rate;
     out.params.allocation_lo = allocation_halves.0;
@@ -91,7 +92,7 @@ fn proposal_ffi_to_wire(
             provider_id: ffi_proposal.vault_proof.provider_id,
             owner_public_key: ffi_proposal.vault_proof.owner_public_key,
             owner_signature: ffi_proposal.vault_proof.owner_signature,
-            token_id: lez_payment_streams_core::NATIVE_TOKEN_ID,
+            token_id: ffi_proposal.vault_proof.token_id,
         },
         params,
         session_public_key: ffi_proposal.session_public_key,

@@ -7,7 +7,7 @@ use lez_payment_streams_core::{
     create_stream_deadline_satisfies_policy_as_of, fold_stream, new_stream_satisfies_proposal,
     proposal_satisfies_policy, response_within_policy, stream_satisfies_policy,
     AcceptedStreamTerms, ErrorCode, PolicyRejectReason, ProposalCheckInputs, StreamConfig,
-    StreamParams, StreamProviderPolicy, StreamState, NATIVE_TOKEN_ID,
+    StreamParams, StreamProviderPolicy, StreamState, TokenStreamPolicy,
 };
 
 use crate::stream_state_repr;
@@ -15,7 +15,8 @@ use crate::{
     PaymentStreamsFfiAcceptedStreamTerms, PaymentStreamsFfiDecodedStreamConfig,
     PaymentStreamsFfiPolicyRejectReason, PaymentStreamsFfiProposalCheckInputs,
     PaymentStreamsFfiStatus, PaymentStreamsFfiStreamFoldAtTime, PaymentStreamsFfiStreamParams,
-    PaymentStreamsFfiStreamProviderPolicy, PAYMENT_STREAMS_FFI_MAX_SERVICE_ID_LEN,
+    PaymentStreamsFfiStreamProviderPolicy, PAYMENT_STREAMS_FFI_MAX_ACCEPTED_TOKENS,
+    PAYMENT_STREAMS_FFI_MAX_SERVICE_ID_LEN,
 };
 
 /// Recombine a NSSA [`Balance`] (`u128`) from its little-endian `lo` / `hi` `u64` halves.
@@ -59,6 +60,9 @@ fn map_policy_rejection(reason: PolicyRejectReason) -> PaymentStreamsFfiPolicyRe
         PolicyRejectReason::ResponseTooLarge => {
             PaymentStreamsFfiPolicyRejectReason::ResponseTooLarge
         }
+        PolicyRejectReason::TokenNotAccepted => {
+            PaymentStreamsFfiPolicyRejectReason::TokenNotAccepted
+        }
         // Forward-compatible path for hypothetical future `#[non_exhaustive]` variants shipped ahead of FFI updates.
         _ => PaymentStreamsFfiPolicyRejectReason::Unknown,
     }
@@ -68,12 +72,22 @@ fn map_policy_rejection(reason: PolicyRejectReason) -> PaymentStreamsFfiPolicyRe
 fn stream_provider_policy_from_ffi(
     ffi_policy: &PaymentStreamsFfiStreamProviderPolicy,
 ) -> StreamProviderPolicy {
-    StreamProviderPolicy::new(
-        ffi_policy.min_rate,
-        balance_from_lo_hi(ffi_policy.min_allocation_lo, ffi_policy.min_allocation_hi),
-        ffi_policy.max_create_stream_deadline_delay,
-        ffi_policy.vault_proof_max_response_bytes,
-    )
+    let n = (ffi_policy.accepted_tokens_len as usize).min(PAYMENT_STREAMS_FFI_MAX_ACCEPTED_TOKENS);
+    let accepted_tokens = ffi_policy
+        .accepted_tokens
+        .iter()
+        .take(n)
+        .map(|row| TokenStreamPolicy {
+            token_id: row.token_id,
+            min_rate: row.min_rate,
+            min_allocation: balance_from_lo_hi(row.min_allocation_lo, row.min_allocation_hi),
+        })
+        .collect();
+    StreamProviderPolicy {
+        max_create_stream_deadline_delay: ffi_policy.max_create_stream_deadline_delay,
+        vault_proof_max_response_bytes: ffi_policy.vault_proof_max_response_bytes,
+        accepted_tokens,
+    }
 }
 
 #[must_use]
@@ -146,7 +160,7 @@ fn accepted_terms_from_ffi(
         policy_at_acceptance: stream_provider_policy_from_ffi(
             &ffi_accepted_terms.policy_at_acceptance,
         ),
-        token_id: NATIVE_TOKEN_ID,
+        token_id: ffi_accepted_terms.token_id,
     })
 }
 
@@ -217,7 +231,7 @@ pub unsafe extern "C" fn payment_streams_ffi_fold_stream(
 /// Proposal-phase policy gate (runs on user + provider before signing).
 ///
 /// On [`PaymentStreamsFfiStatus::PolicyRejected`], `ffi_out_policy_reject` carries a
-/// [`crate::PaymentStreamsFfiPolicyRejectReason`] code (`0..=8` mirrors core; `Unknown` covers
+/// [`crate::PaymentStreamsFfiPolicyRejectReason`] code (`0..=9` mirrors core; `Unknown` covers
 /// future [`lez_payment_streams_core::PolicyRejectReason`] variants not yet mapped explicitly).
 ///
 /// # Safety
@@ -241,7 +255,7 @@ pub unsafe extern "C" fn payment_streams_ffi_proposal_satisfies_policy(
     };
     let parsed_policy = stream_provider_policy_from_ffi(&ffi_snapshot.policy);
 
-    let check_inputs_snapshot = ProposalCheckInputs::new(
+    let mut check_inputs_snapshot = ProposalCheckInputs::new(
         &parsed_params,
         &parsed_policy,
         balance_from_lo_hi(
@@ -254,6 +268,7 @@ pub unsafe extern "C" fn payment_streams_ffi_proposal_satisfies_policy(
         ),
         chain_timestamp_to_fold_seconds(ffi_snapshot.now),
     );
+    check_inputs_snapshot.token_id = ffi_snapshot.token_id;
 
     match proposal_satisfies_policy(&check_inputs_snapshot) {
         Ok(()) => PaymentStreamsFfiStatus::Success,

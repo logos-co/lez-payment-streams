@@ -515,9 +515,13 @@ QStringList decimalWordsFromInstructionBytes(const QByteArray& instructionBytes)
     return words;
 }
 
-bool ffiSerializeInitializeVault(uint64_t vaultId, uint8_t privacyTier, QByteArray* out, QString* errorOut) {
+bool ffiSerializeInitializeVault(uint64_t vaultId,
+                                 uint8_t privacyTier,
+                                 const uint8_t* tokenIdBytes,
+                                 QByteArray* out,
+                                 QString* errorOut) {
     size_t required = 0;
-    if (ps_ffi_serialize_initialize_vault(vaultId, privacyTier, nullptr, 0, &required) != kFfiSuccess) {
+    if (ps_ffi_serialize_initialize_vault(vaultId, privacyTier, tokenIdBytes, nullptr, 0, &required) != kFfiSuccess) {
         if (errorOut != nullptr) {
             *errorOut = QStringLiteral("initialize_vault serialize sizing failed");
         }
@@ -526,6 +530,7 @@ bool ffiSerializeInitializeVault(uint64_t vaultId, uint8_t privacyTier, QByteArr
     out->resize(static_cast<int>(required));
     if (ps_ffi_serialize_initialize_vault(vaultId,
                                           privacyTier,
+                                          tokenIdBytes,
                                           reinterpret_cast<uint8_t*>(out->data()),
                                           required,
                                           &required) != kFfiSuccess) {
@@ -1077,7 +1082,8 @@ QByteArray accountDataBytesFromHex(LogosExecutionZone& wallet, const QString& ac
 
 QString PaymentStreamsModuleImpl::initializeVault(const QVariant& ownerAccountIdBase58,
                                                   const QVariant& vaultId,
-                                                  const QVariant& privacyTier) {
+                                                  const QVariant& privacyTier,
+                                                  const QVariant& tokenId) {
     LogosExecutionZone& wallet = modules().logos_execution_zone;
     bool ok = false;
     const quint64 vid = variantToU64(vaultId, &ok);
@@ -1104,8 +1110,17 @@ QString PaymentStreamsModuleImpl::initializeVault(const QVariant& ownerAccountId
         return makeErrorJson(err);
     }
 
+    uint8_t tokenIdBytes[32]{};
+    const uint8_t* tokenIdPtr = nullptr;
+    if (tokenId.isValid() && !tokenId.isNull() && !tokenId.toString().trimmed().isEmpty()) {
+        if (!accountIdBytesFromField(wallet, tokenId.toString(), tokenIdBytes, &err)) {
+            return makeErrorJson(QStringLiteral("token_id must be 64-hex or base58"));
+        }
+        tokenIdPtr = tokenIdBytes;
+    }
+
     QByteArray instruction;
-    if (!ffiSerializeInitializeVault(vid, tierByte, &instruction, &err)) {
+    if (!ffiSerializeInitializeVault(vid, tierByte, tokenIdPtr, &instruction, &err)) {
         return makeErrorJson(err);
     }
 
@@ -1813,7 +1828,7 @@ QString PaymentStreamsModuleImpl::chainAction(const QVariant& operation, const Q
     };
 
     if (op == QLatin1String("initializeVault")) {
-        return initializeVault(qv("owner"), qv("vault_id"), qv("privacy_tier"));
+        return initializeVault(qv("owner"), qv("vault_id"), qv("privacy_tier"), qv("token_id"));
     }
     if (op == QLatin1String("deposit")) {
         return deposit(qv("owner"), qv("vault_id"), qv("amount_lo"), qv("amount_hi"));
