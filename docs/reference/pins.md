@@ -162,6 +162,19 @@ Flake refs:
 Retired shims: `wallet-v021.sh` and the wallet-shim directory are deleted.
 Keep dual `NSSA_WALLET_HOME_DIR` + `LEE_WALLET_HOME_DIR` exports.
 
+Operator LEZ `v0.2.4` (`47eba256…`) wallet-module defects the harness works around
+(file against [logos-execution-zone](https://github.com/logos-blockchain/logos-execution-zone)
+when opening upstream issues):
+
+- `logos_execution_zone.close` does not release the file or the in-memory handle
+  (`wallet is already open` after close). Exclusive handoff is daemon stop, not close/open.
+- Per-block autosave rewrites `storage.json` over an external wallet-CLI write
+  (last-writer-wins), so NSKs from a Public→Private shield never persist if the
+  daemon stays up.
+
+Harness: `ps_logoscore_daemon_stop_for_wallet` / `stop_store_host_for_wallet_cli`.
+Genesis resync is note discovery only, not key recovery.
+
 ### Program graph (LEZ v0.2.0)
 
 Guest ImageID, PDAs, core types, and payment-streams FFI artifacts stay on LEZ `v0.2.0`

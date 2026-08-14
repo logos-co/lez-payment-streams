@@ -1509,12 +1509,11 @@ def discard_and_reopen_wallet(cfg: Path, seq_url: str) -> None:
 def resync_wallet_from_genesis(cfg: Path, seq_url: str) -> None:
     """Save, zero last_synced_block on disk, reopen so sync walks from genesis.
 
-    Privacy accounts are created after the clone's startup sync, so that scan
-    never attributes historical notes. File-only cursor resets do not reach the
-    daemon's in-memory storage. discard_and_reopen_wallet reloads the file and
-    sync_wallet then matches prior notes to the new key-chain entries.
-    Otherwise a retry replays a spent nullifier and the sequencer silently
-    drops the tx (getTransaction stays null).
+    Note discovery only (spent-nullifier replay on a seed clone). Not a
+    key-recovery step: NSKs must already be on disk from an exclusive CLI
+    write. File-only cursor resets do not reach the daemon's in-memory
+    storage; discard_and_reopen_wallet reloads the file and sync_wallet
+    then matches prior notes to the new key-chain entries.
     """
     logoscore_cmd(cfg, "call", "logos_execution_zone", "save", timeout=60)
     _reset_cloned_wallet_sync_cursor(cfg_wallet_paths(cfg)[1])
@@ -1561,7 +1560,7 @@ def seed_vault_deposit_onchain(
                 f"{deposit_amount}; not submitting deposit-onchain"
             )
     if cfg is not None:
-        release_logoscore_wallet(cfg)
+        stop_store_host_for_wallet_cli(cfg)
     try:
         proc = run(
             [
@@ -1593,8 +1592,7 @@ def seed_vault_deposit_onchain(
             raise E2EError(f"seed vault deposit failed: {proc.stderr or proc.stdout}")
     finally:
         if cfg is not None:
-            reopen_logoscore_wallet(cfg, seq_url)
-            reload_payment_streams_wallet(cfg, seq_url)
+            restart_store_host_after_wallet_cli(cfg, seq_url)
 
 
 def e2e_tx_onchain_wait_s(wallet_config_path: Path | None = None) -> int:
@@ -2156,7 +2154,7 @@ def seed_top_up_stream_onchain(
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
     if cfg is not None:
-        release_logoscore_wallet(cfg)
+        stop_store_host_for_wallet_cli(cfg)
     try:
         proc = run(
             [
@@ -2190,8 +2188,7 @@ def seed_top_up_stream_onchain(
             raise E2EError(f"seed top-up-stream-onchain failed: {proc.stderr or proc.stdout}")
     finally:
         if cfg is not None:
-            reopen_logoscore_wallet(cfg, seq_url)
-            reload_payment_streams_wallet(cfg, seq_url)
+            restart_store_host_after_wallet_cli(cfg, seq_url)
 
 
 def read_vault_next_stream_id_cli(repo: Path, manifest: dict, wallet_home: Path) -> int:
@@ -2280,12 +2277,11 @@ def precreate_stream_before_daemons(
     env["CREATE_FORCE"] = "1"
     env["E2E_PER_RUN_STREAM"] = "1"
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
-    release_logoscore_wallet(cfg_user)
+    stop_store_host_for_wallet_cli(cfg_user)
     try:
         proc = run(["bash", str(fixture), "stream", "create", str(vault_id)], cwd=repo, env=env, timeout=e2e_subprocess_timeout_s())
     finally:
-        reopen_logoscore_wallet(cfg_user, seq_url)
-        reload_payment_streams_wallet(cfg_user, seq_url)
+        restart_store_host_after_wallet_cli(cfg_user, seq_url)
     ok = proc.returncode == 0
     log_artifact(
         artifact,

@@ -420,6 +420,31 @@ logoscore_string_arg() {
   python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"
 }
 
+# Confirm private account keys are on disk after an exclusive wallet-CLI shield.
+# close/open cannot recover NSKs; this is a tripwire, not a repair.
+ps_assert_private_account_keys() {
+  local acct_hex="$1" label="${2:-private account}" phase="${3:-pre_shield_keys}"
+  local keys_line
+  [[ "${RISC0_DEV_MODE:-1}" == "0" ]] || return 0
+  keys_line="$(logoscore call logos_execution_zone get_private_account_keys "$acct_hex" 2>/dev/null | tail -1)" || true
+  if ! python3 -c 'import json,sys
+try:
+  o=json.loads(sys.argv[1]); r=o.get("result",o)
+  if isinstance(r,str) and r.strip().startswith("{"): r=json.loads(r)
+  ok=isinstance(r,dict) and (r.get("status")=="ok" or "nullifier_public_key" in r or "npk" in r)
+  sys.exit(0 if ok else 1)
+except Exception:
+  sys.exit(1)' "$keys_line" 2>/dev/null; then
+    narr_fail "Private keys unresolved after wallet shield ($label)"
+    narr_hint "get_private_account_keys failed for $acct_hex — check LEE_WALLET_HOME_DIR storage after exclusive-stop auth-transfer send"
+    emit_phase "$phase" false "$(python3 -c 'import json,sys; print(json.dumps({"account_hex":sys.argv[1],"label":sys.argv[2],"raw":sys.argv[3]}))' "$acct_hex" "$label" "${keys_line:-}")"
+    return 1
+  fi
+  emit_phase "$phase" true "$(python3 -c 'import json,sys; print(json.dumps({"account_hex":sys.argv[1],"label":sys.argv[2]}))' "$acct_hex" "$label")"
+  narr_ok "Private keys resolvable after wallet shield ($label)"
+  return 0
+}
+
 # Public → private shield. phase_name defaults to pre_shield (owner deposit buffer).
 # Real prove (RISC0_DEV_MODE=0): wallet auth-transfer send + AT-init handoff (D39.22).
 # Soft prove: logoscore transfer_shielded_owned (Phase 1 only).
@@ -436,6 +461,7 @@ ps_pre_shield_to_private_account() {
       narr_ok "Pre-shielded $amount tokens into $label (wallet auth-transfer send)"
       ps_reload_payment_streams_wallet
       sync_wallet
+      ps_assert_private_account_keys "$to_hex" "$label" || return 1
       return 0
     else
       wallet_out="${wallet_out:-wallet auth-transfer send failed}"
@@ -891,27 +917,6 @@ if ps_is_local; then
       [[ -z "$FUNDER_HEX" || -z "$OWNER_HEX" ]] && ps_fatal "could not resolve hex account ids for pre-shield"
       if ! ps_pre_shield_to_private_owner "$FUNDER_HEX" "$OWNER_HEX" "$owner_target"; then
         FAILURES=$((FAILURES + 1))
-      else
-        # Real prove stops logoscore for wallet CLI; confirm private owner is still resolvable.
-        if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
-          keys_line="$(logoscore call logos_execution_zone get_private_account_keys "$OWNER_HEX" 2>/dev/null | tail -1)" || true
-          if ! python3 -c 'import json,sys
-try:
-  o=json.loads(sys.argv[1]); r=o.get("result",o)
-  if isinstance(r,str) and r.strip().startswith("{"): r=json.loads(r)
-  ok=isinstance(r,dict) and (r.get("status")=="ok" or "nullifier_public_key" in r or "npk" in r)
-  sys.exit(0 if ok else 1)
-except Exception:
-  sys.exit(1)' "$keys_line" 2>/dev/null; then
-            narr_fail "Private vault owner keys unresolved after wallet shield handoff"
-            narr_hint "get_private_account_keys failed for OWNER_HEX=$OWNER_HEX — check LEE_WALLET_HOME_DIR storage after auth-transfer send"
-            emit_phase pre_shield_keys false "$(python3 -c 'import json,sys; print(json.dumps({"owner_hex":sys.argv[1],"raw":sys.argv[2]}))' "$OWNER_HEX" "${keys_line:-}")"
-            FAILURES=$((FAILURES + 1))
-          else
-            emit_phase pre_shield_keys true "$(python3 -c 'import json,sys; print(json.dumps({"owner_hex":sys.argv[1]}))' "$OWNER_HEX")"
-            narr_ok "Private vault owner keys resolvable after wallet shield"
-          fi
-        fi
       fi
       # D37.11: never pinata a private provider as Public/$PROVIDER. Dust-shield
       # into the private provider so claim has a committed private note.
@@ -1233,6 +1238,18 @@ else
 fi
 
 narr_step "Depositing $DEPOSIT tokens into vault"
+if ! ps_is_owner_privacy_e2e; then
+  owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null | tr -d '[:space:]' || true)"
+  owner_bal="${owner_bal:-0}"
+  if (( owner_bal < DEPOSIT )); then
+    emit_phase deposit false "{\"owner_balance\":$owner_bal,\"deposit\":$DEPOSIT,\"reason\":\"insufficient_owner_balance\"}"
+    narr_fail "Owner public balance $owner_bal is below deposit $DEPOSIT; not submitting deposit"
+    narr_hint "Fund the owner (./verify/testnet/fund-testnet-accounts.sh) or lower DEPOSIT"
+    FAILURES=$((FAILURES + 1))
+    narr_fail "$FAILURES failure(s) before deposit — aborting"
+    exit 1
+  fi
+fi
 DEPOSIT_LINE="$(call_ps deposit 1 deposit "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$DEPOSIT,\"amount_hi\":0}")" "" "Deposit transaction included on chain" verify_deposit)"
 
 # Verify the deposit settled on chain by reading the vault holding balance.

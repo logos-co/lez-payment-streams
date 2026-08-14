@@ -829,3 +829,16 @@ builtin program ids aligned with the 510-era lineage, not rc3 dual-pin tooling.
   wallet module wrapper upstream from PR 19 to `main` (Universal).
 
 Handoff: [step-18b-rc5-unify-handoff.md](../plan/completed/step-18b-rc5-unify-handoff.md).
+
+### N52, exclusive wallet-CLI stop window (2026-08-14)
+
+`logos_execution_zone.close` on operator LEZ `v0.2.4` does not drop the file lock or
+the in-memory wallet. Leaving logoscore up during `wallet auth-transfer send` lets
+autosave clobber `storage.json`, so shield NSKs never land and `initializeVault`
+returns FFI 7 (`Private account not found`).
+
+Local real-prove and testnet use one exclusive daemon-stop window for every wallet
+CLI write (AT init and both Public→Private shields), then one `open` after restart
+and a `get_private_account_keys` tripwire. Genesis cursor reset stays a note-discovery
+tool. Upstream: record in [pins.md](pins.md) (issues not opened from this tree; `gh`
+unavailable).
