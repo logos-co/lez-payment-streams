@@ -93,6 +93,21 @@ fi
 
 echo "=== ensure-testnet-vault vault=$VAULT_ID_ARG deposit=$DEPOSIT_AMOUNT owner=$OWNER ==="
 
+unalloc="$(ps_vault_unallocated_lo "$OWNER" "$VAULT_ID_ARG" 2>/dev/null || true)"
+if [[ -n "${unalloc:-}" && "$unalloc" -ge "$ALLOCATION" && "${FORCE_DEPOSIT:-0}" != "1" ]]; then
+  echo "skip deposit: unallocated $unalloc covers allocation $ALLOCATION"
+  echo "=== ensure-testnet-vault skipped (already funded): $MANIFEST ==="
+  exit 0
+fi
+if [[ "${OWNER_PRIVACY:-0}" != "1" ]]; then
+  owner_bal="$(python3 "$REPO_ROOT/verify/testnet/testnet_rpc.py" account-balance "$OWNER" 2>/dev/null || echo 0)"
+  owner_bal="${owner_bal:-0}"
+  if (( owner_bal < DEPOSIT_AMOUNT )); then
+    echo "ERROR: owner public balance $owner_bal cannot cover deposit $DEPOSIT_AMOUNT; not submitting" >&2
+    exit 1
+  fi
+fi
+
 # Top up deposit when holding exists but is under target (idempotent ensure).
 FORCE_FLAG=()
 if [[ "${FORCE_DEPOSIT:-0}" == "1" ]]; then

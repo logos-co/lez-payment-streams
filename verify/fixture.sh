@@ -330,7 +330,7 @@ cmd_vault_ensure() {
   # Idempotent: a funded vault needs no re-init/deposit. Re-running deposit on a
   # live ledger churns the wallet nonce and risks wallet/chain desync.
   if [[ "${FORCE_DEPOSIT:-0}" != "1" ]] && vault_is_funded "$vault_id"; then
-    ps_log_info "Vault $vault_id already funded (skip prefund; FORCE_DEPOSIT=1 to override)"
+    ps_log_info "Vault $vault_id already funded (skip deposit; unallocated covers one allocation; FORCE_DEPOSIT=1 to override)"
     return 0
   fi
 
@@ -340,6 +340,15 @@ cmd_vault_ensure() {
   # assumes the operator pre-funds the owner).
   if ! ps_is_testnet; then
     fund_owner_account "$owner" "$SEED_DEPOSIT_AMOUNT"
+  fi
+
+  if [[ "${OWNER_PRIVACY:-0}" != "1" ]]; then
+    local owner_bal
+    owner_bal="$(ps_account_balance "$owner" 2>/dev/null | tr -d '[:space:]' || echo 0)"
+    owner_bal="${owner_bal:-0}"
+    if (( owner_bal < SEED_DEPOSIT_AMOUNT )); then
+      ps_fatal "owner public balance $owner_bal cannot cover deposit $SEED_DEPOSIT_AMOUNT; not submitting"
+    fi
   fi
 
   local prefund_extra=()
