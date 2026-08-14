@@ -97,6 +97,18 @@ Applies to `MODE=store` ([e2e/run_e2e.py](../../verify/store/run_e2e.py)) and `M
 Manual walkthrough: wait until `last_block` is past the submit height, then read status.
 See [reproduce/module.md](../reproduce/module.md#on-chain-confirmation).
 
+## ImageID skew is fail-fast
+
+Testnet cells pin `PAYMENT_STREAMS_PROGRAM_ID_HEX` and `PAYMENT_STREAMS_GUEST_BIN` to the fixture ImageID and a gitignored `.scaffold/program-bins/lez_payment_streams-<id8>.bin` copy created by `make bootstrap-testnet` / `make bootstrap-testnet-module` (and `TESTNET_DEPLOY=1`).
+A rebuilt guest whose `spel inspect` ImageID does not match the fixture dies in seconds at prepare/run.
+Do not wait for `getTransaction` to stay null.
+
+`PAYMENT_STREAMS_PROGRAM_ID_HEX` is unset on local cells so identity comes from the live ELF.
+Neither that variable nor a testnet `FIXTURE_MANIFEST` may leak across cells.
+
+Local snapshot save records the vault `program_owner` from the sequencer, not the ELF on disk.
+`snapshot validate` compares that id to the live ledger and to the current guest; a new guest after snapshot fails closed into prefund.
+
 ## Commands
 
 Per-cell prepare, bootstrap, verbosity, and expected artifacts: [reproduce/store.md](../reproduce/store.md).

@@ -76,6 +76,10 @@ enum Commands {
     WriteVaultManifest {
         #[arg(long)]
         program_bin: PathBuf,
+        /// Explicit ImageID. When set, PDAs use this identity instead of the ELF
+        /// (testnet fixtures must not be rewritten from a locally rebuilt guest).
+        #[arg(long)]
+        program_id_hex: Option<String>,
         #[arg(long)]
         owner: String,
         #[arg(long)]
@@ -324,7 +328,43 @@ fn to_lee_program_id(id: CoreProgramId) -> LeeProgramId {
     id
 }
 
+fn program_id_from_hex32(hex_str: &str) -> Result<CoreProgramId> {
+    let bytes = hex::decode(hex_str.trim()).context("program id hex")?;
+    if bytes.len() != 32 {
+        bail!("program id hex must be 32 bytes");
+    }
+    let mut words = [0u32; 8];
+    for (idx, chunk) in bytes.chunks_exact(4).enumerate() {
+        words[idx] = u32::from_le_bytes(chunk.try_into().unwrap());
+    }
+    Ok(words)
+}
+
+fn resolve_program_id(
+    path: &PathBuf,
+    explicit_hex: Option<&str>,
+) -> Result<(CoreProgramId, String)> {
+    if let Some(hex) = explicit_hex {
+        let hex = hex.trim().to_lowercase();
+        if !hex.is_empty() {
+            let pid = program_id_from_hex32(&hex)?;
+            return Ok((pid, hex));
+        }
+    }
+    program_id_from_bin(path)
+}
+
 fn program_id_from_bin(path: &PathBuf) -> Result<(CoreProgramId, String)> {
+    // Testnet Store E2E may run with a locally rebuilt guest whose ImageID
+    // differs from the program deployed on chain. Honor the fixture id so
+    // PDA probes and write-vault-manifest target the live program.
+    if let Ok(hex) = std::env::var("PAYMENT_STREAMS_PROGRAM_ID_HEX") {
+        let hex = hex.trim().to_lowercase();
+        if !hex.is_empty() {
+            let pid = program_id_from_hex32(&hex)?;
+            return Ok((pid, hex));
+        }
+    }
     let bytecode = std::fs::read(path)
         .with_context(|| format!("read program binary {}", path.display()))?;
     let program = Program::new(bytecode.into()).context("parse guest Program")?;
@@ -949,6 +989,7 @@ async fn main() -> Result<()> {
         },
         Commands::WriteVaultManifest {
             program_bin,
+            program_id_hex: explicit_program_id_hex,
             owner,
             provider,
             vault_id,
@@ -958,7 +999,8 @@ async fn main() -> Result<()> {
             sequencer_url,
             output,
         } => {
-            let (program_id, program_id_hex) = program_id_from_bin(&program_bin)?;
+            let (program_id, program_id_hex) =
+                resolve_program_id(&program_bin, explicit_program_id_hex.as_deref())?;
             let owner_id = account_id_from_base58(&owner)?;
             let provider_id = account_id_from_base58(&provider)?;
             let fixture = build_vault_baseline(

@@ -1548,6 +1548,18 @@ def seed_vault_deposit_onchain(
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
     vault_id = int(manifest.get("vault_id", 0))
+    if not owner_privacy_enabled():
+        owner_bal = account_balance_seq(seq_url, owner)
+        if (
+            vault_deposit_preflight(
+                None, deposit_amount, deposit_amount, owner_bal, False
+            )
+            == "abort"
+        ):
+            raise E2EError(
+                f"owner public balance {owner_bal} cannot cover deposit "
+                f"{deposit_amount}; not submitting deposit-onchain"
+            )
     if cfg is not None:
         release_logoscore_wallet(cfg)
     try:
@@ -2344,41 +2356,97 @@ def seed_deposit_amount_lo(manifest: dict) -> int:
     return manifest_allocation_lo(manifest) + 100
 
 
+def testnet_write_manifest_program_id(
+    env_hex: str | None, manifest_hex: str | None
+) -> str:
+    """Return the ImageID a testnet write-vault-manifest must stamp.
+
+    Testnet fixtures are pinned to the deployed program. Never derive
+    program_id_hex from a local ELF.
+    """
+    env = (env_hex or "").strip().lower()
+    man = (manifest_hex or "").strip().lower()
+    if not env:
+        raise E2EError(
+            "PAYMENT_STREAMS_PROGRAM_ID_HEX is required to rewrite a testnet "
+            "fixture; refusing to derive program_id_hex from a local ELF"
+        )
+    if man and env != man:
+        raise E2EError(
+            f"PAYMENT_STREAMS_PROGRAM_ID_HEX={env} != fixture "
+            f"program_id_hex={man}; testnet fixture identity is pinned to "
+            "the deployed program"
+        )
+    return env
+
+
+def vault_deposit_preflight(
+    unalloc: int | None,
+    deposit_lo: int,
+    allocation_lo: int,
+    owner_public_balance: int | None,
+    owner_privacy: bool,
+) -> str:
+    """Return skip, abort, or deposit before submitting a vault deposit.
+
+    skip: unallocated holding already covers one createStream at allocation_lo
+    (same bar as verify/fixture.sh vault_is_funded). abort: public owner cannot
+    cover deposit_lo, so do not submit. deposit: submit deposit_lo. Private
+    owners skip the public-balance check (funds are in shielded notes).
+    """
+    if unalloc is not None and unalloc >= allocation_lo:
+        return "skip"
+    if owner_privacy:
+        return "deposit"
+    if owner_public_balance is not None and owner_public_balance < deposit_lo:
+        return "abort"
+    return "deposit"
+
+
 def refresh_manifest_vault_baseline(
     repo: Path, manifest_path: Path, manifest: dict, vault_id: int
 ) -> None:
     guest = Path(os.environ["PAYMENT_STREAMS_GUEST_BIN"])
     deposit = seed_deposit_amount_lo(manifest)
+    chain = os.environ.get("CHAIN", "local").strip().lower()
+    existing_pid = str(manifest.get("program_id_hex") or "").strip().lower()
+    cmd = [
+        "cargo",
+        "run",
+        "-q",
+        "--manifest-path",
+        "verify/seed/Cargo.toml",
+        "--bin",
+        "seed_localnet_fixture",
+        "--",
+        "write-vault-manifest",
+        "--program-bin",
+        str(guest),
+        "--owner",
+        manifest["owner_account_id"],
+        "--provider",
+        manifest["provider_account_id"],
+        "--vault-id",
+        str(vault_id),
+        "--deposit-amount",
+        str(deposit),
+        "--stream-rate",
+        str(int(manifest.get("stream_rate", 1))),
+        "--allocation",
+        str(manifest_allocation_lo(manifest)),
+        "--sequencer-url",
+        manifest.get("sequencer_url", "http://127.0.0.1:3040"),
+        "--output",
+        str(manifest_path),
+    ]
+    if chain == "testnet":
+        pid = testnet_write_manifest_program_id(
+            os.environ.get("PAYMENT_STREAMS_PROGRAM_ID_HEX"),
+            manifest.get("program_id_hex"),
+        )
+        cmd.extend(["--program-id-hex", pid])
     proc = run(
-        [
-            "cargo",
-            "run",
-            "-q",
-            "--manifest-path",
-            "verify/seed/Cargo.toml",
-            "--bin",
-            "seed_localnet_fixture",
-            "--",
-            "write-vault-manifest",
-            "--program-bin",
-            str(guest),
-            "--owner",
-            manifest["owner_account_id"],
-            "--provider",
-            manifest["provider_account_id"],
-            "--vault-id",
-            str(vault_id),
-            "--deposit-amount",
-            str(deposit),
-            "--stream-rate",
-            str(int(manifest.get("stream_rate", 1))),
-            "--allocation",
-            str(manifest_allocation_lo(manifest)),
-            "--sequencer-url",
-            manifest.get("sequencer_url", "http://127.0.0.1:3040"),
-            "--output",
-            str(manifest_path),
-        ],
+        cmd,
         cwd=repo,
         timeout=300,
     )
@@ -2386,6 +2454,13 @@ def refresh_manifest_vault_baseline(
         raise E2EError(f"write-vault-manifest failed: {proc.stderr or proc.stdout}")
     manifest.clear()
     manifest.update(json.loads(manifest_path.read_text()))
+    if chain == "testnet":
+        new_pid = str(manifest.get("program_id_hex") or "").strip().lower()
+        if existing_pid and new_pid != existing_pid:
+            raise E2EError(
+                f"write-vault-manifest changed testnet program_id_hex "
+                f"{existing_pid} -> {new_pid}; fixture identity is pinned"
+            )
 
 
 def resolve_store_vault_id_subprocess(repo: Path) -> int:
@@ -3138,10 +3213,12 @@ def ensure_vault_funded_via_chainaction(
     chain = os.environ.get("CHAIN", "local").strip().lower()
     vault_id = int(manifest.get("vault_id", 0))
     deposit_lo = seed_deposit_amount_lo(manifest)
+    allocation_lo = manifest_allocation_lo(manifest)
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
     owner = manifest["owner_account_id"]
     subproc_timeout = e2e_subprocess_timeout_s()
     privacy_tier = 1 if owner_privacy_enabled() else int(manifest.get("privacy_tier", 0) or 0)
+    unalloc: int | None = None
 
     sync_wallet(cfg_user, seq_url)
     if vault_config_present(cfg_user, manifest):
@@ -3149,7 +3226,12 @@ def ensure_vault_funded_via_chainaction(
             unalloc = vault_unallocated_lo(cfg_user, manifest)
         except E2EError:
             unalloc = 0
-        if unalloc >= deposit_lo:
+        if (
+            vault_deposit_preflight(
+                unalloc, deposit_lo, allocation_lo, None, owner_privacy_enabled()
+            )
+            == "skip"
+        ):
             log_artifact(
                 artifact,
                 "vault_ensure",
@@ -3158,6 +3240,7 @@ def ensure_vault_funded_via_chainaction(
                 via="chainAction_skipped_already_funded",
                 unallocated_lo=unalloc,
                 deposit_lo=deposit_lo,
+                allocation_lo=allocation_lo,
                 privacy_tier=privacy_tier,
             )
             return
@@ -3222,6 +3305,30 @@ def ensure_vault_funded_via_chainaction(
             time.sleep(1)
         if not present:
             raise E2EError(f"initializeVault tx landed but vault {vault_id} config not visible")
+
+    if not owner_privacy_enabled():
+        owner_bal = account_balance_seq(seq_url, owner)
+        if (
+            vault_deposit_preflight(
+                unalloc, deposit_lo, allocation_lo, owner_bal, False
+            )
+            == "abort"
+        ):
+            log_artifact(
+                artifact,
+                "vault_ensure",
+                False,
+                vault_id=vault_id,
+                via="chainAction_deposit_skipped_insufficient_balance",
+                owner_balance=owner_bal,
+                deposit_lo=deposit_lo,
+                allocation_lo=allocation_lo,
+                unallocated_lo=unalloc,
+            )
+            raise E2EError(
+                f"owner public balance {owner_bal} cannot cover deposit {deposit_lo} "
+                f"(unallocated={unalloc}, allocation={allocation_lo}); not submitting deposit"
+            )
 
     deposit_body = {
         "owner": owner,

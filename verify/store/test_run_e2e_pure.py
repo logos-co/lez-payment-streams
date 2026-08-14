@@ -54,6 +54,51 @@ def test_seed_deposit_amount_lo() -> None:
     assert rle.seed_deposit_amount_lo({"demo_deposit_amount": 600}) == 600
 
 
+def test_testnet_write_manifest_program_id() -> None:
+    pid = "c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a"
+    assert rle.testnet_write_manifest_program_id(pid, pid) == pid
+    assert rle.testnet_write_manifest_program_id(pid.upper(), pid) == pid
+    assert rle.testnet_write_manifest_program_id(pid, None) == pid
+    try:
+        rle.testnet_write_manifest_program_id(None, pid)
+        raise AssertionError("expected E2EError when env hex is missing")
+    except rle.E2EError:
+        pass
+    try:
+        rle.testnet_write_manifest_program_id("aa" * 32, pid)
+        raise AssertionError("expected E2EError on mismatch")
+    except rle.E2EError:
+        pass
+
+
+def test_vault_deposit_preflight() -> None:
+    # Existing vault already covers createStream; do not top up to deposit_lo.
+    assert (
+        rle.vault_deposit_preflight(420, 500, 400, 300, False) == "skip"
+    )
+    assert (
+        rle.vault_deposit_preflight(500, 500, 400, 0, False) == "skip"
+    )
+    # Fresh or underfunded vault, public owner cannot cover deposit_lo.
+    assert (
+        rle.vault_deposit_preflight(0, 500, 400, 300, False) == "abort"
+    )
+    assert (
+        rle.vault_deposit_preflight(None, 500, 400, 100, False) == "abort"
+    )
+    # Public owner can cover deposit_lo.
+    assert (
+        rle.vault_deposit_preflight(0, 500, 400, 600, False) == "deposit"
+    )
+    assert (
+        rle.vault_deposit_preflight(100, 500, 400, 600, False) == "deposit"
+    )
+    # Private owner: do not gate on public getAccount balance.
+    assert (
+        rle.vault_deposit_preflight(0, 500, 400, 0, True) == "deposit"
+    )
+
+
 def test_testnet_e2e_create_via_default(monkeypatch) -> None:
     monkeypatch.delenv("E2E_CREATE_VIA", raising=False)
     assert rle.testnet_e2e_create_via() == "chainaction"

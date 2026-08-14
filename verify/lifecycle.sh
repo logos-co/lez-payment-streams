@@ -63,10 +63,12 @@ SNAPSHOT_DIR="$REPO_ROOT/.scaffold/snapshots"
 # requires the sequencer to be stopped and its RocksDB LOCK released.
 snapshot_write_metadata() {
   local snap_dir="$1"
+  local deployed_id="${2:-}"
+  local vault_cfg="${3:-}"
   local name pin prog owner provider
   name="$(basename "$snap_dir")"
   pin="$(ps_lez_pin)"
-  prog="$(ps_program_id_hex)"
+  prog="$deployed_id"
   owner=""
   if [[ -f "$REPO_ROOT/.scaffold/.lez_payment_streams-state" ]]; then
     owner="$(grep '^SIGNER_ID=' "$REPO_ROOT/.scaffold/.lez_payment_streams-state" | cut -d= -f2 | tr -d '"'\''')"
@@ -84,6 +86,7 @@ snapshot_write_metadata() {
   "owner_account_id": "$owner",
   "provider_account_id": "$provider",
   "vault_id": 0,
+  "vault_config_account_id": "$vault_cfg",
   "deposit_amount": ${SEED_DEPOSIT_AMOUNT:-1000}
 }
 EOF
@@ -101,6 +104,20 @@ cmd_snapshot_save() {
   if [[ ! -d "$rocksdb" ]]; then
     ps_fatal "No ledger at $rocksdb (run prefund/seed first)"
   fi
+
+  local deployed vault_cfg
+  vault_cfg=""
+  if [[ -f "$REPO_ROOT/verify/fixtures/localnet.json" ]]; then
+    vault_cfg="$(ps_json_get "$REPO_ROOT/verify/fixtures/localnet.json" vault_config_account_id)"
+  fi
+  if [[ "$(cmd_localnet_status)" != "running" ]]; then
+    ps_fatal "Localnet must be running to record the deployed program id before snapshot save"
+  fi
+  deployed="$(ps_deployed_program_id_hex "$vault_cfg" || true)"
+  if [[ -z "$deployed" ]]; then
+    ps_fatal "Could not read deployed program id from sequencer (vault_config program_owner). Prefund a vault before snapshot save; do not record ImageID from a rebuilt ELF on disk."
+  fi
+  ps_log_info "Snapshot deployed program_id_hex=$deployed"
 
   # Sequencer must be stopped to copy a consistent RocksDB.
   if [[ "$(cmd_localnet_status)" == "running" ]]; then
@@ -127,7 +144,7 @@ cmd_snapshot_save() {
     [[ -f "$REPO_ROOT/.scaffold/$f" ]] && cp -a "$REPO_ROOT/.scaffold/$f" "$snap_dir/"
   done
 
-  snapshot_write_metadata "$snap_dir"
+  snapshot_write_metadata "$snap_dir" "$deployed" "$vault_cfg"
   ps_log_info "Snapshot saved: $snap_dir"
 
   if [[ "$restart" != "0" ]]; then
@@ -196,22 +213,38 @@ cmd_snapshot_validate() {
     return 1
   fi
 
-  local snap_pin snap_prog cur_pin cur_prog
+  local snap_pin snap_prog live_prog elf_prog vault_cfg
   snap_pin="$(ps_json_get "$meta" lez_pin)"
   snap_prog="$(ps_json_get "$meta" program_id_hex)"
-  cur_pin="$(ps_lez_pin)"
-  cur_prog="$(ps_program_id_hex)"
+  vault_cfg="$(ps_json_get "$meta" vault_config_account_id)"
+  if [[ -z "$vault_cfg" && -f "$REPO_ROOT/verify/fixtures/localnet.json" ]]; then
+    vault_cfg="$(ps_json_get "$REPO_ROOT/verify/fixtures/localnet.json" vault_config_account_id)"
+  fi
 
-  if [[ -z "$snap_pin" || "$snap_pin" != "$cur_pin" ]]; then
-    ps_log_error "Snapshot LEZ pin mismatch (snapshot='$snap_pin' current='$cur_pin')"
+  if [[ -z "$snap_pin" || "$snap_pin" != "$(ps_lez_pin)" ]]; then
+    ps_log_error "Snapshot LEZ pin mismatch (snapshot='$snap_pin' current='$(ps_lez_pin)')"
     return 1
   fi
-  if [[ -z "$cur_prog" ]]; then
-    ps_log_error "Could not read current program id (make build && make program-id)"
+  if [[ -z "$snap_prog" ]]; then
+    ps_log_error "Snapshot missing program_id_hex"
     return 1
   fi
-  if [[ -n "$snap_prog" && "$snap_prog" != "$cur_prog" ]]; then
-    ps_log_error "Snapshot program_id mismatch (snapshot='$snap_prog' current='$cur_prog')"
+  if [[ "$(cmd_localnet_status)" != "running" ]]; then
+    ps_log_error "Localnet not running; cannot confirm deployed program id (fail closed)"
+    return 1
+  fi
+  live_prog="$(ps_deployed_program_id_hex "$vault_cfg" || true)"
+  if [[ -z "$live_prog" ]]; then
+    ps_log_error "Could not read live deployed program id from sequencer (vault_config=$vault_cfg)"
+    return 1
+  fi
+  if [[ "$snap_prog" != "$live_prog" ]]; then
+    ps_log_error "Snapshot program_id mismatch vs live ledger (snapshot='$snap_prog' deployed='$live_prog')"
+    return 1
+  fi
+  elf_prog="$(ps_program_id_hex)"
+  if [[ -n "$elf_prog" && "$snap_prog" != "$elf_prog" ]]; then
+    ps_log_error "Snapshot program_id mismatch vs guest on disk (snapshot='$snap_prog' elf='$elf_prog'); new guest after snapshot fails closed into prefund"
     return 1
   fi
 

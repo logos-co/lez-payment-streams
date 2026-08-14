@@ -109,6 +109,9 @@ cmd_prepare() {
   # unconditionally so a stale localnet value in the environment cannot redirect
   # testnet chain ops to the local sequencer.
   ps_export_wallet_home "$(ps_chain_wallet_home)"
+  if ! ps_is_testnet; then
+    ps_export_chain_guest_identity
+  fi
 
   # Validate scaffold
   "$REPO_ROOT/verify/lifecycle.sh" scaffold check
@@ -224,19 +227,16 @@ cmd_prepare_testnet() {
   # Read smoke check
   "$REPO_ROOT/verify/lifecycle.sh" testnet read-smoke
 
-  # Program deploy (one-time, usually done)
   if [[ "${TESTNET_DEPLOY:-0}" == "1" ]]; then
-    ps_log_info "Deploying program to testnet..."
-    # Would call deploy script here
+    ps_log_info "Deploying program to testnet (TESTNET_DEPLOY=1)..."
+    "$REPO_ROOT/verify/testnet/deploy-testnet.sh"
   fi
 
-  # Bootstrap fixture if needed (module vs store paths)
   local fixture expected_bootstrap
+  fixture="$(ps_resolve_testnet_fixture)"
   if ps_is_module_mode; then
-    fixture="${FIXTURE_MANIFEST:-$REPO_ROOT/verify/fixtures/testnet-module.json}"
     expected_bootstrap="make bootstrap-testnet-module"
   else
-    fixture="${FIXTURE_MANIFEST:-$REPO_ROOT/verify/fixtures/testnet.json}"
     expected_bootstrap="make bootstrap-testnet"
   fi
 
@@ -245,6 +245,8 @@ cmd_prepare_testnet() {
     ps_log_info "Run bootstrap first: $expected_bootstrap"
     ps_fatal "Missing fixture: $fixture"
   fi
+  export FIXTURE_MANIFEST="$fixture"
+  ps_export_chain_guest_identity
 
   ps_log_info "Testnet prepare complete"
 }
@@ -256,18 +258,19 @@ cmd_prepare_testnet() {
 cmd_run() {
   ps_log_info "Starting E2E run..."
   ps_export_authenticated_transfer_program_id_hex
+  ps_export_chain_guest_identity
 
   # Flow A (module only): single-host happy path, no Store / dual-host / N8.
   if ps_is_module_mode; then
     ps_export_wallet_home "$(ps_chain_wallet_home)"
-    export FIXTURE_MANIFEST="$(ps_default_fixture_manifest)"
-    if ps_is_testnet && [[ -f "$REPO_ROOT/verify/fixtures/testnet-module.json" ]]; then
-      export FIXTURE_MANIFEST="$REPO_ROOT/verify/fixtures/testnet-module.json"
+    if ps_is_testnet; then
+      export FIXTURE_MANIFEST="$(ps_resolve_testnet_fixture)"
+    else
+      export FIXTURE_MANIFEST="$(ps_default_fixture_manifest)"
     fi
     export WALLET_CONFIG="$(ps_default_wallet_config)"
     export WALLET_STORAGE="$(ps_default_wallet_storage)"
     export MODULES_USER="${MODULES_USER:-$(ps_e2e_user_modules_dir)}"
-    export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
     export ARTIFACT="${ARTIFACT:-$(ps_e2e_artifacts_dir)/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
     mkdir -p "$(dirname "$ARTIFACT")"
     ps_log_info "Launching module happy path (Flow A)..."
@@ -317,7 +320,6 @@ cmd_run() {
   export PERSIST_USER="${PERSIST_USER:-$(ps_e2e_user_persist_dir)}"
   export PERSIST_PROVIDER="${PERSIST_PROVIDER:-$(ps_e2e_provider_persist_dir)}"
   export E2E_PROVIDER_AD="${E2E_PROVIDER_AD:-$(ps_e2e_provider_ad_path)}"
-  export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
   export ARTIFACT="${ARTIFACT:-$(ps_e2e_artifacts_dir)/e2e-$(date +%Y%m%dT%H%M%S).log}"
   export E2E_PHASE="${E2E_PHASE:-all}"
   export SKIP_BUILD="${SKIP_BUILD:-1}"  # Already built in prepare
@@ -486,6 +488,7 @@ main() {
       ;;
     local|testnet)
       export CHAIN="$category"
+      ps_reset_chain_scoped_env
       [[ $# -lt 1 ]] && { usage; exit 1; }
       local command="$1"
       shift

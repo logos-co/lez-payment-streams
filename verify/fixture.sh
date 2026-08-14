@@ -288,11 +288,25 @@ cmd_manifest_write() {
   wallet_home="${LEE_WALLET_HOME_DIR:-$(ps_chain_wallet_home)}"
 
   local vault_id="${1:-${VAULT_ID:-0}}"
+  local pid_args=()
+  if [[ "${manifest##*/}" == testnet*.json ]]; then
+    local env_pid existing
+    env_pid="${PAYMENT_STREAMS_PROGRAM_ID_HEX:-}"
+    [[ -n "$env_pid" ]] || ps_fatal "PAYMENT_STREAMS_PROGRAM_ID_HEX required to write a testnet fixture (refusing ELF-derived identity)"
+    if [[ -f "$manifest" ]]; then
+      existing="$(ps_json_get "$manifest" program_id_hex)"
+      if [[ -n "$existing" && "${existing,,}" != "${env_pid,,}" ]]; then
+        ps_fatal "PAYMENT_STREAMS_PROGRAM_ID_HEX=$env_pid != fixture program_id_hex=$existing; not rewriting testnet identity from a local ELF"
+      fi
+    fi
+    pid_args+=(--program-id-hex "$env_pid")
+  fi
   ps_log_info "Writing vault baseline manifest: $manifest (vault_id=$vault_id)"
   LEE_WALLET_HOME_DIR="$wallet_home" cargo run -q \
     --manifest-path "$REPO_ROOT/verify/seed/Cargo.toml" \
     --bin seed_localnet_fixture -- write-vault-manifest \
     --program-bin "$guest" \
+    ${pid_args[@]+"${pid_args[@]}"} \
     --owner "$owner" \
     --provider "$provider" \
     --vault-id "$vault_id" \

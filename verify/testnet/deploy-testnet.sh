@@ -33,9 +33,30 @@ else
   echo "deploy-program exit 0"
 fi
 
-ACTUAL_ID="$(make -s program-id | sed -n 's/.*ImageID (hex bytes): //p' | tr -d ' ')"
-if [[ "$ACTUAL_ID" != "$EXPECTED_ID" ]]; then
-  echo "WARN: make program-id ($ACTUAL_ID) != expected ($EXPECTED_ID)" >&2
+ACTUAL_ID="$(ps_guest_bin_image_id_hex "$PROGRAM_BIN" || true)"
+if [[ -z "$ACTUAL_ID" ]]; then
+  ACTUAL_ID="$(make -s program-id | sed -n 's/.*ImageID (hex bytes): //p' | tr -d ' ')"
+fi
+if [[ -n "$EXPECTED_ID" && "$ACTUAL_ID" != "$EXPECTED_ID" ]]; then
+  echo "WARN: guest ImageID ($ACTUAL_ID) != expected ($EXPECTED_ID)" >&2
 fi
 echo "program_id_hex=$ACTUAL_ID"
+if [[ -n "$ACTUAL_ID" ]]; then
+  ps_pin_deployed_guest_or_die "$PROGRAM_BIN" "$ACTUAL_ID"
+  python3 - "$ACTUAL_ID" "$REPO_ROOT/verify/fixtures/testnet.json" "$REPO_ROOT/verify/fixtures/testnet-module.json" <<'PY'
+import json, sys
+pid = sys.argv[1]
+for path in sys.argv[2:]:
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        continue
+    data["program_id_hex"] = pid
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    print("updated", path, "program_id_hex", pid)
+PY
+fi
 echo "=== deploy-testnet done ==="

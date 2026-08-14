@@ -73,4 +73,6 @@ cargo run --quiet --manifest-path "$REPO_ROOT/verify/seed/Cargo.toml" --bin boot
   --allocation "$ALLOCATION" \
   --write-manifest "$MANIFEST"
 
+ps_pin_deployed_guest_or_die "$PROGRAM_BIN" "$PROGRAM_ID_HEX"
+
 echo "=== bootstrap-testnet done: $MANIFEST ==="

@@ -158,6 +158,161 @@ ps_program_id_hex() {
     grep 'ImageID (hex bytes)' | awk '{print $NF}' || true
 }
 
+ps_default_guest_bin() {
+  echo "$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"
+}
+
+# spel inspect ImageID (hex bytes) of a guest ELF; empty if inspect fails.
+ps_guest_bin_image_id_hex() {
+  local bin="${1:-}"
+  [[ -n "$bin" && -f "$bin" ]] || return 1
+  command -v spel >/dev/null 2>&1 || return 1
+  spel inspect "$bin" 2>/dev/null | grep 'ImageID (hex bytes)' | awk '{print $NF}'
+}
+
+ps_program_bins_dir() {
+  echo "$REPO_ROOT/.scaffold/program-bins"
+}
+
+ps_pinned_guest_bin_path() {
+  local id_hex="${1:-}"
+  local id8="${id_hex:0:8}"
+  echo "$(ps_program_bins_dir)/lez_payment_streams-${id8}.bin"
+}
+
+ps_pin_guest_bin() {
+  local src="${1:-}"
+  local id_hex="${2:-}"
+  local dest
+  [[ -f "$src" && -n "$id_hex" ]] || return 1
+  dest="$(ps_pinned_guest_bin_path "$id_hex")"
+  mkdir -p "$(dirname "$dest")"
+  cp -f "$src" "$dest"
+  printf '%s\n' "$dest"
+}
+
+# Copy src ELF to .scaffold/program-bins/ after confirming spel inspect matches expect_id.
+ps_pin_deployed_guest_or_die() {
+  local src="${1:-}"
+  local expect_id="${2:-}"
+  local actual dest
+  [[ -f "$src" ]] || ps_fatal "guest ELF missing: $src"
+  actual="$(ps_guest_bin_image_id_hex "$src")" || ps_fatal "spel inspect failed: $src"
+  if [[ -n "$expect_id" && "$actual" != "$expect_id" ]]; then
+    ps_fatal "ELF ImageID $actual != expected $expect_id (rebuild-vs-deploy). Use the ELF that matches the deployed program, then re-run bootstrap/deploy to pin it under .scaffold/program-bins/."
+  fi
+  dest="$(ps_pin_guest_bin "$src" "$actual")"
+  ps_log_info "Pinned guest ELF ${actual:0:8}… -> $dest"
+}
+
+# Honor FIXTURE_MANIFEST only when the basename is testnet*.json (module-e2e.sh rule).
+ps_resolve_testnet_fixture() {
+  if [[ -n "${FIXTURE_MANIFEST:-}" && "${FIXTURE_MANIFEST##*/}" == testnet*.json && -f "$FIXTURE_MANIFEST" ]]; then
+    printf '%s\n' "$FIXTURE_MANIFEST"
+    return 0
+  fi
+  if [[ "${MODE:-store}" == "module" && -f "$REPO_ROOT/verify/fixtures/testnet-module.json" ]]; then
+    echo "$REPO_ROOT/verify/fixtures/testnet-module.json"
+    return 0
+  fi
+  echo "$REPO_ROOT/verify/fixtures/testnet.json"
+}
+
+# PAYMENT_STREAMS_PROGRAM_ID_HEX and PAYMENT_STREAMS_GUEST_BIN must not leak
+# across local/testnet cells.
+ps_reset_chain_scoped_env() {
+  if ps_is_testnet; then
+    if [[ -n "${FIXTURE_MANIFEST:-}" && "${FIXTURE_MANIFEST##*/}" != testnet*.json ]]; then
+      ps_log_info "Ignoring FIXTURE_MANIFEST=$FIXTURE_MANIFEST (basename is not testnet*.json)"
+      unset FIXTURE_MANIFEST
+    fi
+  else
+    unset PAYMENT_STREAMS_PROGRAM_ID_HEX
+    if [[ -n "${FIXTURE_MANIFEST:-}" && "${FIXTURE_MANIFEST##*/}" == testnet*.json ]]; then
+      ps_log_info "Ignoring FIXTURE_MANIFEST=$FIXTURE_MANIFEST on local (testnet fixture)"
+      unset FIXTURE_MANIFEST
+    fi
+  fi
+}
+
+# Testnet: fixture ImageID always; pinned ELF when present (overrides inherited
+# PAYMENT_STREAMS_GUEST_BIN). Privacy cells that prove with the ELF fail fast on
+# ImageID skew. Public cells may run with a rebuilt ELF on disk as --program-bin
+# while PDAs use PAYMENT_STREAMS_PROGRAM_ID_HEX.
+# Local: live ELF, no PAYMENT_STREAMS_PROGRAM_ID_HEX.
+ps_export_chain_guest_identity() {
+  ps_normalize_privacy_flags
+  if ps_is_testnet; then
+    local fixture fixture_pid pinned live live_id guest_id
+    fixture="$(ps_resolve_testnet_fixture)"
+    [[ -f "$fixture" ]] || ps_fatal "Testnet fixture not found: $fixture"
+    fixture_pid="$(ps_json_get "$fixture" program_id_hex)"
+    [[ -n "$fixture_pid" ]] || ps_fatal "fixture missing program_id_hex: $fixture"
+    export PAYMENT_STREAMS_PROGRAM_ID_HEX="$fixture_pid"
+    live="$(ps_default_guest_bin)"
+    pinned="$(ps_pinned_guest_bin_path "$fixture_pid")"
+    if [[ ! -f "$pinned" && -f "$live" ]]; then
+      live_id="$(ps_guest_bin_image_id_hex "$live" || true)"
+      if [[ "$live_id" == "$fixture_pid" ]]; then
+        pinned="$(ps_pin_guest_bin "$live" "$fixture_pid")"
+      fi
+    fi
+    if [[ -f "$pinned" ]]; then
+      export PAYMENT_STREAMS_GUEST_BIN="$pinned"
+      ps_log_info "PAYMENT_STREAMS_GUEST_BIN=$PAYMENT_STREAMS_GUEST_BIN (pinned)"
+    else
+      # Drop inherited GUEST_BIN so a poisoned shell cannot rewrite identity.
+      export PAYMENT_STREAMS_GUEST_BIN="$live"
+      if ps_is_any_privacy_e2e; then
+        ps_fatal "No ELF matching fixture program_id_hex=$fixture_pid. ImageID skew is a fail-fast (not a timeout). Copy the deployed binary to $pinned (make bootstrap-testnet pins it) or rebuild the guest that spel inspect reports as $fixture_pid."
+      fi
+      ps_log_info "No pinned ELF for ${fixture_pid:0:8}…; public cell using live GUEST_BIN for --program-bin, identity from PAYMENT_STREAMS_PROGRAM_ID_HEX"
+    fi
+    ps_log_info "PAYMENT_STREAMS_PROGRAM_ID_HEX=$PAYMENT_STREAMS_PROGRAM_ID_HEX (from $fixture)"
+    if ps_is_any_privacy_e2e; then
+      guest_id="$(ps_guest_bin_image_id_hex "$PAYMENT_STREAMS_GUEST_BIN" || true)"
+      if [[ "$guest_id" != "$fixture_pid" ]]; then
+        ps_fatal "GUEST_BIN ImageID ${guest_id:-missing} != fixture $fixture_pid. Privacy legs prove with the ELF; rebuild-vs-deploy skew is fatal in seconds. Pin the deployed ELF via make bootstrap-testnet."
+      fi
+    fi
+  else
+    unset PAYMENT_STREAMS_PROGRAM_ID_HEX
+    export PAYMENT_STREAMS_GUEST_BIN="$(ps_default_guest_bin)"
+  fi
+}
+
+# Sequencer getAccount.program_owner as ImageID hex (empty/nonzero-exit if missing).
+ps_account_program_owner_hex() {
+  local account_id="$1"
+  local url="${2:-$(ps_seq_url)}"
+  python3 -c '
+import json, struct, sys, urllib.request
+url, aid = sys.argv[1], sys.argv[2]
+body = json.dumps({"jsonrpc":"2.0","id":1,"method":"getAccount","params":{"accountId":aid}}).encode()
+req = urllib.request.Request(url, data=body, headers={"content-type":"application/json"})
+acc = json.load(urllib.request.urlopen(req, timeout=15)).get("result") or {}
+owner = acc.get("program_owner") or []
+data = acc.get("data") or []
+if not data or not owner or owner == [0] * 8:
+    raise SystemExit(1)
+print("".join(struct.pack("<I", int(x) & 0xFFFFFFFF).hex() for x in owner))
+' "$url" "$account_id"
+}
+
+# Deployed payment-streams ImageID from the vault_config account on the live sequencer.
+ps_deployed_program_id_hex() {
+  local vault_cfg="${1:-}"
+  local manifest
+  if [[ -z "$vault_cfg" ]]; then
+    manifest="${FIXTURE_MANIFEST:-$REPO_ROOT/verify/fixtures/localnet.json}"
+    if [[ -f "$manifest" ]]; then
+      vault_cfg="$(ps_json_get "$manifest" vault_config_account_id)"
+    fi
+  fi
+  [[ -n "$vault_cfg" ]] || return 1
+  ps_account_program_owner_hex "$vault_cfg"
+}
+
 # LEZ 510+ nests the sequencer under lez/; older lgs builds expect it at the pin
 # root. Link it so `lgs localnet start` finds the config after a restore.
 ps_ensure_lez_layout() {
