@@ -39,6 +39,7 @@ Terminology: `make check-terminology`.
 | `RESTORE_LOCALNET` | `1` | Snapshot restore for Store prepare. |
 | `FULL_RESET` | `0` | Rebuild funded snapshot when `1`. |
 | `E2E_PHASE` | `all` | Store Python: `core`, `claim`, or `all`. |
+| `PS_WALLET_SHIELD_TIMEOUT` | `1800` | Wall-clock seconds for `wallet auth-transfer send` (CPU prove measured ~1020s). Stub receipts never take this path. |
 
 On-chain confirmation: [verification-matrix.md](../docs/reference/matrix.md#on-chain-confirmation-principle).
 

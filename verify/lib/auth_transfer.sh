@@ -274,15 +274,8 @@ ps_wallet_auth_transfer_send() {
   # CLI write (NSKs from the shield never persist).
   ps_logoscore_daemon_stop_for_wallet
   local rc=0
-  # Prefer pinned-LEZ timeout default; testnet real prove often needs >10 min.
-  local shield_timeout="${PS_WALLET_SHIELD_TIMEOUT:-}"
-  if [[ -z "$shield_timeout" ]]; then
-    if [[ "${CHAIN:-local}" == "testnet" ]]; then
-      shield_timeout=1200
-    else
-      shield_timeout=600
-    fi
-  fi
+  # CPU prove measured ~1020s; 1800s is ~75% headroom on both networks.
+  local shield_timeout="${PS_WALLET_SHIELD_TIMEOUT:-1800}"
   timeout "$shield_timeout" env \
     LEE_WALLET_HOME_DIR="$LEE_WALLET_HOME_DIR" \
     NSSA_WALLET_HOME_DIR="$NSSA_WALLET_HOME_DIR" \

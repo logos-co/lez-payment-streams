@@ -2932,10 +2932,8 @@ def wallet_auth_transfer_send(
     # Real prove must reach the public sequencer; never inherit soft mode.
     env["RISC0_DEV_MODE"] = os.environ.get("RISC0_DEV_MODE", "1").strip()
     stop_store_host_for_wallet_cli(cfg)
-    # Testnet real prove often needs 3–8 min; keep headroom above module default.
-    is_testnet = os.environ.get("CHAIN", "local").strip().lower() == "testnet"
-    default_shield_timeout = "1200" if is_testnet else "600"
-    timeout_s = int(os.environ.get("PS_WALLET_SHIELD_TIMEOUT", default_shield_timeout))
+    # CPU prove measured ~1020s; 1800s is ~75% headroom on both networks.
+    timeout_s = int(os.environ.get("PS_WALLET_SHIELD_TIMEOUT", "1800"))
     orphan_tip_blocks = int(os.environ.get("PS_PPE_ORPHAN_TIP_BLOCKS", "8"))
     orphan_deadline_s = int(os.environ.get("PS_PPE_ORPHAN_DEADLINE_S", "240"))
     proc: subprocess.CompletedProcess[str] | None = None
