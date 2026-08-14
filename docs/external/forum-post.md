@@ -1,7 +1,7 @@
 # Payment streams on LEZ
 
 Step 51 owns publish.
-TODO: wait for results of local-private / testnet-public / testnet-private before stating wrap-up verification in public.
+TODO: wait for Step 52 wrap-up verification before stating wrap-up in public.
 
 Payment streams let a user pay a provider over time from a vault on the Logos Execution Zone.
 A Logos module (`payment_streams_module`) exposes vault and stream lifecycle.

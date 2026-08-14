@@ -3,8 +3,8 @@
 Index: [index.md](../index.md). Status: complete (2026-08).
 Gate log: [step-46-gate-log.md](step-46-gate-log.md).
 
-Forum publish and wrap-up dogfood moved to
-[Step 51](../upcoming/step-51-forum-post.md).
+Forum publish moved to [Step 51](../upcoming/step-51-forum-post.md).
+Wrap-up dogfood moved to [Step 52](../upcoming/step-52-wrap-up-verification.md).
 This packet is the living-docs IA (reproduce / integrate / README Testing /
 journey-name retirement).
 
@@ -150,7 +150,7 @@ Stable recipe handles (cite these from the Step 51 forum draft and reproduce doc
 | `local-public` | Local E2E public | `MODE=module ./scripts/e2e.sh local run`; `MODE=store ./scripts/e2e.sh local run` |
 | `local-private` | Local privacy path with stub receipts (`RISC0_DEV_MODE=1` default) | Same with `OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`. Exercises privacy account flow and module IPC; not real proving. |
 | `testnet-public` | Public testnet (real network) | `MODE=module ./scripts/e2e.sh testnet run`; `MODE=store ./scripts/e2e.sh testnet run` |
-| `testnet-private` | Testnet full privacy with real proving | `RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0` plus full privacy flags; one wrap-up dogfood leg (Step 51). Listed because the wrap-up runs it once, not as everyday policy. |
+| `testnet-private` | Testnet full privacy with real proving | `RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0` plus full privacy flags; one wrap-up dogfood leg (Step 52). Listed because the wrap-up runs it once, not as everyday policy. |
 
 `docs/README.md` Verify block becomes links to root README Testing and the matrix only.
 
@@ -177,8 +177,9 @@ Renaming is out of scope for Step 46.
 
 Extracted to [Step 51](../upcoming/step-51-forum-post.md).
 Draft path stays [forum-post.md](../../external/forum-post.md).
-Outline, D46.5 command rule, D46.11 dogfood, D46.17 path, and venue TBD
-moved with that packet. Do not publish wrap-up claims from this step.
+Outline, D46.5 command rule, D46.17 path, and venue TBD
+moved with that packet. Wrap-up dogfood (D46.11) is
+[Step 52](../upcoming/step-52-wrap-up-verification.md).
 
 ## Prerequisites
 
@@ -229,7 +230,7 @@ Out of scope:
 - Requiring `testnet-private` after every prior engineering step.
 - Preserving old GitHub / logos-docs URLs (including logos-docs#370).
 - Slides / asciinema / `docs/journeys/slides/` (D46.18).
-- Forum publish and wrap-up matrix dogfood (Step 51).
+- Forum publish is Step 51. Wrap-up matrix dogfood is Step 52.
 
 ## Relationship to Step 20
 
@@ -254,7 +255,7 @@ Step 20 stays wontfix.
 - `check-terminology.sh` path + journey-name living scan updates.
 - Script/doc grep gate for retired paths.
 - [step-46-gate-log.md](step-46-gate-log.md) records docs landed.
-  Wrap-up artifacts are Step 51.
+  Wrap-up artifacts are Step 52.
 - Plan index tracks section reworked; AGENTS read-order and active-work flipped
   to new surfaces.
 
@@ -272,7 +273,7 @@ Step 20 stays wontfix.
 | D46.8 | Network primary | Per-doc: testnet for `payment-streams.md`; local for `store-eligibility.md` (testnet follow-up) |
 | D46.9 | Install | README section first; split only if too long |
 | D46.10 | Testing docs | Handles `fast` / `local-public` / `local-private` / `testnet-public` / `testnet-private`; no “tier”; no user-facing `CHAIN=` duplication; matrix relabeled in this step |
-| D46.11 | Dogfood | Moved to Step 51 (D51.1). Same legs; do not claim wrap-up in outbound prose beforehand. |
+| D46.11 | Dogfood | Moved to Step 52 (D52.1). Same legs; forum wrap-up claims wait on that gate log. |
 | D46.12 | Journey names | Remove from living docs and nav. Delete `docs/journeys/`. Archive / completed plan packets may keep historical wording. |
 | D46.13 | Step 48 | Not a prerequisite; ship against post-45 AT-config / split-era; 48 is wontfix |
 | D46.14 | `user-journey-*.sh` | Keep filenames as stable CLI; document historical names in reproduce docs |
@@ -291,6 +292,6 @@ Step 20 stays wontfix.
 - `check-terminology.sh` covers new trees; living journey-name scan in place.
 - Grep gate clean for retired path references in live scripts/docs.
 - Index tracks table and AGENTS surfaces reworked off living journey nav.
-- Forum publish and wrap-up dogfood are Step 51, not this packet.
+- Forum publish is Step 51. Wrap-up dogfood is Step 52.
 - Step 20 remains wontfix.
 - Terminology gate clean for touched living prose.

@@ -79,7 +79,7 @@ Handles for README, reproduce docs, and the forum draft.
 | `local-public` | Local E2E, public accounts | `MODE=module ./scripts/e2e.sh local run`. `MODE=store ./scripts/e2e.sh local run`. |
 | `local-private` | Local privacy, stub receipts (`RISC0_DEV_MODE=1` default) | Same with `OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`. |
 | `testnet-public` | Public testnet | `MODE=module ./scripts/e2e.sh testnet run`. `MODE=store ./scripts/e2e.sh testnet run`. |
-| `testnet-private` | Testnet full privacy, real proving | `RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0` plus full privacy flags. Wrap-up dogfood leg. |
+| `testnet-private` | Testnet full privacy, real proving | `RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0` plus full privacy flags. Step 52 wrap-up dogfood leg. |
 
 `./scripts/e2e.sh local` and `./scripts/e2e.sh testnet` set the network.
 Flag detail and artifacts: [verification-matrix.md](docs/reference/verification-matrix.md).

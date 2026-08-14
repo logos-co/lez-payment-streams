@@ -1,8 +1,9 @@
 # Step 46 gate log
 
 Packet: [step-46-docs-unify-and-forum-post.md](step-46-docs-unify-and-forum-post.md).
-Status: complete (docs IA). Forum publish and wrap-up dogfood moved to
+Status: complete (docs IA). Forum publish is
 [Step 51](../upcoming/step-51-forum-post.md).
+Wrap-up dogfood is [Step 52](../upcoming/step-52-wrap-up-verification.md).
 
 ## Docs landed
 
@@ -20,7 +21,7 @@ Status: complete (docs IA). Forum publish and wrap-up dogfood moved to
 
 ## D46.11 dogfood
 
-Moved to Step 51 (D51.1). Do not fill wrap-up rows here.
+Moved to Step 52 (D52.1). Do not fill wrap-up rows here.
 
 ## Terminology
 

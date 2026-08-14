@@ -19,6 +19,7 @@ Living docs: [docs/reproduce/](docs/reproduce/),
 [docs/external/forum-post.md](docs/external/forum-post.md)
 ([Step 46](docs/plan/completed/step-46-docs-unify-and-forum-post.md) docs;
 [Step 51](docs/plan/upcoming/step-51-forum-post.md) forum;
+[Step 52](docs/plan/upcoming/step-52-wrap-up-verification.md) wrap-up verification;
 Step 48 wontfix).
 Historical protocol CLI track is complete
 ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)).
@@ -47,7 +48,10 @@ Step 35 (complete) supplies integrate-doc substance.
 (native-only LIP token_id / `accepted_tokens`; ImageID cut).
 [Step 50](docs/plan/completed/step-50-consistency-and-clarity.md) is complete
 (glue and naming).
-Next: [Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum publish + wrap-up matrix).
+Next: [Step 52](docs/plan/upcoming/step-52-wrap-up-verification.md)
+(wrap-up verification), then [Step 51](docs/plan/upcoming/step-51-forum-post.md)
+(forum post). [Step 53](docs/plan/upcoming/step-53-repository-structure.md)
+is a repository-structure stub.
 
 Historical protocol CLI (complete):
 [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370);
@@ -55,9 +59,11 @@ Historical protocol CLI (complete):
 [Step 34](docs/plan/completed/step-34-user-journey-manual-walkthrough.md);
 [Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
 Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
-[Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post).
-Step 51 runs the full README Testing matrix on the current ImageID
-(privacy + testnet) and publishes the forum post. Not blocked on Step 21.
+[Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post),
+[Step 52](docs/plan/upcoming/step-52-wrap-up-verification.md) (wrap-up verification),
+[Step 53](docs/plan/upcoming/step-53-repository-structure.md) (repository structure stub).
+Step 52 records unit, localnet, and testnet E2E including private execution
+on the current ImageID. Step 51 publishes the forum post from that gate log.
 Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer and payee close),
 [Step 45](docs/plan/completed/step-45-dependencies-and-patches.md) (deps and patches),
 [Step 46](docs/plan/completed/step-46-docs-unify-and-forum-post.md) (docs unify),

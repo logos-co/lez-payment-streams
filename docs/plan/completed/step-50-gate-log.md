@@ -1,8 +1,8 @@
 # Step 50 gate log
 
 Packet: [step-50-consistency-and-clarity.md](step-50-consistency-and-clarity.md).
-Status: complete. Wrap-up matrix is [Step 51](../upcoming/step-51-forum-post.md)
-(D51.1). No ImageID cut (D50.1).
+Status: complete. Wrap-up matrix is [Step 52](../upcoming/step-52-wrap-up-verification.md)
+(D52.1). No ImageID cut (D50.1).
 
 Branch: `feat/step-50-consistency-and-clarity`.
 Repo commit at close: `b6d8dba` plus this close.
@@ -29,5 +29,5 @@ Repo commit at close: `b6d8dba` plus this close.
 
 ## After this step
 
-Step 51 runs D51.1 on the current ImageID (privacy + testnet) and publishes
-the forum post. Not blocked on Step 21.
+Step 52 runs D52.1 on the current ImageID (privacy + testnet).
+Step 51 publishes the forum post from that gate log.

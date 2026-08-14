@@ -5,15 +5,15 @@ Gate log: [step-50-gate-log.md](step-50-gate-log.md).
 
 Workstreams A–F landed on `feat/step-50-consistency-and-clarity`.
 Fast verification recorded 2026-08-13. No ImageID cut (D50.1).
-Wrap-up matrix remains [Step 51](../upcoming/step-51-forum-post.md).
+Wrap-up matrix remains [Step 52](../upcoming/step-52-wrap-up-verification.md).
 
 Prerequisite: [Step 46](step-46-docs-unify-and-forum-post.md)
 (living docs IA, complete) and
 [Step 49](step-49-native-token-spec-alignment.md)
 (token_id / policy types and ImageID cut landed 2026-08).
 [Step 48](../wontfix/step-48-program-graph-lez-unify.md) is not a prerequisite.
-[Step 51](../upcoming/step-51-forum-post.md) (forum publish + wrap-up matrix) is not a
-prerequisite. This step does not wait on it.
+[Step 51](../upcoming/step-51-forum-post.md) (forum publish) and
+[Step 52](../upcoming/step-52-wrap-up-verification.md) (wrap-up matrix) follow this step.
 
 ## Goal
 
@@ -22,7 +22,8 @@ structure for its own sake, and without changing demo outcomes.
 
 Step 46 owns documentation IA and journey-name retirement (complete).
 Step 49 owns LIP multi-token types (complete; do not recut ImageID here).
-Step 51 owns forum publish and the full Testing-handle matrix.
+Step 51 owns forum publish.
+Step 52 owns the full Testing-handle matrix.
 This step owns remaining naming drift, duplicated glue, API warts, and
 maintainer-surface clutter identified in the post-47 clarity review,
 plus persist/E2E glue exposed by the Step 49 ImageID-cut dogfood.
@@ -86,7 +87,8 @@ Timebox the C++ kit to the listed helpers plus the error variants.
 Out of scope:
 
 - Step 46 doc IA, journey redirects.
-- Step 51 forum post and wrap-up matrix.
+- Step 51 forum post.
+- Step 52 wrap-up matrix.
 - Step 49 token types / PDA / non-native reject / guest ImageID.
 - Token program custody path.
 - Merging bash and Python orchestrators into one language.
@@ -103,7 +105,7 @@ Out of scope:
 - Sweeping `ift-ts` (already clean) or rewriting historical Step 3a cites in
   `integration-decisions.md`.
 - Full protocol matrix (privacy E2E, testnet public/private, extra close
-  cells). That is Step 51 (D51.1), not this step’s gate.
+  cells). That is Step 52 (D52.1).
 
 ## Workstreams
 
@@ -249,7 +251,7 @@ Split confirmation into two layers.
 | D50.4 | Clock | Core function is SSOT; C++ matches `>= 1_000_000_000_000`. Purity only. Kit unit test covers the `>= 1e12` boundary. |
 | D50.5 | Makefile | Living help from `##` comments, skipping archive-invoking recipes. `.PHONY` generated from all recipe targets. Remove the retired-role close aliases. Do not edit `scripts/archive/`. |
 | D50.6 | Docs | Touch living surfaces only if an API wart still disagrees (getVaultStatus likely zero lines). No new reproduce doc. |
-| D50.7 | Verification | `fast` only (`make check-terminology`, `RISC0_DEV_MODE=1 cargo test --workspace`, plus the new Qt kit tests via the module test binary if that is how the harness is invoked). No E2E in this step’s gate. Wrap-up matrix is Step 51. |
+| D50.7 | Verification | `fast` only (`make check-terminology`, `RISC0_DEV_MODE=1 cargo test --workspace`, plus the new Qt kit tests via the module test binary if that is how the harness is invoked). No E2E in this step’s gate. Wrap-up matrix is Step 52. |
 | D50.8 | Persist test | Unit-test the merge helper with JSON fixtures. Do not call `rediscoverStreams` in Qt tests. |
 | D50.9 | `parseWalletAccountJson` | One superset (optional `errorOut` and `balanceHexOut`; data required only when `dataOut` is non-null). |
 | D50.10 | Program id | Derive-and-fail via `make -s program-id` when `TESTNET_PROGRAM_ID_HEX` is unset. No auto-build. |
@@ -273,15 +275,15 @@ No `MODE=module` / `MODE=store` E2E in this gate. README Testing handle
 
 ## After this step
 
-[Step 51](../upcoming/step-51-forum-post.md) runs the wrap-up protocol matrix on the
-current ImageID (D51.1) and publishes the forum post. Step 49 proved public
+[Step 52](../upcoming/step-52-wrap-up-verification.md) runs the wrap-up protocol matrix on the
+current ImageID (D52.1). Step 51 publishes the forum post from that gate log. Step 49 proved public
 local and public testnet only. Privacy never ran on this cut.
-Do not wait for Step 21.
 
 ## Related
 
 - [step-46-docs-unify-and-forum-post.md](step-46-docs-unify-and-forum-post.md)
 - [step-51-forum-post.md](../upcoming/step-51-forum-post.md)
+- [step-52-wrap-up-verification.md](../upcoming/step-52-wrap-up-verification.md)
 - [step-47-unify-role-terminology.md](step-47-unify-role-terminology.md)
 - [step-49-native-token-spec-alignment.md](step-49-native-token-spec-alignment.md)
 - [naming-conventions.md](../../reference/naming-conventions.md)

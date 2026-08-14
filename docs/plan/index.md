@@ -13,7 +13,7 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44–47, 49–50) |
-| [upcoming/](upcoming/) | Steps 21, 51 |
+| [upcoming/](upcoming/) | Steps 21, 51–53 |
 | [waiting/](waiting/) | Empty |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43, 48 |
 | [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
@@ -30,19 +30,23 @@ Documentation tracks ([N18](../reference/integration-decisions.md#n18-integratio
 | Protocol UI (Basecamp) | Upcoming | Step 21 |
 | Docs unify | Complete | Step 46 |
 | Forum post | Upcoming | Step 51; draft [forum-post.md](../external/forum-post.md) |
+| Wrap-up verification | Upcoming | Step 52 |
+| Repository structure | Upcoming | Step 53 (stub) |
 | Multi-token type alignment (native-only demo) | Complete | Step 49 |
 | Consistency and clarity polish | Complete | Step 50 |
 
 Engineering: Steps 26–33 complete; Steps 36–41 complete
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
-Steps 21, 51 upcoming (Basecamp UI; forum post).
+Steps 21, 51–53 upcoming (Basecamp UI; forum post; wrap-up verification;
+repository structure stub).
 Step 48 wontfix (program-graph LEZ unify / AT config drop).
 Step 46 complete (living docs IA). Step 49 complete (ImageID cut).
 Step 50 complete (consistency and clarity polish).
-Step 51 runs the full README Testing matrix on the
-current ImageID (including privacy and testnet) and publishes the forum post.
-That checkpoint is not blocked on Step 21.
+Step 52 records the wrap-up matrix on the current ImageID
+(unit, localnet, testnet, private execution).
+Step 51 publishes the forum post from that gate log.
+Step 53 is a stub for later repository-structure work.
 Step 44 complete (payer/payee close). Step 45 complete (deps and patches freeze).
 Step 47 complete (role terminology).
 Step 20 wontfix (formal Developer Journey logos-docs publish; replaced by Step 46
@@ -101,7 +105,9 @@ paid Store mode on the provider.
 | Program-graph LEZ unify + drop AT hex config | 48 (wontfix) |
 | LIP-155 multi-token type alignment (native-only demo) | 49 (complete) |
 | Consistency and clarity polish | 50 (complete) |
-| Forum post | 51 (upcoming; after 50) |
+| Forum post | 51 (upcoming; after 52) |
+| Wrap-up verification | 52 (upcoming; after 50) |
+| Repository structure | 53 (upcoming; stub) |
 
 Step 25 (in-process demo coordinator module) is wontfix
 ([packet](wontfix/step-25-demo-coordination-module.md)).
@@ -164,6 +170,8 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | --- | --- | --- |
 | 21 | Protocol UI: Basecamp plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
 | 51 | Forum post | Upcoming — [step-51-forum-post.md](upcoming/step-51-forum-post.md) |
+| 52 | Wrap-up verification | Upcoming — [step-52-wrap-up-verification.md](upcoming/step-52-wrap-up-verification.md) |
+| 53 | Repository structure | Upcoming — [step-53-repository-structure.md](upcoming/step-53-repository-structure.md) |
 
 ## Waiting steps
 
