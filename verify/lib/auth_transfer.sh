@@ -112,6 +112,33 @@ ps_logoscore_daemon_restart_after_wallet() {
   ps_at_sync_wallet
 }
 
+# Pinata via lgs wallet topup with logoscore down (one writer of storage.json).
+# Prints "<balance> <attempts>" on stdout. Restarts the daemon before return.
+ps_lgs_pinata_until() {
+  local acct="$1" target="$2"
+  local bal=0 attempts=0 max
+  [[ -n "$acct" && -n "$target" ]] || return 1
+  max=$((target / 150 + 3))
+  (( max < 1 )) && max=1
+  ps_logoscore_daemon_stop_for_wallet
+  while (( bal < target )); do
+    attempts=$((attempts + 1))
+    if (( attempts > max )); then
+      ps_logoscore_daemon_restart_after_wallet || true
+      echo "$bal $attempts"
+      return 1
+    fi
+    timeout 30 lgs wallet topup --address "Public/$acct" >/dev/null 2>&1 || true
+    bal="$(ps_account_balance "$acct" 2>/dev/null | tr -d '[:space:]' || echo 0)"
+    bal="${bal:-0}"
+  done
+  ps_logoscore_daemon_restart_after_wallet || {
+    echo "$bal $attempts"
+    return 1
+  }
+  echo "$bal $attempts"
+}
+
 # payment_streams_module caches the LEZ wallet handle; reload after handoff reopen.
 ps_reload_payment_streams_wallet() {
   command -v logoscore >/dev/null 2>&1 || return 0

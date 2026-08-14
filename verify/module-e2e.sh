@@ -407,9 +407,12 @@ account_id_to_hex() {
     echo "${id,,}"
     return 0
   fi
-  line="$(logoscore call logos_execution_zone account_id_from_base58 "$id" 2>/dev/null | tail -1)"
+  line="$(logoscore call logos_execution_zone account_id_from_base58 "$id" 2>/dev/null | tail -1)" || true
   hex="$(python3 -c 'import json,sys; o=json.loads(sys.argv[1]); r=o.get("result",""); print(r if isinstance(r,str) else "")' "$line" 2>/dev/null || true)"
-  [[ -n "$hex" ]] && echo "${hex,,}"
+  if [[ -n "$hex" ]]; then
+    echo "${hex,,}"
+  fi
+  return 0
 }
 
 amount_le16_hex() {
@@ -918,18 +921,13 @@ if ps_is_local; then
       owner_target=$((DEPOSIT + 50))
       funder_bal=0
       funder_attempts=0
-      funder_max=$((owner_target / 150 + 3))
-      while (( funder_bal < owner_target )); do
-        funder_attempts=$((funder_attempts + 1))
-        if (( funder_attempts > funder_max )); then
-          narr_fail "Public funder not funded after $funder_max faucet claims (balance=$funder_bal, target=$owner_target)"
-          FAILURES=$((FAILURES + 1))
-          break
-        fi
-        timeout 30 lgs wallet topup --address "Public/$PUBLIC_FUNDER" >/dev/null 2>&1 || true
-        sync_wallet
-        funder_bal="$(ps_account_balance "$PUBLIC_FUNDER" 2>/dev/null || echo 0)"
-      done
+      if funder_out="$(ps_lgs_pinata_until "$PUBLIC_FUNDER" "$owner_target")"; then
+        read -r funder_bal funder_attempts <<<"$funder_out"
+      else
+        read -r funder_bal funder_attempts <<<"${funder_out:-0 0}"
+        narr_fail "Public funder not funded after pinata (balance=$funder_bal, target=$owner_target)"
+        FAILURES=$((FAILURES + 1))
+      fi
       narr_verbose "Funder balance $funder_bal (target $owner_target) after $funder_attempts faucet claim(s)"
       FUNDER_HEX="$(account_id_to_hex "$PUBLIC_FUNDER")"
       OWNER_HEX="$(account_id_to_hex "$OWNER")"
@@ -945,7 +943,7 @@ if ps_is_local; then
           FAILURES=$((FAILURES + 1))
         fi
       else
-        timeout 30 lgs wallet topup --address "Public/$PROVIDER" >/dev/null 2>&1 || true
+        ps_lgs_pinata_until "$PROVIDER" 150 >/dev/null || true
       fi
       # Pinata funding advances Clock10; wait so create_stream stamps a near-wall accrued_as_of
       # before pause/resume (otherwise catch-up can auto-pause the stream via at_time).
@@ -955,26 +953,16 @@ if ps_is_local; then
       fi
     else
       narr_step "Funding owner and provider for gas"
-      # The pinata faucet pays ~150 tokens per claim. The owner must hold at least
-      # DEPOSIT (+ buffer) so the deposit instruction can debit it; a single claim
-      # is not enough for the fixture's demo_deposit_amount, so claim repeatedly
-      # until the owner balance covers the deposit.
       owner_target=$((DEPOSIT + 50))
       owner_attempts=0
-      owner_max=$((owner_target / 150 + 3))
-      owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null | tr -d '[:space:]' || true)"
-      owner_bal="${owner_bal:-0}"
-      while (( owner_bal < owner_target )); do
-        owner_attempts=$((owner_attempts + 1))
-        if (( owner_attempts > owner_max )); then
-          narr_fail "Owner not funded after $owner_max faucet claims (balance=$owner_bal, target=$owner_target)"
-          break
-        fi
-        timeout 30 lgs wallet topup --address "Public/$OWNER" >/dev/null 2>&1 || true
-        sync_wallet
-        owner_bal="$(ps_account_balance "$OWNER" 2>/dev/null | tr -d '[:space:]' || true)"
-        owner_bal="${owner_bal:-0}"
-      done
+      owner_bal=0
+      if owner_out="$(ps_lgs_pinata_until "$OWNER" "$owner_target")"; then
+        read -r owner_bal owner_attempts <<<"$owner_out"
+      else
+        read -r owner_bal owner_attempts <<<"${owner_out:-0 0}"
+        narr_fail "Owner not funded after pinata (balance=$owner_bal, target=$owner_target)"
+        FAILURES=$((FAILURES + 1))
+      fi
       narr_verbose "Owner balance $owner_bal (target $owner_target) after $owner_attempts faucet claim(s)"
       # D37.11: public provider needs gas; private provider gets dust shield (no Public pinata).
       if ps_is_provider_privacy_e2e; then
@@ -985,7 +973,7 @@ if ps_is_local; then
           FAILURES=$((FAILURES + 1))
         fi
       else
-        timeout 30 lgs wallet topup --address "Public/$PROVIDER" >/dev/null 2>&1 || true
+        ps_lgs_pinata_until "$PROVIDER" 150 >/dev/null || true
       fi
     fi
   fi
