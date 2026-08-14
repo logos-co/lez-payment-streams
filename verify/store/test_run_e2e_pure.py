@@ -59,3 +59,19 @@ def test_testnet_e2e_create_via_default(monkeypatch) -> None:
     assert rle.testnet_e2e_create_via() == "chainaction"
     monkeypatch.setenv("E2E_CREATE_VIA", "seed")
     assert rle.testnet_e2e_create_via() == "seed"
+
+
+def test_reset_cloned_wallet_sync_cursor(tmp_path: Path) -> None:
+    import json
+
+    storage = tmp_path / "storage.json"
+    storage.write_text(json.dumps({"last_synced_block": 7396, "key_chain": {}}) + "\n")
+    rle._reset_cloned_wallet_sync_cursor(storage)
+    assert json.loads(storage.read_text())["last_synced_block"] == 0
+
+    rle._reset_cloned_wallet_sync_cursor(storage)
+    assert json.loads(storage.read_text())["last_synced_block"] == 0
+
+    missing = tmp_path / "absent.json"
+    rle._reset_cloned_wallet_sync_cursor(missing)
+    assert not missing.exists()

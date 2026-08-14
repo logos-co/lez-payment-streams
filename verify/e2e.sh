@@ -38,8 +38,10 @@ cmd_build() {
   ps_log_info "Building payment_streams_module..."
   local ps_out
   ps_out="$(ps_nix_build "$REPO_ROOT/module#lgx-portable")"
-  ps_install_lgx "$ps_out"/*.lgx "$modules_user"
-  ps_install_lgx "$ps_out"/*.lgx "$modules_provider"
+  local ps_lgx
+  ps_lgx="$(ps_first_lgx "$ps_out")"
+  ps_install_lgx "$ps_lgx" "$modules_user"
+  ps_install_lgx "$ps_lgx" "$modules_provider"
   
   # Build wallet module (patched)
   ps_log_info "Building logos_execution_zone (wallet)..."
@@ -77,8 +79,10 @@ cmd_build() {
     nix_extra+=(--override-input logos-delivery "path:${ld_root_for_flake}" --impure)
   fi
   dm_out="$(ps_nix_build "$dm_root#lgx-portable" "${nix_extra[@]}")"
-  ps_install_lgx "$dm_out"/*.lgx "$modules_user"
-  ps_install_lgx "$dm_out"/*.lgx "$modules_provider"
+  local dm_lgx
+  dm_lgx="$(ps_first_lgx "$dm_out")"
+  ps_install_lgx "$dm_lgx" "$modules_user"
+  ps_install_lgx "$dm_lgx" "$modules_provider"
   
   # Optional: overlay liblogosdelivery
   if [[ "${SKIP_LIBLOGOSDELIVERY_OVERLAY:-0}" != "1" ]]; then

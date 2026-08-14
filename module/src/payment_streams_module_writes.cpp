@@ -25,6 +25,7 @@
 namespace {
 
 using payment_streams_kit::ffiBufferTwoPhase;
+using payment_streams_kit::findRepoFile;
 using payment_streams_kit::fixtureManifestPath;
 using payment_streams_kit::hex32FromQString;
 using payment_streams_kit::kAccountIdHexLen;
@@ -32,6 +33,7 @@ using payment_streams_kit::kFfiSuccess;
 using payment_streams_kit::makeErrorJson;
 using payment_streams_kit::makeOkJson;
 using payment_streams_kit::parseWalletAccountJson;
+using payment_streams_kit::resolveRepoRelativePath;
 using payment_streams_kit::variantToU64;
 using payment_streams_kit::walletAccountIdHexFromBase58;
 

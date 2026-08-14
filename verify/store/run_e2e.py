@@ -654,7 +654,7 @@ def ensure_ok(parsed: dict, context: str) -> dict:
 
 def sequencer_block_height(sequencer_url: str) -> int | None:
     repo = Path(os.environ.get("REPO", Path.cwd()))
-    helper = repo / "verify" / "testnet_rpc.py"
+    helper = repo / "verify" / "testnet" / "testnet_rpc.py"
     if helper.is_file():
         proc = run(
             ["python3", str(helper), "block-height"],
@@ -1426,6 +1426,26 @@ def cfg_wallet_home(cfg: Path) -> Path:
     return cfg_wallet_paths(cfg)[1].parent
 
 
+def _reset_cloned_wallet_sync_cursor(storage: Path) -> None:
+    """Zero last_synced_block on a cloned wallet storage file.
+
+    Seed storage can carry a cursor from a longer prior localnet, and privacy
+    accounts are created after the clone's startup sync. sync_to_block no-ops
+    when the in-memory cursor is already at tip, so this file edit must be
+    followed by discard_and_reopen_wallet (see resync_wallet_from_genesis).
+    """
+    try:
+        obj = json.loads(storage.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if not isinstance(obj, dict):
+        return
+    if int(obj.get("last_synced_block", 0) or 0) == 0:
+        return
+    obj["last_synced_block"] = 0
+    storage.write_text(json.dumps(obj) + "\n", encoding="utf-8")
+
+
 def prepare_split_store_wallets(
     repo: Path,
     cfg_user: Path,
@@ -1448,6 +1468,7 @@ def prepare_split_store_wallets(
         home.mkdir(parents=True, exist_ok=True)
         shutil.copy2(base_config, home / "wallet_config.json")
         shutil.copy2(base_storage, home / "storage.json")
+        _reset_cloned_wallet_sync_cursor(home / "storage.json")
     user_wc = user_home / "wallet_config.json"
     user_ws = user_home / "storage.json"
     prov_wc = prov_home / "wallet_config.json"
@@ -1483,6 +1504,21 @@ def discard_and_reopen_wallet(cfg: Path, seq_url: str) -> None:
     reopen_logoscore_wallet(cfg, seq_url)
     logoscore_cmd(cfg, "load-module", "payment_streams_module")
     sync_wallet(cfg, seq_url)
+
+
+def resync_wallet_from_genesis(cfg: Path, seq_url: str) -> None:
+    """Save, zero last_synced_block on disk, reopen so sync walks from genesis.
+
+    Privacy accounts are created after the clone's startup sync, so that scan
+    never attributes historical notes. File-only cursor resets do not reach the
+    daemon's in-memory storage. discard_and_reopen_wallet reloads the file and
+    sync_wallet then matches prior notes to the new key-chain entries.
+    Otherwise a retry replays a spent nullifier and the sequencer silently
+    drops the tx (getTransaction stays null).
+    """
+    logoscore_cmd(cfg, "call", "logos_execution_zone", "save", timeout=60)
+    _reset_cloned_wallet_sync_cursor(cfg_wallet_paths(cfg)[1])
+    discard_and_reopen_wallet(cfg, seq_url)
 
 
 def reopen_logoscore_wallet(cfg: Path, seq_url: str) -> None:
@@ -2234,7 +2270,7 @@ def precreate_stream_before_daemons(
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
     release_logoscore_wallet(cfg_user)
     try:
-        proc = run(["bash", str(fixture), "stream", "create", "0"], cwd=repo, env=env, timeout=e2e_subprocess_timeout_s())
+        proc = run(["bash", str(fixture), "stream", "create", str(vault_id)], cwd=repo, env=env, timeout=e2e_subprocess_timeout_s())
     finally:
         reopen_logoscore_wallet(cfg_user, seq_url)
         reload_payment_streams_wallet(cfg_user, seq_url)
@@ -2389,7 +2425,7 @@ def plan_fresh_vault_for_store_run(
     )
     if chain == "testnet" and e2e_vault_ensure_via() != "chainaction":
         # Legacy testnet helper until testnet Store also uses module chainAction.
-        ensure_script = repo / "verify" / "store" / "ensure-testnet-vault.sh"
+        ensure_script = repo / "verify" / "testnet" / "ensure-testnet-vault.sh"
         wc = os.environ.get("WALLET_CONFIG", "")
         ws = os.environ.get("WALLET_STORAGE", "")
         seq = manifest.get("sequencer_url", "https://testnet.lez.logos.co/")
@@ -2594,11 +2630,11 @@ def setup_store_owner_privacy_accounts(
                 f"recycled private provider id {provider_b58} — run "
                 "./verify/testnet/prepare-testnet-privacy-seed.sh before Store privacy E2E"
             )
-    logoscore_cmd(cfg_user, "call", "logos_execution_zone", "save", timeout=60)
     # Split wallets: provider has its own storage (seed clone). Do not copy
     # user storage onto provider (D38.8). Full-privacy claim stays on user.
-    reload_payment_streams_wallet(cfg_user, seq_url)
-    sync_wallet(cfg_user, seq_url)
+    # Rescan from genesis after save so historical notes attach to the
+    # just-created private owner (and combo private provider) keys.
+    resync_wallet_from_genesis(cfg_user, seq_url)
     sync_wallet(cfg_provider, seq_url)
 
     manifest["funder_account_id"] = funder_b58
@@ -2661,9 +2697,7 @@ def setup_store_provider_privacy_accounts(
     provider_hex, provider_b58 = _normalize_private_account_hex(
         cfg_provider, create_account(cfg_provider, private=True)
     )
-    logoscore_cmd(cfg_provider, "call", "logos_execution_zone", "save", timeout=60)
-    reload_payment_streams_wallet(cfg_provider, seq_url)
-    sync_wallet(cfg_provider, seq_url)
+    resync_wallet_from_genesis(cfg_provider, seq_url)
 
     manifest["provider_account_id"] = provider_b58
     manifest["provider_account_id_hex"] = provider_hex
@@ -3702,7 +3736,7 @@ def run_auth_transfer_ensure(
     wallet_home: Path,
 ) -> None:
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
-    ensure_script = repo / "verify" / "auth-transfer-ensure.sh"
+    ensure_script = repo / "verify" / "lib" / "auth-transfer-ensure.sh"
     if not ensure_script.is_file():
         raise E2EError(f"missing auth-transfer ensure script: {ensure_script}")
     # D37.11 / D38.8: AT-init public accounts only.
@@ -4910,7 +4944,11 @@ def main() -> int:
                 os.environ.get("CHAIN", "local").strip().lower() == "local"
                 and continuation_e2e_run()
                 and not os.environ.get("E2E_PRECREATED_STREAM_ID", "").strip()
+                and not owner_privacy_enabled()
             ):
+                # Seed create_stream needs a public signing key. PseudonymousFunding
+                # vault owner is private; chainAction create_demo_stream_for_run
+                # signs on the user host instead.
                 ensure_sequencer_advancing(repo, seq_url, artifact)
                 sync_wallet(cfg_user, seq_url)
                 precreate_stream_before_daemons(

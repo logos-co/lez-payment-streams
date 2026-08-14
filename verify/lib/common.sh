@@ -88,13 +88,33 @@ ps_require_command() {
 ps_nix_build() {
   local flake_ref="$1"
   shift
-  nix build "$flake_ref" -L --no-link --print-out-paths "$@" | tail -1
+  local out
+  if ! out="$(nix build "$flake_ref" -L --no-link --print-out-paths "$@" | tail -1)"; then
+    ps_fatal "nix build failed: $flake_ref"
+  fi
+  if [[ -z "$out" || ! -e "$out" ]]; then
+    ps_fatal "nix build produced no output path: $flake_ref"
+  fi
+  printf '%s\n' "$out"
+}
+
+ps_first_lgx() {
+  local dir="$1"
+  local match
+  match="$(compgen -G "$dir"/*.lgx | head -1 || true)"
+  if [[ -z "$match" || ! -f "$match" ]]; then
+    ps_fatal "no .lgx package in $dir"
+  fi
+  printf '%s\n' "$match"
 }
 
 # Module installation
 ps_install_lgx() {
   local lgx_path="$1"
   local dest_dir="$2"
+  if [[ ! -f "$lgx_path" ]]; then
+    ps_fatal "lgx package missing: $lgx_path"
+  fi
   mkdir -p "$dest_dir"
   lgpm --modules-dir "$dest_dir" install --file "$lgx_path" --force
 }

@@ -3384,8 +3384,6 @@ dependencies = [
  "sequencer_service_rpc",
  "serde",
  "serde_json",
- "spel",
- "spel-framework",
  "tokio",
  "wallet",
 ]
@@ -6853,39 +6851,6 @@ dependencies = [
  "log",
  "rand 0.8.6",
  "sha1",
-]
-
-[[package]]
-name = "spel"
-version = "0.6.0"
-source = "git+https://github.com/logos-co/spel.git?tag=v0.6.0#0cb7e0980535af619482cf1c823f4d394b3ebd61"
-dependencies = [
- "base58",
- "borsh",
- "common",
- "hex",
- "lee",
- "lee_core",
- "risc0-zkvm",
- "sequencer_service_rpc",
- "serde",
- "serde_json",
- "spel-framework-core",
- "tokio",
- "toml",
- "wallet",
-]
-
-[[package]]
-name = "spel-framework"
-version = "0.6.0"
-source = "git+https://github.com/logos-co/spel.git?tag=v0.6.0#0cb7e0980535af619482cf1c823f4d394b3ebd61"
-dependencies = [
- "borsh",
- "lee_core",
- "serde_json",
- "spel-framework-core",
- "spel-framework-macros",
 ]
 
 [[package]]

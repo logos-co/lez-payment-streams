@@ -48,8 +48,56 @@ Owner-close is the default module happy path;
 `SKIP_BUILD=1` after the first local prepare that already built `.lgx`.
 Testnet legs use existing fixtures (`make bootstrap-testnet` /
 `make bootstrap-testnet-module` only if those files are missing).
-Fund before each testnet privacy leg (`./scripts/fund-testnet-accounts.sh`).
+Fund before each testnet privacy leg (`./verify/testnet/fund-testnet-accounts.sh`).
 CPU prove is valid (D39.26).
+On the Step 53 tree the living runner is `./verify/e2e.sh`
+(coverage rows above still spell the pre-move `./scripts/e2e.sh`).
+
+## This run
+
+Partial. Branch `feat/step-53-repository-structure`.
+Stopped after local private stub.
+Do not close this step. No gate log yet.
+
+Product ImageID (README, funded snapshot, `verify/fixtures/testnet-module.json`)
+is `c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a`.
+This session rebuilt the guest to
+`cdc9bfea4fdb6490a99929619bfb2c0eefd36a936668b1b3a22f684e66b44f0c`
+and deployed that ELF to the live localnet (sequencer block 1743).
+`verify/fixtures/testnet.json` is missing.
+
+Operator log: `/tmp/step52-verify/log.txt`.
+
+### Verified
+
+| Function | Status | Artifact |
+| --- | --- | --- |
+| Clippy | pass | `/tmp/step52-verify/clippy.log` (`RISC0_SKIP_BUILD=1 cargo clippy --workspace`) |
+| Rust unit / integration | pass | `/tmp/step52-verify/cargo-test.log` (`RISC0_DEV_MODE=1 cargo test --workspace`) |
+| Terminology | pass | `make check-terminology` (also `make check`) |
+| Qt kit | pass | `/tmp/step52-verify/nix-tests.log` (`nix build ./module#checks.x86_64-linux.unit-tests -L`) |
+| Module lifecycle local public | pass | `.scaffold/e2e/artifacts/module-e2e-20260814T144631.log` |
+| Provider-close local public | pass | `.scaffold/e2e/artifacts/module-e2e-20260814T145407.log` |
+| Close / create reject tokens | pass | `.scaffold/e2e/artifacts/module-e2e-20260814T150159.log` |
+| Store eligibility local public | pass | `.scaffold/e2e/artifacts/e2e-20260814T153211.log` |
+| Module private stub | pass | `.scaffold/e2e/artifacts/module-e2e-20260814T154533.log` (`RISC0_DEV_MODE=1 OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`) |
+| Store private stub | pass | `.scaffold/e2e/artifacts/e2e-20260814T174058.log` (`RISC0_DEV_MODE=1 OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`) |
+
+Local private stub is green after two harness fixes in `verify/store/run_e2e.py`:
+`resync_wallet_from_genesis` after privacy account create (spent-nullifier replay on the seed clone),
+and skip continuation seed precreate when `OWNER_PRIVACY=1` (`signing key not found`).
+
+### Not verified
+
+| Function | Status | Notes |
+| --- | --- | --- |
+| Module local real-prove | not run | `RISC0_DEV_MODE=0` |
+| Module testnet public | not run | `verify/fixtures/testnet-module.json` is present |
+| Store testnet public | not run | `verify/fixtures/testnet.json` missing (`make bootstrap-testnet`) |
+| Module testnet private | not run | fund first |
+| Store testnet private | not run | fund first |
+
+Full wrap-up is not green. Step 51 must not fill wrap-up claims from this run.
 
 ## Time estimates
 
@@ -108,4 +156,4 @@ testnet public → testnet private so a cheap fail stops a dearer leg.
 - [step-51-forum-post.md](step-51-forum-post.md)
 - [step-39-testnet-gate-log.md](../completed/step-39-testnet-gate-log.md)
 - [README Testing](../../../README.md#testing)
-- [verification-matrix.md](../../reference/verification-matrix.md)
+- [matrix.md](../../reference/matrix.md)

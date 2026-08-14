@@ -90,11 +90,9 @@ fund_owner_account() {
     return 0
   fi
 
-  ps_log_info "Initializing owner $owner under authenticated_transfer program..."
-  if ! wallet auth-transfer init --account-id "Public/$owner" >/dev/null 2>&1; then
-    ps_log_info "auth-transfer init for $owner returned non-zero (may already be initialized); continuing"
-  fi
-  wait_chain_settle
+  # Store E2E already AT-inits via auth-transfer-ensure.sh. A second
+  # wallet auth-transfer init after logoscore stop deadlocks on storage
+  # (futex) and burns the 600s subprocess budget before pinata runs.
 
   ps_log_info "Funding owner $owner via pinata faucet to >= $target (balance now $bal, prize=$PINATA_PRIZE per claim)..."
   local attempts=0 max_attempts
@@ -104,7 +102,7 @@ fund_owner_account() {
     if (( attempts > max_attempts )); then
       ps_fatal "Owner $owner not funded after $max_attempts pinata claims (balance=$bal, target=$target)"
     fi
-    if ! wallet pinata claim --to "Public/$owner" >/dev/null 2>&1; then
+    if ! timeout 90 wallet pinata claim --to "Public/$owner" >/dev/null 2>&1; then
       ps_log_info "pinata claim attempt $attempts returned non-zero; retrying"
       wait_chain_settle
       continue
