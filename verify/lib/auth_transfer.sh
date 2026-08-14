@@ -71,11 +71,30 @@ ps_at_logoscore_open_wallet() {
 }
 
 # Full daemon stop so wallet CLI has exclusive storage access (D39.22).
+ps_logoscore_rpc_down() {
+  ! timeout 2 logoscore call logos_execution_zone save >/dev/null 2>&1
+}
+
 ps_logoscore_daemon_stop_for_wallet() {
   command -v logoscore >/dev/null 2>&1 || return 0
   logoscore call logos_execution_zone save >/dev/null 2>&1 || true
   timeout 20 logoscore stop >/dev/null 2>&1 || true
-  sleep 2
+  if [[ -n "${DAEMON_PID:-}" ]]; then
+    kill "$DAEMON_PID" 2>/dev/null || true
+    wait "$DAEMON_PID" 2>/dev/null || true
+    DAEMON_PID=""
+  fi
+  local i
+  for i in $(seq 1 15); do
+    if ps_logoscore_rpc_down; then
+      sleep 1
+      return 0
+    fi
+    timeout 5 logoscore stop >/dev/null 2>&1 || true
+    sleep 1
+  done
+  echo "logoscore still reachable after exclusive-stop" >&2
+  return 1
 }
 
 # Restart logoscore daemon after wallet CLI; requires MODULES (and optional DAEMON_LOG).
@@ -85,6 +104,7 @@ ps_logoscore_daemon_restart_after_wallet() {
     echo "MODULES required to restart logoscore after wallet CLI" >&2
     return 1
   }
+  ps_logoscore_rpc_down || ps_logoscore_daemon_stop_for_wallet || return 1
   local log="${DAEMON_LOG:-/dev/null}"
   # Inherit raised RPC budget on the daemon only (core_service→module); do not
   # export into the caller shell or logoscore stop hangs for minutes (D39.24).
@@ -105,6 +125,10 @@ ps_logoscore_daemon_restart_after_wallet() {
   local stats
   stats="${WALLET_STATISTICS:-$(ps_ensure_wallet_statistics "$WALLET_STORAGE")}"
   open_line="$(logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE" "$stats" 2>/dev/null | tail -1)" || true
+  if grep -qi 'already open' <<<"${open_line:-}"; then
+    echo "wallet already open after restart (stale in-memory handle; exclusive-stop did not release): ${open_line}" >&2
+    return 1
+  fi
   if ! python3 -c 'import json,sys; d=json.loads(sys.argv[1]); sys.exit(0 if d.get("status")=="ok" or d.get("result")==0 else 1)' "$open_line" 2>/dev/null; then
     echo "wallet open failed after logoscore restart: ${open_line:-<empty>}" >&2
     return 1

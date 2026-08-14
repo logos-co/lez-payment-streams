@@ -434,8 +434,8 @@ ps_assert_private_account_keys() {
 try:
   o=json.loads(sys.argv[1]); r=o.get("result",o)
   if isinstance(r,str) and r.strip().startswith("{"): r=json.loads(r)
-  ok=isinstance(r,dict) and (r.get("status")=="ok" or "nullifier_public_key" in r or "npk" in r)
-  sys.exit(0 if ok else 1)
+  npk=str((r or {}).get("nullifier_public_key") or (r or {}).get("npk") or "").replace("0x","").strip()
+  sys.exit(0 if isinstance(r,dict) and len(npk)==64 else 1)
 except Exception:
   sys.exit(1)' "$keys_line" 2>/dev/null; then
     narr_fail "Private keys unresolved after wallet shield ($label)"
