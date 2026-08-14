@@ -30,6 +30,7 @@ version = "0.1.0"
 
 [framework.idl]
 spec = "lssa-idl/0.1.0"
+# Unused by this repo. Living IDL is program/lez-payment-streams-idl.json via spel.toml / make idl. Do not create idl/.
 path = "idl"
 
 [localnet]

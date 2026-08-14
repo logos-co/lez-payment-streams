@@ -1,4 +1,4 @@
-# lez-payment-streams — SPEL Program
+# lez-payment-streams
 #
 # Quick start:
 #   make build idl deploy setup
@@ -24,7 +24,7 @@ PHONY_TARGETS := $(shell awk -F: '/^[a-zA-Z0-9][a-zA-Z0-9_.-]*:/ { gsub(/ .*/, "
 .PHONY: $(PHONY_TARGETS)
 
 help: ## Show this help
-	@echo "lez-payment-streams — SPEL Program"
+	@echo "lez-payment-streams"
 	@echo ""
 	@awk ' \
 	  /^[a-zA-Z0-9][a-zA-Z0-9_.-]*:/ { \
@@ -58,7 +58,7 @@ idl: ## Generate IDL JSON from program source (stock spel CLI)
 	@echo "✅ IDL written to $(IDL_FILE)"
 
 deploy: ## Deploy program to sequencer (pinned LEZ wallet; set LEE_WALLET_HOME_DIR)
-	@test -n "$$LEE_WALLET_HOME_DIR" || (echo "ERROR: set LEE_WALLET_HOME_DIR (see docs/archive/steps/local-chain-fixture.md)"; exit 1)
+	@test -n "$$LEE_WALLET_HOME_DIR" || (echo "ERROR: set LEE_WALLET_HOME_DIR"; exit 1)
 	@test -f "$(PROGRAM_BIN)" || (echo "ERROR: Binary not found. Run 'make build' first."; exit 1)
 	wallet deploy-program $(PROGRAM_BIN)
 	@echo "✅ Program deployed"
@@ -74,17 +74,6 @@ setup: ## Create accounts needed for the program
 	$(call save_var,SIGNER_ID,$(SIGNER_ID))
 	@echo ""
 	@echo "✅ Account saved to $(STATE_FILE)"
-
-status: ## Show saved state and binary info
-	@echo "lez-payment-streams Status"
-	@echo "──────────────────────────────────────"
-	@if [ -f "$(STATE_FILE)" ]; then cat $(STATE_FILE); else echo "(no state — run 'make setup')"; fi
-	@echo ""
-	@echo "Binaries:"
-	@ls -la $(PROGRAM_BIN) 2>/dev/null || echo "  lez_payment_streams.bin: NOT BUILT (run 'make build')"
-	@echo ""
-	@echo "IDL:"
-	@ls -la $(IDL_FILE) 2>/dev/null || echo "  $(IDL_FILE): NOT GENERATED (run 'make idl')"
 
 clean: ## Remove saved state
 	rm -f $(STATE_FILE) $(STATE_FILE).tmp

@@ -8,8 +8,6 @@
 #include <QJsonValue>
 #include <QJsonParseError>
 #include <QMetaType>
-#include <QProcess>
-#include <QProcessEnvironment>
 #include <QVariant>
 
 #include <functional>
@@ -530,15 +528,6 @@ bool guestElfLoadedInWalletProcess() {
     return !qEnvironmentVariableIsEmpty("PAYMENT_STREAMS_GUEST_BIN");
 }
 
-bool chainUsesTestnetSubmit() {
-    // Retirement pending live-testnet verification; dispatched unconditionally to
-    // FFI in Step 26. Remove chainUsesTestnetSubmit,
-    // submitGenericPublicViaTestnetHelper, verify/testnet/submit/, and
-    // LEZ_TESTNET_SUBMIT plumbing once MODE=store CHAIN=testnet passes on the
-    // live testnet.
-    return false;
-}
-
 QString buildGenericPublicPayloadJson(const QStringList& accountHexIds,
                                       const QList<bool>& signingFlags,
                                       const QList<uint8_t>& instructionBytes,
@@ -620,88 +609,6 @@ QString submitGenericPublicViaFfi(LogosAPI* api,
     return parseWalletSubmitJson(walletJson, &fields, errorOut);
 }
 
-QString submitGenericPublicViaTestnetHelper(const QString& payloadJson, QString* errorOut) {
-    QByteArray walletConfig = qgetenv("LEZ_TESTNET_WALLET_CONFIG");
-    QByteArray walletStorage = qgetenv("LEZ_TESTNET_WALLET_STORAGE");
-    if (walletConfig.isEmpty()) {
-        walletConfig = qgetenv("WALLET_CONFIG");
-    }
-    if (walletStorage.isEmpty()) {
-        walletStorage = qgetenv("WALLET_STORAGE");
-    }
-    if (walletConfig.isEmpty() || walletStorage.isEmpty()) {
-        const QString msg = QStringLiteral(
-            "CHAIN=testnet requires WALLET_CONFIG/WALLET_STORAGE (unified rc5 testnet wallet)");
-        if (errorOut != nullptr) {
-            *errorOut = msg;
-        }
-        return makeErrorJson(msg);
-    }
-
-    const QByteArray helperEnv = qgetenv("LEZ_TESTNET_SUBMIT");
-    const QString helperProgram =
-        helperEnv.isEmpty() ? QStringLiteral("lez-testnet-submit") : QString::fromUtf8(helperEnv);
-
-    QProcess process;
-    process.setProgram(helperProgram);
-    QStringList args{QStringLiteral("submit-public-tx"),
-                     QStringLiteral("--wallet-config"),
-                     QString::fromUtf8(walletConfig),
-                     QStringLiteral("--wallet-storage"),
-                     QString::fromUtf8(walletStorage)};
-    const QByteArray guestBin = qgetenv("PAYMENT_STREAMS_GUEST_BIN");
-    if (!guestBin.isEmpty()) {
-        args << QStringLiteral("--program-elf") << QString::fromUtf8(guestBin);
-    }
-    process.setArguments(args);
-    process.setProcessChannelMode(QProcess::MergedChannels);
-
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    process.setProcessEnvironment(env);
-
-    process.start();
-    if (!process.waitForStarted(15000)) {
-        const QString msg = QStringLiteral("lez-testnet-submit failed to start: %1").arg(process.errorString());
-        if (errorOut != nullptr) {
-            *errorOut = msg;
-        }
-        return makeErrorJson(msg);
-    }
-    process.write(payloadJson.toUtf8());
-    process.closeWriteChannel();
-    if (!process.waitForFinished(300000)) {
-        process.kill();
-        const QString msg = QStringLiteral("lez-testnet-submit timed out");
-        if (errorOut != nullptr) {
-            *errorOut = msg;
-        }
-        return makeErrorJson(msg);
-    }
-
-    const QString walletJson = QString::fromUtf8(process.readAllStandardOutput()).trimmed();
-    if (process.exitCode() != 0) {
-        QJsonObject fields;
-        if (!walletJson.isEmpty()) {
-            return parseWalletSubmitJson(walletJson, &fields, errorOut);
-        }
-        const QString msg =
-            QStringLiteral("lez-testnet-submit exit %1").arg(process.exitCode());
-        if (errorOut != nullptr) {
-            *errorOut = msg;
-        }
-        return makeErrorJson(msg);
-    }
-    if (walletJson.isEmpty()) {
-        const QString msg = QStringLiteral("lez-testnet-submit returned empty stdout");
-        if (errorOut != nullptr) {
-            *errorOut = msg;
-        }
-        return makeErrorJson(msg);
-    }
-    QJsonObject fields;
-    return parseWalletSubmitJson(walletJson, &fields, errorOut);
-}
-
 QList<uint8_t> walletAuthenticatedTransferElfBytes(LogosAPI* api, QString* errorOut) {
     // authenticated_transfer_elf is in the lp typed API but returns LogosMap
     // (nlohmann::json); the byte-extraction here is QVariant-shaped (Qt path),
@@ -772,9 +679,6 @@ QString submitGenericPublic(LogosAPI* api,
                                                               signingFlags,
                                                               instructionBytes,
                                                               programIdHex);
-    if (chainUsesTestnetSubmit()) {
-        return submitGenericPublicViaTestnetHelper(payloadJson, errorOut);
-    }
     return submitGenericPublicViaFfi(api, payloadJson, errorOut);
 }
 

@@ -30,7 +30,7 @@ Documentation tracks ([N18](../reference/decisions.md#n18-integration-demo-vs-pa
 | Docs unify | Complete | Step 46 |
 | Forum post | Upcoming | Step 51; draft [forum-post.md](../external/forum-post.md) |
 | Wrap-up verification | Upcoming | Step 52 |
-| Repository structure | Upcoming | Step 53 (stub) |
+| Repository structure | Upcoming | Step 53 |
 | Multi-token type alignment (native-only demo) | Complete | Step 49 |
 | Consistency and clarity polish | Complete | Step 50 |
 
@@ -38,14 +38,14 @@ Engineering: Steps 26–33 complete; Steps 36–41 complete
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
 Steps 21, 51–53 upcoming (Basecamp UI; forum post; wrap-up verification;
-repository structure stub).
+repository structure).
 Step 48 wontfix (program-graph LEZ unify / AT config drop).
 Step 46 complete (living docs IA). Step 49 complete (ImageID cut).
 Step 50 complete (consistency and clarity polish).
 Step 52 records the wrap-up matrix on the current ImageID
 (unit, localnet, testnet, private execution).
 Step 51 publishes the forum post from that gate log.
-Step 53 is a stub for later repository-structure work.
+Step 53 is upcoming (repository structure).
 Step 44 complete (payer/payee close). Step 45 complete (deps and patches freeze).
 Step 47 complete (role terminology).
 Step 20 wontfix (formal Developer Journey logos-docs publish; replaced by Step 46
@@ -106,7 +106,7 @@ paid Store mode on the provider.
 | Consistency and clarity polish | 50 (complete) |
 | Forum post | 51 (upcoming; after 52) |
 | Wrap-up verification | 52 (upcoming; after 50) |
-| Repository structure | 53 (upcoming; stub) |
+| Repository structure | 53 (upcoming) |
 
 Step 25 (in-process demo coordinator module) is wontfix
 ([packet](wontfix/step-25-demo-coordination-module.md)).

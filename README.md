@@ -16,7 +16,7 @@ Reproduce:
 
 ## Public testnet guest program
 
-The payment-streams guest on public testnet (`https://testnet.lez.logos.co/`) was last deployed on 2026-08-13 from freeze commit `8a0e374a7e7171cd5b60ad20d46b9510b057dfe3` (Step 49 native `token_id` / holding PDA). Pinned `program/methods/guest/Cargo.lock` for Docker guest-builder rustc 1.88.
+The payment-streams guest on public testnet (`https://testnet.lez.logos.co/`) was last deployed on 2026-08-13 from freeze commit `8a0e374a7e7171cd5b60ad20d46b9510b057dfe3` (native `token_id` / holding PDA). Pinned `program/methods/guest/Cargo.lock` for Docker guest-builder rustc 1.88.
 ImageID / `program_id_hex`: `c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a` (release ELF 373916 bytes).
 Deploy transaction `229dddd92e5184f4a44816ddda711b1eac51476248620a686807e091ffefba8b` (block 5873).
 SSOT fixture: [verify/fixtures/testnet-module.json](verify/fixtures/testnet-module.json).
@@ -80,7 +80,7 @@ Handles for README, reproduce docs, and the forum draft.
 | `local-public` | Local E2E, public accounts | `MODE=module ./verify/e2e.sh local run`. `MODE=store ./verify/e2e.sh local run`. |
 | `local-private` | Local privacy, stub receipts (`RISC0_DEV_MODE=1` default) | Same with `OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`. |
 | `testnet-public` | Public testnet | `MODE=module ./verify/e2e.sh testnet run`. `MODE=store ./verify/e2e.sh testnet run`. |
-| `testnet-private` | Testnet full privacy, real proving | `RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0` plus full privacy flags. Step 52 wrap-up dogfood leg. |
+| `testnet-private` | Testnet full privacy, real proving | `RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0` plus full privacy flags. |
 
 `./verify/e2e.sh local` and `./verify/e2e.sh testnet` set the network.
 Flag detail and artifacts: [verification-matrix.md](docs/reference/matrix.md).

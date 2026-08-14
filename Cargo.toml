@@ -1,4 +1,4 @@
-# LEZ git pin for host/guest/tests: tag v0.2.0 (program graph). Operator stack is v0.2.4 (Step 45). See docs/plan/completed/step-26-testnet-v02-migration.md.
+# LEZ git pin for host/guest/tests: tag v0.2.0 (program graph). Operator stack is v0.2.4. See docs/reference/pins.md.
 [workspace]
 members = [
     "program/core",

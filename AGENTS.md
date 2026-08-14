@@ -51,7 +51,7 @@ Step 35 (complete) supplies integrate-doc substance.
 Next: [Step 52](docs/plan/upcoming/step-52-wrap-up-verification.md)
 (wrap-up verification), then [Step 51](docs/plan/upcoming/step-51-forum-post.md)
 (forum post). [Step 53](docs/plan/upcoming/step-53-repository-structure.md)
-is a repository-structure stub.
+is upcoming (repository structure).
 
 Historical protocol CLI (complete):
 [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370);
@@ -61,7 +61,7 @@ Historical protocol CLI (complete):
 Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
 [Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post),
 [Step 52](docs/plan/upcoming/step-52-wrap-up-verification.md) (wrap-up verification),
-[Step 53](docs/plan/upcoming/step-53-repository-structure.md) (repository structure stub).
+[Step 53](docs/plan/upcoming/step-53-repository-structure.md) (repository structure).
 Step 52 records unit, localnet, and testnet E2E including private execution
 on the current ImageID. Step 51 publishes the forum post from that gate log.
 Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer and payee close),

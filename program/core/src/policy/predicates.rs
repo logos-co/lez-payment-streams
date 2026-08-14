@@ -212,7 +212,7 @@ fn stream_provider_binding_satisfies_expected_provider(
 
 #[cfg(test)]
 mod predicates_unit_tests {
-    //! Documented vectors called out under `step3-policy-and-implementor-notes.md` (reuse verbatim from Step 3b).
+    //! Documented policy vectors reused from the original implementor notes.
 
     use lee_core::account::AccountId;
 

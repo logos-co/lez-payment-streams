@@ -23,7 +23,7 @@ anyhow = "1.0"
 base58 = "0.2"
 clap = { version = "4.5", features = ["derive"] }
 hex = "0.4"
-# LEZ v0.2.0 (Step 26) — match scaffold.toml [repos.lez].pin (seed_localnet_fixture).
+# LEZ v0.2.0 — match scaffold.toml [repos.lez].pin (seed_localnet_fixture). See docs/reference/pins.md.
 lee = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0" }
 lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0" }
 common = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0" }
