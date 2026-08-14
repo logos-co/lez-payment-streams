@@ -1671,6 +1671,7 @@ def seed_vault_deposit_onchain(
     apply_e2e_wallet_poll_overrides(wallet_home)
     env = os.environ.copy()
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
+    env.pop("LD_LIBRARY_PATH", None)
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
     vault_id = int(manifest.get("vault_id", 0))
     if not owner_privacy_enabled():
@@ -3034,27 +3035,28 @@ def wallet_auth_transfer_send(
     wallet_home = Path(os.environ.get("LEE_WALLET_HOME_DIR", repo / ".scaffold" / "wallet"))
     env = os.environ.copy()
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
+    env.pop("LD_LIBRARY_PATH", None)
     # Prepend pinned LEZ release wallet (same as ps_prepend_lez_wallet_path).
     cache = run(
         ["bash", "-c", f'source "{repo}/verify/lib/common.sh" >/dev/null && ps_lez_cache'],
         cwd=repo,
         timeout=30,
     )
+    wallet_bin = "wallet"
     if cache.returncode == 0:
         release = Path((cache.stdout or "").strip()) / "target" / "release"
-        if (release / "wallet").is_file():
+        pinned = release / "wallet"
+        if pinned.is_file():
             env["PATH"] = f"{release}:{env.get('PATH', '')}"
+            wallet_bin = str(pinned)
 
     narrator.step(f"Shield via wallet auth-transfer send ({label}; real prove)")
     # Exclusive handoff for this host's storage only (split wallets: peer untouched).
     wallet_home = cfg_wallet_home(cfg)
-    # Pinned LEZ wallet reads LEE_*; some builds only honor NSSA_*. Set both.
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
     env["NSSA_WALLET_HOME_DIR"] = str(wallet_home)
-    # Real prove must reach the public sequencer; never inherit soft mode.
     env["RISC0_DEV_MODE"] = os.environ.get("RISC0_DEV_MODE", "1").strip()
     stop_store_host_for_wallet_cli(cfg)
-    # CPU prove measured ~1020s; 1800s is ~75% headroom on both networks.
     timeout_s = int(os.environ.get("PS_WALLET_SHIELD_TIMEOUT", "1800"))
     orphan_tip_blocks = int(os.environ.get("PS_PPE_ORPHAN_TIP_BLOCKS", "8"))
     orphan_deadline_s = int(os.environ.get("PS_PPE_ORPHAN_DEADLINE_S", "240"))
@@ -3062,8 +3064,12 @@ def wallet_auth_transfer_send(
     timed_out = False
     orphan = False
     tx_hash: str | None = None
+    is_testnet = os.environ.get("CHAIN", "local").strip().lower() == "testnet"
     cmd = [
-        "wallet",
+        "env",
+        "-u",
+        "LD_LIBRARY_PATH",
+        wallet_bin,
         "auth-transfer",
         "send",
         "--from",

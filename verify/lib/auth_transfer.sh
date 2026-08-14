@@ -184,7 +184,7 @@ ps_auth_transfer_init_one() {
   if [[ -n "$wallet_bin" && -n "${LEE_WALLET_HOME_DIR:-}" ]]; then
     via="wallet"
     ps_logoscore_daemon_stop_for_wallet
-    timeout 90 "$wallet_bin" auth-transfer init --account-id "Public/$acct" >/dev/null 2>&1 || true
+    ps_wallet_cli_timeout 90 auth-transfer init --account-id "Public/$acct" >/dev/null 2>&1 || true
     if [[ -n "${MODULES:-}" ]]; then
       ps_logoscore_daemon_restart_after_wallet || true
     fi
@@ -247,7 +247,7 @@ ps_auth_transfer_ensure() {
 # On failure prints wallet stderr/stdout to stdout for the caller to capture.
 ps_wallet_auth_transfer_send() {
   local from_b58="$1" to_b58="$2" amount="$3"
-  local wallet_bin out_file rc=0
+  local out_file rc=0 bin
 
   from_b58="${from_b58#Public/}"
   from_b58="${from_b58#Private/}"
@@ -258,29 +258,27 @@ ps_wallet_auth_transfer_send() {
     echo "LEE_WALLET_HOME_DIR required for wallet auth-transfer send" >&2
     return 1
   }
-  # Some wallet builds only honor NSSA_WALLET_HOME_DIR; keep both in sync.
   export NSSA_WALLET_HOME_DIR="${NSSA_WALLET_HOME_DIR:-$LEE_WALLET_HOME_DIR}"
 
-  ps_prepend_lez_wallet_path
-  wallet_bin="$(command -v wallet 2>/dev/null || true)"
-  [[ -n "$wallet_bin" ]] || {
+  bin="$(ps_pinned_lez_wallet_bin)" || {
     echo "wallet binary not on PATH (pinned LEZ release)" >&2
     return 1
   }
+  ps_assert_pinned_wallet_bin "$bin" || return $?
 
   out_file="$(mktemp "${TMPDIR:-/tmp}/ps-wallet-shield.XXXXXX")"
   # Exclusive daemon-stop so wallet CLI is the sole writer. close() is a no-op
   # on this LEZ pin; leaving the daemon up lets per-block autosave clobber the
   # CLI write (NSKs from the shield never persist).
   ps_logoscore_daemon_stop_for_wallet
+  ps_assert_logoscore_down_for_wallet_cli || return 1
   local rc=0
-  # CPU prove measured ~1020s; 1800s is ~75% headroom on both networks.
   local shield_timeout="${PS_WALLET_SHIELD_TIMEOUT:-1800}"
-  timeout "$shield_timeout" env \
+  timeout "$shield_timeout" env -u LD_LIBRARY_PATH \
     LEE_WALLET_HOME_DIR="$LEE_WALLET_HOME_DIR" \
     NSSA_WALLET_HOME_DIR="$NSSA_WALLET_HOME_DIR" \
     RISC0_DEV_MODE="${RISC0_DEV_MODE:-1}" \
-    "$wallet_bin" auth-transfer send \
+    "$bin" auth-transfer send \
     --from "Public/$from_b58" \
     --to "Private/$to_b58" \
     --amount "$amount" >"$out_file" 2>&1 || rc=$?

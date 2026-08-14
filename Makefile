@@ -60,7 +60,12 @@ idl: ## Generate IDL JSON from program source (stock spel CLI)
 deploy: ## Deploy program to sequencer (pinned LEZ wallet; set LEE_WALLET_HOME_DIR)
 	@test -n "$$LEE_WALLET_HOME_DIR" || (echo "ERROR: set LEE_WALLET_HOME_DIR"; exit 1)
 	@test -f "$(PROGRAM_BIN)" || (echo "ERROR: Binary not found. Run 'make build' first."; exit 1)
-	wallet deploy-program $(PROGRAM_BIN)
+	@bash -c 'source verify/lib/common.sh >/dev/null; \
+	  bin="$$(ps_pinned_lez_wallet_bin)" || exit 1; \
+	  echo "wallet=$$bin"; \
+	  echo "PROGRAM_BIN=$(PROGRAM_BIN)"; \
+	  ps_assert_pinned_wallet_bin "$$bin" || exit 2; \
+	  env -u LD_LIBRARY_PATH "$$bin" deploy-program "$(PROGRAM_BIN)"'
 	@echo "✅ Program deployed"
 
 program-id: ## Show ProgramId for built binary

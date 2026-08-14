@@ -529,6 +529,69 @@ ps_prepend_lez_wallet_path() {
   fi
 }
 
+ps_pinned_lez_wallet_bin() {
+  ps_prepend_lez_wallet_path
+  local pinned bin
+  pinned="$(ps_lez_cache)/target/release/wallet"
+  if [[ -x "$pinned" ]]; then
+    printf '%s\n' "$pinned"
+    return 0
+  fi
+  bin="$(command -v wallet 2>/dev/null || true)"
+  [[ -n "$bin" ]] || return 1
+  printf '%s\n' "$bin"
+}
+
+ps_assert_pinned_wallet_bin() {
+  local bin="$1"
+  local cache
+  cache="$(ps_lez_cache)"
+  [[ -n "$bin" ]] || {
+    echo "ERROR: wallet binary not found (pinned LEZ release under $cache/target/release)" >&2
+    return 1
+  }
+  case "$bin" in
+    "$cache"/*) return 0 ;;
+  esac
+  echo "ERROR: wallet resolves outside the pinned LEZ release: $bin" >&2
+  echo "  expected under $cache/target/release (run lgs setup / build wallet)" >&2
+  return 2
+}
+
+# Fail fast if logoscore still answers; a held storage.json futex-waits the CLI.
+ps_assert_logoscore_down_for_wallet_cli() {
+  command -v logoscore >/dev/null 2>&1 || return 0
+  if timeout 2 logoscore call logos_execution_zone save >/dev/null 2>&1; then
+    echo "ERROR: logoscore still holds storage.json; stop the daemon before wallet CLI" >&2
+    return 1
+  fi
+  return 0
+}
+
+ps_wallet_cli() {
+  local bin
+  bin="$(ps_pinned_lez_wallet_bin)" || {
+    echo "wallet binary not on PATH (pinned LEZ release)" >&2
+    return 1
+  }
+  ps_assert_pinned_wallet_bin "$bin" || return $?
+  ps_assert_logoscore_down_for_wallet_cli || return 1
+  env -u LD_LIBRARY_PATH "$bin" "$@"
+}
+
+ps_wallet_cli_timeout() {
+  local secs="$1"
+  shift
+  local bin
+  bin="$(ps_pinned_lez_wallet_bin)" || {
+    echo "wallet binary not on PATH (pinned LEZ release)" >&2
+    return 1
+  }
+  ps_assert_pinned_wallet_bin "$bin" || return $?
+  ps_assert_logoscore_down_for_wallet_cli || return 1
+  timeout "$secs" env -u LD_LIBRARY_PATH "$bin" "$@"
+}
+
 # ImageID (hex bytes) of the authenticated_transfer program for on-chain verify.
 # Override: PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX
 # Under the Step 45 split, resolve from the operator LEZ cache (live sequencer AT),
