@@ -402,8 +402,16 @@ cmd_stream_create() {
   manifest="${FIXTURE_MANIFEST:-$REPO_ROOT/verify/fixtures/localnet.json}"
   owner="$(ps_json_get "$manifest" owner_account_id)"
   provider="$(ps_json_get "$manifest" provider_account_id)"
-  vault_id="${1:-0}"
-  
+  vault_id="${1:-${VAULT_ID:-}}"
+  local manifest_vault
+  manifest_vault="$(ps_json_get "$manifest" vault_id)"
+  if [[ -z "$vault_id" ]]; then
+    vault_id="${manifest_vault:-0}"
+  fi
+  if [[ -n "$manifest_vault" && "$vault_id" != "$manifest_vault" ]]; then
+    ps_fatal "seed vault_id=$vault_id != manifest vault_id=$manifest_vault; pass the funded vault"
+  fi
+
   wait_clock_synced
   wait_chain_settle
   

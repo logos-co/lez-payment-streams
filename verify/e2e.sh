@@ -152,6 +152,25 @@ cmd_prepare_local() {
     if [[ "$($REPO_ROOT/verify/lifecycle.sh localnet status)" != "running" ]]; then
       "$REPO_ROOT/verify/lifecycle.sh" localnet start
     fi
+    local stub="$REPO_ROOT/verify/fixtures/localnet.json"
+    if [[ ! -f "$stub" ]]; then
+      local pid
+      pid="$(ps_guest_bin_image_id_hex "$(ps_default_guest_bin)" || true)"
+      python3 - "$stub" "${pid:-}" <<'PY'
+import json, sys
+path, pid = sys.argv[1], sys.argv[2]
+json.dump({
+    "schema_version": 2,
+    "sequencer_url": "http://127.0.0.1:3040",
+    "program_id_hex": pid,
+    "owner_account_id": "",
+    "provider_account_id": "",
+    "vault_id": 0,
+}, open(path, "w"), indent=2)
+open(path, "a").write("\n")
+PY
+      ps_log_info "Wrote module-local fixture stub: $stub"
+    fi
     ps_log_info "Local prepare complete (module mode)"
     return 0
   fi

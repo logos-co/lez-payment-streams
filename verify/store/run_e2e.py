@@ -256,6 +256,18 @@ def e2e_lifecycle_via() -> str:
     return "chainaction"
 
 
+def should_precreate_continuation_stream(
+    chain: str, continuation: bool, precreated_stream_id: str, owner_privacy: bool
+) -> bool:
+    """Seed create_stream needs a public signing key; skip when the vault owner is private."""
+    return (
+        chain == "local"
+        and continuation
+        and not (precreated_stream_id or "").strip()
+        and not owner_privacy
+    )
+
+
 def testnet_e2e_create_via() -> str:
     explicit = os.environ.get("E2E_CREATE_VIA", "").strip().lower()
     if explicit:
@@ -1673,7 +1685,7 @@ def seed_vault_deposit_onchain(
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
     env.pop("LD_LIBRARY_PATH", None)
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
-    vault_id = int(manifest.get("vault_id", 0))
+    vault_id = assert_seed_vault_id(manifest, int(manifest.get("vault_id", 0)))
     if not owner_privacy_enabled():
         owner_bal = account_balance_seq(seq_url, owner)
         if (
@@ -2280,6 +2292,7 @@ def seed_top_up_stream_onchain(
     env = os.environ.copy()
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
+    vault_id = assert_seed_vault_id(manifest, vault_id)
     if cfg is not None:
         stop_store_host_for_wallet_cli(cfg)
     try:
@@ -2364,7 +2377,7 @@ def precreate_stream_before_daemons(
 ) -> int:
     """Continuation runs: create on-chain after user wallet sync (same wallet as close/claim)."""
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
-    vault_id = int(manifest.get("vault_id", 0))
+    vault_id = assert_seed_vault_id(manifest, int(manifest.get("vault_id", 0)))
     strip_snapshot_stream_fields(manifest, manifest_path)
     reload_payment_streams_wallet(cfg_user, seq_url)
     create_id = vault_next_stream_id(cfg_user, manifest)
@@ -2403,6 +2416,7 @@ def precreate_stream_before_daemons(
     env["SEED_ALLOCATION"] = str(alloc)
     env["CREATE_FORCE"] = "1"
     env["E2E_PER_RUN_STREAM"] = "1"
+    env["VAULT_ID"] = str(vault_id)
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
     stop_store_host_for_wallet_cli(cfg_user)
     try:
@@ -3505,13 +3519,14 @@ def create_demo_stream_for_run(
     subproc_timeout = e2e_subprocess_timeout_s()
     chain = os.environ.get("CHAIN", "local").strip().lower()
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
-    vault_id = int(manifest.get("vault_id", 0))
+    vault_id = assert_seed_vault_id(manifest, int(manifest.get("vault_id", 0)))
     sync_wallet(cfg_user, seq_url)
     sync_wallet(cfg_provider, seq_url)
     precreated_raw = os.environ.get("E2E_PRECREATED_STREAM_ID", "").strip()
     if precreated_raw:
         manifest.clear()
         manifest.update(json.loads(manifest_path.read_text()))
+        vault_id = assert_seed_vault_id(manifest, int(manifest.get("vault_id", 0)))
         create_id = int(precreated_raw)
     else:
         strip_snapshot_stream_fields(manifest, manifest_path)
@@ -3626,6 +3641,7 @@ def create_demo_stream_for_run(
             env["SEED_ALLOCATION"] = str(alloc)
             env["CREATE_FORCE"] = "1"
             env["E2E_PER_RUN_STREAM"] = "1"
+            env["VAULT_ID"] = str(vault_id)
             fixture = repo / "verify" / "fixture.sh"
             if not fixture.is_file():
                 raise E2EError(f"missing live fixture entrypoint: {fixture}")
@@ -3806,6 +3822,7 @@ def create_demo_stream_for_run(
             env["SEED_STREAM_RATE"] = str(rate)
             env["CREATE_FORCE"] = "1"
             env["E2E_PER_RUN_STREAM"] = "1"
+            env["VAULT_ID"] = str(vault_id)
             fixture = repo / "verify" / "fixture.sh"
             if not fixture.is_file():
                 raise E2EError(f"missing live fixture entrypoint: {fixture}")
@@ -4043,6 +4060,7 @@ def seed_close_stream_onchain(
     env = os.environ.copy()
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
+    vault_id = assert_seed_vault_id(manifest, vault_id)
     close_timeout = 900 if is_testnet else 300
     proc = run(
         [
@@ -4091,6 +4109,7 @@ def seed_claim_onchain(
     env = os.environ.copy()
     env["LEE_WALLET_HOME_DIR"] = str(wallet_home)
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
+    vault_id = assert_seed_vault_id(manifest, vault_id)
     claim_timeout = 900 if is_testnet else 300
     proc = run(
         [
@@ -4857,6 +4876,34 @@ def store_status_code(response: dict) -> int | None:
     return None
 
 
+def preflight_e2e_helpers(repo: Path) -> None:
+    """Fail in the first minute if a Step 53 move left a stale helper path."""
+    helpers = (
+        "verify/lib/auth-transfer-ensure.sh",
+        "verify/fixture.sh",
+        "verify/lifecycle.sh",
+        "verify/lib/common.sh",
+        "verify/testnet/ensure-testnet-vault.sh",
+        "verify/testnet/testnet_rpc.py",
+        "verify/store/seed_provider_acceptance.py",
+        "verify/store/continuation-owner-topup.sh",
+    )
+    missing = [p for p in helpers if not (repo / p).is_file()]
+    if missing:
+        raise E2EError(f"missing E2E helpers (stale path after repo move): {missing}")
+
+
+def assert_seed_vault_id(manifest: dict, vault_id: int) -> int:
+    """Refuse to submit seed ops against a different vault than the manifest."""
+    mid = int(manifest.get("vault_id", 0) or 0)
+    if mid != int(vault_id):
+        raise E2EError(
+            f"seed vault_id={vault_id} != manifest vault_id={mid}; "
+            "pass the funded vault into every seed invocation"
+        )
+    return mid
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", type=Path, default=Path.cwd())
@@ -4878,6 +4925,7 @@ def main() -> int:
     )
 
     repo = args.repo.resolve()
+    preflight_e2e_helpers(repo)
     artifact = args.artifact
     artifact.parent.mkdir(parents=True, exist_ok=True)
     if artifact.exists():
@@ -5169,11 +5217,11 @@ def main() -> int:
                 manifest.update(json.loads(manifest_path.read_text()))
                 narrator.ok(f"Vault {manifest.get('vault_id')} ready on chain (module chainAction)")
 
-            if (
-                os.environ.get("CHAIN", "local").strip().lower() == "local"
-                and continuation_e2e_run()
-                and not os.environ.get("E2E_PRECREATED_STREAM_ID", "").strip()
-                and not owner_privacy_enabled()
+            if should_precreate_continuation_stream(
+                os.environ.get("CHAIN", "local").strip().lower(),
+                continuation_e2e_run(),
+                os.environ.get("E2E_PRECREATED_STREAM_ID", ""),
+                owner_privacy_enabled(),
             ):
                 # Seed create_stream needs a public signing key. PseudonymousFunding
                 # vault owner is private; chainAction create_demo_stream_for_run

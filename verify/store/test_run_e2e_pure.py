@@ -111,6 +111,27 @@ def test_vault_deposit_preflight() -> None:
     )
 
 
+def test_should_precreate_continuation_stream() -> None:
+    assert rle.should_precreate_continuation_stream("local", True, "", False) is True
+    assert rle.should_precreate_continuation_stream("local", True, "", True) is False
+    assert rle.should_precreate_continuation_stream("local", True, "3", False) is False
+    assert rle.should_precreate_continuation_stream("testnet", True, "", False) is False
+    assert rle.should_precreate_continuation_stream("local", False, "", False) is False
+
+
+def test_assert_seed_vault_id() -> None:
+    assert rle.assert_seed_vault_id({"vault_id": 1}, 1) == 1
+    try:
+        rle.assert_seed_vault_id({"vault_id": 1}, 0)
+        raise AssertionError("expected E2EError on vault skew")
+    except rle.E2EError:
+        pass
+
+
+def test_preflight_e2e_helpers() -> None:
+    rle.preflight_e2e_helpers(REPO)
+
+
 def test_testnet_e2e_create_via_default(monkeypatch) -> None:
     monkeypatch.delenv("E2E_CREATE_VIA", raising=False)
     assert rle.testnet_e2e_create_via() == "chainaction"

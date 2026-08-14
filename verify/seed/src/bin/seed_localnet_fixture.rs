@@ -213,7 +213,7 @@ enum Commands {
         owner: String,
         #[arg(long)]
         provider: String,
-        #[arg(long, default_value = "0")]
+        #[arg(long)]
         vault_id: u64,
         #[arg(long, default_value = "0")]
         stream_id: u64,
