@@ -533,7 +533,7 @@ bool guestElfLoadedInWalletProcess() {
 bool chainUsesTestnetSubmit() {
     // Retirement pending live-testnet verification; dispatched unconditionally to
     // FFI in Step 26. Remove chainUsesTestnetSubmit,
-    // submitGenericPublicViaTestnetHelper, tools/lez-testnet-submit/, and
+    // submitGenericPublicViaTestnetHelper, verify/testnet/submit/, and
     // LEZ_TESTNET_SUBMIT plumbing once MODE=store CHAIN=testnet passes on the
     // live testnet.
     return false;

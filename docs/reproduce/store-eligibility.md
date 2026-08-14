@@ -9,7 +9,7 @@ Wire and hooks: [integration-contracts.md](../reference/integration-contracts.md
 Pins: [feature-branch-pins.md](../reference/feature-branch-pins.md).
 How to add eligibility to another protocol: [integrate/eligibility.md](../integrate/eligibility.md).
 
-Entry: `scripts/e2e.sh` with `MODE=store` (default).
+Entry: `verify/e2e.sh` with `MODE=store` (default).
 Each `local run` / `testnet run` does prepare, run, and teardown unless `SKIP_TEARDOWN=1`.
 
 Dual-host debugging without the orchestrator: [archive/steps/local-store-dual-host-runbook.md](../archive/steps/local-store-dual-host-runbook.md).
@@ -34,7 +34,7 @@ Store runs need `../logos-delivery-module` (or `DELIVERY_MODULE_ROOT`) on the br
 ## Localnet (primary)
 
 ```bash
-./scripts/e2e.sh local run
+./verify/e2e.sh local run
 ```
 
 Make alias: `make verify-store-local`.
@@ -58,14 +58,14 @@ make bootstrap-testnet
 ```
 
 ```bash
-MODE=store ./scripts/e2e.sh testnet run
+MODE=store ./verify/e2e.sh testnet run
 ```
 
 Make alias: `make verify-store-testnet`.
 
-Prefund: `./scripts/fund-testnet-accounts.sh`.
+Prefund: `./verify/testnet/fund-testnet-accounts.sh`.
 Guest ELF change: `make deploy-testnet`.
-Program identity: root README [Public testnet guest program](../../README.md#public-testnet-guest-program) and [fixtures/testnet.json](../../fixtures/testnet.json).
+Program identity: root README [Public testnet guest program](../../README.md#public-testnet-guest-program) and [verify/fixtures/testnet.json](../../verify/fixtures/testnet.json).
 
 On LEZ v0.2.0, bootstrap runs `auth-transfer init` for owner and provider.
 Claim in teardown needs a healthy AT-initialized provider.
@@ -79,9 +79,9 @@ Testnet proving uses `RISC0_DEV_MODE=0` and `E2E_CLAIM_OPTIONAL=0`.
 
 | Profile | Command |
 | --- | --- |
-| Owner privacy | `MODE=store OWNER_PRIVACY=1 ./scripts/e2e.sh local run` |
-| Provider privacy | `MODE=store PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run` |
-| Full privacy | `MODE=store OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run` |
+| Owner privacy | `MODE=store OWNER_PRIVACY=1 ./verify/e2e.sh local run` |
+| Provider privacy | `MODE=store PROVIDER_PRIVACY=1 ./verify/e2e.sh local run` |
+| Full privacy | `MODE=store OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./verify/e2e.sh local run` |
 
 Make aliases: `verify-store-local-owner-privacy`, `verify-store-local-provider-privacy`, `verify-store-local-full-privacy`.
 
@@ -97,13 +97,13 @@ Full privacy: both.
 Private owner and provider share one user-host wallet session (shared seed).
 
 Testnet full privacy (after prefund).
-When recloning the testnet seed wallet, run `./scripts/prepare-testnet-privacy-seed.sh` so private ids are not recycled.
+When recloning the testnet seed wallet, run `./verify/testnet/prepare-testnet-privacy-seed.sh` so private ids are not recycled.
 
 ```bash
-./scripts/fund-testnet-accounts.sh
+./verify/testnet/fund-testnet-accounts.sh
 SKIP_BUILD=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 \
   MODE=store OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 \
-  ./scripts/e2e.sh testnet run
+  ./verify/e2e.sh testnet run
 ```
 
 Account and submit deltas: [Private execution notes](payment-streams.md#private-execution-notes) in the protocol reproduce doc.
@@ -116,12 +116,12 @@ Recipes here so the matrix has one operator page for orchestrated runs.
 Local:
 
 ```bash
-MODE=module ./scripts/e2e.sh local run
+MODE=module ./verify/e2e.sh local run
 ```
 
 Optional top-up: `MODULE_E2E_TOPUP=1`.
-Owner privacy: `MODE=module OWNER_PRIVACY=1 ./scripts/e2e.sh local run`.
-Provider privacy: `MODE=module PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run`.
+Owner privacy: `MODE=module OWNER_PRIVACY=1 ./verify/e2e.sh local run`.
+Provider privacy: `MODE=module PROVIDER_PRIVACY=1 ./verify/e2e.sh local run`.
 `CLOSE_ROLE=provider` for six-slot close.
 Make aliases: `verify-module-local`, `verify-module-local-privacy`, `verify-module-local-provider-privacy`, `verify-module-local-provider-close`, `verify-module-local-close-negatives`.
 
@@ -131,7 +131,7 @@ Artifact `module-e2e-*.log` with `vault_init`, `deposit`, `create_stream`, `accr
 Testnet, one-time `make bootstrap-testnet-module`, then:
 
 ```bash
-SKIP_BUILD=1 MODULE_E2E_SKIP_FUND=1 MODE=module ./scripts/e2e.sh testnet run
+SKIP_BUILD=1 MODULE_E2E_SKIP_FUND=1 MODE=module ./verify/e2e.sh testnet run
 ```
 
 Manual teaching path: [payment-streams.md](payment-streams.md).
@@ -151,7 +151,7 @@ Manual teaching path: [payment-streams.md](payment-streams.md).
 | `SKIP_TEARDOWN=1` | Skip teardown |
 | `SEED_ALLOCATION` / `SEED_DEPOSIT_AMOUNT` | Testnet Store defaults 400 / 500 |
 
-Verbosity: `./scripts/e2e.sh --verbosity quiet|normal|verbose` or `E2E_VERBOSITY`.
+Verbosity: `./verify/e2e.sh --verbosity quiet|normal|verbose` or `E2E_VERBOSITY`.
 
 Scaffold paths: [naming-conventions.md](../reference/naming-conventions.md#scaffold-layout).
 Flag detail: [verification-matrix.md](../reference/verification-matrix.md).

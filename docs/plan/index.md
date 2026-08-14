@@ -222,7 +222,7 @@ when creating the branch. Both delivery repos must use the same string.
 | `logos-payment-streams-module` | Universal Qt module, wallet via `logos_execution_zone` |
 | `logos-delivery` / `liblogosdelivery` | Store protocol + eligibility hooks (14-15) |
 | `logos-delivery-module` | `delivery_module` + routing (16) |
-| `scripts/e2e.sh`, `scripts/e2e/run_local_e2e.py` | Store integration: dual-host orchestration (Step 17; in-repo SSOT) |
+| `verify/e2e.sh`, `verify/store/run_e2e.py` | Store integration: dual-host orchestration (Step 17; in-repo SSOT) |
 | `payment_streams_ui` (upcoming) | Protocol UI: Basecamp over `payment_streams_module` only (Step 21). Vaults and streams as a payment mechanism; no Store. |
 | `lgs` / `logoscore` / `lgpm` / `lm` | Localnet, host, install, introspection |
 

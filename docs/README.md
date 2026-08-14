@@ -20,7 +20,7 @@ Cite the LIP for semantics.
 
 Testing recipes: [root README Testing](../README.md#testing).
 Maintainer flags, artifacts, cold start: [reference/verification-matrix.md](reference/verification-matrix.md).
-Scripts: [scripts/README.md](../scripts/README.md).
+Scripts: [verify/README.md](../verify/README.md).
 
 ## Reference
 

@@ -564,7 +564,7 @@ This mirrors the `hash_public_pinned` test
 in `nssa/src/public_transaction/message.rs`
 that spells out the expected Borsh encoding byte by byte.
 
-Step 12 demos and `./scripts/archive/verify-step12-dod.sh` use the same field values via Rust:
+Step 12 demos and `./verify/archive/verify-step12-dod.sh` use the same field values via Rust:
 `cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex` prints lowercase hex of the
 full `canonical_payload` (32-byte domain prefix + Borsh body, 138 bytes for the
 reference demo fixture). LogosAPI `canonicalRequestBytes` must be that full
@@ -612,8 +612,8 @@ Fixture scope
 
 Artifacts
 
-- Idempotent seed script, gitignored `fixtures/localnet.json`, committed
-  `fixtures/localnet.json.example`, brief runbook under `docs/`.
+- Idempotent seed script, gitignored `verify/fixtures/localnet.json`, committed
+  `verify/verify/fixtures/localnet.json.example`, brief runbook under `docs/`.
 - Runbook troubleshooting: owner or `SIGNER_ID` vs wallet home, and foreign localnet on
   3040 — [`docs/archive/steps/local-chain-fixture.md`](docs/archive/steps/local-chain-fixture.md)
   (Troubleshooting).
@@ -641,7 +641,7 @@ matches host PDA derivation (FFI tests) and 491 localnet
 Then simplify: remove `vendor/spel-framework-core`, remove both
 `[patch."https://github.com/logos-co/spel.git"]` entries, bump the SPEL
 pin if needed, `make build`, full 10a chain reset, and
-`./scripts/archive/verify-step10a-dod.sh` exit 0.
+`./verify/archive/verify-step10a-dod.sh` exit 0.
 
 The guest deposit `authenticated_transfer` enum encoding is implemented in tree; SPEL-on-LEE may
 allow removing that shim later — verify deposit on 491 before deleting it.
@@ -675,7 +675,7 @@ Wallet submit and module shape
   must verify on-chain status directly (sequencer `getTransaction` plus a state
   poll of the affected account); they must not skip on `success`. See the
   on-chain confirmation principle in [verification-matrix.md](verification-matrix.md#on-chain-confirmation-principle).
-  `./scripts/archive/verify-step11b-dod.sh` uses wallet `sync_to_block` when
+  `./verify/archive/verify-step11b-dod.sh` uses wallet `sync_to_block` when
   sequencer height is available and retries on status `chainAction`.
 
 E2E signer and wallet (G)
@@ -688,7 +688,7 @@ E2E signer and wallet (G)
 
 Fixture and config (H)
 
-- Chain fixture: gitignored `fixtures/localnet.json` (template `fixtures/localnet.json.example`).
+- Chain fixture: gitignored `verify/fixtures/localnet.json` (template `verify/verify/fixtures/localnet.json.example`).
   Override with env `FIXTURE_MANIFEST`.
 - The module loads `program_id_hex` and related manifest fields once (init or first chain use).
   Write and status helpers do not take `program_id` on every call. Default clock account is
@@ -720,9 +720,9 @@ coordinator module) is wontfix; do not implement `payment_streams_demo_coordinat
 Dual-host paid Store demo coordination stays on the **host**, not in a Logos module.
 
 - **Regression / one-command demo:** `make verify-step17` /
-  [`scripts/e2e.sh`](../../scripts/e2e.sh) `local run` — fixture prepare, build/install, then
-  [`scripts/e2e/run_local_e2e.py`](../../scripts/e2e/run_local_e2e.py) (archived entry:
-  [`scripts/archive/demo-e2e-local.sh`](../../scripts/archive/demo-e2e-local.sh)).
+  [`verify/e2e.sh`](../../verify/e2e.sh) `local run` — fixture prepare, build/install, then
+  [`verify/store/run_e2e.py`](../../verify/store/run_e2e.py) (archived entry:
+  [`verify/archive/demo-e2e-local.sh`](../../verify/archive/demo-e2e-local.sh)).
 - **Cross-host sequencing:** the Python orchestrator (or an operator following the
   in-repo Store runbook /
   [archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md)) calls `logoscore` with
@@ -818,13 +818,13 @@ builtin program ids aligned with the 510-era lineage, not rc3 dual-pin tooling.
   for `scaffold.toml`, payment-streams wallet flakes, module `.lgx`, E2E, and testnet scripts.
   (Supersedes the rc5 pin `27360cb7…`; see [Step 26](../plan/completed/step-26-testnet-v02-migration.md).)
 - **Dual-pin abandoned:** rc3-only submit tooling and split wallet storage were Step 18 WIP only; not used after 18b.
-- **Rust / guest pin (Step 24b):** `lez-payment-streams-core`, guest, FFI, and `examples/` use the same rev as operational tooling; no intentional split in this repo.
+- **Rust / guest pin (Step 24b):** `lez-payment-streams-core`, guest, FFI, and `verify/seed/` use the same rev as operational tooling; no intentional split in this repo.
 - **Phase 9 (reframed by Step 26):** `lez-testnet-submit` is no longer dispatched from the
   module as of Step 26 — `chainUsesTestnetSubmit()` always returns `false` and all writes
-  route through `submitGenericPublicViaFfi`. Retirement of `tools/lez-testnet-submit`,
+  route through `submitGenericPublicViaFfi`. Retirement of `verify/testnet/submit`,
   `chainUsesTestnetSubmit`, `submitGenericPublicViaTestnetHelper`, and `LEZ_TESTNET_SUBMIT`
   plumbing is pending live-testnet verification on the FFI path
-  (`MODE=store ./scripts/e2e.sh testnet run`).
+  (`MODE=store ./verify/e2e.sh testnet run`).
 - **Status (2026-06):** Step 26 bumped the operational pin from rc5 to v0.2.0 and moved the
   wallet module wrapper upstream from PR 19 to `main` (Universal).
 

@@ -52,7 +52,7 @@ graph TB
 Direct stream operation via the Logos Core module. Single host, no Store.
 
 ```bash
-MODE=module CHAIN=local ./scripts/e2e.sh local run
+MODE=module CHAIN=local ./verify/e2e.sh local run
 ```
 
 Artifact (`.scaffold/e2e/artifacts/module-e2e-*.log`):
@@ -85,7 +85,7 @@ RFC 73 wire format (Store tag `30`):
 - Codes: `OK`, `PARAMS_REJECTED`, `PROOF_INVALID`, `STREAM_NOT_ACTIVE`
 
 ```bash
-./scripts/e2e.sh local run
+./verify/e2e.sh local run
 ```
 
 Phases:
@@ -163,6 +163,6 @@ One protocol, two patterns.
 - Integration hooks — `delivery_module` + RFC 73 wire format bring eligibility to paid services
 
 ```bash
-MODE=module CHAIN=local ./scripts/e2e.sh local run   # User Journey
-./scripts/e2e.sh local run                             # Developer Journey
+MODE=module CHAIN=local ./verify/e2e.sh local run   # User Journey
+./verify/e2e.sh local run                             # Developer Journey
 ```

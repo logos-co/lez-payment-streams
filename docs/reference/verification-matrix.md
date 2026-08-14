@@ -1,6 +1,6 @@
 # Verification matrix (mode × network)
 
-Canonical entry: [`scripts/e2e.sh`](../../scripts/e2e.sh).
+Canonical entry: [`verify/e2e.sh`](../../verify/e2e.sh).
 The first argument (`local` or `testnet`) sets the network.
 Each `local run` / `testnet run` performs prepare, run, and teardown unless `SKIP_TEARDOWN=1`.
 
@@ -53,11 +53,11 @@ Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-r
   Single-host path through `payment_streams_module` `chainAction` (vault, stream, claim).
 - `MODE=store` (default) — Store integration verification.
   Dual-host paid Store query with LIP-155 eligibility proof.
-  Orchestrator [`scripts/e2e/run_local_e2e.py`](../../scripts/e2e/run_local_e2e.py).
+  Orchestrator [`verify/store/run_e2e.py`](../../verify/store/run_e2e.py).
 
 ## The matrix
 
-|  | Localnet (`./scripts/e2e.sh local …`) | Testnet (`./scripts/e2e.sh testnet …`) |
+|  | Localnet (`./verify/e2e.sh local …`) | Testnet (`./verify/e2e.sh testnet …`) |
 | --- | --- | --- |
 | Module (`MODE=module`) | Required | Required |
 | Store (`MODE=store`) | Required | Required |
@@ -67,8 +67,8 @@ Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-r
 Required: both modes on both networks.
 Localnet needs no fixture.
 Clone and verify on your machine.
-Testnet needs `fixtures/testnet.json` (one-time `make bootstrap-testnet`).
-Module-only users can use `fixtures/testnet-module.json` (one-time `make bootstrap-testnet-module`).
+Testnet needs `verify/fixtures/testnet.json` (one-time `make bootstrap-testnet`).
+Module-only users can use `verify/fixtures/testnet-module.json` (one-time `make bootstrap-testnet-module`).
 Store runs use a fresh vault per run.
 Set `VAULT_ID` to pin a vault id, or `E2E_REUSE_BASELINE_VAULT=1` for the vault-0 lifecycle path.
 
@@ -86,14 +86,14 @@ When a later step reads state that a `chainAction` wrote, the harness confirms o
 
 Two checks:
 
-- `wait_for_sequencer_tx` ([await_tx.py](../../scripts/e2e/await_tx.py)) polls sequencer `getTransaction` until the tx appears.
+- `wait_for_sequencer_tx` ([await_tx.py](../../verify/lib/await_tx.py)) polls sequencer `getTransaction` until the tx appears.
   Override the wall-clock budget with `E2E_TX_ONCHAIN_WAIT_S` (default 110s).
 - A state poll then reads the account the next step depends on (`getVaultStatus`, `readStreamConfigDecoded`, `getAccount`, and similar) until the expected state is visible.
 
 `await_chain_action_inclusion` always polls the sequencer on localnet.
 Non-local chains where `getTransaction` lags may set `E2E_ALLOW_FIRE_AND_FORGET=1`.
 The downstream state poll remains the gate.
-Applies to `MODE=store` ([e2e/run_local_e2e.py](../../scripts/e2e/run_local_e2e.py)) and `MODE=module` ([module-e2e.sh](../../scripts/module-e2e.sh)).
+Applies to `MODE=store` ([e2e/run_e2e.py](../../verify/store/run_e2e.py)) and `MODE=module` ([module-e2e.sh](../../verify/module-e2e.sh)).
 
 Manual walkthrough: wait until `last_block` is past the submit height, then read status.
 See [reproduce/payment-streams.md](../reproduce/payment-streams.md#on-chain-confirmation).
@@ -103,13 +103,12 @@ See [reproduce/payment-streams.md](../reproduce/payment-streams.md#on-chain-conf
 Per-cell prepare, bootstrap, verbosity, and expected artifacts: [reproduce/store-eligibility.md](../reproduce/store-eligibility.md).
 
 Make aliases: `verify-module-local`, `verify-module-testnet`, `verify-module-local-provider-close`, `verify-module-local-provider-close-privacy`, `verify-module-local-close-negatives`, `verify-store-local`, `verify-store-testnet`.
-Legacy names `verify-step17` / `verify-step18` still work.
 
-Maintainer-only: `make verify-store-local-lifecycle` or [`scripts/archive/verify-store-local-lifecycle.sh`](../../scripts/archive/verify-store-local-lifecycle.sh).
+Maintainer-only: `make verify-store-local-lifecycle` or [`verify/store/store-lifecycle.sh`](../../verify/store/store-lifecycle.sh).
 
 ## Notes
 
-- Store local prepare restores a funded snapshot (identity + policy, no program vault) and writes `fixtures/localnet.json` from owner/provider markers.
+- Store local prepare restores a funded snapshot (identity + policy, no program vault) and writes `verify/fixtures/localnet.json` from owner/provider markers.
   The orchestrator scans for a fresh vault id and ensures it (init + deposit) before stream creation.
   `E2E_REUSE_BASELINE_VAULT=1` selects vault-0 reuse (`verify-store-local-lifecycle`).
 - Module flow ensures localnet is up and skips `delivery_module` build.

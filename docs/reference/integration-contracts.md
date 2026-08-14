@@ -114,7 +114,7 @@ Local seed close (fixture helper):
 
 ```bash
 # Provider must sign; provider account = provider_account_id from manifest
-cargo run -q --manifest-path examples/Cargo.toml --bin seed_localnet_fixture -- \
+cargo run -q --manifest-path verify/seed/Cargo.toml --bin seed_localnet_fixture -- \
   close-stream-onchain --program-bin "$PAYMENT_STREAMS_GUEST_BIN" \
   --owner "$OWNER" --provider "$PROVIDER" --vault-id 0 --stream-id "$STREAM_ID"
 ```
@@ -164,7 +164,7 @@ Success shapes use `"status":"ok"` inside `result` with `"kind":"stream_proposal
 
 ## Fixture and provider binding
 
-- Default manifest: `fixtures/localnet.json` (`FIXTURE_MANIFEST`)
+- Default manifest: `verify/fixtures/localnet.json` (`FIXTURE_MANIFEST`)
 - Verify binds provider to manifest `provider_account_id` (same as Step 12 chain fixture)
 - Demo `service_id`: UTF-8 `/vac/waku/store-query/3.0.0`
 - Demo policy: one `accepted_tokens` row for the native token (32 zero octets), `min_rate` 1, `min_allocation` 1, `max_create_stream_deadline_delay` 3600

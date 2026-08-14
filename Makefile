@@ -2,11 +2,10 @@
 #
 # Quick start:
 #   make build idl deploy setup
-#   make cli ARGS="<command> --arg1 value1"
 
 
 SHELL := /bin/bash
-STATE_FILE := .lez_payment_streams-state
+STATE_FILE := .scaffold/.lez_payment_streams-state
 IDL_FILE := program/lez-payment-streams-idl.json
 PROGRAMS_DIR := program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker
 PROGRAM_BIN := $(PROGRAMS_DIR)/lez_payment_streams.bin
@@ -15,6 +14,7 @@ PROGRAM_BIN := $(PROGRAMS_DIR)/lez_payment_streams.bin
 -include $(STATE_FILE)
 
 define save_var
+	@mkdir -p $(dir $(STATE_FILE))
 	@grep -v '^$(1)=' $(STATE_FILE) 2>/dev/null > $(STATE_FILE).tmp || true
 	@echo '$(1)=$(2)' >> $(STATE_FILE).tmp
 	@mv $(STATE_FILE).tmp $(STATE_FILE)
@@ -34,16 +34,14 @@ help: ## Show this help
 	    if (match($$0, /## /)) help=substr($$0, RSTART+3); \
 	    next; \
 	  } \
-	  /scripts\/archive\// { arch=1 } \
+	  /verify\/archive\// { arch=1 } \
 	  END { if (tgt != "" && help != "" && !arch) printf "  make %-42s %s\n", tgt, help } \
 	' $(MAKEFILE_LIST)
 	@echo ""
-	@echo "Historical DoD scripts: scripts/archive/"
+	@echo "Historical DoD scripts: verify/archive/"
 	@echo ""
 	@echo "Example:"
 	@echo "  make build idl deploy"
-	@echo "  make cli ARGS=\"--help\""
-	@echo "  make cli ARGS=\"-p $(PROGRAM_BIN) <command> --arg1 value1\""
 
 build: ## Build the guest binary
 	cargo risczero build --manifest-path program/methods/guest/Cargo.toml
@@ -59,9 +57,6 @@ idl: ## Generate IDL JSON from program source (stock spel CLI)
 	mv "$$tmp" $(IDL_FILE)
 	@echo "✅ IDL written to $(IDL_FILE)"
 
-cli: ## Run the IDL-driven CLI (ARGS="...")
-	cargo run --manifest-path examples/Cargo.toml --bin lez_payment_streams_cli -- -i $(IDL_FILE) $(ARGS)
-
 deploy: ## Deploy program to sequencer (pinned LEZ wallet; set LEE_WALLET_HOME_DIR)
 	@test -n "$$LEE_WALLET_HOME_DIR" || (echo "ERROR: set LEE_WALLET_HOME_DIR (see docs/archive/steps/local-chain-fixture.md)"; exit 1)
 	@test -f "$(PROGRAM_BIN)" || (echo "ERROR: Binary not found. Run 'make build' first."; exit 1)
@@ -69,7 +64,8 @@ deploy: ## Deploy program to sequencer (pinned LEZ wallet; set LEE_WALLET_HOME_D
 	@echo "✅ Program deployed"
 
 program-id: ## Show ProgramId for built binary
-	cargo run --manifest-path examples/Cargo.toml --bin lez_payment_streams_cli -- -i $(IDL_FILE) program-id $(PROGRAM_BIN)
+	@test -f "$(PROGRAM_BIN)" || (echo "ERROR: Binary not found. Run 'make build' first."; exit 1)
+	spel inspect $(PROGRAM_BIN)
 
 setup: ## Create accounts needed for the program
 	@echo "Creating signer account..."
@@ -94,123 +90,92 @@ clean: ## Remove saved state
 	rm -f $(STATE_FILE) $(STATE_FILE).tmp
 	@echo "✅ State cleaned"
 
-seed-fixture: ## Step 10a local chain fixture (scripts/seed-localnet-fixture.sh)
-	./scripts/seed-localnet-fixture.sh
+seed-fixture: ## Local chain fixture (verify/seed/seed.sh)
+	./verify/seed/seed.sh
 
-wallet-lgx: ## Step 10b patched logos_execution_zone .lgx (scripts/archive/build-wallet-lgx.sh)
-	./scripts/archive/build-wallet-lgx.sh
+wallet-lgx: ## Patched logos_execution_zone .lgx (verify/lib/build-wallet-lgx.sh)
+	./verify/lib/build-wallet-lgx.sh
 
-verify-step10a: ## Step 10a definition of done (archived; scripts/archive/verify-step10a-dod.sh)
-	./scripts/archive/verify-step10a-dod.sh
+check-terminology: ## Role-terminology gate
+	chmod +x verify/check-terminology.sh
+	./verify/check-terminology.sh
 
-verify-step10b: ## Step 10b definition of done (archived; scripts/archive/verify-step10b-dod.sh)
-	./scripts/archive/verify-step10b-dod.sh
+test-fixture-vault: ## Component tests for fixture.sh / vault_scan
+	chmod +x verify/lib/test_fixture_vault.sh
+	./verify/lib/test_fixture_vault.sh
 
-verify-step11a: ## Step 11a definition of done (archived; scripts/archive/verify-step11a-dod.sh)
-	chmod +x scripts/archive/verify-step11a-dod.sh
-	./scripts/archive/verify-step11a-dod.sh
+verify-module-local: ## Flow A (module only) local happy path (MODE=module verify/e2e.sh local run)
+	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh verify/module-e2e.sh
+	MODE=module ./verify/e2e.sh local run
 
-verify-step11d: ## Step 11d definition of done (archived; scripts/archive/verify-step11d-dod.sh)
-	chmod +x scripts/archive/verify-step11d-dod.sh scripts/deploy-program-logoscore.sh scripts/archive/ensure-scaffold-lez-layout.sh
-	./scripts/archive/verify-step11d-dod.sh
+verify-module-local-provider-close: ## Thin provider-close cell (CLOSE_ROLE=provider)
+	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh verify/module-e2e.sh
+	MODE=module CLOSE_ROLE=provider ./verify/e2e.sh local run
 
-verify-step12: ## Step 12 definition of done (archived; scripts/archive/verify-step12-dod.sh)
-	chmod +x scripts/archive/verify-step12-dod.sh scripts/archive/step12-topup-and-prepare.sh scripts/archive/ensure-scaffold-lez-layout.sh
-	./scripts/archive/verify-step12-dod.sh
-
-verify-step13: ## Step 13 definition of done (archived; scripts/archive/verify-step13-dod.sh)
-	chmod +x scripts/archive/verify-step13-dod.sh scripts/archive/step12-topup-and-prepare.sh
-	./scripts/archive/verify-step13-dod.sh
-
-check-terminology: ## Step 47 role-terminology gate
-	chmod +x scripts/check-terminology.sh
-	./scripts/check-terminology.sh
-
-verify-module-local: ## Flow A (module only) local happy path (MODE=module scripts/e2e.sh local run)
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
-	MODE=module ./scripts/e2e.sh local run
-
-verify-module-local-provider-close: ## Step 44 thin provider-close cell (CLOSE_ROLE=provider)
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
-	MODE=module CLOSE_ROLE=provider ./scripts/e2e.sh local run
-
-verify-module-local-provider-close-privacy: ## Step 44 PF provider-close (CLOSE_ROLE=provider OWNER_PRIVACY=1)
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
-	MODE=module CLOSE_ROLE=provider OWNER_PRIVACY=1 ./scripts/e2e.sh local run
+verify-module-local-provider-close-privacy: ## PF provider-close (CLOSE_ROLE=provider OWNER_PRIVACY=1)
+	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh verify/module-e2e.sh
+	MODE=module CLOSE_ROLE=provider OWNER_PRIVACY=1 ./verify/e2e.sh local run
 
 verify-module-local-privacy: ## Owner privacy (OWNER_PRIVACY=1) PseudonymousFunding lifecycle on localnet
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
-	MODE=module OWNER_PRIVACY=1 ./scripts/e2e.sh local run
+	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh verify/module-e2e.sh
+	MODE=module OWNER_PRIVACY=1 ./verify/e2e.sh local run
 
 verify-module-local-provider-privacy: ## Provider privacy (PROVIDER_PRIVACY=1) shielded claim on localnet
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh
-	MODE=module PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh verify/module-e2e.sh
+	MODE=module PROVIDER_PRIVACY=1 ./verify/e2e.sh local run
 
-verify-module-local-close-negatives: ## Step 44 asserted close/create reject tokens on localnet
-	chmod +x scripts/module-e2e-close-negatives.sh
-	./scripts/module-e2e-close-negatives.sh
+verify-module-local-close-negatives: ## Asserted close/create reject tokens on localnet
+	chmod +x verify/module-close-negatives.sh
+	./verify/module-close-negatives.sh
 
 verify-module-testnet: ## Flow A (module only) testnet happy path
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/module-e2e.sh scripts/module-e2e-privacy.sh
-	MODE=module ./scripts/e2e.sh testnet run
+	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh verify/module-e2e.sh
+	MODE=module ./verify/e2e.sh testnet run
 
-verify-store-local: ## Store integration local dual-host E2E (scripts/e2e.sh local run)
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
-	MODE=store ./scripts/e2e.sh local run
+verify-store-local: ## Store integration local dual-host E2E (verify/e2e.sh local run)
+	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh verify/store/*.py
+	MODE=store ./verify/e2e.sh local run
 
 verify-store-local-owner-privacy: ## Store local OWNER_PRIVACY=1 (PseudonymousFunding vault, public provider)
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
-	MODE=store OWNER_PRIVACY=1 ./scripts/e2e.sh local run
+	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh verify/store/*.py
+	MODE=store OWNER_PRIVACY=1 ./verify/e2e.sh local run
 
 verify-store-local-provider-privacy: ## Store local PROVIDER_PRIVACY=1 (public vault, private provider claim)
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
-	MODE=store PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh verify/store/*.py
+	MODE=store PROVIDER_PRIVACY=1 ./verify/e2e.sh local run
 
 verify-store-local-full-privacy: ## Store local OWNER_PRIVACY=1 PROVIDER_PRIVACY=1
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
-	MODE=store OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run
+	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh verify/store/*.py
+	MODE=store OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./verify/e2e.sh local run
 
-verify-store-testnet: ## Store integration public sequencer E2E (scripts/e2e.sh testnet run)
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh scripts/e2e/*.py
-	MODE=store ./scripts/e2e.sh testnet run
+verify-store-testnet: ## Store integration public sequencer E2E (verify/e2e.sh testnet run)
+	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh verify/store/*.py
+	MODE=store ./verify/e2e.sh testnet run
 
-verify-store-local-lifecycle: ## Maintainer: two Store runs on one ledger (scripts/archive/verify-store-local-lifecycle.sh)
-	chmod +x scripts/archive/verify-store-local-lifecycle.sh
-	./scripts/archive/verify-store-local-lifecycle.sh
+verify-store-local-lifecycle: ## Maintainer: two Store runs on one ledger (verify/store/store-lifecycle.sh)
+	chmod +x verify/store/store-lifecycle.sh
+	./verify/store/store-lifecycle.sh
 
-verify-step17: verify-store-local ## legacy alias
+debug-sequencer-latency: ## Probe sequencer RPC latency and block production (verify/testnet/sequencer_latency_probe.py)
+	chmod +x verify/testnet/sequencer_latency_probe.py
+	REPO="$(CURDIR)" python3 verify/testnet/sequencer_latency_probe.py
 
-verify-step17-back-to-back: verify-store-local-lifecycle ## legacy alias
+full-reset-localnet: ## Reseed funded baseline + snapshot (verify/e2e.sh local prepare)
+	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh
+	FULL_RESET=1 SKIP_BUILD=1 ./verify/e2e.sh local prepare
 
-verify-step18: verify-store-testnet ## legacy alias
+prepare-localnet: ## Restore funded baseline (verify/e2e.sh local prepare)
+	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh
+	SKIP_BUILD=1 ./verify/e2e.sh local prepare
 
-verify-step28-module-smoke: ## Step 28 module testnet read smoke
-	MODE=module ./scripts/e2e.sh testnet prepare
+deploy-testnet: ## One-time program deploy (Part B)
+	chmod +x verify/testnet/deploy-testnet.sh
+	./verify/testnet/deploy-testnet.sh
 
-debug-sequencer-latency: ## Probe sequencer RPC latency and block production (scripts/e2e/sequencer_latency_probe.py)
-	chmod +x scripts/e2e/sequencer_latency_probe.py
-	REPO="$(CURDIR)" python3 scripts/e2e/sequencer_latency_probe.py
-
-full-reset-localnet: ## Step 17b stage A — reseed funded baseline + snapshot (scripts/e2e.sh local prepare)
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh
-	FULL_RESET=1 SKIP_BUILD=1 ./scripts/e2e.sh local prepare
-
-prepare-localnet: ## Step 17b restore funded baseline (scripts/e2e.sh local prepare)
-	chmod +x scripts/e2e.sh scripts/lifecycle.sh scripts/fixture.sh
-	SKIP_BUILD=1 ./scripts/e2e.sh local prepare
-
-verify-step18-testnet-read-smoke: ## Step 18 dual-pin read smoke (scripts/archive/verify-step18-testnet-read-smoke.sh)
-	chmod +x scripts/archive/verify-step18-testnet-read-smoke.sh scripts/lib/testnet-common.sh
-	./scripts/archive/verify-step18-testnet-read-smoke.sh
-
-deploy-testnet: ## Step 18 one-time program deploy (Part B)
-	chmod +x scripts/deploy-testnet.sh
-	./scripts/deploy-testnet.sh
-
-bootstrap-testnet: ## Step 18 one-time fixture bootstrap (Part B; scripts/archive/bootstrap-testnet.sh)
-	chmod +x scripts/archive/bootstrap-testnet.sh scripts/lib/testnet-common.sh
-	./scripts/archive/bootstrap-testnet.sh
+bootstrap-testnet: ## One-time fixture bootstrap (Part B; verify/testnet/bootstrap-testnet.sh)
+	chmod +x verify/testnet/bootstrap-testnet.sh verify/testnet/testnet-common.sh
+	./verify/testnet/bootstrap-testnet.sh
 
 bootstrap-testnet-module: ## One-time fixture for module-only testnet (reuses testnet owner)
-	chmod +x scripts/bootstrap-testnet-module.sh scripts/lib/testnet-common.sh
-	./scripts/bootstrap-testnet-module.sh
+	chmod +x verify/testnet/bootstrap-testnet-module.sh verify/testnet/testnet-common.sh
+	./verify/testnet/bootstrap-testnet-module.sh

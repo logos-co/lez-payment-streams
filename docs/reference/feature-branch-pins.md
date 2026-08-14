@@ -116,7 +116,7 @@ Host and guest unification (and dropping the AT hex override) was Step 48
 
 | Layer | LEZ | Spel | What pins it |
 | --- | --- | --- | --- |
-| Operator stack | `v0.2.4` (`47eba256479f6f785acbd138834340703cd03401`) | `v0.6.0` (`0cb7e0980535af619482cf1c823f4d394b3ebd61`) in `scaffold.toml` | `scaffold.toml` `[repos.lez]`, Nix wallet / `lez-wallet-ffi-patched`, PATH `wallet` via scaffold cache (`ps_lez_cache` / `lez_scaffold_cache_dir`), `tools/lez-testnet-submit`, `scripts/lib/testnet-common.sh` `LEZ_OP_REV` |
+| Operator stack | `v0.2.4` (`47eba256479f6f785acbd138834340703cd03401`) | `v0.6.0` (`0cb7e0980535af619482cf1c823f4d394b3ebd61`) in `scaffold.toml` | `scaffold.toml` `[repos.lez]`, Nix wallet / `lez-wallet-ffi-patched`, PATH `wallet` via scaffold cache (`ps_lez_cache` / `lez_scaffold_cache_dir`), `verify/testnet/submit`, `verify/testnet/testnet-common.sh` `LEZ_OP_REV` |
 | Program graph | `v0.2.0` (`a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a`) | same stock `v0.6.0` tag | `lez-payment-streams-core`, `-ffi`, `program/methods/guest`, `examples`, `nix/payment-streams-ffi.nix` |
 
 Also locked:
@@ -144,8 +144,8 @@ testnet submit helper use operator LEZ `v0.2.4` (`47eba256…`).
 | LEZ `wallet_ffi` | [`logos-execution-zone`](https://github.com/logos-blockchain/logos-execution-zone) @ `47eba256…` (`v0.2.4`) | Deploy, program ELF helpers, public/private tx signing for the live operator surface |
 | Wallet module | [`logos-execution-zone-module`](https://github.com/logos-blockchain/logos-execution-zone-module) @ `549cf115…` | Expose FFI to Logos modules (std::string / LogosAPI) |
 | PATH `wallet` | scaffold cache under `~/.cache/logos-scaffold/repos/lez/${LEZ_OP_REV}/target/release/wallet` | Prefer over `~/.cargo/bin/wallet` (`ps_prepend_lez_wallet_path` / `lez_wallet_bin`) |
-| `tools/lez-testnet-submit` | same LEZ rev in crate Cargo.toml + lockfile | Required testnet bootstrap (AT id + ELF source) |
-| `scripts/lib/testnet-common.sh` | `LEZ_OP_REV` default `47eba256…` | Live shared helpers (moved out of `scripts/archive/`) |
+| `verify/testnet/submit` | same LEZ rev in crate Cargo.toml + lockfile | Required testnet bootstrap (AT id + ELF source) |
+| `verify/testnet/testnet-common.sh` | `LEZ_OP_REV` default `47eba256…` | Live shared helpers (moved out of `verify/archive/`) |
 
 Do not pin [PR 429 / PR 16](archive/superseded-wallet-pr-429-16.md) in this integration.
 
@@ -181,7 +181,7 @@ Under the split, program-graph FFI embeds the `v0.2.0` AT id, while the live seq
 (and operator LEZ `v0.2.2+`) use `fe96c422…`. Dropping the override was Step 48
 (wontfix).
 
-`tools/lez-testnet-submit` is the AT id and ELF source for `bootstrap_testnet_fixture` /
+`verify/testnet/submit` is the AT id and ELF source for `bootstrap_testnet_fixture` /
 `ensure-testnet-vault` (no ELF override flag today). Rebuild the release binary on
 operator LEZ `v0.2.4` after any helper pin bump, then assert:
 
@@ -189,7 +189,7 @@ operator LEZ `v0.2.4` after any helper pin bump, then assert:
 auth-transfer-program-id-hex == fe96c422…   # live / operator AT id
 ```
 
-A stale `tools/lez-testnet-submit/target/release` silently keeps an old AT id.
+A stale `verify/testnet/submit/target/release` silently keeps an old AT id.
 Record the helper LEZ rev in the Step 45 gate-log Pins column.
 
 ### Our patch (wrapper flake)
@@ -247,7 +247,7 @@ cd ../../..   # module/
 nix flake update logos-execution-zone logos-execution-zone-module
 
 # Rebuild submit helper after operator LEZ bump; assert AT id
-cd ../tools/lez-testnet-submit && cargo build --release
+cd ../verify/testnet/submit && cargo build --release
 # auth-transfer-program-id-hex must equal live fe96c422…
 ```
 
@@ -264,7 +264,7 @@ From repo root after an operator LEZ bump:
 
 ```bash
 lgs setup
-./scripts/archive/build-wallet-lgx.sh
+./verify/lib/build-wallet-lgx.sh
 nix build ./module#lgx-portable
 ```
 
@@ -314,7 +314,7 @@ and [step-18b-rc5-unify-handoff.md](plan/completed/step-18b-rc5-unify-handoff.md
 | `PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX` | documented config → live `fe96c422…` | Required under the split (Step 48 wontfix) |
 
 Guest `program_id_hex` on testnet: org deploy recorded in step packet; example in
-`fixtures/testnet.json.example`.
+`verify/verify/fixtures/testnet.json.example`.
 
 Guest release profile: `program/methods/guest/Cargo.toml` ships `[profile.release]` with
 `debug = 0; strip = "symbols"` (matches the `lez-programs` convention). The
@@ -344,14 +344,14 @@ nix build ./module/nix/flakes/logos-execution-zone-module-patched#lib
 nix build ./module#lgx-portable
 
 # Submit helper (operator LEZ); rebuild before asserting AT id
-(cd tools/lez-testnet-submit && cargo build --release)
+(cd verify/testnet/submit && cargo build --release)
 ```
 
 Confirm PATH `wallet` resolves under the scaffold operator cache
 (`~/.cache/logos-scaffold/repos/lez/47eba256…/target/release/wallet`) unless a
 Phase 0 schema exception is recorded in the Step 45 gate log.
 
-Step 11 DoD scripts under `scripts/archive/verify-step11*-dod.sh` are pinned
+Step 11 DoD scripts under `verify/archive/verify-step11*-dod.sh` are pinned
 to rc5 and retained as historical checks; they fail on current LEZ pins and are not
 run as gates.
 

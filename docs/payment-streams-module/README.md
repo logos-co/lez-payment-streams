@@ -6,7 +6,7 @@ Universal Logos module (`payment_streams_module`) exposing LIP-155 vault and str
 ## Required verification
 
 ```bash
-MODE=module ./scripts/e2e.sh local run
+MODE=module ./verify/e2e.sh local run
 ```
 
 Testnet:
@@ -28,10 +28,10 @@ Manual testnet walkthrough: [reproduce/payment-streams.md](../reproduce/payment-
 Prepare only:
 
 ```bash
-MODE=module ./scripts/e2e.sh local prepare
+MODE=module ./verify/e2e.sh local prepare
 ```
 
-Orchestrator: [scripts/module-e2e.sh](../../scripts/module-e2e.sh).
+Orchestrator: [verify/module-e2e.sh](../../verify/module-e2e.sh).
 Matrix: [reference/verification-matrix.md](../reference/verification-matrix.md).
 First machine: [cold start](../reference/verification-matrix.md#cold-start-first-time-on-a-machine)
 in the verification matrix.
@@ -53,7 +53,7 @@ Scaffold: `lgs init`, `lgs setup`, `lgs localnet start`. `make seed-fixture` for
 Build module (no delivery):
 
 ```bash
-MODE=module ./scripts/e2e.sh build
+MODE=module ./verify/e2e.sh build
 # or: nix build ./module#lgx
 ```
 

@@ -74,15 +74,13 @@ Primary (step-free):
 | `make verify-store-testnet` | Store × testnet |
 | `make verify-store-local-lifecycle` | Maintainer only (two runs, one ledger) |
 
-Legacy aliases: `verify-step17`, `verify-step18`, `verify-step17-back-to-back`.
-
 Canonical commands: [verification-matrix.md](verification-matrix.md),
-[scripts/README.md](../../scripts/README.md).
+[verify/README.md](../../verify/README.md).
 
 ## Scaffold layout
 
 Gitignored state under `$REPO_ROOT/.scaffold/`. Path helpers live in
-`scripts/lib/common.sh` (`ps_e2e_*`, `ps_scaffold_*`).
+`verify/lib/common.sh` (`ps_e2e_*`, `ps_scaffold_*`).
 
 | Path | Mode | Role |
 | --- | --- | --- |

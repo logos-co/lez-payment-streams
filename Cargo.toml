@@ -7,7 +7,7 @@ members = [
 ]
 exclude = [
     "program/methods/guest",
-    "tools/lez-testnet-submit",
+    "verify/testnet/submit",
 ]
 resolver = "2"
 

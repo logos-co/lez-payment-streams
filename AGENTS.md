@@ -128,18 +128,18 @@ Research/spec packets moved to wontfix:
 
 ## Verification
 
-Canonical: `scripts/e2e.sh` — [docs/reference/verification-matrix.md](docs/reference/verification-matrix.md),
-[scripts/README.md](scripts/README.md).
+Canonical: `verify/e2e.sh` — [docs/reference/verification-matrix.md](docs/reference/verification-matrix.md),
+[verify/README.md](verify/README.md).
 
 Maintainer lifecycle regression: `make verify-store-local-lifecycle` /
-[scripts/archive/verify-store-local-lifecycle.sh](scripts/archive/verify-store-local-lifecycle.sh).
+[verify/store/store-lifecycle.sh](verify/store/store-lifecycle.sh).
 
 ## Read order by task
 
 | Task | Files |
 | --- | --- |
 | Product overview | README → docs hub → pillar README |
-| Verify | verification-matrix → scripts/README |
+| Verify | verification-matrix → verify/README |
 | Store wire | integration-contracts → integration-decisions D1/D2 |
 | Localnet failure | archive/operator/localnet-recovery.md |
 | Docs / reproduce / integrate | docs/reproduce/, docs/integrate/eligibility.md, docs/external/forum-post.md |
@@ -149,7 +149,7 @@ Maintainer lifecycle regression: `make verify-store-local-lifecycle` /
 
 | Category | Files |
 | --- | --- |
-| Verification | docs/reference/verification-matrix.md, scripts/README.md |
+| Verification | docs/reference/verification-matrix.md, verify/README.md |
 | APIs | docs/reference/integration-contracts.md |
 | Program | docs/plan/index.md |
 | Decisions | docs/reference/integration-decisions.md |

@@ -215,10 +215,10 @@ QString fixtureManifestPath() {
         return resolveRepoRelativePath(QString::fromUtf8(env));
     }
     QString found;
-    if (findRepoFile(QStringLiteral("fixtures/localnet.json"), &found)) {
+    if (findRepoFile(QStringLiteral("verify/fixtures/localnet.json"), &found)) {
         return found;
     }
-    return QStringLiteral("fixtures/localnet.json");
+    return QStringLiteral("verify/fixtures/localnet.json");
 }
 
 bool loadFixtureManifest(QJsonObject* out, QString* errorOut) {

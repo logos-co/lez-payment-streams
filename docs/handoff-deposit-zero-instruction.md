@@ -107,7 +107,7 @@ correct `u32` instruction words.
 - Stale deployed program / ImageID mismatch: ruled out. The on-chain `program_id`
   `de17c0db368abf9f6476f4d67a56ad24e89ddb23bc49b58f7effb566146c1677` equals the current
   `ps_program_id_hex` derived from the current guest build, and equals the program id in the
-  restored `funded` snapshot. The seeder (`examples/src/bin/seed_localnet_fixture.rs`) successfully
+  restored `funded` snapshot. The seeder (`verify/seed/src/bin/seed_localnet_fixture.rs`) successfully
   deposits 1000 with the same program, so the guest `deposit` logic is sound.
 - FFI / core instruction serialization: ruled out. `lez-payment-streams-core` test
   `all_variants_round_trip_via_instruction_words` round-trips `Deposit` (and all variants) through
@@ -121,12 +121,12 @@ correct `u32` instruction words.
 
 ## Environment / reproduce notes
 
-- Chain: localnet via `./scripts/lifecycle.sh` (sequencer RPC at `http://127.0.0.1:3040`).
+- Chain: localnet via `./verify/lifecycle.sh` (sequencer RPC at `http://127.0.0.1:3040`).
 - State was restored from the `funded` snapshot
-  (`./scripts/lifecycle.sh snapshot restore funded`) so the payment_streams program is deployed
+  (`./verify/lifecycle.sh snapshot restore funded`) so the payment_streams program is deployed
   and the seeder's owner has funds.
-- Fixture manifest: `fixtures/localnet.json` must exist for the module. It was created by copying
-  `fixtures/localnet-debug.json` (which carries a valid `program_id_hex`). Without it,
+- Fixture manifest: `verify/fixtures/localnet.json` must exist for the module. It was created by copying
+  `verify/fixtures/localnet-debug.json` (which carries a valid `program_id_hex`). Without it,
   `vault_init` fails with "cannot open fixture manifest".
 - Owner used by the module demo: `8fxZ8wwrc15EYnPoqqLEFHFAvr9Ft2o1yviMpbCdX962` (base58),
   hex `71fcb1c6830bf2d1b18d19a2b2fe0720e162801b279b00cf23846be152821313`.
@@ -137,7 +137,7 @@ correct `u32` instruction words.
 
 ## AT-init side-fix already landed (script-only, keep it)
 
-A separate, real bug was fixed in `scripts/module-e2e.sh`: `deposit`/`claim` chain into the
+A separate, real bug was fixed in `verify/module-e2e.sh`: `deposit`/`claim` chain into the
 `authenticated_transfer` program, which requires the owner/provider accounts to be AT-initialized
 first (`register_public_account` / `wallet auth-transfer init`) while still default-owned. The
 module flow was missing this. Fix added an `auth_transfer_init` helper (uses the
@@ -149,7 +149,7 @@ with "zero deposit amount" after AT-init succeeds).
 
 ## Script-side work already in place (keep, but it depends on the bug above)
 
-`scripts/module-e2e.sh` was extended for "chain as source of truth":
+`verify/module-e2e.sh` was extended for "chain as source of truth":
 
 - On-chain read helpers: `read_vault`, `read_stream`, `stream_state_name`, `poll_read`,
   `_le_u128_to_int` (Python).
@@ -178,7 +178,7 @@ zero-instruction bug is fixed, because every deposit/createStream/claim will kee
    - In the fallback, convert the instruction bytes to `u32` words (little-endian, 4 bytes ->
      1 word) before passing them as `std::vector<uint32_t>` to `send_generic_public_transaction`,
      instead of passing a `QList<uint8_t>`.
-3. Rebuild the wallet module, restart logoscore, rerun `scripts/module-e2e.sh` with `CHAIN=local`,
+3. Rebuild the wallet module, restart logoscore, rerun `verify/module-e2e.sh` with `CHAIN=local`,
    and re-parse a fresh `deposit` tx's `instruction_data` with the Python borsh parser above to
    confirm it is now non-zero (discriminant 1, amount 100, etc.).
 4. Once deposit/createStream execute, recheck `claim` end-to-end (AT-init for provider is already
@@ -204,10 +204,10 @@ zero-instruction bug is fixed, because every deposit/createStream/claim will kee
   and `instruction_bytes_le_from_words` (canonical encoding used by the FFI).
 - `program/core/src/instruction.rs` - `Instruction` enum (`Deposit` field order:
   `vault_id, amount, authenticated_transfer_program_id`).
-- `examples/src/bin/seed_localnet_fixture.rs` - known-good submission path (`Message::try_new`
+- `verify/seed/src/bin/seed_localnet_fixture.rs` - known-good submission path (`Message::try_new`
   with explicit nonce fetch + poll) that successfully deposits 1000 with the same program.
-- `scripts/module-e2e.sh` - demo script with on-chain reads, inclusion confirmation, AT-init.
-- `fixtures/localnet.json` - required fixture manifest (copied from `localnet-debug.json`).
+- `verify/module-e2e.sh` - demo script with on-chain reads, inclusion confirmation, AT-init.
+- `verify/fixtures/localnet.json` - required fixture manifest (copied from `localnet-debug.json`).
 
 ## Reproduce the parse (decisive check)
 

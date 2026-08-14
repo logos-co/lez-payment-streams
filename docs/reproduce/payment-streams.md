@@ -2,11 +2,11 @@
 
 Manual teaching path for LIP-155 through `payment_streams_module` on a single host.
 Testnet is the primary network.
-Phases match `scripts/module-e2e.sh`: vault init, deposit, create stream, accrual, close, claim.
+Phases match `verify/module-e2e.sh`: vault init, deposit, create stream, accrual, close, claim.
 
 Paid Store queries live in [store-eligibility.md](store-eligibility.md).
 `chainAction` catalogue: [payment-streams-module README](../payment-streams-module/README.md#chainaction-catalogue).
-Program identity: root README [Public testnet guest program](../../README.md#public-testnet-guest-program) and [fixtures/testnet-module.json](../../fixtures/testnet-module.json).
+Program identity: root README [Public testnet guest program](../../README.md#public-testnet-guest-program) and [verify/fixtures/testnet-module.json](../../verify/fixtures/testnet-module.json).
 
 Pause, resume, and top-up are listed in the catalogue.
 This walkthrough covers the public happy path through close and claim.
@@ -16,7 +16,7 @@ This walkthrough covers the public happy path through close and claim.
 Fund a vault, open a stream to a provider at a fixed rate, wait for accrual, close the stream, then claim.
 Both roles share one `logoscore` daemon and one wallet with two public accounts.
 
-Toolchain helpers keep historical filenames: `scripts/user-journey-reset.sh`, `scripts/user-journey-shell.sh`, and `scripts/lib/user-journey-env.sh`.
+Toolchain helpers: `verify/repro-reset.sh`, `verify/repro-shell.sh`, and `verify/lib/repro-env.sh`.
 Those remain the supported entry for this manual path (pinned logoscore and lgpm flake SHAs).
 
 ## Runtime
@@ -30,16 +30,16 @@ Host: Git, Nix (flakes), Docker, RISC Zero CLI (`cargo-risczero`, `rzup install`
 ```bash
 git clone https://github.com/logos-co/lez-payment-streams.git
 cd lez-payment-streams
-chmod +x scripts/user-journey-*.sh
-./scripts/user-journey-reset.sh
-./scripts/user-journey-shell.sh
+chmod +x verify/repro-*.sh
+./verify/repro-reset.sh
+./verify/repro-shell.sh
 ```
 
 Inside the shell, run the steps below in order.
 A new terminal needs Step 1 again.
 
-`user-journey-shell.sh` installs `lgs` when missing, then opens a Nix shell with pinned `logoscore` and `lgpm` that load `linux-amd64-dev` modules.
-Steps 4, 5, and 8 call `./scripts/user-journey-lgs-setup.sh`, `./scripts/user-journey-install-modules.sh`, and `./scripts/user-journey-auth-transfer.sh`.
+`repro-shell.sh` installs `lgs` when missing, then opens a Nix shell with pinned `logoscore` and `lgpm` that load `linux-amd64-dev` modules.
+Steps 4, 5, and 8 call `./verify/repro-lgs-setup.sh`, `./verify/repro-install.sh`, and `./verify/repro-auth-transfer.sh`.
 
 Machine and Nix shell setup for automated verification: [README prerequisites](../../README.md#prerequisites).
 
@@ -64,7 +64,7 @@ Skip it for `chain_balance` (sequencer `getAccount`).
 ```bash
 export REPO_ROOT="$(pwd)"
 export REPO="$REPO_ROOT"
-export FIXTURE_MANIFEST="$REPO_ROOT/fixtures/testnet-module.json"
+export FIXTURE_MANIFEST="$REPO_ROOT/verify/fixtures/testnet-module.json"
 export LEZ_PIN="$(grep -A2 '^\[repos.lez\]' "$REPO_ROOT/scaffold.toml" | sed -n 's/^pin = "\(.*\)"/\1/p')"
 export SCAFFOLD_LEZ_CACHE="${HOME}/.cache/logos-scaffold/repos/lez/${LEZ_PIN}"
 export SCAFFOLD_WALLET="${SCAFFOLD_LEZ_CACHE}/target/release/wallet"
@@ -84,7 +84,7 @@ export VAULT_ID=0
 export STREAM_ID=0
 export OWNER=""
 export PROVIDER=""
-export LOGOSCORE_DAEMON_LOG="$REPO_ROOT/.scaffold/e2e/user-journey-logoscore-$(date -u +%Y-%m-%dT%H-%M-%SZ).log"
+export LOGOSCORE_DAEMON_LOG="$REPO_ROOT/.scaffold/e2e/repro-logoscore-$(date -u +%Y-%m-%dT%H-%M-%SZ).log"
 ```
 
 ```bash
@@ -152,7 +152,7 @@ step_ok "Guest ELF built"
 
 ```bash
 cd "$REPO_ROOT"
-EXPECTED=$(grep -o '"program_id_hex": "[^"]*"' "$REPO_ROOT/fixtures/testnet-module.json" \
+EXPECTED=$(grep -o '"program_id_hex": "[^"]*"' "$REPO_ROOT/verify/fixtures/testnet-module.json" \
   | sed -n 's/.*"program_id_hex": "\([^"]*\)".*/\1/p')
 BUILT=$(make program-id 2>/dev/null | sed -n 's/.*ImageID (hex bytes): //p' | tr -d '[:space:]')
 if [[ -z "$BUILT" ]]; then
@@ -173,7 +173,7 @@ Stop if ImageID does not match the fixture.
 
 ```bash
 cd "$REPO_ROOT"
-./scripts/user-journey-lgs-setup.sh
+./verify/repro-lgs-setup.sh
 export SCAFFOLD_WALLET="${SCAFFOLD_LEZ_CACHE}/target/release/wallet"
 test -x "$SCAFFOLD_WALLET"
 step_ok "Scaffold and standalone wallet CLI ready"
@@ -183,7 +183,7 @@ step_ok "Scaffold and standalone wallet CLI ready"
 
 ```bash
 cd "$REPO_ROOT"
-./scripts/user-journey-install-modules.sh
+./verify/repro-install.sh
 export WALLET_CONFIG="$WALLET_HOME/wallet_config.json"
 export LEE_WALLET_HOME_DIR="$WALLET_HOME"
 step_ok "Testnet wallet config and Logos modules installed"
@@ -263,12 +263,12 @@ Needs `$OWNER` and `$PROVIDER` from Step 7.
 
 ```bash
 cd "$REPO_ROOT"
-./scripts/user-journey-auth-transfer.sh
+./verify/repro-auth-transfer.sh
 sync_to_chain
 step_ok "Authenticated transfer registered for owner and provider"
 ```
 
-On success the script exits 0 and appends phases to `.scaffold/e2e/user-journey-at.jsonl`.
+On success the script exits 0 and appends phases to `.scaffold/e2e/repro-at.jsonl`.
 
 ## Step 9 — Fund accounts (pinata)
 
@@ -472,7 +472,7 @@ step_ok "logoscore stopped; exit the toolchain shell when ready"
 exit
 ```
 
-Wallet files remain under `$WALLET_HOME` unless you run `./scripts/user-journey-reset.sh` before the next walkthrough.
+Wallet files remain under `$WALLET_HOME` unless you run `./verify/repro-reset.sh` before the next walkthrough.
 
 ## Expected result
 
@@ -481,11 +481,11 @@ After close, `stream_state` is `2` (Closed).
 After claim, accrued tokens move to the provider.
 Step 16 prints the provider on-chain balance.
 
-Sizing SSOT: `demo_deposit_amount` 500, `allocation` 80, `stream_rate` 1 in [fixtures/testnet-module.json](../../fixtures/testnet-module.json).
+Sizing SSOT: `demo_deposit_amount` 500, `allocation` 80, `stream_rate` 1 in [verify/fixtures/testnet-module.json](../../verify/fixtures/testnet-module.json).
 Deposit must cover allocation.
 Leftover deposit stays in the vault after close.
 
-Automated equivalent: `MODE=module ./scripts/e2e.sh testnet run` after `make bootstrap-testnet-module`.
+Automated equivalent: `MODE=module ./verify/e2e.sh testnet run` after `make bootstrap-testnet-module`.
 See [store-eligibility.md](store-eligibility.md) for Store recipes and the [verification matrix](../reference/verification-matrix.md) for flags.
 
 ## Glossary
@@ -507,17 +507,17 @@ See [store-eligibility.md](store-eligibility.md) for Store recipes and the [veri
 | Symptom | Try |
 | --- | --- |
 | Verbose `[logos_execution_zone]` lines | Re-run Step 1 (`logoscore()` wrapper) and Step 6 |
-| `cannot open fixture manifest: fixtures/localnet.json` | `export FIXTURE_MANIFEST="$REPO_ROOT/fixtures/testnet-module.json"` and re-run Step 6 |
-| Module variant / `load-module` failed | `./scripts/user-journey-reset.sh`, re-enter `./scripts/user-journey-shell.sh`, Step 5 |
-| `Run this from the toolchain shell` | `./scripts/user-journey-shell.sh` before Step 5 |
-| `missing wallet debug config in lez repo` | `./scripts/user-journey-lgs-setup.sh` |
+| `cannot open fixture manifest: verify/fixtures/localnet.json` | `export FIXTURE_MANIFEST="$REPO_ROOT/verify/fixtures/testnet-module.json"` and re-run Step 6 |
+| Module variant / `load-module` failed | `./verify/repro-reset.sh`, re-enter `./verify/repro-shell.sh`, Step 5 |
+| `Run this from the toolchain shell` | `./verify/repro-shell.sh` before Step 5 |
+| `missing wallet debug config in lez repo` | `./verify/repro-lgs-setup.sh` |
 | Empty `OWNER` / `PROVIDER` | Run the second block of Step 6, then Step 7 |
 | `account data missing` after a write | Wait until `last_block` is past `$h0`, then re-read. After about a minute, re-run the write. |
 | `initializeVault` fails for vault 0 | `export VAULT_ID=1` and retry Step 10, or reset and new accounts in Step 7 |
 | Deposit rejected | Step 9 pinata for owner |
 | Stream still Active | `sync_to_chain` and redo Step 14 |
 | Empty claim | Step 13 until `accrued_lo` ≥ `MIN_ACCRUED` |
-| AT errors | Step 8. Check `.scaffold/e2e/user-journey-at.jsonl` |
+| AT errors | Step 8. Check `.scaffold/e2e/repro-at.jsonl` |
 | Pinata no effect | `LEE_WALLET_HOME_DIR` = `$WALLET_HOME`. Close wallet before claims (Step 9). |
 
 Localnet recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-recovery.md).
@@ -526,7 +526,7 @@ Localnet recovery: [archive/operator/localnet-recovery.md](../archive/operator/l
 
 Owner privacy (`OWNER_PRIVACY=1`) and provider privacy (`PROVIDER_PRIVACY=1`) are independent.
 `PRIVACY=1` is an alias for `OWNER_PRIVACY=1`.
-Automated module check: `MODE=module OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./scripts/e2e.sh local run`.
+Automated module check: `MODE=module OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 ./verify/e2e.sh local run`.
 Local private submits default `RISC0_DEV_MODE=1` (stub receipts).
 Public testnet proving uses `RISC0_DEV_MODE=0`.
 
