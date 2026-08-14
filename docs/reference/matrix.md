@@ -4,9 +4,9 @@ Canonical entry: [`verify/e2e.sh`](../../verify/e2e.sh).
 The first argument (`local` or `testnet`) sets the network.
 Each `local run` / `testnet run` performs prepare, run, and teardown unless `SKIP_TEARDOWN=1`.
 
-`MODE` values: [naming-conventions.md](naming-conventions.md).
-Orchestrated recipes: [reproduce/store-eligibility.md](../reproduce/store-eligibility.md).
-Manual protocol path: [reproduce/payment-streams.md](../reproduce/payment-streams.md).
+`MODE` values: [naming-conventions.md](names.md).
+Orchestrated recipes: [reproduce/store.md](../reproduce/store.md).
+Manual protocol path: [reproduce/module.md](../reproduce/module.md).
 Testing handles: [root README Testing](../../README.md#testing).
 
 ## Cold start (first time on a machine)
@@ -33,7 +33,7 @@ lgs init      # if .scaffold/ is missing
 lgs setup     # if scaffold.toml / layout is missing
 ```
 
-5. Store integration: clone `logos-delivery-module` at `../logos-delivery-module` (or set `DELIVERY_MODULE_ROOT`) on the branch in [feature-branch-pins.md](feature-branch-pins.md).
+5. Store integration: clone `logos-delivery-module` at `../logos-delivery-module` (or set `DELIVERY_MODULE_ROOT`) on the branch in [feature-branch-pins.md](pins.md).
    E2E does not clone it.
    Build fails if the directory is missing.
    A `../logos-delivery` sibling is optional (local `liblogosdelivery` overlay).
@@ -45,7 +45,7 @@ lgs setup     # if scaffold.toml / layout is missing
 `e2e.sh` sets `PAYMENT_STREAMS_GUEST_BIN` to the guest path under `program/methods/guest/target/...` when the file exists.
 Build the guest before Store prepare if seed/fixture steps fail.
 
-Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-recovery.md).
+Recovery: [reference/localnet-recovery.md](localnet-recovery.md).
 
 ## Terminology
 
@@ -76,7 +76,6 @@ Claim is required on both networks for the module.
 Store claim is strict by default (`E2E_CLAIM_OPTIONAL=0`).
 Artifact phase is `claim`.
 Privacy testnet gates use `E2E_CLAIM_OPTIONAL=0` with real proving (`RISC0_DEV_MODE=0`).
-See [step-39-testnet-gate-log.md](../plan/completed/step-39-testnet-gate-log.md).
 
 ## On-chain confirmation principle
 
@@ -96,11 +95,11 @@ The downstream state poll remains the gate.
 Applies to `MODE=store` ([e2e/run_e2e.py](../../verify/store/run_e2e.py)) and `MODE=module` ([module-e2e.sh](../../verify/module-e2e.sh)).
 
 Manual walkthrough: wait until `last_block` is past the submit height, then read status.
-See [reproduce/payment-streams.md](../reproduce/payment-streams.md#on-chain-confirmation).
+See [reproduce/module.md](../reproduce/module.md#on-chain-confirmation).
 
 ## Commands
 
-Per-cell prepare, bootstrap, verbosity, and expected artifacts: [reproduce/store-eligibility.md](../reproduce/store-eligibility.md).
+Per-cell prepare, bootstrap, verbosity, and expected artifacts: [reproduce/store.md](../reproduce/store.md).
 
 Make aliases: `verify-module-local`, `verify-module-testnet`, `verify-module-local-provider-close`, `verify-module-local-provider-close-privacy`, `verify-module-local-close-negatives`, `verify-store-local`, `verify-store-testnet`.
 
@@ -112,10 +111,9 @@ Maintainer-only: `make verify-store-local-lifecycle` or [`verify/store/store-lif
   The orchestrator scans for a fresh vault id and ensures it (init + deposit) before stream creation.
   `E2E_REUSE_BASELINE_VAULT=1` selects vault-0 reuse (`verify-store-local-lifecycle`).
 - Module flow ensures localnet is up and skips `delivery_module` build.
-- Testnet gate history: [step-33-testnet-gate-log.md](../plan/completed/step-33-testnet-gate-log.md).
-  Module testnet uses `VAULT_ID` to pin a fresh vault.
+- Module testnet uses `VAULT_ID` to pin a fresh vault.
 - Artifacts: `.scaffold/e2e/artifacts/` JSON-lines logs.
-  Layout: [naming-conventions.md#scaffold-layout](naming-conventions.md#scaffold-layout).
+  Layout: [naming-conventions.md#scaffold-layout](names.md#scaffold-layout).
   Module: `module-e2e-*.log` (`vault_init`, `deposit`, `create_stream`, `claim`, …).
   Store: `e2e-*.log` (`store_query_success`, `store_query_missing_proof`, `claim`, …).
-  Privacy overlays and env flags: [reproduce/store-eligibility.md](../reproduce/store-eligibility.md#privacy-overlays).
+  Privacy overlays and env flags: [reproduce/store.md](../reproduce/store.md#privacy-overlays).

@@ -1614,7 +1614,7 @@ def await_chain_action_inclusion(
     # trusting the wallet's submit-acknowledgement. "wallet.success == True"
     # only means the wallet accepted the submit, not that the tx is included
     # or that the account mirror is readable. See
-    # docs/reference/verification-matrix.md ("On-chain confirmation principle").
+    # docs/reference/matrix.md ("On-chain confirmation principle").
     #
     # Localnet: always poll the sequencer (getTransaction is reliable here).
     # Non-local chains where getTransaction lags may opt back into the legacy

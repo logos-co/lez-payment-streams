@@ -7,10 +7,10 @@ The overarching goal is to run the payment-streams demo stack against wallet API
 that are not yet on upstream default branches.
 
 Store query for the demo ships on our `logos-delivery` / `logos-delivery-module` forks
-(Steps 15–16, [D2](reference/integration-decisions.md#d2-delivery-module-hook-design),
-[N6](reference/integration-decisions.md#n6-delivery-module-store-query-exposure)). Step 15 is
+(Steps 15–16, [D2](decisions.md#d2-delivery-module-hook-design),
+[N6](decisions.md#n6-delivery-module-store-query-exposure)). Step 15 is
 complete on the delivery fork (verify commands in
-[step-15-normative.md](plan/completed/step-15-normative.md)). Step 16 (eligibility bridge,
+[step-15-normative.md](../plan/completed/step-15-normative.md)). Step 16 (eligibility bridge,
 async `storeQuery`) is complete on the module fork. The module flake pins `logos-delivery` to
 the integration branch; locked revs in the table below.
 
@@ -19,7 +19,7 @@ The operator vs program-graph LEZ split stays.
 Unification was [Step 48](../plan/wontfix/step-48-program-graph-lez-unify.md)
 (wontfix).
 Pins SSOT for the freeze packet:
-[step-45-dependencies-and-patches.md](plan/completed/step-45-dependencies-and-patches.md).
+[step-45-dependencies-and-patches.md](../plan/completed/step-45-dependencies-and-patches.md).
 
 ## LIP-155 spec (Step 49 pin)
 
@@ -39,7 +39,7 @@ Historical Step 19 work used `feat/payment-streams-onchain-part` at `345c8eef`.
 
 Branch from upstream `master` in each delivery repo; avoid release-tag baselines and the
 retired `feat/liblogosdelivery-query-store` branch. Branch name priority:
-[index.md](plan/index.md#delivery-integration-branches).
+[index.md](../plan/index.md#delivery-integration-branches).
 Point the module flake's `logos-delivery` input at the integration branch (same name on
 `logos-messaging/logos-delivery`). Configured in `logos-delivery-module/flake.nix`:
 
@@ -51,7 +51,7 @@ logos-delivery.url =
 Commit `flake.lock` after changing the input; the lock file records the resolved `rev` at update
 time (branch tip moves until you re-lock). Steps 17–18 E2E cite locked revs where needed; optional
 Step 23 hosted provider uses the same delivery pins. Wallet and LEZ pins follow the split tables
-below. Workflow detail: [index.md](plan/index.md#delivery-integration-branches).
+below. Workflow detail: [index.md](../plan/index.md#delivery-integration-branches).
 
 ### Delivery flake lock (logos-delivery-module)
 
@@ -72,7 +72,7 @@ E2E installs `delivery_module` via `nix build "$DELIVERY_MODULE_ROOT#lgx"` and
 `logos-delivery-module`.
 
 The outbound-proof bug (clearing `eligibilityProof` after JSON parse) is fixed at
-`logos-delivery` rev `39b467ec` and above ([N13](../reference/decisions-historical.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
+`logos-delivery` rev `39b467ec` and above ([N13](../archive/reference/decisions-historical.md#n13-step-17-liblogosdelivery-bundle-vs-local-overlay-2026-06-18)).
 Symptom on an older library: paid `storeQuery` → provider `BAD_REQUEST`, empty inbound proof.
 
 Optional overlay (default when sibling repo exists): unless
@@ -84,12 +84,12 @@ the module flake.
 Hermetic verification (no overlay): `SKIP_LIBLOGOSDELIVERY_OVERLAY=1 make verify-step17` with
 `DELIVERY_MODULE_ROOT` pointing at a module checkout whose `flake.lock` resolves
 `logos-delivery` to `64593368` or newer. Full checklist:
-[archive/steps/local-store-dual-host-runbook.md](archive/steps/local-store-dual-host-runbook.md#hermetic-run-hand-off). Verified 2026-07-01.
+[archive/steps/local-store-dual-host-runbook.md](../archive/steps/local-store-dual-host-runbook.md#hermetic-run-hand-off). Verified 2026-07-01.
 
 Remove the overlay step from the script once every operator relies on hermetic installs only.
 
 Pin table dates are when the row was last updated. Decision subsection titles in
-[integration-decisions.md](reference/integration-decisions.md) use their own `(YYYY-MM-DD)` record dates;
+[integration-decisions.md](decisions.md) use their own `(YYYY-MM-DD)` record dates;
 those need not match the pin table calendar day.
 
 Module repo: same branch name on `logos-delivery-module`.
@@ -147,7 +147,7 @@ testnet submit helper use operator LEZ `v0.2.4` (`47eba256…`).
 | `verify/testnet/submit` | same LEZ rev in crate Cargo.toml + lockfile | Required testnet bootstrap (AT id + ELF source) |
 | `verify/testnet/testnet-common.sh` | `LEZ_OP_REV` default `47eba256…` | Live shared helpers (moved out of `verify/archive/`) |
 
-Do not pin [PR 429 / PR 16](archive/superseded-wallet-pr-429-16.md) in this integration.
+Do not pin [PR 429 / PR 16](../archive/superseded-wallet-pr-429-16.md) in this integration.
 
 Flake refs:
 
@@ -233,7 +233,7 @@ wrappers. Complex-type methods (`sign_public_payload`,
 `modules().api`; see
 [step-30-static-dependency-migration.md](../plan/completed/step-30-static-dependency-migration.md#findings).
 
-Runbook: [`archive/steps/wallet-510-runbook.md`](archive/steps/wallet-510-runbook.md).
+Runbook: [`archive/steps/wallet-510-runbook.md`](../archive/steps/wallet-510-runbook.md).
 
 ### After changing pins
 
@@ -270,7 +270,7 @@ nix build ./module#lgx-portable
 
 After a program-graph or guest ImageID change, rebuild the funded localnet snapshot:
 `make full-reset-localnet`
-([step-17b-localnet-snapshot-restore.md](plan/completed/step-17b-localnet-snapshot-restore.md)).
+([step-17b-localnet-snapshot-restore.md](../plan/completed/step-17b-localnet-snapshot-restore.md)).
 Do not require scaffold LEZ pin to match `payment-streams-ffi.nix` before reset;
 snapshot `lez_pin` tracks the operator scaffold pin.
 
@@ -302,8 +302,8 @@ tooling match `LEZ_OP_REV`.
 
 Local E2E module writes and public testnet operator tooling share operator LEZ
 `v0.2.4` (`47eba256…`). Guest ImageID and program-graph types stay on `v0.2.0`.
-See [archive/steps/public-sequencer-store-runbook.md](archive/steps/public-sequencer-store-runbook.md)
-and [step-18b-rc5-unify-handoff.md](plan/completed/step-18b-rc5-unify-handoff.md).
+See [archive/steps/public-sequencer-store-runbook.md](../archive/steps/public-sequencer-store-runbook.md)
+and [step-18b-rc5-unify-handoff.md](../plan/completed/step-18b-rc5-unify-handoff.md).
 
 | Artifact | Pin / ref | Role |
 | --- | --- | --- |
@@ -329,7 +329,7 @@ testnet bootstrap (AT id + ELF), not as an in-module write path. Removing the
 helper (WalletCore port) is Tier C / later and must add AT hex + ELF inject flags
 first (D45.16).
 
-Runbook: [archive/steps/public-sequencer-store-runbook.md](archive/steps/public-sequencer-store-runbook.md).
+Runbook: [archive/steps/public-sequencer-store-runbook.md](../archive/steps/public-sequencer-store-runbook.md).
 
 ## Verification commands
 
@@ -358,6 +358,6 @@ run as gates.
 `#lgx-portable` (not `#lgx`) is required for `lgpm` 0.2.0 / `logoscore`,
 which reject `linux-amd64-dev` variants. The wallet bundle uses
 `nix-bundle-lgx#portable` for the same reason
-([Step 31](plan/completed/step-31-dependencies-upgrade.md)).
+([Step 31](../plan/completed/step-31-dependencies-upgrade.md)).
 
-For `lgpm`, `logoscore`, and the Step 7+ loop see [`logos-runtime-guide.md`](logos-runtime-guide.md).
+For `lgpm`, `logoscore`, and the Step 7+ loop see [`logos-runtime-guide.md`](../archive/steps/logos-runtime-guide.md).

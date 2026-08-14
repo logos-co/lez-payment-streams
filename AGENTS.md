@@ -15,7 +15,7 @@ Universal payment protocol vs Store eligibility use case. Formal logos-docs
 integrator publish is wontfix ([Step 20](docs/plan/wontfix/step-20-developer-journey.md);
 [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)).
 Living docs: [docs/reproduce/](docs/reproduce/),
-[docs/integrate/eligibility.md](docs/integrate/eligibility.md),
+[docs/integrate.md](docs/integrate.md),
 [docs/external/forum-post.md](docs/external/forum-post.md)
 ([Step 46](docs/plan/completed/step-46-docs-unify-and-forum-post.md) docs;
 [Step 51](docs/plan/upcoming/step-51-forum-post.md) forum;
@@ -26,7 +26,7 @@ Historical protocol CLI track is complete
 Protocol UI (Step 21) is upcoming. Public hosted Store (Step 23) is wontfix.
 
 Program index: [docs/plan/index.md](docs/plan/index.md).
-Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conventions.md).
+Terminology: [docs/reference/names.md](docs/reference/names.md).
 
 ## Active work
 
@@ -34,15 +34,15 @@ Terminology: [docs/reference/naming-conventions.md](docs/reference/naming-conven
 
 Docs unify ([Step 46](docs/plan/completed/step-46-docs-unify-and-forum-post.md),
 complete):
-README Testing recipes, `docs/reproduce/`, `docs/integrate/eligibility.md`.
+README Testing recipes, `docs/reproduce/`, `docs/integrate.md`.
 Forum draft remains at `docs/external/forum-post.md`
 ([Step 51](docs/plan/upcoming/step-51-forum-post.md)).
 Formal logos-docs integrator publish remains wontfix
 ([Step 20](docs/plan/wontfix/step-20-developer-journey.md);
 [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)).
-SSOT: [docs/reproduce/payment-streams.md](docs/reproduce/payment-streams.md),
-[docs/reproduce/store-eligibility.md](docs/reproduce/store-eligibility.md),
-[docs/integrate/eligibility.md](docs/integrate/eligibility.md).
+SSOT: [docs/reproduce/module.md](docs/reproduce/module.md),
+[docs/reproduce/store.md](docs/reproduce/store.md),
+[docs/integrate.md](docs/integrate.md).
 Step 35 (complete) supplies integrate-doc substance.
 [Step 49](docs/plan/completed/step-49-native-token-spec-alignment.md) is complete
 (native-only LIP token_id / `accepted_tokens`; ImageID cut).
@@ -128,7 +128,7 @@ Research/spec packets moved to wontfix:
 
 ## Verification
 
-Canonical: `verify/e2e.sh` — [docs/reference/verification-matrix.md](docs/reference/verification-matrix.md),
+Canonical: `verify/e2e.sh` — [docs/reference/matrix.md](docs/reference/matrix.md),
 [verify/README.md](verify/README.md).
 
 Maintainer lifecycle regression: `make verify-store-local-lifecycle` /
@@ -139,23 +139,23 @@ Maintainer lifecycle regression: `make verify-store-local-lifecycle` /
 | Task | Files |
 | --- | --- |
 | Product overview | README → docs hub → pillar README |
-| Verify | verification-matrix → verify/README |
-| Store wire | integration-contracts → integration-decisions D1/D2 |
-| Localnet failure | archive/operator/localnet-recovery.md |
-| Docs / reproduce / integrate | docs/reproduce/, docs/integrate/eligibility.md, docs/external/forum-post.md |
-| Rust / guest | docs/on-chain/README.md |
+| Verify | matrix.md → verify/README |
+| Store wire | wire.md → decisions.md D1/D2 |
+| Localnet failure | docs/reference/localnet-recovery.md |
+| Docs / reproduce / integrate | docs/reproduce/, docs/integrate.md, docs/external/forum-post.md |
+| Rust / guest | program/README.md |
 
 ## Always-on references
 
 | Category | Files |
 | --- | --- |
-| Verification | docs/reference/verification-matrix.md, verify/README.md |
-| APIs | docs/reference/integration-contracts.md |
+| Verification | docs/reference/matrix.md, verify/README.md |
+| APIs | docs/reference/wire.md |
 | Program | docs/plan/index.md |
-| Decisions | docs/reference/integration-decisions.md |
+| Decisions | docs/reference/decisions.md |
 
 Historical runbooks: [docs/archive/](docs/archive/).
 
 ## Machine manifest
 
-[docs/context-manifest.json](docs/context-manifest.json)
+[docs/plan/context-manifest.json](docs/plan/context-manifest.json)

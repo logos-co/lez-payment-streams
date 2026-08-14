@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared pins and guards for docs/reproduce/payment-streams.md scripts.
+# Shared pins and guards for docs/reproduce/module.md scripts.
 [[ -n "${USER_JOURNEY_ENV_SOURCED:-}" ]] && return 0
 USER_JOURNEY_ENV_SOURCED=1
 

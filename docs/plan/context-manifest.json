@@ -2,13 +2,13 @@
   "default_read_order": [
     "AGENTS.md",
     "docs/README.md",
-    "docs/reference/integration-contracts.md",
-    "docs/reference/verification-matrix.md",
+    "docs/reference/wire.md",
+    "docs/reference/matrix.md",
     "docs/plan/index.md"
   ],
   "plan_index": "docs/plan/index.md",
   "program_index": "docs/plan/index.md",
-  "verification_matrix": "docs/reference/verification-matrix.md",
+  "verification_matrix": "docs/reference/matrix.md",
   "active_steps": [],
   "waiting_steps": [],
   "paused_steps": [],
@@ -20,7 +20,7 @@
     "16": "docs/plan/completed/step-16.md",
     "17": "docs/plan/completed/step-17.md",
     "17b": "docs/plan/completed/step-17b-localnet-snapshot-restore.md",
-    "17_runbook": "docs/reproduce/store-eligibility.md",
+    "17_runbook": "docs/reproduce/store.md",
     "18": "docs/plan/completed/step-18-public-testnet-demo.md",
     "18b": "docs/plan/completed/step-18b-rc5-unify-handoff.md",
     "19": "docs/plan/completed/step-19-lip155-onchain-spec.md",
@@ -81,7 +81,7 @@
     "path": "docs/anoncomms/raw/payment-streams.md",
     "contains": ["435a6f18", "f09f9e9e"]
   },
-  "reference": "docs/reference/integration-decisions.md",
+  "reference": "docs/reference/decisions.md",
   "plan_layout": "docs/plan/README.md",
   "delivery_integration_branch": {
     "repo": "logos-delivery",

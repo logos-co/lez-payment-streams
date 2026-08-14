@@ -39,7 +39,7 @@ is_journey_name_allowlisted() {
   case "$f" in
     docs/plan/*|docs/archive/*|docs/external/*) return 0 ;;
     docs/presentation.md|docs/handoff-*) return 0 ;;
-    docs/reference/integration-decisions.md) return 0 ;;
+    docs/reference/decisions.md) return 0 ;;
     verify/check-terminology.sh) return 0 ;;
     .scaffold/*|target/*|vendor/*|nimbledeps/*) return 0 ;;
     *) return 1 ;;
@@ -93,7 +93,7 @@ scan_pattern() {
     if is_allowlisted_path "$file"; then
       continue
     fi
-    if [[ "$file" == "docs/reference/naming-conventions.md" ]]; then
+    if [[ "$file" == "docs/reference/names.md" ]]; then
       if [[ "$line" == *"Formerly"* || "$line" == *"Informal"* || "$line" == *'`payer`'* || "$line" == *'`payee`'* ]]; then
         continue
       fi
@@ -166,12 +166,12 @@ scan_pattern \
 scan_pattern \
   'requesterPeerId|requester_peer_id' \
   'requesterPeerId living names' \
-  module/ docs/reference/ docs/reproduce/ docs/integrate/ docs/external/ docs/presentation.md docs/payment-streams-module/
+  module/ docs/reference/ docs/reproduce/ docs/integrate.md docs/external/
 
 scan_pattern \
   '\bPAYER\b|\bPAYEE\b' \
   'PAYER/PAYEE env tokens' \
-  docs/reproduce/ verify/ docs/reference/ docs/payment-streams-module/ README.md AGENTS.md
+  docs/reproduce/ verify/ docs/reference/ module/ README.md AGENTS.md
 
 scan_pattern \
   '\bpayer\b|\bpayee\b|\bPayer\b|\bPayee\b' \
@@ -183,11 +183,11 @@ scan_pattern \
   module/ffi/ \
   verify/ \
   docs/reproduce/ \
-  docs/integrate/ \
+  docs/integrate.md \
   docs/external/ \
   docs/reference/ \
-  docs/on-chain/ \
-  docs/payment-streams-module/ \
+  program/README.md \
+  module/README.md \
   docs/plan/upcoming/ \
   README.md \
   AGENTS.md
@@ -203,10 +203,10 @@ scan_journey_names() {
     AGENTS.md
     docs/README.md
     docs/reproduce/
-    docs/integrate/
+    docs/integrate.md
     docs/external/
-    docs/on-chain/
-    docs/payment-streams-module/
+    program/README.md
+    module/README.md
     docs/reference/
     verify/README.md
     verify/e2e.sh
@@ -244,7 +244,7 @@ scan_journey_names() {
     if is_journey_name_allowlisted "$file"; then
       continue
     fi
-    if [[ "$file" == "docs/reference/naming-conventions.md" && "$line" == *"Formerly"* ]]; then
+    if [[ "$file" == "docs/reference/names.md" && "$line" == *"Formerly"* ]]; then
       continue
     fi
     note "  $line"
@@ -266,12 +266,12 @@ scan_retired_paths() {
     Makefile
     docs/README.md
     docs/reproduce/
-    docs/integrate/
+    docs/integrate.md
     docs/external/
-    docs/on-chain/
-    docs/payment-streams-module/
+    program/README.md
+    module/README.md
     docs/reference/
-    docs/context-manifest.json
+    docs/plan/context-manifest.json
     verify/
   )
   if ! require_paths "${paths[@]}"; then
@@ -315,6 +315,35 @@ scan_retired_paths() {
   fi
 }
 scan_retired_paths
+
+scan_product_door_process() {
+  local paths=(
+    README.md
+    docs/README.md
+    verify/README.md
+    program/README.md
+    module/README.md
+    Makefile
+    docs/integrate.md
+    docs/reference/matrix.md
+  )
+  if ! require_paths "${paths[@]}"; then
+    return 0
+  fi
+  scan_pattern \
+    'verify-step[0-9]' \
+    'product-door leftover verify-step aliases' \
+    "${paths[@]}"
+  scan_pattern \
+    'user-journey' \
+    'product-door leftover user-journey names' \
+    "${paths[@]}"
+  scan_pattern \
+    'docs/plan/|step-[0-9]+-' \
+    'product-door plan-packet path citations' \
+    "${paths[@]}"
+}
+scan_product_door_process
 
 if [[ "$failures" -ne 0 ]]; then
   note "=== $failures check(s) failed ==="

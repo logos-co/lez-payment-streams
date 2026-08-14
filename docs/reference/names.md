@@ -74,7 +74,7 @@ Primary (step-free):
 | `make verify-store-testnet` | Store × testnet |
 | `make verify-store-local-lifecycle` | Maintainer only (two runs, one ledger) |
 
-Canonical commands: [verification-matrix.md](verification-matrix.md),
+Canonical commands: [verification-matrix.md](matrix.md),
 [verify/README.md](../../verify/README.md).
 
 ## Scaffold layout
@@ -95,4 +95,4 @@ Gitignored state under `$REPO_ROOT/.scaffold/`. Path helpers live in
 
 Override defaults with env vars (`MODULES_USER`, `MODULES_PROVIDER`, `WALLET_E2E_DIR`,
 `TESTNET_WALLET_DIR`, …). Manual protocol path on testnet uses the same paths as
-`MODE=module` E2E: [payment-streams.md](../reproduce/payment-streams.md).
+`MODE=module` E2E: [payment-streams.md](../reproduce/module.md).

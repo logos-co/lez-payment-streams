@@ -17,4 +17,4 @@ if [[ -d "$WALLET_HOME" ]]; then
 fi
 
 echo "Cleared: $MODULES (contents), $WALLET_HOME"
-echo "Next: ./verify/repro-shell.sh, then docs/reproduce/payment-streams.md from Step 1."
+echo "Next: ./verify/repro-shell.sh, then docs/reproduce/module.md from Step 1."

@@ -100,6 +100,12 @@ check-terminology: ## Role-terminology gate
 	chmod +x verify/check-terminology.sh
 	./verify/check-terminology.sh
 
+check-links: ## Relative-link checker for living markdown
+	chmod +x verify/lib/check-relative-links.sh
+	./verify/lib/check-relative-links.sh
+
+check: check-terminology check-links ## Terminology and relative links
+
 test-fixture-vault: ## Component tests for fixture.sh / vault_scan
 	chmod +x verify/lib/test_fixture_vault.sh
 	./verify/lib/test_fixture_vault.sh

@@ -1,7 +1,7 @@
 # Integration decisions
 
 Normative decisions (D1–D6) and carry-forward notes. Postmortems N12–N15: [decisions-historical.md](../archive/reference/decisions-historical.md). for payment-streams integration.
-Index: [index.md](../plan/index.md). Cross-step APIs: [integration-contracts.md](integration-contracts.md).
+Index: [index.md](../plan/index.md). Cross-step APIs: [integration-contracts.md](wire.md).
 Plan excerpts: [plan/README.md](../plan/README.md).
 
 ## Decisions and Notes
@@ -114,7 +114,7 @@ consumer (`logos-delivery-module`, C smoke tests). Do not remove or change exist
 ### D3, Wallet write path
 
 Reproducible flake refs and pin maintenance:
-[`docs/reference/feature-branch-pins.md`](docs/reference/feature-branch-pins.md).
+[`docs/reference/pins.md`](pins.md).
 This section records integration intent; pin tables live in that doc only.
 
 `payment_streams_module` chain writes go through `logos_execution_zone`, which delegates
@@ -123,7 +123,7 @@ to the generic public transaction APIs in `wallet_ffi`.
 #### LEZ FFI — PR 491 (canonical)
 
 Generic public transactions on LEZ `main` ([491 merged](https://github.com/logos-blockchain/logos-execution-zone/pull/491)).
-Deprecated 429/16 wallet JSON path: [`docs/archive/superseded-wallet-pr-429-16.md`](docs/archive/superseded-wallet-pr-429-16.md).
+Deprecated 429/16 wallet JSON path: [`docs/archive/superseded-wallet-pr-429-16.md`](../archive/superseded-wallet-pr-429-16.md).
 
 491 exposes (among others):
 
@@ -144,7 +144,7 @@ Upstream exposes 491 to Logos modules via
 Same author and timeline as PR 491.
 
 Primary path: pin and build the patched wallet wrapper against PR 19 head + LEZ `main`
-(510 merge; includes 491 generic public tx — see [`docs/reference/feature-branch-pins.md`](docs/reference/feature-branch-pins.md)).
+(510 merge; includes 491 generic public tx — see [`docs/reference/pins.md`](pins.md)).
 Step 11b submits through PR 19 `send_generic_public_transaction` in the wallet; the Universal
 module uses a repo-specific `send_generic_public_transaction_json` IPC helper (N10). Read PR 19
 for the underlying QList request shape.
@@ -158,12 +158,12 @@ Our wallet work (Steps 10b and 11c, reduced scope):
 - Step 11c: `sign_public_payload` per [N1](#n1-off-chain-canonical-payload-signing) — not in
   491 or 19; add on our patched wrapper (LEZ FFI + Qt) until upstream ships it.
 
-Do not pin [PR 429 / PR 16](docs/archive/superseded-wallet-pr-429-16.md).
+Do not pin [PR 429 / PR 16](../archive/superseded-wallet-pr-429-16.md).
 
 #### Pinning
 
 Pin `logos-execution-zone` to `main` at the current LEZ revision in
-[`docs/reference/feature-branch-pins.md`](docs/reference/feature-branch-pins.md) (510 merge after Step 11d) and the wallet module upstream
+[`docs/reference/pins.md`](pins.md) (510 merge after Step 11d) and the wallet module upstream
 input to `refs/pull/19/head` until PR 19 merges; then pin `main` on the wallet module repo.
 LEZ is no longer pinned to `refs/pull/491/head` in this integration.
 
@@ -472,7 +472,7 @@ branch name `feat/payment-streams-store-eligibility` on both delivery repos; Ste
 `logos-delivery`, Step 16 on `logos-delivery-module` with `flake.nix` input
 `ref=feat/payment-streams-store-eligibility`; do not reuse `feat/liblogosdelivery-query-store`.
 Pin table:
-[`feature-branch-pins.md`](feature-branch-pins.md) (flake lock rev documented there).
+[`feature-branch-pins.md`](pins.md) (flake lock rev documented there).
 Summary: [index.md](../plan/index.md#delivery-integration-branches).
 
 `logos-chat` is not a reusable Store path.
@@ -589,7 +589,7 @@ Scaffold config and runtime layout
 LEZ pin
 
 - `[repos.lez]` in `scaffold.toml` uses the same revision as LEZ PR 491 and
-  [`docs/reference/feature-branch-pins.md`](docs/reference/feature-branch-pins.md) / `nix/payment-streams-ffi.nix`
+  [`docs/reference/pins.md`](pins.md) / `nix/payment-streams-ffi.nix`
   (no separate “old LEZ” localnet for 10a and 491 for 10b). Re-run `lgs setup` after pin bumps.
 
 Deploy (canonical for 10a script and runbook)
@@ -597,7 +597,7 @@ Deploy (canonical for 10a script and runbook)
 - After `lgs init`, `lgs setup`, `lgs localnet start` (from the chosen workspace):
   from repo root, `make build`, `make idl`, `make deploy` (`wallet deploy-program` on the guest
   binary), then `make program-id` into the fixture manifest.
-- Operator detail and RPC formats: [`docs/archive/steps/scaffold-rpc-findings.md`](docs/archive/steps/scaffold-rpc-findings.md)
+- Operator detail and RPC formats: [`docs/archive/steps/scaffold-rpc-findings.md`](../archive/steps/scaffold-rpc-findings.md)
   (scaffold discovery doc — not integration plan Step 1, which is Rust FFI only).
 
 Fixture scope
@@ -615,13 +615,13 @@ Artifacts
 - Idempotent seed script, gitignored `verify/fixtures/localnet.json`, committed
   `verify/verify/fixtures/localnet.json.example`, brief runbook under `docs/`.
 - Runbook troubleshooting: owner or `SIGNER_ID` vs wallet home, and foreign localnet on
-  3040 — [`docs/archive/steps/local-chain-fixture.md`](docs/archive/steps/local-chain-fixture.md)
+  3040 — [`docs/archive/steps/local-chain-fixture.md`](../archive/steps/local-chain-fixture.md)
   (Troubleshooting).
 - Step 10a operator troubleshooting and verify failures —
-  [`docs/archive/steps/local-chain-fixture-handoff.md`](docs/archive/steps/local-chain-fixture-handoff.md).
+  [`docs/archive/steps/local-chain-fixture-handoff.md`](../archive/steps/local-chain-fixture-handoff.md).
 - Why `seed_localnet_fixture` inflates workspace `Cargo.lock` (fat LEZ `wallet`/`lee` deps,
   dual LEZ pins) and optional slimming paths —
-  [`docs/archive/steps/local-chain-fixture.md`](docs/archive/steps/local-chain-fixture.md)
+  [`docs/archive/steps/local-chain-fixture.md`](../archive/steps/local-chain-fixture.md)
   (Seed binary and workspace Cargo.lock).
 
 SPEL-on-LEE cleanup (public PDA prefix)
@@ -674,7 +674,7 @@ Wallet submit and module shape
   that derived PDAs are readable. Callers that depend on the just-written state
   must verify on-chain status directly (sequencer `getTransaction` plus a state
   poll of the affected account); they must not skip on `success`. See the
-  on-chain confirmation principle in [verification-matrix.md](verification-matrix.md#on-chain-confirmation-principle).
+  on-chain confirmation principle in [verification-matrix.md](matrix.md#on-chain-confirmation-principle).
   `./verify/archive/verify-step11b-dod.sh` uses wallet `sync_to_block` when
   sequencer height is available and retries on status `chainAction`.
 
@@ -725,17 +725,17 @@ Dual-host paid Store demo coordination stays on the **host**, not in a Logos mod
   [`verify/archive/demo-e2e-local.sh`](../../verify/archive/demo-e2e-local.sh)).
 - **Cross-host sequencing:** the Python orchestrator (or an operator following the
   in-repo Store runbook /
-  [archive/steps/local-store-dual-host-runbook.md](../../archive/steps/local-store-dual-host-runbook.md)) calls `logoscore` with
+  [archive/steps/local-store-dual-host-runbook.md](../archive/steps/local-store-dual-host-runbook.md)) calls `logoscore` with
   `LOGOSCORE_CONFIG_USER` vs `LOGOSCORE_CONFIG_PROVIDER`. Each daemon loads
   `logos_execution_zone`, `payment_streams_module`, and `delivery_module` only.
 - **Product APIs:** eligibility and Store integration are
-  `payment_streams_module` + `delivery_module` ([integration-contracts.md](integration-contracts.md)).
+  `payment_streams_module` + `delivery_module` ([integration-contracts.md](wire.md)).
   A future third-party Logos app module may compose those APIs; that is **not** part of this
   integration plan (Step 25 closed — [wontfix packet](../plan/wontfix/step-25-demo-coordination-module.md)).
 - **Store eligibility (in-repo):** one-script E2E and equivalent step-by-step
   `logoscore call` sequences per host live under
-  [store-eligibility.md](../reproduce/store-eligibility.md) /
-  [eligibility.md](../integrate/eligibility.md)
+  [store-eligibility.md](../reproduce/store.md) /
+  [eligibility.md](../integrate.md)
   (Delivery + Store eligibility track only —
   [N18](#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)).
   Formal logos-docs publish is Step 20 wontfix; high-level public narrative is Step 51.
@@ -748,8 +748,8 @@ Dual-host paid Store demo coordination stays on the **host**, not in a Logos mod
 
 Two demonstration tracks; do not merge them in copy or scope.
 Living doc names move under [Step 46](../plan/completed/step-46-docs-unify-and-forum-post.md)
-(`reproduce/payment-streams.md`, `reproduce/store-eligibility.md`,
-`integrate/eligibility.md`); historical “journey” labels below remain for older packets.
+(`reproduce/module.md`, `reproduce/store.md`,
+`integrate.md`); historical “journey” labels below remain for older packets.
 
 **Store eligibility track (in-repo; Step 20 formal publish wontfix)**
 
@@ -758,8 +758,8 @@ Living doc names move under [Step 46](../plan/completed/step-46-docs-unify-and-f
 - **Formal packet:** [Step 20](../plan/wontfix/step-20-developer-journey.md) /
   [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369) — wontfix as a
   standalone logos-docs journey. Living SSOT:
-  [store-eligibility.md](../reproduce/store-eligibility.md) /
-  [eligibility.md](../integrate/eligibility.md).
+  [store-eligibility.md](../reproduce/store.md) /
+  [eligibility.md](../integrate.md).
   Forum orientation:
   [Step 51](../plan/upcoming/step-51-forum-post.md).
 - **Mechanism:** external script orchestration ([N17](#n17-demo-orchestration-stays-external-script-2026-06));
@@ -777,7 +777,7 @@ Living doc names move under [Step 46](../plan/completed/step-46-docs-unify-and-f
   Single-host; service/counterparty coordination **out of band**.
 - **Packet:** [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370);
   in-repo walkthrough [Step 34](../plan/completed/step-34-user-journey-manual-walkthrough.md) /
-  [payment-streams.md](../reproduce/payment-streams.md); module×testnet E2E [Step 28](../plan/completed/step-28-user-journey-testnet.md).
+  [payment-streams.md](../reproduce/module.md); module×testnet E2E [Step 28](../plan/completed/step-28-user-journey-testnet.md).
 - **Content:** install module, load wallet, owner path (vault, deposit, create stream, close),
   provider path (`chainAction claim`). CLI commands only — no UI required.
 - **Provider side:** `chainAction claim` after funds accrue (and after close in the published
@@ -788,7 +788,7 @@ Living doc names move under [Step 46](../plan/completed/step-46-docs-unify-and-f
 - **Audience:** end users exploring payment streams via CLI; cross-link Store reproduce /
   Step 46 for Store eligibility, do not duplicate Store steps.
 - **Future enhancement:** if Step 21 (Basecamp UI, currently upcoming) ships,
-  [payment-streams.md](../reproduce/payment-streams.md) may gain UI screenshots
+  [payment-streams.md](../reproduce/module.md) may gain UI screenshots
   and Basecamp-specific paths. Additive — the CLI path remains valid.
 
 **Protocol UI — Step 21 (upcoming)**

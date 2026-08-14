@@ -4,13 +4,13 @@ Add LIP-155 payment-stream eligibility to a request-response protocol.
 The provider verifies an active stream before serving.
 
 Store is the worked example in this repository.
-Runnable Store instance: [reproduce/store-eligibility.md](../reproduce/store-eligibility.md).
-Protocol-only module path: [reproduce/payment-streams.md](../reproduce/payment-streams.md).
+Runnable Store instance: [reproduce/store.md](reproduce/store.md).
+Protocol-only module path: [reproduce/module.md](reproduce/module.md).
 
 Spec: [LIP-155](https://lip.logos.co/anoncomms/raw/payment-streams.html).
 Wire pattern: [RFC 73](https://rfc.vac.dev/spec/73/) (proof on request, status on response).
-Named contracts: [integration-contracts.md](../reference/integration-contracts.md).
-Decisions D1, D2, N8: [integration-decisions.md](../reference/integration-decisions.md).
+Named contracts: [integration-contracts.md](reference/wire.md).
+Decisions D1, D2, N8: [integration-decisions.md](reference/decisions.md).
 
 Canonical request bytes generator: `cargo run -p lez-payment-streams-core --bin n8_canonical_wire_hex`.
 
@@ -61,7 +61,7 @@ The transport treats proof and status bytes as opaque.
 
 ## Sibling repos
 
-This repository’s Store path uses `logos-delivery` and `logos-delivery-module` on the branch in [feature-branch-pins.md](../reference/feature-branch-pins.md).
+This repository’s Store path uses `logos-delivery` and `logos-delivery-module` on the branch in [feature-branch-pins.md](reference/pins.md).
 Another protocol changes its own codec and transport repository.
 The hook contract stays opaque.
 

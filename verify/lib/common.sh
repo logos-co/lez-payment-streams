@@ -490,7 +490,7 @@ except Exception:
 ' "$result"
 }
 
-# E2E scaffold layout (SSOT for paths): docs/reference/naming-conventions.md#scaffold-layout
+# E2E scaffold layout (SSOT for paths): docs/reference/names.md#scaffold-layout
 ps_scaffold_e2e_dir() {
   echo "$REPO_ROOT/.scaffold/e2e"
 }

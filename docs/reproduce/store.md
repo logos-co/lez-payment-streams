@@ -4,10 +4,10 @@ Orchestrated happy path: paid Store queries carry a LIP-155 eligibility proof.
 Localnet is primary.
 Testnet is a real-network follow-up after bootstrap.
 
-Protocol-only module walkthrough: [payment-streams.md](payment-streams.md).
-Wire and hooks: [integration-contracts.md](../reference/integration-contracts.md).
-Pins: [feature-branch-pins.md](../reference/feature-branch-pins.md).
-How to add eligibility to another protocol: [integrate/eligibility.md](../integrate/eligibility.md).
+Protocol-only module walkthrough: [payment-streams.md](module.md).
+Wire and hooks: [integration-contracts.md](../reference/wire.md).
+Pins: [feature-branch-pins.md](../reference/pins.md).
+How to add eligibility to another protocol: [integrate.md](../integrate.md).
 
 Entry: `verify/e2e.sh` with `MODE=store` (default).
 Each `local run` / `testnet run` does prepare, run, and teardown unless `SKIP_TEARDOWN=1`.
@@ -27,7 +27,7 @@ The native identity is 32 zero octets, stored as one `accepted_tokens` policy ro
 
 ## Cold start
 
-[Verification matrix](../reference/verification-matrix.md#cold-start-first-time-on-a-machine).
+[Verification matrix](../reference/matrix.md#cold-start-first-time-on-a-machine).
 Store runs need `../logos-delivery-module` (or `DELIVERY_MODULE_ROOT`) on the branch in feature-branch-pins.
 `MODE=module` skips delivery.
 
@@ -65,7 +65,7 @@ Make alias: `make verify-store-testnet`.
 
 Prefund: `./verify/testnet/fund-testnet-accounts.sh`.
 Guest ELF change: `make deploy-testnet`.
-Program identity: root README [Public testnet guest program](../../README.md#public-testnet-guest-program) and [verify/fixtures/testnet.json](../../verify/fixtures/testnet.json).
+Program identity: root README [Public testnet guest program](../../README.md#public-testnet-guest-program) and [verify/fixtures/testnet.json](../../verify/fixtures/testnet.json.example).
 
 On LEZ v0.2.0, bootstrap runs `auth-transfer init` for owner and provider.
 Claim in teardown needs a healthy AT-initialized provider.
@@ -106,7 +106,7 @@ SKIP_BUILD=1 RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0 \
   ./verify/e2e.sh testnet run
 ```
 
-Account and submit deltas: [Private execution notes](payment-streams.md#private-execution-notes) in the protocol reproduce doc.
+Account and submit deltas: [Private execution notes](module.md#private-execution-notes) in the protocol reproduce doc.
 
 ## Module verification
 
@@ -134,7 +134,7 @@ Testnet, one-time `make bootstrap-testnet-module`, then:
 SKIP_BUILD=1 MODULE_E2E_SKIP_FUND=1 MODE=module ./verify/e2e.sh testnet run
 ```
 
-Manual teaching path: [payment-streams.md](payment-streams.md).
+Manual teaching path: [payment-streams.md](module.md).
 
 ## Configuration
 
@@ -153,8 +153,8 @@ Manual teaching path: [payment-streams.md](payment-streams.md).
 
 Verbosity: `./verify/e2e.sh --verbosity quiet|normal|verbose` or `E2E_VERBOSITY`.
 
-Scaffold paths: [naming-conventions.md](../reference/naming-conventions.md#scaffold-layout).
-Flag detail: [verification-matrix.md](../reference/verification-matrix.md).
+Scaffold paths: [naming-conventions.md](../reference/names.md#scaffold-layout).
+Flag detail: [verification-matrix.md](../reference/matrix.md).
 
 ## Failure modes
 
@@ -167,14 +167,14 @@ Flag detail: [verification-matrix.md](../reference/verification-matrix.md).
 | Claim fails on Store testnet teardown | Re-run AT ensure. Check `provider_account_id`. |
 | Store query dial failures | Check multiaddr and peer id in the manifest. |
 
-Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-recovery.md).
+Recovery: [reference/localnet-recovery.md](../reference/localnet-recovery.md).
 
 ## Private execution notes
 
 Owner privacy (`OWNER_PRIVACY=1`) and provider privacy (`PROVIDER_PRIVACY=1`) are independent.
 `PRIVACY=1` aliases `OWNER_PRIVACY=1`.
 Account creation, pre-shield, `s:` prefix, `amount_le16_hex`, and `vault_holding` confirmation:
-[payment-streams.md Private execution notes](payment-streams.md#private-execution-notes).
+[payment-streams.md Private execution notes](module.md#private-execution-notes).
 
 Store overlays:
 

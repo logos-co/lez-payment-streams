@@ -2,10 +2,10 @@
 
 Step program, delivery forks, and upcoming packets.
 Agent entry: [`AGENTS.md`](../../AGENTS.md).
-Product docs: [README.md](../../README.md), [verification-matrix.md](../reference/verification-matrix.md).
+Product docs: [README.md](../../README.md), [verification-matrix.md](../reference/matrix.md).
 
-Cross-step APIs: [integration-contracts.md](../reference/integration-contracts.md).
-Decisions: [integration-decisions.md](../reference/integration-decisions.md).
+Cross-step APIs: [integration-contracts.md](../reference/wire.md).
+Decisions: [integration-decisions.md](../reference/decisions.md).
 
 ## Quick links
 
@@ -14,19 +14,18 @@ Decisions: [integration-decisions.md](../reference/integration-decisions.md).
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44–47, 49–50) |
 | [upcoming/](upcoming/) | Steps 21, 51–53 |
-| [waiting/](waiting/) | Empty |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43, 48 |
-| [../reference/integration-contracts.md](../reference/integration-contracts.md) | Cross-step APIs |
-| [../reference/integration-decisions.md](../reference/integration-decisions.md) | D1-D6, N1-N18 |
+| [reference/wire.md](../reference/wire.md) | Cross-step APIs |
+| [reference/decisions.md](../reference/decisions.md) | D1-D6, N1-N18 |
 | [../archive/completed-steps-index.md](../archive/completed-steps-index.md) | Full step map, completed summaries, verify scripts |
 
-Documentation tracks ([N18](../reference/integration-decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
+Documentation tracks ([N18](../reference/decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06)):
 
 | Track | Status | Steps / links |
 | --- | --- | --- |
-| Store eligibility | Formal logos-docs publish wontfix; living docs | [store-eligibility.md](../reproduce/store-eligibility.md), [eligibility.md](../integrate/eligibility.md); Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)); Step 46 |
-| Eligibility integration guide (Step 35) | Complete (substance in integrate doc) | [eligibility.md](../integrate/eligibility.md); Step 35 |
-| Protocol-only CLI | Complete as historical track; living path | [payment-streams.md](../reproduce/payment-streams.md); [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370); Steps 22, 28, 34; Step 46 |
+| Store eligibility | Formal logos-docs publish wontfix; living docs | [store-eligibility.md](../reproduce/store.md), [eligibility.md](../integrate.md); Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)); Step 46 |
+| Eligibility integration guide (Step 35) | Complete (substance in integrate doc) | [eligibility.md](../integrate.md); Step 35 |
+| Protocol-only CLI | Complete as historical track; living path | [payment-streams.md](../reproduce/module.md); [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370); Steps 22, 28, 34; Step 46 |
 | Protocol UI (Basecamp) | Upcoming | Step 21 |
 | Docs unify | Complete | Step 46 |
 | Forum post | Upcoming | Step 51; draft [forum-post.md](../external/forum-post.md) |
@@ -60,7 +59,7 @@ Public hosted Store provider: Step 23 (wontfix).
 Logos Delivery Store requests may carry a payment-stream eligibility proof;
 the provider verifies against LEZ on-chain state before serving.
 Store tag `30` follows RFC 73 (proof on request, status on response) with
-LIP-155 as the proof bytes ([D1](../reference/integration-decisions.md#d1-store-wire-format)).
+LIP-155 as the proof bytes ([D1](../reference/decisions.md#d1-store-wire-format)).
 Crypto and policy live in Rust (`lez-payment-streams-core`, `lez-payment-streams-ffi`);
 orchestration in Universal `payment_streams_module`; Store wire and `liblogosdelivery` hooks
 in the delivery repos.
@@ -120,11 +119,11 @@ packets are wontfix for now.
 ### Store query dependency
 
 Steps 16-20 need Store query on our delivery forks, not on upstream `master`
-([D2](../reference/integration-decisions.md#d2-delivery-module-hook-design),
-[N6](../reference/integration-decisions.md#n6-delivery-module-store-query-exposure)).
+([D2](../reference/decisions.md#d2-delivery-module-hook-design),
+[N6](../reference/decisions.md#n6-delivery-module-store-query-exposure)).
 Upstream N6 is no longer a gate for Steps 14-20.
 Dual-host demo coordination stays in host scripts
-([N17](../reference/integration-decisions.md#n17-demo-orchestration-stays-external-script-2026-06)).
+([N17](../reference/decisions.md#n17-demo-orchestration-stays-external-script-2026-06)).
 
 ## Completed step packets
 
@@ -175,7 +174,7 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 
 ## Waiting steps
 
-None. `waiting/` is empty.
+None.
 
 ## Wontfix steps
 
@@ -206,13 +205,13 @@ is taken on a remote:
 2. `feat/lip155-store-eligibility`
 3. `integration/payment-streams-store`
 
-Record the chosen name in [`feature-branch-pins.md`](../reference/feature-branch-pins.md)
+Record the chosen name in [`feature-branch-pins.md`](../reference/pins.md)
 when creating the branch. Both delivery repos must use the same string.
 
 | Repo | Steps | Scope |
 | --- | --- | --- |
 | `logos-delivery` | 14-15 (done) | Store codec (tag `30`), `liblogosdelivery` hooks, `logosdelivery_store_query` |
-| `logos-delivery-module` | 16 (done) | `storeQuery`, eligibility routing; `flake.nix` pins `logos-delivery` to `feat/payment-streams-store-eligibility` ([feature-branch-pins.md](../reference/feature-branch-pins.md)) |
+| `logos-delivery-module` | 16 (done) | `storeQuery`, eligibility routing; `flake.nix` pins `logos-delivery` to `feat/payment-streams-store-eligibility` ([feature-branch-pins.md](../reference/pins.md)) |
 
 ## Components
 
@@ -232,24 +231,24 @@ Detail: [`logos-architecture-overview.md`](../archive/reference/logos-architectu
 
 | ID | Topic | Link |
 | --- | --- | --- |
-| D1 | Store wire tags | [integration-decisions.md](../reference/integration-decisions.md#d1-store-wire-format) |
-| D2 | Delivery hooks | [D2](../reference/integration-decisions.md#d2-delivery-module-hook-design) |
-| D3 | Wallet write path | [D3](../reference/integration-decisions.md#d3-wallet-write-path) |
-| D4 | Wallet module id | [D4](../reference/integration-decisions.md#d4-wallet-module-runtime-name) |
-| D5 | PS module naming | [D5](../reference/integration-decisions.md#d5-new-module-naming) |
-| D6 | Universal interface | [D6](../reference/integration-decisions.md#d6-universal-module-interface) |
-| N1-N18 | Carry-forward notes | [integration-decisions.md](../reference/integration-decisions.md) |
+| D1 | Store wire tags | [integration-decisions.md](../reference/decisions.md#d1-store-wire-format) |
+| D2 | Delivery hooks | [D2](../reference/decisions.md#d2-delivery-module-hook-design) |
+| D3 | Wallet write path | [D3](../reference/decisions.md#d3-wallet-write-path) |
+| D4 | Wallet module id | [D4](../reference/decisions.md#d4-wallet-module-runtime-name) |
+| D5 | PS module naming | [D5](../reference/decisions.md#d5-new-module-naming) |
+| D6 | Universal interface | [D6](../reference/decisions.md#d6-universal-module-interface) |
+| N1-N18 | Carry-forward notes | [integration-decisions.md](../reference/decisions.md) |
 
 Cross-step APIs without reading full D/N:
-[`integration-contracts.md`](../reference/integration-contracts.md).
+[`integration-contracts.md`](../reference/wire.md).
 
 ## Onboarding
 
 ### Minimal (implementing Step N)
 
 1. [`AGENTS.md`](../../AGENTS.md)
-2. [`../reference/integration-contracts.md`](../reference/integration-contracts.md)
-3. Step packet: [`upcoming/`](upcoming/), [`waiting/`](waiting/), [`wontfix/`](wontfix/),
+2. [`reference/wire.md`](../reference/wire.md)
+3. Step packet: [`upcoming/`](upcoming/), [`wontfix/`](wontfix/),
    or [`completed/step-N.md`](completed/)
 4. [`logos-architecture-overview.md`](../archive/reference/logos-architecture-overview.md)
    when boundaries are unclear
@@ -259,7 +258,7 @@ Cross-step APIs without reading full D/N:
 Add:
 [`../archive/steps/logos-runtime-guide.md`](../archive/steps/logos-runtime-guide.md),
 [`../archive/steps/scaffold-rpc-findings.md`](../archive/steps/scaffold-rpc-findings.md),
-[`../reference/feature-branch-pins.md`](../reference/feature-branch-pins.md),
+[`reference/pins.md`](../reference/pins.md),
 LIP-155 (`rfc-index/docs/anoncomms/raw/payment-streams.md`,
 branch `feat/payment-streams-onchain-part` on `logos-co/logos-lips`).
 

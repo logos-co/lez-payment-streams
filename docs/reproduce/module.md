@@ -4,8 +4,8 @@ Manual teaching path for LIP-155 through `payment_streams_module` on a single ho
 Testnet is the primary network.
 Phases match `verify/module-e2e.sh`: vault init, deposit, create stream, accrual, close, claim.
 
-Paid Store queries live in [store-eligibility.md](store-eligibility.md).
-`chainAction` catalogue: [payment-streams-module README](../payment-streams-module/README.md#chainaction-catalogue).
+Paid Store queries live in [store-eligibility.md](store.md).
+`chainAction` catalogue: [payment-streams-module README](../../module/README.md#chainaction-catalogue).
 Program identity: root README [Public testnet guest program](../../README.md#public-testnet-guest-program) and [verify/fixtures/testnet-module.json](../../verify/fixtures/testnet-module.json).
 
 Pause, resume, and top-up are listed in the catalogue.
@@ -53,7 +53,7 @@ Then `sync_to_chain` and read `getVaultStatus` or `getStreamStatus`.
 Proceed when the read shows the expected account.
 If the change is missing after about a minute, re-run the write.
 
-The same rule is stated for both orchestrators in the [verification matrix](../reference/verification-matrix.md#on-chain-confirmation-principle).
+The same rule is stated for both orchestrators in the [verification matrix](../reference/matrix.md#on-chain-confirmation-principle).
 
 `sync_to_chain` pulls the wallet mirror to the sequencer tip.
 Call it after each write, before a status read.
@@ -486,7 +486,7 @@ Deposit must cover allocation.
 Leftover deposit stays in the vault after close.
 
 Automated equivalent: `MODE=module ./verify/e2e.sh testnet run` after `make bootstrap-testnet-module`.
-See [store-eligibility.md](store-eligibility.md) for Store recipes and the [verification matrix](../reference/verification-matrix.md) for flags.
+See [store-eligibility.md](store.md) for Store recipes and the [verification matrix](../reference/matrix.md) for flags.
 
 ## Glossary
 
@@ -520,7 +520,7 @@ See [store-eligibility.md](store-eligibility.md) for Store recipes and the [veri
 | AT errors | Step 8. Check `.scaffold/e2e/repro-at.jsonl` |
 | Pinata no effect | `LEE_WALLET_HOME_DIR` = `$WALLET_HOME`. Close wallet before claims (Step 9). |
 
-Localnet recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-recovery.md).
+Localnet recovery: [reference/localnet-recovery.md](../reference/localnet-recovery.md).
 
 ## Private execution notes
 
@@ -573,4 +573,4 @@ Amount and timing across the shielding boundary are side channels.
 ## Specs
 
 - [LIP-155](https://lip.logos.co/anoncomms/raw/payment-streams.html)
-- [chainAction catalogue](../payment-streams-module/README.md#chainaction-catalogue)
+- [chainAction catalogue](../../module/README.md#chainaction-catalogue)

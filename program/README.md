@@ -4,8 +4,7 @@
 program and shared Rust crate (`lez-payment-streams-core`). Vault, stream, close, claim, and account
 semantics are defined in the LIP; this doc covers review order and repository layout.
 
-Maintainer LIP appendix work: [plan/completed/step-19-lip155-onchain-spec.md](../plan/completed/step-19-lip155-onchain-spec.md).
-Sibling pins: [reference/feature-branch-pins.md](../reference/feature-branch-pins.md).
+Sibling pins: [docs/reference/pins.md](../docs/reference/pins.md).
 
 ## Review order
 
@@ -66,10 +65,10 @@ RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib
 Optional: `--features pp-program-tests`.
 
 Local deploy (operators): `make build`, `make deploy` with `LEE_WALLET_HOME_DIR` —
-see [payment-streams-module](../payment-streams-module/).
+see [module/README.md](../module/README.md).
 
 ## Related
 
-- [Payment streams module](../payment-streams-module/) — LogosAPI `chainAction`
-- [Store eligibility](../reproduce/store-eligibility.md) — paid Store queries
-- [Verification matrix](../reference/verification-matrix.md)
+- [Payment streams module](../module/README.md) — LogosAPI `chainAction`
+- [Store eligibility](../docs/reproduce/store.md) — paid Store queries
+- [Verification matrix](../docs/reference/matrix.md)

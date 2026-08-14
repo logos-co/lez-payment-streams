@@ -1,8 +1,8 @@
 Operational scripts for E2E, testnet bootstrap, wallet `.lgx`, and hygiene.
 
-Flag detail and artifacts: [docs/reference/verification-matrix.md](../docs/reference/verification-matrix.md).
-Orchestrated recipes: [docs/reproduce/store-eligibility.md](../docs/reproduce/store-eligibility.md).
-Manual protocol path: [docs/reproduce/payment-streams.md](../docs/reproduce/payment-streams.md).
+Flag detail and artifacts: [docs/reference/matrix.md](../docs/reference/matrix.md).
+Orchestrated recipes: [docs/reproduce/store.md](../docs/reproduce/store.md).
+Manual protocol path: [docs/reproduce/module.md](../docs/reproduce/module.md).
 
 ## MODE × network
 
@@ -40,15 +40,15 @@ Terminology: `make check-terminology`.
 | `FULL_RESET` | `0` | Rebuild funded snapshot when `1`. |
 | `E2E_PHASE` | `all` | Store Python: `core`, `claim`, or `all`. |
 
-On-chain confirmation: [verification-matrix.md](../docs/reference/verification-matrix.md#on-chain-confirmation-principle).
+On-chain confirmation: [verification-matrix.md](../docs/reference/matrix.md#on-chain-confirmation-principle).
 
 ## Cold start
 
-Full checklist: [verification-matrix.md — Cold start](../docs/reference/verification-matrix.md#cold-start-first-time-on-a-machine).
+Full checklist: [verification-matrix.md — Cold start](../docs/reference/matrix.md#cold-start-first-time-on-a-machine).
 
 ## Inventory
 
-Root files are what a human types from README Testing, `docs/reproduce/payment-streams.md`, or `make help`.
+Root files are what a human types from README Testing, `docs/reproduce/module.md`, or `make help`.
 Subdirs are ownership, not one taxonomy.
 `verify/testnet/submit/` is the testnet write helper for vault-ensure, bootstrap, and Store E2E.
 
@@ -61,7 +61,7 @@ Root:
 | `fixture.sh` | `e2e.sh` |
 | `module-e2e.sh` | `e2e.sh` when `MODE=module` |
 | `module-close-negatives.sh` | Make `verify-module-local-close-negatives` only (`e2e.sh` does not exec it) |
-| `repro-reset.sh` | `docs/reproduce/payment-streams.md` |
+| `repro-reset.sh` | `docs/reproduce/module.md` |
 | `repro-shell.sh` | same |
 | `repro-lgs-setup.sh` | same |
 | `repro-install.sh` | same |
@@ -77,6 +77,7 @@ Root:
 | `ensure-scaffold-lez-layout.sh` | `seed.sh` |
 | `auth-transfer-ensure.sh` | `repro-auth-transfer.sh`, Store E2E |
 | `build-wallet-lgx.sh` | `e2e.sh`, Make `wallet-lgx` |
+| `check-relative-links.sh` | Make `check-links` |
 | `test_fixture_vault.sh` | Make `test-fixture-vault` (tests `fixture.sh` / `vault_scan`, not Store) |
 
 `store/`:
@@ -95,8 +96,8 @@ Root:
 | File | Caller |
 | --- | --- |
 | `bootstrap-testnet.sh`, `bootstrap-testnet-module.sh`, `deploy-testnet.sh` | Make |
-| `fund-testnet-accounts.sh` | `docs/reproduce/store-eligibility.md`, Store E2E, module-e2e hints (no Make target) |
-| `prepare-testnet-privacy-seed.sh` | `docs/reproduce/store-eligibility.md`, Store E2E (no Make target) |
+| `fund-testnet-accounts.sh` | `docs/reproduce/store.md`, Store E2E, module-e2e hints (no Make target) |
+| `prepare-testnet-privacy-seed.sh` | `docs/reproduce/store.md`, Store E2E (no Make target) |
 | `ensure-testnet-vault.sh` | Store testnet E2E |
 | `testnet-common.sh`, `fund_testnet.sh` | sourced by testnet operators |
 | `testnet_rpc.py` | `testnet-common.sh`, `run_e2e.py` |

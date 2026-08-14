@@ -2,16 +2,17 @@
 
 [LIP-155](https://lip.logos.co/anoncomms/raw/payment-streams.html) payment streams on the Logos Execution Zone.
 SPEL guest program, Logos `payment_streams_module`, and a reference Store integration (eligibility on paid queries).
+FFI lives in `module/ffi/`.
 
 Documentation: [docs/README.md](docs/README.md).
 Maintainers: [AGENTS.md](AGENTS.md).
-`chainAction` catalogue: [docs/payment-streams-module/README.md#chainaction-catalogue](docs/payment-streams-module/README.md#chainaction-catalogue).
+`chainAction` catalogue: [module/README.md#chainaction-catalogue](module/README.md#chainaction-catalogue).
 
 Reproduce:
 
-- Protocol (manual, testnet primary): [docs/reproduce/payment-streams.md](docs/reproduce/payment-streams.md)
-- Store eligibility (orchestrator, local primary): [docs/reproduce/store-eligibility.md](docs/reproduce/store-eligibility.md)
-- Eligibility for other protocols: [docs/integrate/eligibility.md](docs/integrate/eligibility.md)
+- Protocol (manual, testnet primary): [docs/reproduce/module.md](docs/reproduce/module.md)
+- Store eligibility (orchestrator, local primary): [docs/reproduce/store.md](docs/reproduce/store.md)
+- Eligibility for other protocols: [docs/integrate.md](docs/integrate.md)
 
 ## Public testnet guest program
 
@@ -32,7 +33,7 @@ Host and toolchain:
 - Linux (Ubuntu 22.04+) or macOS 14+
 - Nix with flakes enabled
 - Rust toolchain with RISC Zero for the guest ELF (`make build` or `cargo risczero build` under `program/methods/guest/`)
-- Logos scaffold CLI (`lgs`) on `PATH`. Manual protocol path: [payment-streams.md](docs/reproduce/payment-streams.md)
+- Logos scaffold CLI (`lgs`) on `PATH`. Manual protocol path: [payment-streams.md](docs/reproduce/module.md)
 - Internet access for Nix flakes (and for testnet runs)
 
 Run verification inside a shell that provides `logoscore` and `lgpm`:
@@ -55,7 +56,7 @@ Store integration (`./verify/e2e.sh local run`, `make verify-store-local`, testn
 Default path: `../logos-delivery-module` (override with `DELIVERY_MODULE_ROOT`).
 E2E does not clone it.
 Prepare builds `delivery_module` from that tree with Nix.
-Use the integration branch in [docs/reference/feature-branch-pins.md](docs/reference/feature-branch-pins.md).
+Use the integration branch in [docs/reference/pins.md](docs/reference/pins.md).
 
 A local `../logos-delivery` checkout is optional.
 Nix fetches the locked `logos-delivery` flake input when building the module.
@@ -65,9 +66,9 @@ Set `SKIP_LIBLOGOSDELIVERY_OVERLAY=1` for hermetic installs from the built `.lgx
 Module verification (`MODE=module`, `make verify-module-local` / `verify-module-testnet`) skips delivery siblings.
 
 Testnet runs need a one-time fixture bootstrap (`make bootstrap-testnet` for Store, `make bootstrap-testnet-module` for module-only).
-See [docs/reference/verification-matrix.md](docs/reference/verification-matrix.md).
+See [docs/reference/matrix.md](docs/reference/matrix.md).
 
-Cold start, recovery, artifacts: [verification matrix](docs/reference/verification-matrix.md#cold-start-first-time-on-a-machine).
+Cold start, recovery, artifacts: [verification matrix](docs/reference/matrix.md#cold-start-first-time-on-a-machine).
 
 ## Testing
 
@@ -82,8 +83,8 @@ Handles for README, reproduce docs, and the forum draft.
 | `testnet-private` | Testnet full privacy, real proving | `RISC0_DEV_MODE=0 E2E_CLAIM_OPTIONAL=0` plus full privacy flags. Step 52 wrap-up dogfood leg. |
 
 `./verify/e2e.sh local` and `./verify/e2e.sh testnet` set the network.
-Flag detail and artifacts: [verification-matrix.md](docs/reference/verification-matrix.md).
-Orchestrated recipes: [docs/reproduce/store-eligibility.md](docs/reproduce/store-eligibility.md).
+Flag detail and artifacts: [verification-matrix.md](docs/reference/matrix.md).
+Orchestrated recipes: [docs/reproduce/store.md](docs/reproduce/store.md).
 
 ## License
 
