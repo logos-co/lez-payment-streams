@@ -129,3 +129,7 @@ Maintainer-only: `make verify-store-local-lifecycle` or [`verify/store/store-lif
   Module: `module-e2e-*.log` (`vault_init`, `deposit`, `create_stream`, `claim`, …).
   Store: `e2e-*.log` (`store_query_success`, `store_query_missing_proof`, `claim`, …).
   Privacy overlays and env flags: [reproduce/store.md](../reproduce/store.md#privacy-overlays).
+  Privacy cells keep the same private owner/provider within one run and derive fresh
+  private accounts between cells (reuse only the public funder). Burned ids live in
+  `.scaffold/e2e/burned-private-ids.json`. After an ImageID cut, existing private notes
+  are treated as burned so a later cell cannot shield a spent nullifier.

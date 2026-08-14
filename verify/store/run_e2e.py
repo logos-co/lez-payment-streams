@@ -46,6 +46,132 @@ _TX_HASH_RE = re.compile(r"Transaction hash is ([0-9a-fA-F]{64})")
 _RECYCLED_PRIVATE_PREFIXES = ("DaV7bT45", "FqxTyJhY", "8vSpcfHE", "H7JEDimH", "2B8gB6jB", "42epagKp", "99AdxJCt")
 
 
+def burned_private_ids_path(repo: Path) -> Path:
+    return repo / ".scaffold" / "e2e" / "burned-private-ids.json"
+
+
+def private_ids_from_storage(storage: Path) -> list[str]:
+    """Base58 private account ids in a wallet storage.json."""
+    try:
+        data = json.loads(storage.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    ids: list[str] = []
+    accounts = data.get("key_chain", {}).get("accounts") or data.get("accounts") or []
+    for row in accounts:
+        if not isinstance(row, dict):
+            continue
+        priv = row.get("Private")
+        if isinstance(priv, dict) and priv.get("account_id"):
+            ids.append(str(priv["account_id"]))
+    return ids
+
+
+def burned_private_state_apply_imageid_cut(
+    state: dict, current_pid: str, harvested: list[str]
+) -> dict:
+    """Keep burned ids forever; on ImageID cut, also burn harvested wallet privates."""
+    ids = [str(x) for x in (state.get("ids") or []) if str(x).strip()]
+    prev = str(state.get("program_id_hex") or "").strip().lower()
+    cur = (current_pid or "").strip().lower()
+    if prev and cur and prev != cur:
+        ids.extend(harvested)
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in ids:
+        if item not in seen:
+            seen.add(item)
+            out.append(item)
+    return {"program_id_hex": cur, "ids": out}
+
+
+def private_id_is_unusable(b58: str, burned: list[str], prefixes: tuple[str, ...] | None = None) -> bool:
+    if not b58:
+        return True
+    if b58 in burned:
+        return True
+    prefs = prefixes if prefixes is not None else _RECYCLED_PRIVATE_PREFIXES
+    return any(b58.startswith(p) for p in prefs)
+
+
+def load_burned_private_state(repo: Path) -> dict:
+    path = burned_private_ids_path(repo)
+    if not path.is_file():
+        return {"program_id_hex": "", "ids": []}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"program_id_hex": "", "ids": []}
+    if not isinstance(data, dict):
+        return {"program_id_hex": "", "ids": []}
+    ids = data.get("ids") if isinstance(data.get("ids"), list) else []
+    return {
+        "program_id_hex": str(data.get("program_id_hex") or ""),
+        "ids": [str(x) for x in ids if str(x).strip()],
+    }
+
+
+def save_burned_private_state(repo: Path, state: dict) -> None:
+    path = burned_private_ids_path(repo)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+
+
+def current_e2e_program_id_hex() -> str:
+    return (
+        os.environ.get("PAYMENT_STREAMS_PROGRAM_ID_HEX", "").strip().lower()
+        or os.environ.get("PROGRAM_ID_HEX", "").strip().lower()
+    )
+
+
+def sync_burned_private_ids_for_imageid(repo: Path, *storages: Path) -> list[str]:
+    """Apply ImageID cut and return the live burned-id list."""
+    harvested: list[str] = []
+    for storage in storages:
+        if storage and storage.is_file():
+            harvested.extend(private_ids_from_storage(storage))
+    state = burned_private_state_apply_imageid_cut(
+        load_burned_private_state(repo), current_e2e_program_id_hex(), harvested
+    )
+    save_burned_private_state(repo, state)
+    return list(state.get("ids") or [])
+
+
+def record_burned_private_id(repo: Path, b58: str) -> None:
+    if not b58:
+        return
+    state = load_burned_private_state(repo)
+    ids = list(state.get("ids") or [])
+    if b58 not in ids:
+        ids.append(b58)
+    state["ids"] = ids
+    state["program_id_hex"] = current_e2e_program_id_hex() or str(
+        state.get("program_id_hex") or ""
+    )
+    save_burned_private_state(repo, state)
+
+
+def create_fresh_private_account(cfg: Path, repo: Path) -> tuple[str, str]:
+    """create_account_private, skipping burned and known-recycled ids."""
+    burned = list(load_burned_private_state(repo).get("ids") or [])
+    last_b58 = ""
+    for _ in range(16):
+        account_hex, account_b58 = _normalize_private_account_hex(
+            cfg, create_account(cfg, private=True)
+        )
+        last_b58 = account_b58
+        if private_id_is_unusable(account_b58, burned):
+            record_burned_private_id(repo, account_b58)
+            burned.append(account_b58)
+            continue
+        record_burned_private_id(repo, account_b58)
+        return account_hex, account_b58
+    raise E2EError(
+        f"could not derive a fresh private account (last={last_b58}); "
+        "burned ids live in .scaffold/e2e/burned-private-ids.json"
+    )
+
+
 def resolve_testnet_public_funder(repo: Path, manifest: dict) -> str:
     """Public pinata/AT funder for Store privacy on testnet.
 
@@ -2647,6 +2773,12 @@ def setup_store_owner_privacy_accounts(
     """
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
     is_testnet = os.environ.get("CHAIN", "local").strip().lower() == "testnet"
+    sync_burned_private_ids_for_imageid(
+        repo,
+        Path(os.environ.get("WALLET_STORAGE", "")),
+        cfg_wallet_paths(cfg_user)[1],
+        cfg_wallet_paths(cfg_provider)[1],
+    )
     # Testnet: public funder from testnet-module.json (same SSOT as
     # fund-testnet-accounts.sh / module-e2e). Do not use testnet.json
     # owner_account_id — privacy runs overwrite that with the private vault
@@ -2677,29 +2809,15 @@ def setup_store_owner_privacy_accounts(
             narrator.step("Creating public funder and private vault owner (OWNER_PRIVACY=1)")
         funder_raw = create_account(cfg_user, private=False)
         funder_b58 = account_id_to_base58(cfg_user, funder_raw)
-    owner_hex, owner_b58 = _normalize_private_account_hex(
-        cfg_user, create_account(cfg_user, private=True)
-    )
-    if any(owner_b58.startswith(p) for p in _RECYCLED_PRIVATE_PREFIXES):
-        raise E2EError(
-            f"recycled private owner id {owner_b58} — run "
-            "./verify/testnet/prepare-testnet-privacy-seed.sh before Store privacy E2E"
-        )
+    owner_hex, owner_b58 = create_fresh_private_account(cfg_user, repo)
     provider_hex = ""
     provider_b58 = str(manifest.get("provider_account_id") or "").strip()
     if provider_privacy_enabled():
-        provider_hex, provider_b58 = _normalize_private_account_hex(
-            cfg_user, create_account(cfg_user, private=True)
-        )
+        provider_hex, provider_b58 = create_fresh_private_account(cfg_user, repo)
         if provider_b58 == owner_b58:
             raise E2EError(
                 "create_account_private returned duplicate owner/provider private ids "
                 f"in one session (owner={owner_b58})"
-            )
-        if any(provider_b58.startswith(p) for p in _RECYCLED_PRIVATE_PREFIXES):
-            raise E2EError(
-                f"recycled private provider id {provider_b58} — run "
-                "./verify/testnet/prepare-testnet-privacy-seed.sh before Store privacy E2E"
             )
     # Split wallets: provider has its own storage (seed clone). Do not copy
     # user storage onto provider (D38.8). Full-privacy claim stays on user.
@@ -2764,10 +2882,14 @@ def setup_store_provider_privacy_accounts(
         return
 
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
-    narrator.step("Creating private provider account on provider host (PROVIDER_PRIVACY=1)")
-    provider_hex, provider_b58 = _normalize_private_account_hex(
-        cfg_provider, create_account(cfg_provider, private=True)
+    repo = Path(__file__).resolve().parents[2]
+    sync_burned_private_ids_for_imageid(
+        repo,
+        Path(os.environ.get("WALLET_STORAGE", "")),
+        cfg_wallet_paths(cfg_provider)[1],
     )
+    narrator.step("Creating private provider account on provider host (PROVIDER_PRIVACY=1)")
+    provider_hex, provider_b58 = create_fresh_private_account(cfg_provider, repo)
     resync_wallet_from_genesis(cfg_provider, seq_url)
 
     manifest["provider_account_id"] = provider_b58

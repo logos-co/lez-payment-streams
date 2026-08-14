@@ -121,5 +121,8 @@ logoscore --config-dir "$PROBE/cfg" stop >/dev/null 2>&1 || true
 if [[ "$next_b58" =~ $RECYCLED_REGEX ]]; then
   ps_fatal "next private id still recycled ($next_b58); raise PS_PRIVACY_SEED_BURN_COUNT and re-run"
 fi
+for b58 in "${burned[@]}"; do
+  ps_e2e_record_burned_private "$b58"
+done
 
 ps_log_info "Seed ready: privates=$after last_synced_block=$synced next_create=${next_b58:0:12}… (not recycled)"

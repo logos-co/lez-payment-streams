@@ -16,6 +16,11 @@ Related: [`archive/steps/local-chain-fixture-handoff.md`](../archive/steps/local
 - When unsure, or when verification fails, reset the chain and re-seed instead of tuning
   demo-only env bypasses.
 
+After a guest ImageID cut, treat private notes in cloned wallets as burned.
+Derive a fresh private owner/provider for the next privacy cell; do not shield a note
+whose nullifier was spent under the previous program.
+Burned ids: `.scaffold/e2e/burned-private-ids.json`.
+
 `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF` is an escape hatch when chain writes are broken
 but you still need to show proof bytes. It is not the normal local demo path.
 

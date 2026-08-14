@@ -54,7 +54,19 @@ def test_seed_deposit_amount_lo() -> None:
     assert rle.seed_deposit_amount_lo({"demo_deposit_amount": 600}) == 600
 
 
-def test_testnet_write_manifest_program_id() -> None:
+def test_burned_private_state_apply_imageid_cut() -> None:
+    state = {"program_id_hex": "aa" * 32, "ids": ["old1"]}
+    out = rle.burned_private_state_apply_imageid_cut(state, "bb" * 32, ["harvested"])
+    assert out["program_id_hex"] == "bb" * 32
+    assert out["ids"] == ["old1", "harvested"]
+    same = rle.burned_private_state_apply_imageid_cut(out, "bb" * 32, ["ignored"])
+    assert same["ids"] == ["old1", "harvested"]
+
+
+def test_private_id_is_unusable() -> None:
+    assert rle.private_id_is_unusable("DaV7bT45xxxx", [])
+    assert rle.private_id_is_unusable("fresh", ["fresh"])
+    assert not rle.private_id_is_unusable("fresh", ["other"])
     pid = "c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a"
     assert rle.testnet_write_manifest_program_id(pid, pid) == pid
     assert rle.testnet_write_manifest_program_id(pid.upper(), pid) == pid

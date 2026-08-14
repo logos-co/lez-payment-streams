@@ -568,6 +568,25 @@ if s: print(s)
 ' "$1" 2>/dev/null || true
 }
 
+ps_module_create_fresh_private() {
+  local hex b58 attempt
+  ps_e2e_burned_apply_imageid_cut "${WALLET_STORAGE:-}"
+  for attempt in $(seq 1 16); do
+    hex="$(parse_new_account "$(logoscore call logos_execution_zone create_account_private 2>/dev/null | tail -1)")"
+    [[ -n "$hex" && ${#hex} -eq 64 ]] || ps_fatal "could not create private account (expected 32-byte hex id)"
+    b58="$(to_base58 "$hex")"
+    if ps_e2e_private_id_unusable "$b58"; then
+      ps_e2e_record_burned_private "$b58"
+      narr_verbose "skipping burned or recycled private id ${b58:0:12}…"
+      continue
+    fi
+    ps_e2e_record_burned_private "$b58"
+    printf '%s\n' "$hex"
+    return 0
+  done
+  ps_fatal "could not derive a fresh private account after 16 attempts"
+}
+
 if ps_is_local; then
   if ps_is_owner_privacy_e2e; then
     if ps_is_provider_privacy_e2e; then
@@ -579,12 +598,12 @@ if ps_is_local; then
     [[ -z "$PUBLIC_FUNDER" ]] && ps_fatal "could not create public funder account"
     [[ ${#PUBLIC_FUNDER} -eq 64 ]] && PUBLIC_FUNDER="$(to_base58 "$PUBLIC_FUNDER")"
 
-    OWNER_HEX="$(parse_new_account "$(logoscore call logos_execution_zone create_account_private 2>/dev/null | tail -1)")"
+    OWNER_HEX="$(ps_module_create_fresh_private)"
     [[ -z "$OWNER_HEX" || ${#OWNER_HEX} -ne 64 ]] && ps_fatal "could not create private vault owner (expected 32-byte hex id)"
     OWNER="$(to_base58 "$OWNER_HEX")"
 
     if ps_is_provider_privacy_e2e; then
-      PROVIDER_HEX="$(parse_new_account "$(logoscore call logos_execution_zone create_account_private 2>/dev/null | tail -1)")"
+      PROVIDER_HEX="$(ps_module_create_fresh_private)"
       [[ -z "$PROVIDER_HEX" || ${#PROVIDER_HEX} -ne 64 ]] && ps_fatal "could not create private provider (expected 32-byte hex id)"
       PROVIDER="$(to_base58 "$PROVIDER_HEX")"
     else
@@ -599,7 +618,7 @@ if ps_is_local; then
     [[ -z "$OWNER" ]] && { narr_fail "Could not create owner account"; ps_fatal "could not create owner account"; }
     [[ ${#OWNER} -eq 64 ]] && OWNER="$(to_base58 "$OWNER")"
 
-    PROVIDER_HEX="$(parse_new_account "$(logoscore call logos_execution_zone create_account_private 2>/dev/null | tail -1)")"
+    PROVIDER_HEX="$(ps_module_create_fresh_private)"
     [[ -z "$PROVIDER_HEX" || ${#PROVIDER_HEX} -ne 64 ]] && ps_fatal "could not create private provider (expected 32-byte hex id)"
     PROVIDER="$(to_base58 "$PROVIDER_HEX")"
     logoscore call logos_execution_zone save >/dev/null 2>&1 || true
@@ -625,12 +644,12 @@ elif ps_is_testnet && (ps_is_owner_privacy_e2e || ps_is_provider_privacy_e2e); t
     else
       narr_step "Creating private vault owner (testnet; funder=$PUBLIC_FUNDER)"
     fi
-    OWNER_HEX="$(parse_new_account "$(logoscore call logos_execution_zone create_account_private 2>/dev/null | tail -1)")"
+    OWNER_HEX="$(ps_module_create_fresh_private)"
     [[ -z "$OWNER_HEX" || ${#OWNER_HEX} -ne 64 ]] && ps_fatal "could not create private vault owner (expected 32-byte hex id)"
     OWNER="$(to_base58 "$OWNER_HEX")"
 
     if ps_is_provider_privacy_e2e; then
-      PROVIDER_HEX="$(parse_new_account "$(logoscore call logos_execution_zone create_account_private 2>/dev/null | tail -1)")"
+      PROVIDER_HEX="$(ps_module_create_fresh_private)"
       [[ -z "$PROVIDER_HEX" || ${#PROVIDER_HEX} -ne 64 ]] && ps_fatal "could not create private provider (expected 32-byte hex id)"
       PROVIDER="$(to_base58 "$PROVIDER_HEX")"
       if [[ "$PROVIDER" == "$OWNER" ]]; then
@@ -640,7 +659,7 @@ elif ps_is_testnet && (ps_is_owner_privacy_e2e || ps_is_provider_privacy_e2e); t
     logoscore call logos_execution_zone save >/dev/null 2>&1 || true
   else
     narr_step "Creating private provider (testnet; public owner=$OWNER)"
-    PROVIDER_HEX="$(parse_new_account "$(logoscore call logos_execution_zone create_account_private 2>/dev/null | tail -1)")"
+    PROVIDER_HEX="$(ps_module_create_fresh_private)"
     [[ -z "$PROVIDER_HEX" || ${#PROVIDER_HEX} -ne 64 ]] && ps_fatal "could not create private provider (expected 32-byte hex id)"
     PROVIDER="$(to_base58 "$PROVIDER_HEX")"
     logoscore call logos_execution_zone save >/dev/null 2>&1 || true

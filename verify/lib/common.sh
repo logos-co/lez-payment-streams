@@ -868,4 +868,105 @@ ps_privacy_profile_label() {
   echo "${parts[*]}"
 }
 
+ps_e2e_burned_ids_file() {
+  echo "$REPO_ROOT/.scaffold/e2e/burned-private-ids.json"
+}
+
+ps_e2e_current_program_id() {
+  local id="${PAYMENT_STREAMS_PROGRAM_ID_HEX:-}"
+  if [[ -z "$id" ]]; then
+    id="$(ps_program_id_hex || true)"
+  fi
+  printf '%s\n' "${id,,}"
+}
+
+# Harvest wallet privates into the burned-id file when ImageID changes.
+ps_e2e_burned_apply_imageid_cut() {
+  local storage="${1:-${WALLET_STORAGE:-}}"
+  python3 - "$REPO_ROOT" "$(ps_e2e_current_program_id)" "$storage" <<'PY'
+import json, sys
+from pathlib import Path
+repo, pid, storage = Path(sys.argv[1]), sys.argv[2].strip().lower(), Path(sys.argv[3]) if sys.argv[3] else Path()
+path = repo / ".scaffold" / "e2e" / "burned-private-ids.json"
+state = {"program_id_hex": "", "ids": []}
+if path.is_file():
+    try:
+        loaded = json.loads(path.read_text())
+        if isinstance(loaded, dict):
+            state = {
+                "program_id_hex": str(loaded.get("program_id_hex") or ""),
+                "ids": [str(x) for x in (loaded.get("ids") or []) if str(x).strip()],
+            }
+    except Exception:
+        pass
+harvested = []
+if storage.is_file():
+    try:
+        data = json.loads(storage.read_text())
+        for row in data.get("key_chain", {}).get("accounts") or data.get("accounts") or []:
+            if isinstance(row, dict) and isinstance(row.get("Private"), dict):
+                aid = row["Private"].get("account_id")
+                if aid:
+                    harvested.append(str(aid))
+    except Exception:
+        pass
+ids = list(state["ids"])
+prev = str(state.get("program_id_hex") or "").strip().lower()
+if prev and pid and prev != pid:
+    ids.extend(harvested)
+out, seen = [], set()
+for item in ids:
+    if item not in seen:
+        seen.add(item)
+        out.append(item)
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps({"program_id_hex": pid, "ids": out}, indent=2) + "\n")
+PY
+}
+
+ps_e2e_private_id_unusable() {
+  local b58="$1"
+  python3 - "$REPO_ROOT" "$b58" <<'PY'
+import json, sys
+from pathlib import Path
+repo, b58 = Path(sys.argv[1]), sys.argv[2]
+prefixes = ("DaV7bT45", "FqxTyJhY", "8vSpcfHE", "H7JEDimH", "2B8gB6jB", "42epagKp", "99AdxJCt")
+ids = []
+path = repo / ".scaffold" / "e2e" / "burned-private-ids.json"
+if path.is_file():
+    try:
+        ids = json.loads(path.read_text()).get("ids") or []
+    except Exception:
+        ids = []
+sys.exit(0 if (not b58 or b58 in ids or any(b58.startswith(p) for p in prefixes)) else 1)
+PY
+}
+
+ps_e2e_record_burned_private() {
+  local b58="$1"
+  [[ -n "$b58" ]] || return 0
+  python3 - "$REPO_ROOT" "$b58" "$(ps_e2e_current_program_id)" <<'PY'
+import json, sys
+from pathlib import Path
+repo, b58, pid = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+path = repo / ".scaffold" / "e2e" / "burned-private-ids.json"
+state = {"program_id_hex": pid, "ids": []}
+if path.is_file():
+    try:
+        loaded = json.loads(path.read_text())
+        if isinstance(loaded, dict):
+            state["ids"] = [str(x) for x in (loaded.get("ids") or []) if str(x).strip()]
+            if not pid:
+                state["program_id_hex"] = str(loaded.get("program_id_hex") or "")
+    except Exception:
+        pass
+if b58 not in state["ids"]:
+    state["ids"].append(b58)
+if pid:
+    state["program_id_hex"] = pid
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps(state, indent=2) + "\n")
+PY
+}
+
 ps_log_info "Common library loaded (REPO_ROOT=$REPO_ROOT)"
