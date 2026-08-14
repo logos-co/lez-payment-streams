@@ -106,6 +106,12 @@ Do not wait for `getTransaction` to stay null.
 `PAYMENT_STREAMS_PROGRAM_ID_HEX` is unset on local cells so identity comes from the live ELF.
 Neither that variable nor a testnet `FIXTURE_MANIFEST` may leak across cells.
 
+Wallet CLI writes (AT-init, shield, seed deposit) stop the logoscore daemon first so it cannot autosave over `storage.json`. Restart one `open` after the CLI exits. Do not use `logos_execution_zone.close` for this handoff.
+
+Real-prove shields default to `PS_WALLET_SHIELD_TIMEOUT=1800` (CPU prove measured ~1020s). Raise that env if prove is slower.
+
+Vault deposit is skipped when unallocated already covers one allocation, and aborted when the public owner cannot cover the deposit. Private owners skip the public-balance check.
+
 Local snapshot save records the vault `program_owner` from the sequencer, not the ELF on disk.
 `snapshot validate` compares that id to the live ledger and to the current guest; a new guest after snapshot fails closed into prefund.
 

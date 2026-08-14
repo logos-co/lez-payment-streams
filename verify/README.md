@@ -41,7 +41,9 @@ Terminology: `make check-terminology`.
 | `E2E_PHASE` | `all` | Store Python: `core`, `claim`, or `all`. |
 | `SEED_DEPOSIT_AMOUNT` | `1000` local / Store testnet `500` | Vault deposit lo. Skip the submit when unallocated already covers one `SEED_ALLOCATION`. Abort when the public owner cannot cover the deposit (no tx hash). Private owners skip the public-balance check. |
 | `SEED_ALLOCATION` | `200` local / Store testnet `400` | createStream allocation lo; also the funded-vault skip bar. |
+| `E2E_VAULT_UNALLOC_BUFFER_LO` | `50` | Extra unallocated lo on continuation top-up (`needed + buffer`). |
 | `PS_WALLET_SHIELD_TIMEOUT` | `1800` | Wall-clock seconds for `wallet auth-transfer send` (CPU prove measured ~1020s). Stub receipts never take this path. |
+| `PAYMENT_STREAMS_PROGRAM_ID_HEX` | unset local; fixture hex on testnet | Testnet ImageID. Must match the fixture and the pinned ELF. Unset on local so identity comes from the live guest. Do not leak across cells. |
 
 On-chain confirmation: [verification-matrix.md](../docs/reference/matrix.md#on-chain-confirmation-principle).
 

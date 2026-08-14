@@ -21,6 +21,17 @@ Derive a fresh private owner/provider for the next privacy cell; do not shield a
 whose nullifier was spent under the previous program.
 Burned ids: `.scaffold/e2e/burned-private-ids.json`.
 
+Wallet CLI writes need an exclusive-stop window: stop logoscore, let `wallet` be the only
+writer of `storage.json`, then one `open`. `logos_execution_zone.close` does not release
+the file on the current LEZ pin. Genesis resync is a cursor reset for note discovery, not
+key recovery.
+
+Shield wall-clock default is `PS_WALLET_SHIELD_TIMEOUT=1800`. CPU prove on this guest is
+about 17 minutes; a 600s timeout fails the shield and leaves NSKs missing.
+
+Deposit preflight: skip when vault unallocated already covers one `SEED_ALLOCATION`; abort
+when the public owner cannot cover `SEED_DEPOSIT_AMOUNT`. Do not submit a doomed deposit.
+
 `PAYMENT_STREAMS_ALLOW_DEPLETED_STREAM_PROOF` is an escape hatch when chain writes are broken
 but you still need to show proof bytes. It is not the normal local demo path.
 
