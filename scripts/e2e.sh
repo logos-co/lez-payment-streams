@@ -37,13 +37,13 @@ cmd_build() {
   # Build payment_streams_module
   ps_log_info "Building payment_streams_module..."
   local ps_out
-  ps_out="$(ps_nix_build "$REPO_ROOT/logos-payment-streams-module#lgx-portable")"
+  ps_out="$(ps_nix_build "$REPO_ROOT/module#lgx-portable")"
   ps_install_lgx "$ps_out"/*.lgx "$modules_user"
   ps_install_lgx "$ps_out"/*.lgx "$modules_provider"
   
   # Build wallet module (patched)
   ps_log_info "Building logos_execution_zone (wallet)..."
-  local wallet_out="$REPO_ROOT/logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out"
+  local wallet_out="$REPO_ROOT/module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out"
   # compgen -G expands the glob (unlike [[ -f ... ]], where it stays literal);
   # otherwise the wallet lgx would be re-bundled on every run.
   if ! compgen -G "$wallet_out/*.lgx" >/dev/null; then
@@ -263,7 +263,7 @@ cmd_run() {
     export WALLET_CONFIG="$(ps_default_wallet_config)"
     export WALLET_STORAGE="$(ps_default_wallet_storage)"
     export MODULES_USER="${MODULES_USER:-$(ps_e2e_user_modules_dir)}"
-    export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+    export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
     export ARTIFACT="${ARTIFACT:-$(ps_e2e_artifacts_dir)/module-e2e-$(date +%Y%m%dT%H%M%S).log}"
     mkdir -p "$(dirname "$ARTIFACT")"
     ps_log_info "Launching module happy path (Flow A)..."
@@ -313,7 +313,7 @@ cmd_run() {
   export PERSIST_USER="${PERSIST_USER:-$(ps_e2e_user_persist_dir)}"
   export PERSIST_PROVIDER="${PERSIST_PROVIDER:-$(ps_e2e_provider_persist_dir)}"
   export E2E_PROVIDER_AD="${E2E_PROVIDER_AD:-$(ps_e2e_provider_ad_path)}"
-  export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+  export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
   export ARTIFACT="${ARTIFACT:-$(ps_e2e_artifacts_dir)/e2e-$(date +%Y%m%dT%H%M%S).log}"
   export E2E_PHASE="${E2E_PHASE:-all}"
   export SKIP_BUILD="${SKIP_BUILD:-1}"  # Already built in prepare

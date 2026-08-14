@@ -185,8 +185,8 @@ from the patched wrapper (D4).
 
 Metadata `name` is `payment_streams_module`.
 Plugin binary stem is `payment_streams_module_plugin`.
-Repository directory is `logos-payment-streams-module`,
-placed as a sibling of `lez-payment-streams-core/` and `lez-payment-streams-ffi/`
+Repository directory is `module`,
+placed as a sibling of `program/core/` and `module/ffi/`
 inside the existing `lez-payment-streams` repo
 (mirroring `logos-lez-rln`,
 which co-locates `lez-rln/` and `logos-rln-module/`).
@@ -570,7 +570,7 @@ full `canonical_payload` (32-byte domain prefix + Borsh body, 138 bytes for the
 reference demo fixture). LogosAPI `canonicalRequestBytes` must be that full
 wire, not Borsh-only bytes.
 Digest checks use `store_eligibility_digest_matches_n8_reference_fixture` in
-`lez-payment-streams-core/src/off_chain/canonical.rs`.
+`program/core/src/off_chain/canonical.rs`.
 
 Step 15 Nim parity test lives in `logos-delivery` beside the Store codec tests:
 `tests/waku_store/test_store_eligibility_canonical.nim`, comparing lowercase hex to
@@ -631,7 +631,7 @@ Published SPEL (`v0.5.0`) derives in-guest public PDAs with the NSSA prefix
 (`/LEE/v0.2/...`). Until upstream SPEL matches LEZ, this repo vendors
 `vendor/spel-framework-core` and patches `compute_pda` to call
 `lee_core::AccountId::for_public_pda` (root `Cargo.toml` and
-`methods/guest/Cargo.toml` `[patch]` on `spel-framework-core`).
+`program/methods/guest/Cargo.toml` `[patch]` on `spel-framework-core`).
 
 When SPEL officially targets LEE, that vendor fork should be removable.
 Do not drop it on a version bump alone; confirm upstream `compute_pda`

@@ -27,7 +27,7 @@ common = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev
 sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "47eba256479f6f785acbd138834340703cd03401", package = "sequencer_service_rpc", features = ["client"] }
 programs = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "47eba256479f6f785acbd138834340703cd03401", package = "programs", default-features = false, features = ["artifacts"] }
 clock_core = { git = "https://github.com/logos-blockchain/logos-execution-zone", rev = "47eba256479f6f785acbd138834340703cd03401", package = "clock_core" }
-lez-payment-streams-core = { path = "../../lez-payment-streams-core" }
+lez-payment-streams-core = { path = "../../program/core" }
 
 [dev-dependencies]
 tempfile = "3"

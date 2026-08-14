@@ -15,7 +15,7 @@ Reproduce:
 
 ## Public testnet guest program
 
-The payment-streams guest on public testnet (`https://testnet.lez.logos.co/`) was last deployed on 2026-08-13 from freeze commit `8a0e374a7e7171cd5b60ad20d46b9510b057dfe3` (Step 49 native `token_id` / holding PDA). Pinned `methods/guest/Cargo.lock` for Docker guest-builder rustc 1.88.
+The payment-streams guest on public testnet (`https://testnet.lez.logos.co/`) was last deployed on 2026-08-13 from freeze commit `8a0e374a7e7171cd5b60ad20d46b9510b057dfe3` (Step 49 native `token_id` / holding PDA). Pinned `program/methods/guest/Cargo.lock` for Docker guest-builder rustc 1.88.
 ImageID / `program_id_hex`: `c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a` (release ELF 373916 bytes).
 Deploy transaction `229dddd92e5184f4a44816ddda711b1eac51476248620a686807e091ffefba8b` (block 5873).
 SSOT fixture: [fixtures/testnet-module.json](fixtures/testnet-module.json).
@@ -31,7 +31,7 @@ Host and toolchain:
 
 - Linux (Ubuntu 22.04+) or macOS 14+
 - Nix with flakes enabled
-- Rust toolchain with RISC Zero for the guest ELF (`make build` or `cargo risczero build` under `methods/guest/`)
+- Rust toolchain with RISC Zero for the guest ELF (`make build` or `cargo risczero build` under `program/methods/guest/`)
 - Logos scaffold CLI (`lgs`) on `PATH`. Manual protocol path: [payment-streams.md](docs/reproduce/payment-streams.md)
 - Internet access for Nix flakes (and for testnet runs)
 

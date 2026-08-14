@@ -9,19 +9,19 @@ Sibling pins: [reference/feature-branch-pins.md](../reference/feature-branch-pin
 
 ## Review order
 
-1. `lez-payment-streams-core/src/instruction.rs` — wire instruction enum
-2. `lez-payment-streams-core/src/stream_config.rs`, `vault.rs` — pure transitions
-3. `methods/guest/src/bin/lez_payment_streams.rs` — handlers in declaration order
-4. `lez-payment-streams-core/src/program_tests/` — one module per instruction (transparent + PP)
+1. `program/core/src/instruction.rs` — wire instruction enum
+2. `program/core/src/stream_config.rs`, `vault.rs` — pure transitions
+3. `program/methods/guest/src/bin/lez_payment_streams.rs` — handlers in declaration order
+4. `program/core/src/program_tests/` — one module per instruction (transparent + PP)
 
 ## Code map
 
 | Path | Role |
 | --- | --- |
-| `methods/guest/src/bin/lez_payment_streams.rs` | Guest instructions, SPEL helpers |
-| `lez-payment-streams-core/src/` | Vault/stream types, policy, accrual |
-| `lez-payment-streams-core/src/program_tests/` | In-process LEZ harness tests |
-| `lez-payment-streams-ffi/` | C/FFI boundary for the Logos module |
+| `program/methods/guest/src/bin/lez_payment_streams.rs` | Guest instructions, SPEL helpers |
+| `program/core/src/` | Vault/stream types, policy, accrual |
+| `program/core/src/program_tests/` | In-process LEZ harness tests |
+| `module/ffi/` | C/FFI boundary for the Logos module |
 
 Core modules: `error_codes.rs`, `test_helpers.rs`. Guest holds parsing, validation, context load,
 and writes — not shared pure logic in `lib.rs`.
@@ -59,7 +59,7 @@ Callers that omit `token_id` on `initializeVault` get native.
 ## Verify (Rust)
 
 ```bash
-cargo risczero build --manifest-path methods/guest/Cargo.toml
+cargo risczero build --manifest-path program/methods/guest/Cargo.toml
 RISC0_DEV_MODE=1 cargo test -p lez-payment-streams-core --lib
 ```
 

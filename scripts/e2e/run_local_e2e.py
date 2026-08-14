@@ -4636,7 +4636,7 @@ def main() -> int:
     guest_bin = Path(
         os.environ.get(
             "PAYMENT_STREAMS_GUEST_BIN",
-            repo / "methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin",
+            repo / "program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin",
         )
     )
     provider_ad = Path(os.environ.get("E2E_PROVIDER_AD", e2e / "provider-advertisement.json"))

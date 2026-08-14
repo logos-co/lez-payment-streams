@@ -117,7 +117,7 @@ Host and guest unification (and dropping the AT hex override) was Step 48
 | Layer | LEZ | Spel | What pins it |
 | --- | --- | --- | --- |
 | Operator stack | `v0.2.4` (`47eba256479f6f785acbd138834340703cd03401`) | `v0.6.0` (`0cb7e0980535af619482cf1c823f4d394b3ebd61`) in `scaffold.toml` | `scaffold.toml` `[repos.lez]`, Nix wallet / `lez-wallet-ffi-patched`, PATH `wallet` via scaffold cache (`ps_lez_cache` / `lez_scaffold_cache_dir`), `tools/lez-testnet-submit`, `scripts/lib/testnet-common.sh` `LEZ_OP_REV` |
-| Program graph | `v0.2.0` (`a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a`) | same stock `v0.6.0` tag | `lez-payment-streams-core`, `-ffi`, `methods/guest`, `examples`, `nix/payment-streams-ffi.nix` |
+| Program graph | `v0.2.0` (`a58fbce2ff48c58b7bb5001b1a27e64b9596ee3a`) | same stock `v0.6.0` tag | `lez-payment-streams-core`, `-ffi`, `program/methods/guest`, `examples`, `nix/payment-streams-ffi.nix` |
 
 Also locked:
 
@@ -154,7 +154,7 @@ Flake refs:
 - `scaffold.toml` `[repos.lez].pin` = `47eba256479f6f785acbd138834340703cd03401`
 - `scaffold.toml` `[repos.spel].pin` = `0cb7e0980535af619482cf1c823f4d394b3ebd61`
 - `lez-wallet-ffi-patched` input already at `47eba256…`
-  (`logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/lez-wallet-ffi-patched/`)
+  (`module/nix/flakes/logos-execution-zone-module-patched/lez-wallet-ffi-patched/`)
 - Patched wallet wrapper `upstream` =
   `github:logos-blockchain/logos-execution-zone-module/549cf1159f20fa0c3fe8e88a5ab71de68a5aa34b`
 - `upstream.inputs.logos-execution-zone.follows` the operator LEZ input (`lez-wallet-ffi-patched`)
@@ -167,7 +167,7 @@ Keep dual `NSSA_WALLET_HOME_DIR` + `LEE_WALLET_HOME_DIR` exports.
 Guest ImageID, PDAs, core types, and payment-streams FFI artifacts stay on LEZ `v0.2.0`
 (`a58fbce2…` / tag `v0.2.0`):
 
-- `lez-payment-streams-core`, `lez-payment-streams-ffi`, `methods/guest`, `examples`
+- `lez-payment-streams-core`, `lez-payment-streams-ffi`, `program/methods/guest`, `examples`
 - `nix/payment-streams-ffi.nix` (`fetchFromGitHub` rev `a58fbce2…`)
 
 Spel is stock `v0.6.0` tag-only in core, guest, and examples (no vendored tree).
@@ -201,7 +201,7 @@ matches upstream shipping identity: `logos_execution_zone`. The wallet module is
 Universal (std::string/std::vector).
 
 Patches live under
-`logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched/`
+`module/nix/flakes/logos-execution-zone-module-patched/`
 and are applied in `postPatch` (list the directory; do not assume a fixed count):
 
 - `wallet-qt-sign-public-payload.patch`
@@ -240,10 +240,10 @@ Runbook: [`archive/steps/wallet-510-runbook.md`](archive/steps/wallet-510-runboo
 Operator stack (wallet / LEZ-module / helper):
 
 ```bash
-cd logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched
+cd module/nix/flakes/logos-execution-zone-module-patched
 nix flake update
 
-cd ../../..   # logos-payment-streams-module/
+cd ../../..   # module/
 nix flake update logos-execution-zone logos-execution-zone-module
 
 # Rebuild submit helper after operator LEZ bump; assert AT id
@@ -265,7 +265,7 @@ From repo root after an operator LEZ bump:
 ```bash
 lgs setup
 ./scripts/archive/build-wallet-lgx.sh
-nix build ./logos-payment-streams-module#lgx-portable
+nix build ./module#lgx-portable
 ```
 
 After a program-graph or guest ImageID change, rebuild the funded localnet snapshot:
@@ -316,7 +316,7 @@ and [step-18b-rc5-unify-handoff.md](plan/completed/step-18b-rc5-unify-handoff.md
 Guest `program_id_hex` on testnet: org deploy recorded in step packet; example in
 `fixtures/testnet.json.example`.
 
-Guest release profile: `methods/guest/Cargo.toml` ships `[profile.release]` with
+Guest release profile: `program/methods/guest/Cargo.toml` ships `[profile.release]` with
 `debug = 0; strip = "symbols"` (matches the `lez-programs` convention). The
 ImageID is computed over the release-stripped binary, so this profile is part of
 program identity. A rebuild with a different profile produces a different
@@ -338,10 +338,10 @@ Runbook: [archive/steps/public-sequencer-store-runbook.md](archive/steps/public-
 nix build .#payment-streams-ffi
 
 # Patched wallet lib (wrapper flake; operator LEZ)
-nix build ./logos-payment-streams-module/nix/flakes/logos-execution-zone-module-patched#lib
+nix build ./module/nix/flakes/logos-execution-zone-module-patched#lib
 
 # Payment-streams Logos module bundle
-nix build ./logos-payment-streams-module#lgx-portable
+nix build ./module#lgx-portable
 
 # Submit helper (operator LEZ); rebuild before asserting AT id
 (cd tools/lez-testnet-submit && cargo build --release)

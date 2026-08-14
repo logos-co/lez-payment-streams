@@ -54,7 +54,7 @@ Build module (no delivery):
 
 ```bash
 MODE=module ./scripts/e2e.sh build
-# or: nix build ./logos-payment-streams-module#lgx
+# or: nix build ./module#lgx
 ```
 
 Patched `logos_execution_zone` wallet: [reference/feature-branch-pins.md](../reference/feature-branch-pins.md).
@@ -62,8 +62,8 @@ Patched `logos_execution_zone` wallet: [reference/feature-branch-pins.md](../ref
 Guest ELF for logoscore:
 
 ```bash
-export PAYMENT_STREAMS_GUEST_BIN="$REPO/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"
-cargo risczero build --manifest-path methods/guest/Cargo.toml
+export PAYMENT_STREAMS_GUEST_BIN="$REPO/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"
+cargo risczero build --manifest-path program/methods/guest/Cargo.toml
 ```
 
 Set `PAYMENT_STREAMS_GUEST_BIN` on the logoscore daemon process before writes.

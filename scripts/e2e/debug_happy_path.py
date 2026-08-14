@@ -44,7 +44,7 @@ def main() -> int:
     os.environ["PAYMENT_STREAMS_GUEST_BIN"] = str(
         os.environ.get(
             "PAYMENT_STREAMS_GUEST_BIN",
-            REPO / "methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin",
+            REPO / "program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin",
         )
     )
 

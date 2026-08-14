@@ -45,7 +45,8 @@ use crate::{derive_stream_config_account_id, derive_vault_account_ids};
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
-        .expect("core crate should be inside workspace root")
+        .and_then(|p| p.parent())
+        .expect("core crate should live at program/core under workspace root")
         .to_path_buf()
 }
 

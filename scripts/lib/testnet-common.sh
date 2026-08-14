@@ -14,7 +14,7 @@ export LEZ_OP_REV="${LEZ_OP_REV:-47eba256479f6f785acbd138834340703cd03401}"
 export TESTNET_SEQUENCER="${TESTNET_SEQUENCER:-https://testnet.lez.logos.co/}"
 export TESTNET_WALLET_DIR="${TESTNET_WALLET_DIR:-$(ps_e2e_testnet_wallet_dir)}"
 export TESTNET_WALLET_PASSWORD="${TESTNET_WALLET_PASSWORD:-testnet-dev}"
-export PROGRAM_BIN="${PROGRAM_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+export PROGRAM_BIN="${PROGRAM_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
 
 # TESTNET_PROGRAM_ID_HEX override, else derive from the built guest via make -s program-id.
 # Does not auto-build (D50.10).

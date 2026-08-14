@@ -25,7 +25,7 @@ nix shell --accept-flake-config \
 # Inside that shell (lgs on PATH, e.g. export PATH="$HOME/.cargo/bin:$PATH")
 lgs init    # once, if no .scaffold/
 lgs setup   # once, if scaffold.toml missing
-cargo risczero build --manifest-path methods/guest/Cargo.toml   # once, if guest .bin missing
+cargo risczero build --manifest-path program/methods/guest/Cargo.toml   # once, if guest .bin missing
 
 # Store flow: ../logos-delivery-module + ../logos-delivery per feature-branch-pins.md
 

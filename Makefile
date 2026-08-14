@@ -7,8 +7,8 @@
 
 SHELL := /bin/bash
 STATE_FILE := .lez_payment_streams-state
-IDL_FILE := lez-payment-streams-idl.json
-PROGRAMS_DIR := methods/guest/target/riscv32im-risc0-zkvm-elf/docker
+IDL_FILE := program/lez-payment-streams-idl.json
+PROGRAMS_DIR := program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker
 PROGRAM_BIN := $(PROGRAMS_DIR)/lez_payment_streams.bin
 
 # Load saved state if it exists
@@ -46,7 +46,7 @@ help: ## Show this help
 	@echo "  make cli ARGS=\"-p $(PROGRAM_BIN) <command> --arg1 value1\""
 
 build: ## Build the guest binary
-	cargo risczero build --manifest-path methods/guest/Cargo.toml
+	cargo risczero build --manifest-path program/methods/guest/Cargo.toml
 	@echo ""
 	@echo "✅ Guest binary built: $(PROGRAM_BIN)"
 	@ls -la $(PROGRAM_BIN) 2>/dev/null || true
@@ -55,7 +55,7 @@ idl: ## Generate IDL JSON from program source (stock spel CLI)
 	@set -euo pipefail; \
 	tmp=$$(mktemp); \
 	trap 'rm -f "$$tmp"' EXIT; \
-	spel generate-idl methods/guest/src/bin/lez_payment_streams.rs > "$$tmp"; \
+	spel generate-idl program/methods/guest/src/bin/lez_payment_streams.rs > "$$tmp"; \
 	mv "$$tmp" $(IDL_FILE)
 	@echo "✅ IDL written to $(IDL_FILE)"
 

@@ -35,7 +35,7 @@ fn test_derive_stream_pda_stable() {
     let program_id = guest_program.id();
     let vault_id = VaultId::from(1u64);
     // PDA seed order must match the guest `#[account(..., pda = [...])]` attributes in
-    // `methods/guest/src/bin/lez_payment_streams.rs` (`initialize_vault` / `create_stream`):
+    // `program/methods/guest/src/bin/lez_payment_streams.rs` (`initialize_vault` / `create_stream`):
     // vault_config: `vault_config`, owner, vault_id;
     // vault_holding: `vault_holding`, vault_config account id, `native`;
     // stream_config: `stream_config`, vault_config account id, stream_id.

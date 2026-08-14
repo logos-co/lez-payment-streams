@@ -11,7 +11,7 @@ if [[ -x "$SCAFFOLD_WALLET" ]]; then
   export PATH="$(dirname "$SCAFFOLD_WALLET"):$PATH"
 fi
 
-PROGRAM_BIN="methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"
+PROGRAM_BIN="program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"
 STATE_FILE=".lez_payment_streams-state"
 WALLET_HOME="${LEE_WALLET_HOME_DIR:-${NSSA_WALLET_HOME_DIR:-$REPO_ROOT/.scaffold/wallet}}"
 export LEE_WALLET_HOME_DIR="$WALLET_HOME"

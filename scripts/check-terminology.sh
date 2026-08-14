@@ -66,13 +66,13 @@ scan_pattern() {
       fi
     fi
     # LEZ must-sign IDL / guest attrs: "signer": true/false boolean fields.
-    if [[ "$file" == "lez-payment-streams-idl.json" || "$file" == methods/guest/* ]]; then
+    if [[ "$file" == "program/lez-payment-streams-idl.json" || "$file" == program/methods/guest/* ]]; then
       if [[ "$line" == *'"signer":'* || "$line" == *'#[account(signer)]'* || "$line" == *'signer)'* ]]; then
         continue
       fi
     fi
     # Guest account param name authority_account stays until Step 44.
-    if [[ "$file" == methods/guest/* && "$line" == *authority_account* ]]; then
+    if [[ "$file" == program/methods/guest/* && "$line" == *authority_account* ]]; then
       continue
     fi
     # SIGNER_ID fixture key (inventory only).
@@ -97,17 +97,17 @@ scan_pattern() {
 note "=== Step 47 terminology gate (D47.11) ==="
 
 # 1) Quoted JSON keys in module src after flip.
-mod_signer="$(rg -n --no-heading -e '"signer"' logos-payment-streams-module/src 2>/dev/null || true)"
-mod_auth="$(rg -n --no-heading -e '"authority"' logos-payment-streams-module/src 2>/dev/null || true)"
+mod_signer="$(rg -n --no-heading -e '"signer"' module/src 2>/dev/null || true)"
+mod_auth="$(rg -n --no-heading -e '"authority"' module/src 2>/dev/null || true)"
 if [[ -n "$mod_signer" ]]; then
   note "$mod_signer"
-  fail 'quoted "signer" in logos-payment-streams-module/src'
+  fail 'quoted "signer" in module/src'
 else
   ok 'no quoted "signer" in module src'
 fi
 if [[ -n "$mod_auth" ]]; then
   note "$mod_auth"
-  fail 'quoted "authority" in logos-payment-streams-module/src'
+  fail 'quoted "authority" in module/src'
 else
   ok 'no quoted "authority" in module src'
 fi
@@ -116,19 +116,19 @@ fi
 scan_pattern \
   'signerAccountId|ownerBytesFromSigner|enforceDepositSigner|depositSignerMismatch|SignerField|signerHexLower|signerBase58|signerAccountIdHex' \
   'module owner-id signer* helpers' \
-  logos-payment-streams-module/
+  module/
 
 # 3) StreamAuthority* layout names.
 scan_pattern \
   'StreamAuthority|stream_authority_instruction|plan_stream_authority' \
   'StreamAuthority* layout symbols' \
-  lez-payment-streams-core/src lez-payment-streams-ffi/ logos-payment-streams-module/
+  program/core/src module/ffi/ module/
 
 # 4) requesterPeerId / requester_peer_id on living payment-streams surfaces.
 scan_pattern \
   'requesterPeerId|requester_peer_id' \
   'requesterPeerId living names' \
-  logos-payment-streams-module/ docs/reference/ docs/reproduce/ docs/integrate/ docs/external/ docs/presentation.md docs/payment-streams-module/
+  module/ docs/reference/ docs/reproduce/ docs/integrate/ docs/external/ docs/presentation.md docs/payment-streams-module/
 
 # 5) Journey env PAYER/PAYEE.
 scan_pattern \
@@ -140,11 +140,11 @@ scan_pattern \
 scan_pattern \
   '\bpayer\b|\bpayee\b|\bPayer\b|\bPayee\b' \
   'living payer/payee prose' \
-  logos-payment-streams-module/ \
-  lez-payment-streams-core/src/policy/ \
-  lez-payment-streams-core/src/stream_provider_policy.rs \
-  lez-payment-streams-core/src/instruction_accounts.rs \
-  lez-payment-streams-ffi/ \
+  module/ \
+  program/core/src/policy/ \
+  program/core/src/stream_provider_policy.rs \
+  program/core/src/instruction_accounts.rs \
+  module/ffi/ \
   scripts/ \
   docs/reproduce/ \
   docs/integrate/ \
@@ -160,7 +160,7 @@ scan_pattern \
 scan_pattern \
   'payee_binding|expected_payee|proposal_payee|_payee_' \
   'policy *payee* symbols' \
-  lez-payment-streams-core/src lez-payment-streams-ffi/
+  program/core/src module/ffi/
 
 # 8) Living journey-name scan (Step 46 D46.12).
 scan_journey_names() {

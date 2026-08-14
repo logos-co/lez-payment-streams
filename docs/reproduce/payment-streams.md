@@ -74,7 +74,7 @@ export LEE_WALLET_HOME_DIR="$WALLET_HOME"
 export WALLET_CONFIG="$WALLET_HOME/wallet_config.json"
 export WALLET_STORAGE="$WALLET_HOME/storage.json"
 export WALLET_PASSWORD="choose-a-local-password"
-export PAYMENT_STREAMS_GUEST_BIN="$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"
+export PAYMENT_STREAMS_GUEST_BIN="$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"
 export SEQUENCER_URL="https://testnet.lez.logos.co/"
 export DEPOSIT=500
 export ALLOCATION=80
@@ -141,7 +141,7 @@ step_ok "Sequencer reachable"
 
 ## Step 3 — Build guest ELF and check ImageID
 
-`make build` uses Docker guest-builder `risczero/risc0-guest-builder:r0.1.88.0` and the pinned `methods/guest/Cargo.lock`.
+`make build` uses Docker guest-builder `risczero/risc0-guest-builder:r0.1.88.0` and the pinned `program/methods/guest/Cargo.lock`.
 
 ```bash
 cd "$REPO_ROOT"

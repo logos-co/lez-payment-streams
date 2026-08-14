@@ -363,7 +363,7 @@ QString guestElfPath() {
     }
     QString found;
     const QString relative =
-        QStringLiteral("methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin");
+        QStringLiteral("program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin");
     if (findRepoFile(relative, &found)) {
         return found;
     }

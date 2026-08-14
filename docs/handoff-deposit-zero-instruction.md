@@ -62,7 +62,7 @@ Sequencer log lines confirming the on-chain failures:
 
 ## The submission path (where the zeroing happens)
 
-Module side (`logos-payment-streams-module/src/payment_streams_module_writes.cpp`):
+Module side (`module/src/payment_streams_module_writes.cpp`):
 
 1. `PaymentStreamsModuleImpl::deposit` (line 796) calls
    `ps_ffi_serialize_deposit(vid, lo, hi, transferPid, ptr, cap, len)` via
@@ -188,7 +188,7 @@ zero-instruction bug is fixed, because every deposit/createStream/claim will kee
 
 ## Key files
 
-- `logos-payment-streams-module/src/payment_streams_module_writes.cpp` - `deposit` (796),
+- `module/src/payment_streams_module_writes.cpp` - `deposit` (796),
   `buildAndSubmit` (681), `instructionBytesForWallet` (416), `buildGenericPublicPayloadJson` (442),
   `submitGenericPublicViaFfi` (470, primary + fallback), `submitGenericPublic` (665),
   `chainAction` (1341).
@@ -200,9 +200,9 @@ zero-instruction bug is fixed, because every deposit/createStream/claim will kee
 - `logos-execution-zone/lez/wallet-ffi/src/generic_transaction.rs` -
   `wallet_ffi_send_generic_public_transaction` (takes `u32` words) and
   `wallet_ffi_serialization_helper` (bytes -> words via `risc0_zkvm::serde::to_vec(slice)[1..]`).
-- `lez-payment-streams-core/src/instruction_wire.rs` - `instruction_words_for_public_transaction`
+- `program/core/src/instruction_wire.rs` - `instruction_words_for_public_transaction`
   and `instruction_bytes_le_from_words` (canonical encoding used by the FFI).
-- `lez-payment-streams-core/src/instruction.rs` - `Instruction` enum (`Deposit` field order:
+- `program/core/src/instruction.rs` - `Instruction` enum (`Deposit` field order:
   `vault_id, amount, authenticated_transfer_program_id`).
 - `examples/src/bin/seed_localnet_fixture.rs` - known-good submission path (`Message::try_new`
   with explicit nonce fetch + poll) that successfully deposits 1000 with the same program.

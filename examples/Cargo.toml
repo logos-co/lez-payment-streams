@@ -26,7 +26,7 @@ path = "src/bin/bootstrap_testnet_fixture.rs"
 [dependencies]
 spel-framework = { git = "https://github.com/logos-co/spel.git", tag = "v0.6.0", package = "spel-framework" }
 spel = { git = "https://github.com/logos-co/spel.git", tag = "v0.6.0", package = "spel" }
-lez-payment-streams-core = { path = "../lez-payment-streams-core" }
+lez-payment-streams-core = { path = "../program/core" }
 serde_json = "1.0"
 tokio = { version = "1.28.2", features = ["net", "rt-multi-thread", "sync", "macros"] }
 anyhow = "1.0"

@@ -55,7 +55,7 @@ done
 require_testnet_rpc
 ensure_testnet_wallet
 
-PROGRAM_BIN="${PROGRAM_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+PROGRAM_BIN="${PROGRAM_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
 if [[ -z "$PROGRAM_ID_HEX" && -n "${TESTNET_PROGRAM_ID_HEX:-}" ]]; then
   PROGRAM_ID_HEX="$TESTNET_PROGRAM_ID_HEX"
 fi

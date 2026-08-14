@@ -344,7 +344,7 @@ narr_step "Starting logoscore, loading modules"
 ps_export_authenticated_transfer_program_id_hex
 if ps_is_any_privacy_e2e; then
   export RISC0_DEV_MODE="${RISC0_DEV_MODE:-1}"
-  export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+  export PAYMENT_STREAMS_GUEST_BIN="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
   narr_verbose "privacy profile ($(ps_privacy_profile_label)): RISC0_DEV_MODE=$RISC0_DEV_MODE PAYMENT_STREAMS_GUEST_BIN=$PAYMENT_STREAMS_GUEST_BIN"
 fi
 # Daemon-side core_service→module IPC defaults to 20s. Pass the raised budget only

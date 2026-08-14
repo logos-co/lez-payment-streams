@@ -4,7 +4,7 @@
 
 fn main() {
     eprintln!(
-        "use: make idl  (spel generate-idl methods/guest/src/bin/lez_payment_streams.rs)"
+        "use: make idl  (spel generate-idl program/methods/guest/src/bin/lez_payment_streams.rs)"
     );
     std::process::exit(2);
 }

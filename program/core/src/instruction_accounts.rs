@@ -1,7 +1,7 @@
 //! Ordered account id lists for each public [`crate::Instruction`] variant.
 //!
 //! Ordering matches the SPEL guest `#[instruction]` account parameter lists
-//! (`methods/guest/src/bin/lez_payment_streams.rs`) and the harness helpers in
+//! (`program/methods/guest/src/bin/lez_payment_streams.rs`) and the harness helpers in
 //! [`crate::test_helpers`] / [`crate::program_tests::common`].
 
 use lee_core::account::AccountId;

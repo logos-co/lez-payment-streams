@@ -193,7 +193,7 @@ ps_wait_port_free() {
 # Wait for Clock10 to track wall time before submitting transactions.
 ps_wait_clock_synced() {
   local guest wallet_home
-  guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+  guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
   wallet_home="${LEE_WALLET_HOME_DIR:-$(ps_chain_wallet_home)}"
   LEE_WALLET_HOME_DIR="$wallet_home" cargo run -q \
     --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
@@ -324,7 +324,7 @@ except Exception:
 ps_vault_next_stream_id() {
   local owner="$1" vault_id="${2:-0}"
   local guest wallet_home
-  guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+  guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
   wallet_home="${LEE_WALLET_HOME_DIR:-$(ps_chain_wallet_home)}"
   LEE_WALLET_HOME_DIR="$wallet_home" cargo run -q \
     --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
@@ -336,7 +336,7 @@ ps_vault_next_stream_id() {
 ps_vault_unallocated_lo() {
   local owner="$1" vault_id="${2:-0}"
   local guest wallet_home
-  guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+  guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
   wallet_home="${LEE_WALLET_HOME_DIR:-$(ps_chain_wallet_home)}"
   LEE_WALLET_HOME_DIR="$wallet_home" cargo run -q \
     --manifest-path "$REPO_ROOT/examples/Cargo.toml" \

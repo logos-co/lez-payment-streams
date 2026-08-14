@@ -14,4 +14,4 @@ risc0-build = "=3.0.5"
 
 [dependencies]
 risc0-zkvm = { version = "=3.0.5", features = ["std"] }
-lez-payment-streams-core = { path = "../lez-payment-streams-core" }
+lez-payment-streams-core = { path = "../core" }

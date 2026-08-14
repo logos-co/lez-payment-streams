@@ -169,7 +169,7 @@ cmd_prefund() {
   # Deploy the guest program if not already on chain (idempotent).
   # prefund-onchain submits initialize_vault + deposit, both of which
   # reference the guest program id, so the program must exist first.
-  if ! wallet deploy-program "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" >/dev/null 2>&1; then
+  if ! wallet deploy-program "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" >/dev/null 2>&1; then
     ps_log_info "Program deploy returned non-zero (may already be deployed); continuing"
   fi
   wait_chain_settle
@@ -196,7 +196,7 @@ cmd_prefund() {
   cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
     --bin seed_localnet_fixture -- \
     prefund-onchain \
-    --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
+    --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
     --owner "$owner" \
     --deposit-amount "$SEED_DEPOSIT_AMOUNT"
 
@@ -286,7 +286,7 @@ cmd_manifest_write() {
     ps_fatal "Missing provider marker (.lez_payment_streams-fixture-provider)"
   provider="$(cat "$REPO_ROOT/.lez_payment_streams-fixture-provider")"
   manifest="${FIXTURE_MANIFEST:-$REPO_ROOT/fixtures/localnet.json}"
-  guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
+  guest="${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}"
   wallet_home="${LEE_WALLET_HOME_DIR:-$(ps_chain_wallet_home)}"
 
   local vault_id="${1:-${VAULT_ID:-0}}"
@@ -347,7 +347,7 @@ cmd_vault_ensure() {
     cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
       --bin seed_localnet_fixture -- \
       prefund-onchain \
-      --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
+      --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
       --owner "$owner" \
       --vault-id "$vault_id" \
       --deposit-amount "$SEED_DEPOSIT_AMOUNT" \
@@ -408,7 +408,7 @@ with open('$manifest') as f:
   cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
     --bin seed_localnet_fixture -- \
     create-stream-onchain \
-    --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
+    --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
     --owner "$owner" \
     --provider "$provider" \
     --vault-id "$vault_id" \
@@ -448,7 +448,7 @@ cmd_stream_close() {
   cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
     --bin seed_localnet_fixture -- \
     close-stream-onchain \
-    --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
+    --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
     --owner "$owner" \
     --provider "$provider" \
     --vault-id "$vault_id" \
@@ -478,7 +478,7 @@ cmd_stream_claim() {
   cargo run -q --manifest-path "$REPO_ROOT/examples/Cargo.toml" \
     --bin seed_localnet_fixture -- \
     claim-onchain \
-    --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
+    --program-bin "${PAYMENT_STREAMS_GUEST_BIN:-$REPO_ROOT/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin}" \
     --provider "$provider" \
     --vault-id "$vault_id" \
     --stream-id "$stream_id"

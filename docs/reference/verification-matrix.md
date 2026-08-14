@@ -15,7 +15,7 @@ Optional one-time setup before the commands below.
 `local run` calls prepare, which builds modules unless `SKIP_BUILD=1`.
 
 1. Host: [Nix](https://nixos.org/download/) with flakes enabled.
-   Rust + RISC Zero toolchain for the guest ELF (`cargo risczero build --manifest-path methods/guest/Cargo.toml`, or `make build`).
+   Rust + RISC Zero toolchain for the guest ELF (`cargo risczero build --manifest-path program/methods/guest/Cargo.toml`, or `make build`).
 2. Logos scaffold CLI `lgs` on `PATH` (often `~/.cargo/bin` after installing `lgs`).
 3. Run verification inside a shell that provides `logoscore` and `lgpm`:
 
@@ -42,7 +42,7 @@ lgs setup     # if scaffold.toml / layout is missing
 6. First local run builds `.lgx` via Nix, starts localnet, and installs modules.
    Later runs can use `SKIP_BUILD=1` when `.scaffold/e2e/*/modules` are already populated.
 
-`e2e.sh` sets `PAYMENT_STREAMS_GUEST_BIN` to the guest path under `methods/guest/target/...` when the file exists.
+`e2e.sh` sets `PAYMENT_STREAMS_GUEST_BIN` to the guest path under `program/methods/guest/target/...` when the file exists.
 Build the guest before Store prepare if seed/fixture steps fail.
 
 Recovery: [archive/operator/localnet-recovery.md](../archive/operator/localnet-recovery.md).
