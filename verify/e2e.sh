@@ -150,9 +150,7 @@ cmd_prepare_local() {
   # deposit, createStream); it only needs localnet up. The Store-flow vault
   # snapshot/prefund baseline below does not apply.
   if ps_is_module_mode; then
-    if [[ "$($REPO_ROOT/verify/lifecycle.sh localnet status)" != "running" ]]; then
-      "$REPO_ROOT/verify/lifecycle.sh" localnet start
-    fi
+    "$REPO_ROOT/verify/lifecycle.sh" localnet ensure
     local stub="$REPO_ROOT/verify/fixtures/localnet.json"
     if [[ ! -f "$stub" ]]; then
       local pid
@@ -182,9 +180,7 @@ PY
   # the chain left by the previous leg with monotonic stream ids.
   if [[ "${SKIP_SEED:-0}" == "1" || "${RESTORE_LOCALNET:-1}" == "0" ]]; then
     ps_log_info "Continuation run — reusing live ledger (no restore/reseed)"
-    if [[ "$($REPO_ROOT/verify/lifecycle.sh localnet status)" != "running" ]]; then
-      "$REPO_ROOT/verify/lifecycle.sh" localnet start
-    fi
+    "$REPO_ROOT/verify/lifecycle.sh" localnet ensure
     if [[ "${E2E_REUSE_BASELINE_VAULT:-0}" == "1" ]]; then
       "$REPO_ROOT/verify/fixture.sh" vault ensure 0
       "$REPO_ROOT/verify/fixture.sh" vault manifest 0
@@ -207,9 +203,7 @@ PY
     "$REPO_ROOT/verify/lifecycle.sh" snapshot restore "$snapshot_name"
   else
     ps_log_info "No valid snapshot for '$snapshot_name'"
-    if [[ "$($REPO_ROOT/verify/lifecycle.sh localnet status)" != "running" ]]; then
-      "$REPO_ROOT/verify/lifecycle.sh" localnet start
-    fi
+    "$REPO_ROOT/verify/lifecycle.sh" localnet ensure
     if "$REPO_ROOT/verify/fixture.sh" vault is-funded 0; then
       ps_log_info "Reusing existing funded vault on live ledger"
     else
@@ -219,10 +213,9 @@ PY
     fi
   fi
 
-  # Localnet must be up before vault checks/seeding.
-  if [[ "$($REPO_ROOT/verify/lifecycle.sh localnet status)" != "running" ]]; then
-    "$REPO_ROOT/verify/lifecycle.sh" localnet start
-  fi
+  # Localnet must be up before vault checks/seeding. ensure applies
+  # LOCALNET_BLOCK_TIME when set and leaves an already-matching cadence.
+  "$REPO_ROOT/verify/lifecycle.sh" localnet ensure
   if [[ "$($REPO_ROOT/verify/lifecycle.sh localnet status)" != "running" ]]; then
     ps_fatal "Localnet not running after prepare (refusing to continue)"
   fi

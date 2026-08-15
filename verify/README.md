@@ -44,6 +44,7 @@ Terminology: `make check-terminology`.
 | `E2E_VAULT_UNALLOC_BUFFER_LO` | `50` | Extra unallocated lo on continuation top-up (`needed + buffer`). |
 | `PS_WALLET_SHIELD_TIMEOUT` | `1800` | Wall-clock seconds for `wallet auth-transfer send` (CPU prove measured ~1020s). Stub receipts never take this path. |
 | `PAYMENT_STREAMS_PROGRAM_ID_HEX` | unset local; fixture hex on testnet | Testnet ImageID. Must match the fixture and the pinned ELF. Unset on local so identity comes from the live guest. Do not leak across cells. |
+| `LOCALNET_BLOCK_TIME` | unset (`15s` on explicit start) | Sequencer `block_create_timeout`. Use `45s` for local real prove. Applied at localnet start/ensure only. |
 
 On-chain confirmation: [verification-matrix.md](../docs/reference/matrix.md#on-chain-confirmation-principle).
 

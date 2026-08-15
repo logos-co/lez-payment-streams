@@ -326,9 +326,8 @@ fi
 
 narr_step "Starting LEZ sequencer"
 if ps_is_local; then
-  if [[ "$("$REPO_ROOT/verify/lifecycle.sh" localnet status)" != "running" ]]; then
-    "$REPO_ROOT/verify/lifecycle.sh" localnet start
-  fi
+  "$REPO_ROOT/verify/lifecycle.sh" localnet ensure
+  emit_phase localnet_block_time true "$(ps_localnet_block_time_artifact_json)"
 fi
 narr_ok "Sequencer ready"
 

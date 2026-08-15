@@ -136,6 +136,12 @@ Maintainer-only: `make verify-store-local-lifecycle` or [`verify/store/store-lif
   The orchestrator scans for a fresh vault id and ensures it (init + deposit) before stream creation.
   `E2E_REUSE_BASELINE_VAULT=1` selects vault-0 reuse (`verify-store-local-lifecycle`).
 - Module flow ensures localnet is up and skips `delivery_module` build.
+  Default localnet cadence is `15s`. Real prove can set `LOCALNET_BLOCK_TIME=45s`
+  so a CLOCK_50 window outlasts a ~21-minute CPU proof. Lifecycle writes
+  `block_create_timeout` once at start/ensure, restarts only when the requested
+  cadence differs, records the observed cadence in the artifact, and leaves that
+  cadence up for later real-prove runs. Restore `15s` with an explicit
+  `./verify/lifecycle.sh localnet start` (no `LOCALNET_BLOCK_TIME`).
 - Module testnet uses `VAULT_ID` to pin a fresh vault.
 - Artifacts: `.scaffold/e2e/artifacts/` JSON-lines logs.
   Layout: [naming-conventions.md#scaffold-layout](names.md#scaffold-layout).

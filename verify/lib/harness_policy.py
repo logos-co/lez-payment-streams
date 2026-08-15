@@ -1,7 +1,10 @@
 """Pure harness policy helpers for real-prove E2E (timeout, liveness, artifacts)."""
 from __future__ import annotations
 
+import json
 import re
+from datetime import datetime
+from typing import Any
 
 LOGOSCORE_MIN_LABEL = "pre-release-66c4194"
 LOGOSCORE_KNOWN_BAD_COMMITS = ("797b98a",)
@@ -66,3 +69,56 @@ def observed_cadence_ok(
         return False
     delta = abs(observed_s - requested_s) / requested_s
     return delta <= tolerance
+
+
+DEFAULT_LOCALNET_BLOCK_TIME = "15s"
+_BLOCK_CREATED_RE = re.compile(
+    r"\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})Z[^\]]*\] Block with id (\d+) created"
+)
+
+
+def sequencer_block_create_timeout(config: dict[str, Any]) -> str:
+    return str(config.get("block_create_timeout") or "").strip()
+
+
+def apply_sequencer_block_create_timeout(
+    config: dict[str, Any], duration: str
+) -> tuple[dict[str, Any], bool]:
+    """Return (config, changed) after setting block_create_timeout."""
+    wanted = (duration or "").strip()
+    if not wanted:
+        raise ValueError("empty block_create_timeout")
+    parse_duration_seconds(wanted)
+    current = sequencer_block_create_timeout(config)
+    if current == wanted:
+        return config, False
+    out = dict(config)
+    out["block_create_timeout"] = wanted
+    return out, True
+
+
+def cadence_seconds_from_block_log(text: str, *, min_samples: int = 3) -> float | None:
+    """Mean inter-block seconds from sequencer 'Block with id N created' lines."""
+    stamps: list[datetime] = []
+    for line in (text or "").splitlines():
+        match = _BLOCK_CREATED_RE.search(line)
+        if not match:
+            continue
+        stamps.append(datetime.fromisoformat(match.group(1)))
+    if len(stamps) < min_samples:
+        return None
+    recent = stamps[-(min_samples):]
+    gaps = [
+        (recent[i] - recent[i - 1]).total_seconds()
+        for i in range(1, len(recent))
+        if (recent[i] - recent[i - 1]).total_seconds() > 0
+    ]
+    if not gaps:
+        return None
+    return sum(gaps) / len(gaps)
+
+
+def write_json(path: str, payload: dict[str, Any]) -> None:
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2)
+        handle.write("\n")

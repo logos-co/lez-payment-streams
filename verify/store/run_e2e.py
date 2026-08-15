@@ -5013,6 +5013,19 @@ def main() -> int:
                 "commit": ls_commit,
             },
         )
+    if os.environ.get("CHAIN", "local").strip().lower() != "testnet":
+        bt_path = repo / ".scaffold" / "state" / "localnet-block-time.json"
+        if bt_path.is_file():
+            try:
+                bt = json.loads(bt_path.read_text())
+            except json.JSONDecodeError:
+                bt = {}
+            emit_module_phase(
+                artifact,
+                "localnet_block_time",
+                bool(bt.get("ok", True)),
+                bt if isinstance(bt, dict) else {},
+            )
 
     e2e = repo / ".scaffold" / "e2e"
     modules_user = Path(os.environ.get("MODULES_USER", e2e / "user" / "modules"))

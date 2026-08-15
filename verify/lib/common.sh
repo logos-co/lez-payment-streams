@@ -344,6 +344,193 @@ sys.exit(0 if close_state_ok(os.environ.get("STREAM_STATE")) else 1)
 '
 }
 
+# Localnet block cadence. Default 15s. Real-prove override: LOCALNET_BLOCK_TIME=45s.
+# Applied only at localnet start/ensure, never per transaction.
+PS_LOCALNET_DEFAULT_BLOCK_TIME="${PS_LOCALNET_DEFAULT_BLOCK_TIME:-15s}"
+
+ps_localnet_block_time_state() {
+  echo "$REPO_ROOT/.scaffold/state/localnet-block-time.json"
+}
+
+ps_localnet_sequencer_log() {
+  echo "$REPO_ROOT/.scaffold/logs/sequencer.log"
+}
+
+ps_localnet_sequencer_config() {
+  local cache candidate
+  cache="$(ps_lez_cache)"
+  for candidate in \
+    "$cache/sequencer/service/configs/debug/sequencer_config.json" \
+    "$cache/lez/sequencer/service/configs/debug/sequencer_config.json"
+  do
+    if [[ -f "$candidate" ]]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+ps_localnet_read_block_time() {
+  python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("block_create_timeout",""))' "$1"
+}
+
+ps_localnet_write_block_time() {
+  local config="$1" duration="$2"
+  REPO_ROOT="$REPO_ROOT" SEQ_CONFIG="$config" BLOCK_TIME="$duration" python3 -c '
+import json, os, sys
+sys.path.insert(0, os.environ["REPO_ROOT"] + "/verify/lib")
+from harness_policy import apply_sequencer_block_create_timeout, write_json
+path = os.environ["SEQ_CONFIG"]
+data = json.load(open(path))
+updated, changed = apply_sequencer_block_create_timeout(data, os.environ["BLOCK_TIME"])
+if changed:
+    write_json(path, updated)
+    raise SystemExit(0)
+raise SystemExit(2)
+'
+}
+
+ps_localnet_requested_block_time() {
+  local mode="${1:-ensure}"
+  if [[ -n "${LOCALNET_BLOCK_TIME:-}" ]]; then
+    echo "$LOCALNET_BLOCK_TIME"
+    return 0
+  fi
+  if [[ "$mode" == "start" ]]; then
+    echo "$PS_LOCALNET_DEFAULT_BLOCK_TIME"
+    return 0
+  fi
+  local config configured
+  config="$(ps_localnet_sequencer_config)" || {
+    echo "$PS_LOCALNET_DEFAULT_BLOCK_TIME"
+    return 0
+  }
+  configured="$(ps_localnet_read_block_time "$config")"
+  echo "${configured:-$PS_LOCALNET_DEFAULT_BLOCK_TIME}"
+}
+
+ps_localnet_parse_duration_s() {
+  REPO_ROOT="$REPO_ROOT" DUR="$1" python3 -c '
+import os, sys
+sys.path.insert(0, os.environ["REPO_ROOT"] + "/verify/lib")
+from harness_policy import parse_duration_seconds
+print(parse_duration_seconds(os.environ["DUR"]))
+'
+}
+
+ps_localnet_last_block_id() {
+  python3 -c '
+import json, sys, urllib.request
+url = sys.argv[1]
+body = json.dumps({"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}).encode()
+req = urllib.request.Request(url, data=body, headers={"content-type":"application/json"})
+print(int(json.load(urllib.request.urlopen(req, timeout=15))["result"]))
+' "$(ps_seq_url)"
+}
+
+ps_localnet_observe_cadence_s() {
+  local source="$1" requested_s="$2"
+  local log observed
+  if [[ "$source" == "log" ]]; then
+    log="$(ps_localnet_sequencer_log)"
+    if [[ -f "$log" ]]; then
+      observed="$(REPO_ROOT="$REPO_ROOT" SEQ_LOG="$log" python3 -c '
+import os, sys
+sys.path.insert(0, os.environ["REPO_ROOT"] + "/verify/lib")
+from harness_policy import cadence_seconds_from_block_log
+text = open(os.environ["SEQ_LOG"], errors="replace").read()[-200000:]
+val = cadence_seconds_from_block_log(text)
+print(f"{val:.3f}" if val else "")
+')"
+      if [[ -n "$observed" ]]; then
+        echo "$observed"
+        return 0
+      fi
+    fi
+  fi
+  local start_id end_id start_ts end_ts wait_s
+  start_id="$(ps_localnet_last_block_id)" || return 1
+  start_ts="$(date +%s)"
+  wait_s="$(python3 -c "print(max(12, int(float('${requested_s}') * 2.2)))")"
+  local elapsed=0
+  while (( elapsed < wait_s )); do
+    sleep 2
+    elapsed=$((elapsed + 2))
+    end_id="$(ps_localnet_last_block_id)" || continue
+    if [[ "$end_id" -gt "$start_id" ]]; then
+      end_ts="$(date +%s)"
+      python3 -c "print(round((${end_ts}-${start_ts})/(${end_id}-${start_id}), 3))"
+      return 0
+    fi
+  done
+  return 1
+}
+
+ps_localnet_record_block_time() {
+  local requested="$1" configured="$2" observed="${3:-}" source="${4:-}" ok="$5" config="$6"
+  local state
+  state="$(ps_localnet_block_time_state)"
+  mkdir -p "$(dirname "$state")"
+  REPO_ROOT="$REPO_ROOT" STATE="$state" REQ="$requested" CFG="$configured" \
+    OBS="$observed" SRC="$source" OK="$ok" PATH_CFG="$config" python3 -c '
+import os, sys
+sys.path.insert(0, os.environ["REPO_ROOT"] + "/verify/lib")
+from harness_policy import write_json
+obs = os.environ.get("OBS") or ""
+payload = {
+    "requested": os.environ["REQ"],
+    "configured": os.environ["CFG"],
+    "observed_s": float(obs) if obs else None,
+    "source": os.environ.get("SRC") or "",
+    "ok": os.environ["OK"] == "true",
+    "config": os.environ.get("PATH_CFG") or "",
+}
+write_json(os.environ["STATE"], payload)
+'
+}
+
+ps_localnet_block_time_artifact_json() {
+  local state
+  state="$(ps_localnet_block_time_state)"
+  if [[ -f "$state" ]]; then
+    python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))))' "$state"
+    return 0
+  fi
+  echo "{}"
+}
+
+ps_localnet_verify_block_time() {
+  local source="${1:-log}"
+  local config requested configured req_s observed="" ok="true"
+  config="$(ps_localnet_sequencer_config)" || {
+    ps_log_error "localnet sequencer config not found"
+    return 1
+  }
+  configured="$(ps_localnet_read_block_time "$config")"
+  requested="$(ps_localnet_requested_block_time ensure)"
+  req_s="$(ps_localnet_parse_duration_s "$requested")"
+  if observed="$(ps_localnet_observe_cadence_s "$source" "$req_s")"; then
+    if ! REPO_ROOT="$REPO_ROOT" REQ_S="$req_s" OBS_S="$observed" python3 -c '
+import os, sys
+sys.path.insert(0, os.environ["REPO_ROOT"] + "/verify/lib")
+from harness_policy import observed_cadence_ok
+sys.exit(0 if observed_cadence_ok(float(os.environ["REQ_S"]), float(os.environ["OBS_S"])) else 1)
+'; then
+      ok="false"
+    fi
+  else
+    observed=""
+    ok="false"
+  fi
+  ps_localnet_record_block_time "$requested" "$configured" "$observed" "$source" "$ok" "$config"
+  if [[ "$ok" != "true" ]]; then
+    ps_log_error "localnet block cadence requested=$requested configured=$configured observed=${observed:-none} source=$source"
+    return 1
+  fi
+  ps_log_info "localnet block cadence requested=$requested configured=$configured observed=${observed}s source=$source"
+}
+
 # Sequencer getAccount.program_owner as ImageID hex (empty/nonzero-exit if missing).
 ps_account_program_owner_hex() {
   local account_id="$1"
@@ -467,7 +654,7 @@ except Exception:
 ' "$line" 2>/dev/null || true)"
     if [[ -n "${block_id:-}" ]]; then
       rem=$((block_id % 50))
-      # Early window: rem<=2 leaves ~48 blocks (~12 min at 15s) for PPE prove.
+      # Early window: rem<=2 leaves ~48 blocks (~12 min at 15s, ~36 min at 45s).
       if (( rem <= 2 )); then
         # Confirm once more after a fresh sync so we do not trust a stale read.
         sync_wallet 2>/dev/null || true

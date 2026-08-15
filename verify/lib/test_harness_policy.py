@@ -47,3 +47,26 @@ def test_parse_duration_seconds() -> None:
 def test_observed_cadence_ok() -> None:
     assert hp.observed_cadence_ok(45.0, 44.0) is True
     assert hp.observed_cadence_ok(15.0, 40.0) is False
+
+
+def test_apply_sequencer_block_create_timeout() -> None:
+    cfg = {"block_create_timeout": "15s", "port": 3040}
+    same, changed = hp.apply_sequencer_block_create_timeout(cfg, "15s")
+    assert changed is False
+    assert same["block_create_timeout"] == "15s"
+    updated, changed = hp.apply_sequencer_block_create_timeout(cfg, "45s")
+    assert changed is True
+    assert updated["block_create_timeout"] == "45s"
+    assert cfg["block_create_timeout"] == "15s"
+
+
+def test_cadence_seconds_from_block_log() -> None:
+    text = "\n".join(
+        [
+            "[2026-08-15T11:26:00Z INFO  sequencer_service] Block with id 1 created",
+            "[2026-08-15T11:26:45Z INFO  sequencer_service] Block with id 2 created",
+            "[2026-08-15T11:27:30Z INFO  sequencer_service] Block with id 3 created",
+        ]
+    )
+    assert hp.cadence_seconds_from_block_log(text) == 45.0
+    assert hp.cadence_seconds_from_block_log("no blocks") is None

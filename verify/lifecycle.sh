@@ -12,6 +12,29 @@ source "$REPO_ROOT/verify/lib/common.sh"
 # Localnet commands
 # ============================================================================
 
+_localnet_apply_requested_block_time() {
+  local mode="$1"
+  local config requested configured
+  config="$(ps_localnet_sequencer_config)" || ps_fatal "localnet sequencer config not found"
+  requested="$(ps_localnet_requested_block_time "$mode")"
+  configured="$(ps_localnet_read_block_time "$config")"
+  if [[ "$configured" == "$requested" ]]; then
+    ps_log_info "Localnet block_create_timeout already $requested ($config)"
+    return 0
+  fi
+  if [[ "$(cmd_localnet_status)" == "running" ]]; then
+    ps_log_info "Restarting localnet to apply block_create_timeout $configured -> $requested"
+    cmd_localnet_stop
+  fi
+  local write_rc=0
+  ps_localnet_write_block_time "$config" "$requested" || write_rc=$?
+  if [[ "$write_rc" -eq 0 ]]; then
+    ps_log_info "Set sequencer block_create_timeout=$requested in $config"
+  elif [[ "$write_rc" -ne 2 ]]; then
+    ps_fatal "Failed to write block_create_timeout=$requested to $config"
+  fi
+}
+
 cmd_localnet_start() {
   ps_log_info "Starting localnet..."
   ps_require_command lgs
@@ -24,6 +47,7 @@ cmd_localnet_start() {
     ln -s lez/sequencer "$sequencer_link"
     ps_log_info "Created LEZ sequencer symlink: $sequencer_link -> lez/sequencer"
   fi
+  _localnet_apply_requested_block_time start
   ps_ensure_wallet_config_split_compatible "$(ps_scaffold_localnet_wallet_dir)/wallet_config.json" \
     "http://127.0.0.1:$(python3 -c "import tomllib; print(tomllib.load(open('$REPO_ROOT/scaffold.toml','rb')).get('localnet',{}).get('port',3040))" 2>/dev/null || echo 3040)"
   ps_ensure_wallet_statistics "$(ps_scaffold_localnet_wallet_dir)/storage.json" >/dev/null
@@ -32,9 +56,29 @@ cmd_localnet_start() {
   local timeout_sec="${LGS_LOCALNET_START_TIMEOUT_SEC:-120}"
   if lgs localnet start --timeout-sec "$timeout_sec"; then
     ps_log_info "Localnet started"
+    ps_localnet_verify_block_time rpc || ps_fatal "localnet block cadence check failed after start"
     return 0
   fi
   ps_fatal "Localnet failed to start (lgs timeout-sec=$timeout_sec)"
+}
+
+cmd_localnet_ensure() {
+  ps_require_command lgs
+  if [[ "$(cmd_localnet_status)" != "running" ]]; then
+    cmd_localnet_start
+    return
+  fi
+  local config requested configured
+  config="$(ps_localnet_sequencer_config)" || ps_fatal "localnet sequencer config not found"
+  requested="$(ps_localnet_requested_block_time ensure)"
+  configured="$(ps_localnet_read_block_time "$config")"
+  if [[ -n "${LOCALNET_BLOCK_TIME:-}" && "$configured" != "$requested" ]]; then
+    _localnet_apply_requested_block_time ensure
+    cmd_localnet_start
+    return
+  fi
+  ps_log_info "Localnet already running at block_create_timeout=$configured"
+  ps_localnet_verify_block_time log || ps_fatal "localnet block cadence check failed"
 }
 
 cmd_localnet_stop() {
@@ -322,7 +366,7 @@ usage() {
 Usage: $0 <category> <command> [args]
 
 Categories:
-  localnet <start|stop|status>
+  localnet <start|stop|status|ensure>
   snapshot <save|restore|validate> [name]
   testnet <wallet-ensure|read-smoke>
   scaffold <check>
@@ -346,6 +390,7 @@ main() {
     localnet:start)      cmd_localnet_start "$@" ;;
     localnet:stop)       cmd_localnet_stop "$@" ;;
     localnet:status)     cmd_localnet_status "$@" ;;
+    localnet:ensure)     cmd_localnet_ensure "$@" ;;
     snapshot:save)       cmd_snapshot_save "$@" ;;
     snapshot:restore)    cmd_snapshot_restore "$@" ;;
     snapshot:validate)   cmd_snapshot_validate "$@" ;;
