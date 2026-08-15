@@ -396,9 +396,29 @@ logoscore call logos_execution_zone save >/dev/null 2>&1 || true
 # ---------------------------------------------------------------------------
 to_base58() {
   local hex_id="$1" line b58
-  line="$(logoscore call logos_execution_zone account_id_to_base58 "$hex_id" 2>/dev/null | tail -1)"
+  if [[ ${#hex_id} -ne 64 || ! "$hex_id" =~ ^[0-9a-fA-F]+$ ]]; then
+    echo "$hex_id"
+    return 0
+  fi
+  line="$(logoscore call logos_execution_zone account_id_to_base58 "$hex_id" 2>/dev/null | tail -1)" || true
   b58="$(python3 -c 'import json,sys; o=json.loads(sys.argv[1]); r=o.get("result",""); print(r if isinstance(r,str) else "")' "$line" 2>/dev/null || true)"
-  [[ -n "$b58" ]] && echo "$b58" || echo "$hex_id"
+  if [[ -n "$b58" ]]; then
+    echo "$b58"
+    return 0
+  fi
+  python3 -c '
+import sys
+ALPH = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+h = sys.argv[1]
+raw = bytes.fromhex(h)
+n = int.from_bytes(raw, "big")
+out = ""
+while n:
+    n, r = divmod(n, 58)
+    out = ALPH[r] + out
+pad = len(raw) - len(raw.lstrip(b"\x00"))
+print(ALPH[0] * pad + (out or ALPH[0]))
+' "$hex_id"
 }
 
 account_id_to_hex() {
