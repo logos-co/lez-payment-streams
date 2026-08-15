@@ -628,12 +628,26 @@ ps_wait_clock_synced() {
 # CLOCK_50 base58 (LEZ genesis `/LEZ/ClockProgramAccount/0000050`).
 PS_CLOCK50_ACCOUNT_ID="${PS_CLOCK50_ACCOUNT_ID:-4BdcjoXkq786TMWcBGGHqcxeLYMZmn17rL4eM9ZyRWkX}"
 
+ps_clock50_attempts_for_cadence() {
+  local kind="$1"
+  local block_s
+  block_s="$(ps_localnet_parse_duration_s "${LOCALNET_BLOCK_TIME:-${PS_LOCALNET_DEFAULT_BLOCK_TIME:-15s}}")"
+  REPO_ROOT="$REPO_ROOT" KIND="$kind" BLOCK_S="$block_s" python3 -c '
+import os, sys
+sys.path.insert(0, os.environ["REPO_ROOT"] + "/verify/lib")
+from harness_policy import clock50_attempts_for_cadence
+print(clock50_attempts_for_cadence(os.environ["KIND"], float(os.environ["BLOCK_S"])))
+'
+}
+
 # Wait until CLOCK_50 is early in its 50-block update window so a multi-minute
 # real PPE prove is unlikely to cross a clock public_pre_state change (D39.25).
 # Uses payment_streams_module readClockDecoded. Nudges via wallet sync only.
+# Reject a rem=0 wallet read when sequencer tip has already moved on.
 ps_wait_clock50_prove_window() {
   command -v logoscore >/dev/null 2>&1 || return 1
-  local attempt=0 max_attempts="${PS_CLOCK50_WINDOW_ATTEMPTS:-90}" rem block_id line
+  local attempt=0 max_attempts rem block_id line tip
+  max_attempts="${PS_CLOCK50_WINDOW_ATTEMPTS:-$(ps_clock50_attempts_for_cadence window)}"
   while (( attempt < max_attempts )); do
     attempt=$((attempt + 1))
     sync_wallet 2>/dev/null || true
@@ -652,33 +666,19 @@ try:
 except Exception:
   pass
 ' "$line" 2>/dev/null || true)"
+    tip="$(ps_localnet_last_block_id 2>/dev/null || true)"
     if [[ -n "${block_id:-}" ]]; then
       rem=$((block_id % 50))
-      # Early window: rem<=2 leaves ~48 blocks (~12 min at 15s, ~36 min at 45s).
-      if (( rem <= 2 )); then
-        # Confirm once more after a fresh sync so we do not trust a stale read.
-        sync_wallet 2>/dev/null || true
-        sleep 1
-        line="$(logoscore call payment_streams_module readClockDecoded "$PS_CLOCK50_ACCOUNT_ID" 2>/dev/null | tail -1)"
-        block_id="$(python3 -c '
-import json,sys
-try:
-  outer=json.loads(sys.argv[1])
-  inner=outer.get("result","{}")
-  if isinstance(inner,str):
-    inner=json.loads(inner) if inner.strip().startswith("{") else {}
-  dec=inner.get("decoded") if isinstance(inner.get("decoded"), dict) else inner
-  print(int(dec.get("block_id") or dec.get("blockId") or 0))
-except Exception:
-  print(0)
-' "$line" 2>/dev/null || echo 0)"
-        rem=$((block_id % 50))
-        if (( rem <= 2 )); then
-          echo "CLOCK_50 prove window ok: block_id=$block_id rem=$rem" >&2
-          return 0
-        fi
+      if REPO_ROOT="$REPO_ROOT" CLOCK_BLOCK="$block_id" TIP="${tip:-}" python3 -c '
+import os, sys
+sys.path.insert(0, os.environ["REPO_ROOT"] + "/verify/lib")
+from harness_policy import clock50_prove_window_ready
+sys.exit(0 if clock50_prove_window_ready(os.environ.get("CLOCK_BLOCK"), os.environ.get("TIP") or None) else 1)
+'; then
+        echo "CLOCK_50 prove window ok: block_id=$block_id rem=$rem tip=${tip:-?}" >&2
+        return 0
       fi
-      echo "CLOCK_50 window wait: block_id=$block_id rem=$rem (want <=2) attempt=$attempt" >&2
+      echo "CLOCK_50 window wait: block_id=$block_id rem=$rem tip=${tip:-?} (want rem<=2 and tip-clock<=2) attempt=$attempt" >&2
     else
       echo "CLOCK_50 window wait: could not parse block_id attempt=$attempt" >&2
     fi
@@ -691,7 +691,8 @@ except Exception:
 # fold under real prove (D39.25).
 ps_wait_clock50_advance() {
   command -v logoscore >/dev/null 2>&1 || return 1
-  local attempt=0 max_attempts="${PS_CLOCK50_ADVANCE_ATTEMPTS:-120}"
+  local attempt=0 max_attempts
+  max_attempts="${PS_CLOCK50_ADVANCE_ATTEMPTS:-$(ps_clock50_attempts_for_cadence advance)}"
   local start_id=0 block_id=0 line start_epoch
   line="$(logoscore call payment_streams_module readClockDecoded "$PS_CLOCK50_ACCOUNT_ID" 2>/dev/null | tail -1)"
   start_id="$(python3 -c '

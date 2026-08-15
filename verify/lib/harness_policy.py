@@ -61,6 +61,38 @@ def parse_duration_seconds(value: str) -> float:
     return amount * scale
 
 
+def clock50_prove_window_ready(
+    clock_block: int | None,
+    tip: int | None,
+    *,
+    rem_max: int = 2,
+    stale_max: int = 2,
+) -> bool:
+    """True when CLOCK_50 is early in its epoch and the wallet clock matches tip."""
+    try:
+        clock = int(clock_block)
+        head = int(tip)
+    except (TypeError, ValueError):
+        return False
+    if clock < 0 or head < 0:
+        return False
+    if clock % 50 > rem_max:
+        return False
+    if head - clock > stale_max:
+        return False
+    return True
+
+
+def clock50_attempts_for_cadence(kind: str, block_s: float) -> int:
+    """Poll budget for one CLOCK_50 epoch plus margin at the given block time."""
+    epoch_s = 50.0 * max(float(block_s), 1.0)
+    if kind == "advance":
+        return max(120, int(epoch_s / 5.0) + 24)
+    if kind == "window":
+        return max(90, int(epoch_s / 2.0) + 30)
+    raise ValueError(f"unknown clock50 attempt kind: {kind}")
+
+
 def observed_cadence_ok(
     requested_s: float, observed_s: float, *, tolerance: float = 0.35
 ) -> bool:

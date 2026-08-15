@@ -44,6 +44,19 @@ def test_parse_duration_seconds() -> None:
     assert hp.parse_duration_seconds("1m") == 60.0
 
 
+def test_clock50_prove_window_rejects_stale_rem0() -> None:
+    assert hp.clock50_prove_window_ready(7650, 7650) is True
+    assert hp.clock50_prove_window_ready(7650, 7695) is False
+    assert hp.clock50_prove_window_ready(7651, 7651) is True
+    assert hp.clock50_prove_window_ready(7653, 7653) is False
+
+
+def test_clock50_attempts_scale_with_45s() -> None:
+    assert hp.clock50_attempts_for_cadence("advance", 15.0) >= 120
+    assert hp.clock50_attempts_for_cadence("advance", 45.0) > 120
+    assert hp.clock50_attempts_for_cadence("window", 45.0) > 90
+
+
 def test_observed_cadence_ok() -> None:
     assert hp.observed_cadence_ok(45.0, 44.0) is True
     assert hp.observed_cadence_ok(15.0, 40.0) is False

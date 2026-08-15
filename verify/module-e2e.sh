@@ -211,6 +211,11 @@ if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
   else
     ACCRUAL_ATTEMPTS="${ACCRUAL_ATTEMPTS:-120}"
     ACCRUAL_POLL_SLEEP="${ACCRUAL_POLL_SLEEP:-8}"
+    PS_CLOCK50_ADVANCE_ATTEMPTS="${PS_CLOCK50_ADVANCE_ATTEMPTS:-$(ps_clock50_attempts_for_cadence advance)}"
+    PS_CLOCK50_WINDOW_ATTEMPTS="${PS_CLOCK50_WINDOW_ATTEMPTS:-$(ps_clock50_attempts_for_cadence window)}"
+    local_block_s="$(ps_localnet_parse_duration_s "${LOCALNET_BLOCK_TIME:-15s}")"
+    export E2E_TX_ONCHAIN_WAIT_S="${E2E_TX_ONCHAIN_WAIT_S:-$(python3 -c "print(max(110, int(float('${local_block_s}')) * 5))")}"
+    unset local_block_s
   fi
 fi
 
@@ -1737,17 +1742,23 @@ else
       # report rem=0 from the pre-close epoch. Force a real CLOCK_50 tick, then
       # re-align so claim prove starts at the beginning of a fresh window.
       narr_step "Waiting for CLOCK_50 tick after close, then claim prove window (D39.25)"
-      ps_wait_clock50_advance || {
-        narr_fail "CLOCK_50 did not advance after close"
+      CLOCK50_CLAIM_OK=1
+      ps_wait_clock50_advance || CLOCK50_CLAIM_OK=0
+      if [[ "$CLOCK50_CLAIM_OK" == "1" ]]; then
+        ps_wait_clock50_prove_window || CLOCK50_CLAIM_OK=0
+      fi
+      if [[ "$CLOCK50_CLAIM_OK" != "1" ]]; then
+        emit_phase claim false "{\"skipped\":true,\"reason\":\"clock50_window\"}"
+        narr_fail "CLOCK_50 claim prove window not reached; skipping claim prove"
         FAILURES=$((FAILURES + 1))
-      }
-      ps_wait_clock50_prove_window || {
-        narr_fail "CLOCK_50 claim prove window not reached"
-        FAILURES=$((FAILURES + 1))
-      }
-      sync_wallet
+      else
+        sync_wallet
+      fi
+    else
+      CLOCK50_CLAIM_OK=1
     fi
 
+    if [[ "$CLOCK50_CLAIM_OK" == "1" ]]; then
     narr_step "Bob claims residual accrued ($CLAIM_ACCRUED) from closed stream $STREAM_ID"
     CLAIM_LINE="$(call_ps claim 1 claim "$(j "{\"owner\":\"$OWNER\",\"provider\":\"$PROVIDER\",\"vault_id\":$VAULT_ID,\"stream_id\":$STREAM_ID}")" "" "Claim transaction included on chain" verify_claim)"
 
@@ -1805,6 +1816,7 @@ else
       narr_fail "Claim failed: provider balance did not increase on chain"
       narr_hint "If claim tx included, re-read getAccount and getVaultStatus after wallet sync"
       FAILURES=$((FAILURES + 1))
+    fi
     fi
   fi
 fi
