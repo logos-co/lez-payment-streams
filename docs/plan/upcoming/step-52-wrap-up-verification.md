@@ -56,15 +56,19 @@ On the Step 53 tree the living runner is `./verify/e2e.sh`
 ## This run
 
 Partial. Branch `feat/step-53-repository-structure`.
-Stopped after local private stub.
 Do not close this step. No gate log yet.
 
 Product ImageID (README, funded snapshot, `verify/fixtures/testnet-module.json`)
 is `c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a`.
-This session rebuilt the guest to
+Local harness guest remains
 `cdc9bfea4fdb6490a99929619bfb2c0eefd36a936668b1b3a22f684e66b44f0c`
-and deployed that ELF to the live localnet (sequencer block 1743).
-`verify/fixtures/testnet.json` is missing.
+(live guest mtime 2026-08-14, sequencer block 1743).
+Product ELF recovered 2026-08-15 by isolated `make build` at
+`8a0e374a7e7171cd5b60ad20d46b9510b057dfe3`
+(373916 bytes, ImageID match).
+Pin: `.scaffold/program-bins/lez_payment_streams-c30781ea.bin` (gitignored).
+Live guest was not replaced.
+Testnet public cells already used the product ImageID.
 
 Operator log: `/tmp/step52-verify/log.txt`.
 
@@ -82,20 +86,24 @@ Operator log: `/tmp/step52-verify/log.txt`.
 | Store eligibility local public | pass | `.scaffold/e2e/artifacts/e2e-20260814T153211.log` |
 | Module private stub | pass | `.scaffold/e2e/artifacts/module-e2e-20260814T154533.log` (`RISC0_DEV_MODE=1 OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`) |
 | Store private stub | pass | `.scaffold/e2e/artifacts/e2e-20260814T174058.log` (`RISC0_DEV_MODE=1 OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`) |
+| Module testnet public | pass | `.scaffold/e2e/artifacts/module-e2e-20260814T180419.log` |
+| Store eligibility testnet public | pass | `.scaffold/e2e/artifacts/e2e-20260814T190338.log` |
+| Module local real-prove | pass | `.scaffold/e2e/artifacts/module-e2e-local-realprove-45s-retry.log` (`RISC0_DEV_MODE=0 OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 E2E_CLAIM_OPTIONAL=0 LOCALNET_BLOCK_TIME=45s`, logoscore `pre-release-66c4194`, LEZ `47eba256`, guest `cdc9bfea…`). Claim `0e8a2566…`. First 45s attempt failed claim inclusion (110s wait, CLOCK_50 `rem=0`); retry after wait-budget fix is the green row. |
 
 Local private stub is green after two harness fixes in `verify/store/run_e2e.py`:
 `resync_wallet_from_genesis` after privacy account create (spent-nullifier replay on the seed clone),
 and skip continuation seed precreate when `OWNER_PRIVACY=1` (`signing key not found`).
 
+Store testnet public needed the fixture ImageID (`c30781ea…`), not the local guest
+(`cdc9bfea…`). `verify/e2e.sh` now exports `PAYMENT_STREAMS_PROGRAM_ID_HEX` from
+the testnet fixture; `seed_localnet_fixture` honors that for PDA probes.
+
 ### Not verified
 
 | Function | Status | Notes |
 | --- | --- | --- |
-| Module local real-prove | not run | `RISC0_DEV_MODE=0` |
-| Module testnet public | not run | `verify/fixtures/testnet-module.json` is present |
-| Store testnet public | not run | `verify/fixtures/testnet.json` missing (`make bootstrap-testnet`) |
-| Module testnet private | not run | fund first |
-| Store testnet private | not run | fund first |
+| Module testnet private | fail | Funded (owner 600, provider 692). Artifact `.scaffold/e2e/artifacts/module-e2e-20260814T212606.log`: shields ok; `initializeVault` `wallet FFI error 99` after FFI 7 (`Private account not found`). Live guest is `cdc9bfea…`; testnet program is `c30781ea…`. Product ELF is now pinned; this cell still needs a rerun. |
+| Store testnet private | not run | Waited on product ELF pin (now at `.scaffold/program-bins/lez_payment_streams-c30781ea.bin`). |
 
 Full wrap-up is not green. Step 51 must not fill wrap-up claims from this run.
 
