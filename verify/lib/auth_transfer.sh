@@ -321,8 +321,12 @@ ps_wallet_auth_transfer_send() {
   # Exclusive daemon-stop so wallet CLI is the sole writer. close() is a no-op
   # on this LEZ pin; leaving the daemon up lets per-block autosave clobber the
   # CLI write (NSKs from the shield never persist).
-  ps_logoscore_daemon_stop_for_wallet
-  ps_assert_logoscore_down_for_wallet_cli || return 1
+  # PS_WALLET_AT_SKIP_HANDOFF=1: caller already holds the exclusive-stop window
+  # (both shields in one CLI session so the second write cannot drop the first NSKs).
+  if [[ "${PS_WALLET_AT_SKIP_HANDOFF:-0}" != "1" ]]; then
+    ps_logoscore_daemon_stop_for_wallet || return 1
+    ps_assert_logoscore_down_for_wallet_cli || return 1
+  fi
   local rc=0
   local shield_timeout="${PS_WALLET_SHIELD_TIMEOUT:-1800}"
   timeout "$shield_timeout" env -u LD_LIBRARY_PATH \
@@ -333,11 +337,13 @@ ps_wallet_auth_transfer_send() {
     --from "Public/$from_b58" \
     --to "Private/$to_b58" \
     --amount "$amount" >"$out_file" 2>&1 || rc=$?
-  if ! ps_logoscore_daemon_restart_after_wallet; then
-    echo "failed to restart logoscore after wallet auth-transfer send" >&2
-    cat "$out_file" || true
-    rm -f "$out_file"
-    return 1
+  if [[ "${PS_WALLET_AT_SKIP_HANDOFF:-0}" != "1" ]]; then
+    if ! ps_logoscore_daemon_restart_after_wallet; then
+      echo "failed to restart logoscore after wallet auth-transfer send" >&2
+      cat "$out_file" || true
+      rm -f "$out_file"
+      return 1
+    fi
   fi
   if [[ "$rc" -ne 0 ]]; then
     cat "$out_file" || true

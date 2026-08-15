@@ -462,9 +462,11 @@ ps_pre_shield_to_private_account() {
     if wallet_out="$(ps_wallet_auth_transfer_send "$from_b58" "$to_b58" "$amount" 2>&1)"; then
       emit_phase "$phase_name" true "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\",\"via\":\"wallet\"}"
       narr_ok "Pre-shielded $amount tokens into $label (wallet auth-transfer send)"
-      ps_reload_payment_streams_wallet
-      sync_wallet
-      ps_assert_private_account_keys "$to_hex" "$label" || return 1
+      if [[ "${PS_WALLET_AT_SKIP_HANDOFF:-0}" != "1" ]]; then
+        ps_reload_payment_streams_wallet
+        sync_wallet
+        ps_assert_private_account_keys "$to_hex" "$label" || return 1
+      fi
       return 0
     else
       wallet_out="${wallet_out:-wallet auth-transfer send failed}"
@@ -555,6 +557,40 @@ ps_dust_pre_shield_private_provider() {
     return 1
   }
   ps_pre_shield_to_private_account "$from_hex" "$to_hex" 1 provider_dust_pre_shield "private provider account"
+}
+
+# One exclusive-stop window for both real-prove shields so the second CLI write
+# cannot drop NSKs from the first (wallet CLI rewrites storage.json).
+ps_real_prove_privacy_shields() {
+  local from_hex="$1" owner_hex="$2" owner_amt="$3" provider_hex="${4:-}"
+  local rc=0
+  [[ -n "$from_hex" && -n "$owner_hex" && -n "$owner_amt" ]] || return 1
+  ps_logoscore_daemon_stop_for_wallet || return 1
+  ps_assert_logoscore_down_for_wallet_cli || return 1
+  export PS_WALLET_AT_SKIP_HANDOFF=1
+  if ! ps_pre_shield_to_private_owner "$from_hex" "$owner_hex" "$owner_amt"; then
+    rc=1
+  fi
+  if [[ "$rc" -eq 0 && -n "$provider_hex" ]]; then
+    narr_step "Dust pre-shielding private provider (committed note for claim)"
+    if ! ps_dust_pre_shield_private_provider "$from_hex"; then
+      rc=1
+    fi
+  fi
+  unset PS_WALLET_AT_SKIP_HANDOFF
+  if ! ps_logoscore_daemon_restart_after_wallet; then
+    narr_fail "failed to restart logoscore after combined wallet shields"
+    return 1
+  fi
+  ps_reload_payment_streams_wallet
+  sync_wallet
+  if [[ "$rc" -eq 0 ]]; then
+    ps_assert_private_account_keys "$owner_hex" "vault owner private account" || rc=1
+    if [[ -n "$provider_hex" ]]; then
+      ps_assert_private_account_keys "$provider_hex" "private provider account" || rc=1
+    fi
+  fi
+  return "$rc"
 }
 
 parse_new_account() {
@@ -932,18 +968,25 @@ if ps_is_local; then
       FUNDER_HEX="$(account_id_to_hex "$PUBLIC_FUNDER")"
       OWNER_HEX="$(account_id_to_hex "$OWNER")"
       [[ -z "$FUNDER_HEX" || -z "$OWNER_HEX" ]] && ps_fatal "could not resolve hex account ids for pre-shield"
-      if ! ps_pre_shield_to_private_owner "$FUNDER_HEX" "$OWNER_HEX" "$owner_target"; then
-        FAILURES=$((FAILURES + 1))
-      fi
-      # D37.11: never pinata a private provider as Public/$PROVIDER. Dust-shield
-      # into the private provider so claim has a committed private note.
-      if ps_is_provider_privacy_e2e; then
-        narr_step "Dust pre-shielding private provider (committed note for claim)"
-        if ! ps_dust_pre_shield_private_provider "$FUNDER_HEX"; then
+      if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+        if ! ps_real_prove_privacy_shields "$FUNDER_HEX" "$OWNER_HEX" "$owner_target" "${PROVIDER_HEX:-}"; then
           FAILURES=$((FAILURES + 1))
         fi
+        if ! ps_is_provider_privacy_e2e; then
+          ps_lgs_pinata_until "$PROVIDER" 150 >/dev/null || true
+        fi
       else
-        ps_lgs_pinata_until "$PROVIDER" 150 >/dev/null || true
+        if ! ps_pre_shield_to_private_owner "$FUNDER_HEX" "$OWNER_HEX" "$owner_target"; then
+          FAILURES=$((FAILURES + 1))
+        fi
+        if ps_is_provider_privacy_e2e; then
+          narr_step "Dust pre-shielding private provider (committed note for claim)"
+          if ! ps_dust_pre_shield_private_provider "$FUNDER_HEX"; then
+            FAILURES=$((FAILURES + 1))
+          fi
+        else
+          ps_lgs_pinata_until "$PROVIDER" 150 >/dev/null || true
+        fi
       fi
       # Pinata funding advances Clock10; wait so create_stream stamps a near-wall accrued_as_of
       # before pause/resume (otherwise catch-up can auto-pause the stream via at_time).
@@ -1007,13 +1050,19 @@ if ps_is_testnet; then
     FUNDER_HEX="$(account_id_to_hex "$PUBLIC_FUNDER")"
     OWNER_HEX="${OWNER_HEX:-$(account_id_to_hex "$OWNER")}"
     [[ -z "$FUNDER_HEX" || -z "$OWNER_HEX" ]] && ps_fatal "could not resolve hex account ids for pre-shield"
-    if ! ps_pre_shield_to_private_owner "$FUNDER_HEX" "$OWNER_HEX" "$owner_target"; then
-      FAILURES=$((FAILURES + 1))
-    fi
-    if ps_is_provider_privacy_e2e; then
-      narr_step "Dust pre-shielding private provider (committed note for claim)"
-      if ! ps_dust_pre_shield_private_provider "$FUNDER_HEX"; then
+    if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+      if ! ps_real_prove_privacy_shields "$FUNDER_HEX" "$OWNER_HEX" "$owner_target" "${PROVIDER_HEX:-}"; then
         FAILURES=$((FAILURES + 1))
+      fi
+    else
+      if ! ps_pre_shield_to_private_owner "$FUNDER_HEX" "$OWNER_HEX" "$owner_target"; then
+        FAILURES=$((FAILURES + 1))
+      fi
+      if ps_is_provider_privacy_e2e; then
+        narr_step "Dust pre-shielding private provider (committed note for claim)"
+        if ! ps_dust_pre_shield_private_provider "$FUNDER_HEX"; then
+          FAILURES=$((FAILURES + 1))
+        fi
       fi
     fi
     sync_wallet
