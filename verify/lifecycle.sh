@@ -53,9 +53,22 @@ cmd_localnet_start() {
   ps_ensure_wallet_statistics "$(ps_scaffold_localnet_wallet_dir)/storage.json" >/dev/null
   # Default lgs timeout (~20s) is too short after snapshot restore when the
   # sequencer rebuilds a large RocksDB block cache; it then kills the child.
-  local timeout_sec="${LGS_LOCALNET_START_TIMEOUT_SEC:-120}"
+  # A 45s real-prove cadence also needs catch-up time after restart.
+  local timeout_sec req_s
+  req_s="$(ps_localnet_parse_duration_s "$(ps_localnet_requested_block_time start)")"
+  timeout_sec="${LGS_LOCALNET_START_TIMEOUT_SEC:-}"
+  if [[ -z "$timeout_sec" ]]; then
+    timeout_sec="$(python3 -c "print(max(180, int(float('${req_s}') * 5 + 90)))")"
+  fi
   if lgs localnet start --timeout-sec "$timeout_sec"; then
     ps_log_info "Localnet started"
+    ps_localnet_verify_block_time rpc || ps_fatal "localnet block cadence check failed after start"
+    return 0
+  fi
+  # lgs may time out while the child is still catching up, then leave it
+  # untracked. Adopt it when RPC is already answering.
+  if ps_seq_reachable; then
+    ps_log_info "lgs start timed out but sequencer RPC is up (timeout-sec=$timeout_sec)"
     ps_localnet_verify_block_time rpc || ps_fatal "localnet block cadence check failed after start"
     return 0
   fi
@@ -65,8 +78,8 @@ cmd_localnet_start() {
 cmd_localnet_ensure() {
   ps_require_command lgs
   if [[ "$(cmd_localnet_status)" != "running" ]]; then
-    cmd_localnet_start
-    return
+    cmd_localnet_start || return 1
+    return 0
   fi
   local config requested configured
   config="$(ps_localnet_sequencer_config)" || ps_fatal "localnet sequencer config not found"
@@ -74,8 +87,8 @@ cmd_localnet_ensure() {
   configured="$(ps_localnet_read_block_time "$config")"
   if [[ -n "${LOCALNET_BLOCK_TIME:-}" && "$configured" != "$requested" ]]; then
     _localnet_apply_requested_block_time ensure
-    cmd_localnet_start
-    return
+    cmd_localnet_start || return 1
+    return 0
   fi
   ps_log_info "Localnet already running at block_create_timeout=$configured"
   ps_localnet_verify_block_time log || ps_fatal "localnet block cadence check failed"
@@ -85,6 +98,12 @@ cmd_localnet_stop() {
   ps_log_info "Stopping localnet..."
   ps_require_command lgs
   lgs localnet stop || true
+  # A timed-out `lgs localnet start` can leave an untracked sequencer_service.
+  if pgrep -x sequencer_service >/dev/null 2>&1; then
+    pkill -x sequencer_service || true
+    sleep 1
+  fi
+  ps_wait_port_free || true
   ps_log_info "Localnet stopped"
 }
 
