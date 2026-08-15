@@ -483,7 +483,6 @@ ps_pre_shield_to_private_account() {
       emit_phase "$phase_name" true "{\"amount\":$amount,\"from_hex\":\"$from_hex\",\"to_hex\":\"$to_hex\",\"via\":\"wallet\"}"
       narr_ok "Pre-shielded $amount tokens into $label (wallet auth-transfer send)"
       if [[ "${PS_WALLET_AT_SKIP_HANDOFF:-0}" != "1" ]]; then
-        ps_reload_payment_streams_wallet
         sync_wallet
         ps_assert_private_account_keys "$to_hex" "$label" || return 1
       fi
@@ -602,7 +601,6 @@ ps_real_prove_privacy_shields() {
     narr_fail "failed to restart logoscore after combined wallet shields"
     return 1
   fi
-  ps_reload_payment_streams_wallet
   sync_wallet
   if [[ "$rc" -eq 0 ]]; then
     ps_assert_private_account_keys "$owner_hex" "vault owner private account" || rc=1
