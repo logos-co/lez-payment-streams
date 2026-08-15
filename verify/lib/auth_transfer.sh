@@ -120,7 +120,6 @@ ps_logoscore_daemon_restart_after_wallet() {
   fi
   sleep 3
   logoscore load-module logos_execution_zone >/dev/null
-  logoscore load-module payment_streams_module >/dev/null 2>&1 || true
   [[ -n "${WALLET_CONFIG:-}" && -n "${WALLET_STORAGE:-}" ]] || return 1
   local stats
   stats="${WALLET_STATISTICS:-$(ps_ensure_wallet_statistics "$WALLET_STORAGE")}"
@@ -133,6 +132,7 @@ ps_logoscore_daemon_restart_after_wallet() {
     echo "wallet open failed after logoscore restart: ${open_line:-<empty>}" >&2
     return 1
   fi
+  logoscore load-module payment_streams_module >/dev/null 2>&1 || true
   ps_at_sync_wallet
 }
 
