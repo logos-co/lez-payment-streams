@@ -281,6 +281,69 @@ ps_export_chain_guest_identity() {
   fi
 }
 
+# Fixture program_id_hex, spel inspect of GUEST_BIN, and live vault program_owner
+# must agree when all three are present. Missing live vault is allowed (unseeded).
+ps_assert_program_identity() {
+  local guest elf_id fixture fixture_id live_id
+  guest="${PAYMENT_STREAMS_GUEST_BIN:-$(ps_default_guest_bin)}"
+  if [[ -f "$guest" ]]; then
+    elf_id="$(ps_guest_bin_image_id_hex "$guest" || true)"
+  fi
+  fixture="${FIXTURE_MANIFEST:-$(ps_default_fixture_manifest)}"
+  if [[ -f "$fixture" ]]; then
+    fixture_id="$(ps_json_get "$fixture" program_id_hex || true)"
+  fi
+  live_id="$(ps_deployed_program_id_hex 2>/dev/null || true)"
+  if [[ -n "$elf_id" && -n "$fixture_id" && "$elf_id" != "$fixture_id" ]]; then
+    ps_fatal "ELF ImageID $elf_id != fixture program_id_hex $fixture_id ($fixture)"
+  fi
+  if [[ -n "$elf_id" && -n "$live_id" && "$elf_id" != "$live_id" ]]; then
+    ps_fatal "ELF ImageID $elf_id != live program_owner $live_id"
+  fi
+  if [[ -n "$fixture_id" && -n "$live_id" && "$fixture_id" != "$live_id" ]]; then
+    ps_fatal "fixture program_id_hex $fixture_id != live program_owner $live_id"
+  fi
+  if [[ -n "$elf_id" || -n "$fixture_id" || -n "$live_id" ]]; then
+    ps_log_info "program identity elf=${elf_id:-unset} fixture=${fixture_id:-unset} live=${live_id:-unset}"
+  fi
+}
+
+# Real prove needs logoscore pre-release-66c4194 or newer so
+# LOGOSCORE_RPC_TIMEOUT_MS reaches core_service (v0.2.0 797b98a ignores it).
+ps_logoscore_version_text() {
+  logoscore --version 2>&1 || true
+}
+
+ps_logoscore_meets_min_revision() {
+  local text="${1:-}"
+  REPO_ROOT="$REPO_ROOT" LOGOSCORE_VERSION_TEXT="$text" python3 -c '
+import os, sys
+sys.path.insert(0, os.environ["REPO_ROOT"] + "/verify/lib")
+from harness_policy import logoscore_meets_min_revision
+sys.exit(0 if logoscore_meets_min_revision(os.environ.get("LOGOSCORE_VERSION_TEXT", "")) else 1)
+'
+}
+
+ps_require_logoscore_min_revision() {
+  command -v logoscore >/dev/null 2>&1 || ps_fatal "logoscore not on PATH"
+  local text
+  text="$(ps_logoscore_version_text)"
+  if ! ps_logoscore_meets_min_revision "$text"; then
+    ps_fatal "logoscore must be pre-release-66c4194 or newer (got: $(printf '%s' "$text" | tr '\n' ' '))"
+  fi
+  ps_log_info "logoscore revision ok: $(printf '%s' "$text" | awk 'NR==1{print; exit}')"
+}
+
+ps_close_state_ok() {
+  local stream_state="${1:--1}"
+  REPO_ROOT="$REPO_ROOT" STREAM_STATE="$stream_state" python3 -c '
+import os, sys
+sys.path.insert(0, os.environ["REPO_ROOT"] + "/verify/lib")
+from harness_policy import close_state_ok
+sys.exit(0 if close_state_ok(os.environ.get("STREAM_STATE")) else 1)
+'
+}
+
 # Sequencer getAccount.program_owner as ImageID hex (empty/nonzero-exit if missing).
 ps_account_program_owner_hex() {
   local account_id="$1"

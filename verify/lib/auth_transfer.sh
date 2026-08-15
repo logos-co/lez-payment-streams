@@ -70,6 +70,34 @@ ps_at_logoscore_open_wallet() {
   ps_at_sync_wallet
 }
 
+# CLI and logoscore must open the same storage.json (testnet used to split homes).
+ps_assert_wallet_storage_realpath() {
+  local daemon cli nssa
+  daemon="${WALLET_STORAGE:-}"
+  [[ -n "$daemon" ]] || {
+    echo "ERROR: WALLET_STORAGE unset during wallet CLI handoff" >&2
+    return 1
+  }
+  [[ -n "${LEE_WALLET_HOME_DIR:-}" ]] || {
+    echo "ERROR: LEE_WALLET_HOME_DIR unset during wallet CLI handoff" >&2
+    return 1
+  }
+  daemon="$(realpath -m "$daemon")"
+  cli="$(realpath -m "$LEE_WALLET_HOME_DIR/storage.json")"
+  if [[ "$daemon" != "$cli" ]]; then
+    echo "ERROR: wallet CLI storage $cli != daemon WALLET_STORAGE $daemon" >&2
+    return 1
+  fi
+  if [[ -n "${NSSA_WALLET_HOME_DIR:-}" ]]; then
+    nssa="$(realpath -m "$NSSA_WALLET_HOME_DIR/storage.json")"
+    if [[ "$nssa" != "$daemon" ]]; then
+      echo "ERROR: NSSA_WALLET_HOME_DIR storage $nssa != daemon $daemon" >&2
+      return 1
+    fi
+  fi
+  return 0
+}
+
 # Full daemon stop so wallet CLI has exclusive storage access (D39.22).
 ps_logoscore_rpc_down() {
   ! timeout 2 logoscore call logos_execution_zone save >/dev/null 2>&1
@@ -77,6 +105,7 @@ ps_logoscore_rpc_down() {
 
 ps_logoscore_daemon_stop_for_wallet() {
   command -v logoscore >/dev/null 2>&1 || return 0
+  ps_assert_wallet_storage_realpath || return 1
   logoscore call logos_execution_zone save >/dev/null 2>&1 || true
   timeout 20 logoscore stop >/dev/null 2>&1 || true
   if [[ -n "${DAEMON_PID:-}" ]]; then
@@ -161,18 +190,6 @@ ps_lgs_pinata_until() {
     return 1
   }
   echo "$bal $attempts"
-}
-
-# payment_streams_module caches the LEZ wallet handle; reload after handoff reopen.
-ps_reload_payment_streams_wallet() {
-  command -v logoscore >/dev/null 2>&1 || return 0
-  logoscore unload-module payment_streams_module >/dev/null 2>&1 || true
-  logoscore load-module payment_streams_module >/dev/null 2>&1 || true
-  [[ -n "${WALLET_CONFIG:-}" && -n "${WALLET_STORAGE:-}" ]] || return 0
-  local stats
-  stats="${WALLET_STATISTICS:-$(ps_ensure_wallet_statistics "$WALLET_STORAGE")}"
-  logoscore call logos_execution_zone open "$WALLET_CONFIG" "$WALLET_STORAGE" "$stats" >/dev/null 2>&1 || true
-  ps_at_sync_wallet
 }
 
 # Cursor reset for note discovery after a clone or ImageID cut. Not a

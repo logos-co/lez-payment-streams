@@ -838,7 +838,15 @@ autosave clobber `storage.json`, so shield NSKs never land and `initializeVault`
 returns FFI 7 (`Private account not found`).
 
 Local real-prove and testnet use one exclusive daemon-stop window for every wallet
-CLI write (AT init and both Public→Private shields), then one `open` after restart
-and a `get_private_account_keys` tripwire. Genesis cursor reset stays a note-discovery
+CLI write (AT init and both Public→Private shields), then `open` the wallet before
+loading `payment_streams_module`. CLI and daemon `storage.json` realpaths must
+match. Real-prove `chainAction` fails after one `METHOD_FAILED` / `RPC_FAILED` /
+timeout / daemon exit and records nested wallet JSON. PDA slots are not probed
+with `get_private_account_keys`. Real prove requires logoscore
+`pre-release-66c4194` or newer and a 30-minute private-submit / RPC budget.
+During real prove the harness checks logoscore process liveness and does not
+issue concurrent wallet RPC. `close_state` is rejected when `stream_state=-1`.
+Skipped zero-accrual claims are not strict-claim success (`E2E_CLAIM_OPTIONAL=0`).
+Genesis cursor reset stays a note-discovery
 tool. Upstream: record in [pins.md](pins.md) (issues not opened from this tree; `gh`
 unavailable).

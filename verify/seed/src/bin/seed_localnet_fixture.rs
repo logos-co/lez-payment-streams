@@ -22,9 +22,9 @@ use lez_payment_streams_core::{
     claim_instruction_accounts, close_stream_by_provider_instruction_accounts,
     create_stream_instruction_accounts,
     deposit_instruction_accounts, derive_stream_config_account_id, derive_vault_account_ids,
-    initialize_vault_instruction_accounts, top_up_stream_instruction_accounts, ClockAccountData,
-    Instruction, StreamId, TokensPerSecond, VaultConfig, VaultId, VaultPrivacyTier,
-    CLOCK_01_PROGRAM_ACCOUNT_ID,
+    initialize_vault_instruction_accounts, instruction_bytes_for_public_transaction,
+    top_up_stream_instruction_accounts, ClockAccountData, Instruction, StreamId, TokensPerSecond,
+    VaultConfig, VaultId, VaultPrivacyTier, CLOCK_01_PROGRAM_ACCOUNT_ID,
 };
 use lee::program::Program;
 use lee_core::account::AccountId as CoreAccountId;
@@ -96,6 +96,17 @@ enum Commands {
         sequencer_url: String,
         #[arg(long, default_value = "verify/fixtures/localnet.json")]
         output: PathBuf,
+    },
+    /// Print send_generic_private_transaction_json payload for initializeVault.
+    DumpPrivateInitPayload {
+        #[arg(long)]
+        program_bin: PathBuf,
+        #[arg(long)]
+        owner: String,
+        #[arg(long, default_value = "0")]
+        vault_id: u64,
+        #[arg(long)]
+        program_id_hex: Option<String>,
     },
     /// Poll until on-chain Clock10 timestamp is within skew of wall time (post-restore gate).
     WaitClockSynced {
@@ -314,6 +325,21 @@ fn account_id_from_base58(raw: &str) -> Result<CoreAccountId> {
     let mut arr = [0u8; 32];
     arr.copy_from_slice(&bytes);
     Ok(CoreAccountId::new(arr))
+}
+
+fn account_id_from_hex_or_base58(raw: &str) -> Result<CoreAccountId> {
+    let s = raw.trim().strip_prefix("0x").unwrap_or(raw.trim());
+    if s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit()) {
+        let bytes = hex::decode(s).context("owner account hex")?;
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&bytes);
+        return Ok(CoreAccountId::new(arr));
+    }
+    account_id_from_base58(raw)
+}
+
+fn account_id_to_hex(id: CoreAccountId) -> String {
+    hex::encode(id.into_value())
 }
 
 fn account_id_to_base58(id: CoreAccountId) -> String {
@@ -986,6 +1012,47 @@ async fn main() -> Result<()> {
                 allocation,
             );
             write_manifest(&output, &fixture)?;
+        },
+        Commands::DumpPrivateInitPayload {
+            program_bin,
+            owner,
+            vault_id,
+            program_id_hex,
+        } => {
+            let owner_id = account_id_from_hex_or_base58(&owner)?;
+            let (program_id, pid_hex) =
+                resolve_program_id(&program_bin, program_id_hex.as_deref())?;
+            let accounts =
+                initialize_vault_instruction_accounts(&program_id, owner_id, vault_id);
+            let ix = Instruction::initialize_vault(
+                vault_id,
+                VaultPrivacyTier::PseudonymousFunding,
+            );
+            let bytes = instruction_bytes_for_public_transaction(&ix)
+                .map_err(|e| anyhow!("serialize initialize_vault: {e}"))?;
+            let payload = serde_json::json!({
+                "account_slots": [
+                    {
+                        "account_id_hex": account_id_to_hex(accounts[0]),
+                        "resolution": "public_no_sign"
+                    },
+                    {
+                        "account_id_hex": account_id_to_hex(accounts[1]),
+                        "resolution": "public_no_sign"
+                    },
+                    {
+                        "account_id_hex": account_id_to_hex(accounts[2]),
+                        "resolution": "private"
+                    }
+                ],
+                "instruction_hex": hex::encode(bytes),
+                "program_elf_path": program_bin,
+                "program_id_hex": pid_hex,
+                "owner_account_id": account_id_to_base58(owner_id),
+                "owner_account_id_hex": account_id_to_hex(owner_id),
+                "vault_id": vault_id,
+            });
+            println!("{}", serde_json::to_string(&payload)?);
         },
         Commands::WriteVaultManifest {
             program_bin,

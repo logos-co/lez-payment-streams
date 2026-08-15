@@ -109,63 +109,36 @@ json.dump(cfg, open(path, 'w'), indent=2)
 "
 }
 
-# Wallet CLI home for LEZ tags that match public getProgramIds (v0.2.2+).
-# Kept separate from TESTNET_WALLET_DIR so the v0.2.0 module config/storage
-# stay openable while auth-transfer/pinata/deploy use the matching CLI.
+# Wallet CLI home is the same as the logoscore module home. The former
+# TESTNET_WALLET_DIR-cli-v024 split wrote NSKs the daemon never opened.
 write_testnet_wallet_cli_config() {
-  local cli_dir="${TESTNET_WALLET_CLI_DIR:-${TESTNET_WALLET_DIR}-cli-v024}"
-  mkdir -p "$cli_dir"
-  if [[ -f "${TESTNET_WALLET_DIR}/storage.json" && ! -f "${cli_dir}/storage.json" ]]; then
-    cp -a "${TESTNET_WALLET_DIR}/storage.json" "${cli_dir}/storage.json"
-  fi
-  python3 -c "
-import json, os
-path = os.environ['TESTNET_WALLET_CLI_DIR'] + '/wallet_config.json'
-url = os.environ['TESTNET_SEQUENCER'].rstrip('/')
-cfg = {
-  'sequencers': [{
-    'sequencer_addr': url,
-    'basic_auth': None,
-  }],
-  'seq_poll_timeout': '60s',
-  'seq_tx_poll_max_blocks': 120,
-  'seq_poll_max_retries': 20,
-  'seq_block_poll_max_amount': 100,
-  'multi_sequencer_client_config': {
-    'distribution_limit': 1,
-    'calibration_limit': 100,
-  },
-}
-json.dump(cfg, open(path, 'w'), indent=2)
-print('Wrote', path)
-"
-  export TESTNET_WALLET_CLI_DIR="$cli_dir"
+  export TESTNET_WALLET_CLI_DIR="$TESTNET_WALLET_DIR"
+  write_testnet_wallet_config
 }
 
 ensure_testnet_wallet() {
+  export TESTNET_WALLET_CLI_DIR="$TESTNET_WALLET_DIR"
   write_testnet_wallet_config
-  export TESTNET_WALLET_CLI_DIR="${TESTNET_WALLET_CLI_DIR:-${TESTNET_WALLET_DIR}-cli-v024}"
-  export TESTNET_WALLET_CLI_DIR
-  write_testnet_wallet_cli_config
-  # Module/logoscore use TESTNET_WALLET_DIR. Wallet CLI may use a separate
-  # TESTNET_WALLET_CLI_DIR when CLI storage is kept apart from the module home.
-  export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_CLI_DIR"
-  export LEE_WALLET_HOME_DIR="$TESTNET_WALLET_CLI_DIR"
+  export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
+  export LEE_WALLET_HOME_DIR="$TESTNET_WALLET_DIR"
   local wallet_bin
   wallet_bin="$(lez_wallet_bin)"
+  local legacy="${TESTNET_WALLET_DIR}-cli-v024"
+  if [[ ! -f "$TESTNET_WALLET_DIR/storage.json" && -f "$legacy/storage.json" ]]; then
+    mkdir -p "$TESTNET_WALLET_DIR"
+    cp -a "$legacy/storage.json" "$TESTNET_WALLET_DIR/storage.json"
+  fi
   if [[ -f "$TESTNET_WALLET_DIR/storage.json" ]]; then
     if TESTNET_WALLET_DIR="$TESTNET_WALLET_DIR" testnet_wallet_public_id >/dev/null 2>&1; then
       return 0
     fi
   fi
   echo "Creating testnet wallet at $TESTNET_WALLET_DIR …"
-  # Create via CLI home, then copy storage into the module home.
   printf '%s\n' "$TESTNET_WALLET_PASSWORD" | "$wallet_bin" account new public >/dev/null
-  if [[ ! -f "$TESTNET_WALLET_CLI_DIR/storage.json" ]]; then
+  if [[ ! -f "$TESTNET_WALLET_DIR/storage.json" ]]; then
     echo "ERROR: wallet storage not created" >&2
     exit 1
   fi
-  cp -a "$TESTNET_WALLET_CLI_DIR/storage.json" "$TESTNET_WALLET_DIR/storage.json"
 }
 
 testnet_wallet_public_id() {

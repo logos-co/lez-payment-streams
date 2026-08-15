@@ -173,6 +173,10 @@ when opening upstream issues):
   daemon stays up.
 
 Harness: `ps_logoscore_daemon_stop_for_wallet` / `stop_store_host_for_wallet_cli`.
+Restart order is load `logos_execution_zone`, open wallet, load `payment_streams_module`.
+Testnet CLI and daemon share `TESTNET_WALLET_DIR` (no `-cli-v024` split).
+Real prove requires logoscore `pre-release-66c4194` or newer
+(`LOGOSCORE_RPC_TIMEOUT_MS` forwarded to core_service). v0.2.0 `797b98a` is rejected.
 Genesis resync is note discovery only, not key recovery.
 
 ### Program graph (LEZ v0.2.0)

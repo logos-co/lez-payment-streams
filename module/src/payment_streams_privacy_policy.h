@@ -25,6 +25,21 @@ enum class VaultSubmitPath : uint8_t {
     Private = 1,
 };
 
+// Account-plan layouts used by vault-touching chainAction ops.
+enum class VaultIxLayout : uint8_t {
+    InitOrDeposit3 = 0,
+    StreamOwner5 = 1,
+    StreamProvider6 = 2,
+};
+
+// True for owner, provider, or authority slots. PDA and clock slots are never
+// private-key accounts and must not be probed with get_private_account_keys.
+bool slotMayHoldPrivateKey(VaultIxLayout layout, int index);
+
+// PF layout fallback: owner identity slots stay private even if keychain probe
+// races.
+bool pfOwnerSlotByLayout(VaultIxLayout layout, int index);
+
 struct VaultSubmitDecision {
     bool ok = true;
     VaultSubmitPath path = VaultSubmitPath::Public;

@@ -8,11 +8,14 @@ using payment_streams_privacy::decideVaultSubmitPath;
 using payment_streams_privacy::depositOwnerMismatchMessage;
 using payment_streams_privacy::kTierPseudonymousFunding;
 using payment_streams_privacy::kTierPublic;
+using payment_streams_privacy::pfOwnerSlotByLayout;
 using payment_streams_privacy::providerBase58ForPeer;
 using payment_streams_privacy::providerIdHexFromMappedBase58;
 using payment_streams_privacy::providerIdHexMatchesStreamProvider;
 using payment_streams_privacy::resolutionsContainPrivate;
 using payment_streams_privacy::setProviderBase58ForPeer;
+using payment_streams_privacy::slotMayHoldPrivateKey;
+using payment_streams_privacy::VaultIxLayout;
 using payment_streams_privacy::VaultSubmitPath;
 
 static const QString kOwnerHex = QStringLiteral(
@@ -124,4 +127,26 @@ LOGOS_TEST(empty_mapped_base58_fails_hex_decode) {
         &err);
     LOGOS_ASSERT_TRUE(hex.isEmpty());
     LOGOS_ASSERT_FALSE(err.isEmpty());
+}
+
+LOGOS_TEST(init_or_deposit_probes_owner_slot_only) {
+    LOGOS_ASSERT_FALSE(slotMayHoldPrivateKey(VaultIxLayout::InitOrDeposit3, 0));
+    LOGOS_ASSERT_FALSE(slotMayHoldPrivateKey(VaultIxLayout::InitOrDeposit3, 1));
+    LOGOS_ASSERT_TRUE(slotMayHoldPrivateKey(VaultIxLayout::InitOrDeposit3, 2));
+    LOGOS_ASSERT_TRUE(pfOwnerSlotByLayout(VaultIxLayout::InitOrDeposit3, 2));
+    LOGOS_ASSERT_FALSE(pfOwnerSlotByLayout(VaultIxLayout::InitOrDeposit3, 0));
+}
+
+LOGOS_TEST(stream_owner_layout_probes_owner_not_clock) {
+    LOGOS_ASSERT_FALSE(slotMayHoldPrivateKey(VaultIxLayout::StreamOwner5, 0));
+    LOGOS_ASSERT_TRUE(slotMayHoldPrivateKey(VaultIxLayout::StreamOwner5, 3));
+    LOGOS_ASSERT_FALSE(slotMayHoldPrivateKey(VaultIxLayout::StreamOwner5, 4));
+}
+
+LOGOS_TEST(stream_provider_layout_probes_owner_and_provider) {
+    LOGOS_ASSERT_TRUE(slotMayHoldPrivateKey(VaultIxLayout::StreamProvider6, 3));
+    LOGOS_ASSERT_TRUE(slotMayHoldPrivateKey(VaultIxLayout::StreamProvider6, 4));
+    LOGOS_ASSERT_FALSE(slotMayHoldPrivateKey(VaultIxLayout::StreamProvider6, 5));
+    LOGOS_ASSERT_TRUE(pfOwnerSlotByLayout(VaultIxLayout::StreamProvider6, 3));
+    LOGOS_ASSERT_FALSE(pfOwnerSlotByLayout(VaultIxLayout::StreamProvider6, 4));
 }

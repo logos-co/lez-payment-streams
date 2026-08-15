@@ -10,6 +10,29 @@ bool resolutionsContainPrivate(const QStringList& resolutions) {
     return resolutions.contains(QStringLiteral("private"));
 }
 
+bool pfOwnerSlotByLayout(VaultIxLayout layout, int index) {
+    switch (layout) {
+    case VaultIxLayout::InitOrDeposit3:
+        return index == 2;
+    case VaultIxLayout::StreamOwner5:
+    case VaultIxLayout::StreamProvider6:
+        return index == 3;
+    }
+    return false;
+}
+
+bool slotMayHoldPrivateKey(VaultIxLayout layout, int index) {
+    switch (layout) {
+    case VaultIxLayout::InitOrDeposit3:
+        return index == 2;
+    case VaultIxLayout::StreamOwner5:
+        return index == 3;
+    case VaultIxLayout::StreamProvider6:
+        return index == 3 || index == 4;
+    }
+    return false;
+}
+
 VaultSubmitDecision decideVaultSubmitPath(uint8_t privacyTier,
                                           bool anyPrivateSlot,
                                           bool enforceDepositSubmitterEqualsOwner,

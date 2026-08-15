@@ -128,6 +128,7 @@ cmd_prepare() {
     cmd_prepare_testnet
   else
     cmd_prepare_local
+    ps_assert_program_identity
   fi
 }
 
@@ -266,6 +267,7 @@ cmd_prepare_testnet() {
   fi
   export FIXTURE_MANIFEST="$fixture"
   ps_export_chain_guest_identity
+  ps_assert_program_identity
 
   ps_log_info "Testnet prepare complete"
 }
@@ -278,6 +280,10 @@ cmd_run() {
   ps_log_info "Starting E2E run..."
   ps_export_authenticated_transfer_program_id_hex
   ps_export_chain_guest_identity
+  ps_assert_program_identity
+  if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+    ps_require_logoscore_min_revision
+  fi
 
   # Flow A (module only): single-host happy path, no Store / dual-host / N8.
   if ps_is_module_mode; then

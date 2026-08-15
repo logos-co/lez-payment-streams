@@ -10,6 +10,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_e2e as rle  # noqa: E402
 
 
+def test_logoscore_min_revision_and_close_state() -> None:
+    assert rle.logoscore_meets_min_revision(
+        "logoscore version pre-release-66c4194\ncommit: 66c4194ca6d3\n"
+    )
+    assert not rle.logoscore_meets_min_revision(
+        "logoscore version 0.2.0\ncommit: 797b98aabc\n"
+    )
+    assert rle.close_state_ok(2)
+    assert not rle.close_state_ok(-1)
+
+
 def test_vault_config_is_empty_from_probe() -> None:
     assert rle.vault_config_is_empty_from_probe(False) is True
     assert rle.vault_config_is_empty_from_probe(True) is False

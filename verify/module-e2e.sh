@@ -230,7 +230,7 @@ DAEMON_PID=""
 # wait up to that budget when no daemon is reachable (D39.24).
 unset LOGOSCORE_RPC_TIMEOUT_MS
 # Daemon / real-prove call budget (passed via env= on specific logoscore invocations only).
-PS_LOGOSCORE_RPC_TIMEOUT_MS="${PS_LOGOSCORE_RPC_TIMEOUT_MS:-600000}"
+PS_LOGOSCORE_RPC_TIMEOUT_MS="${PS_LOGOSCORE_RPC_TIMEOUT_MS:-1800000}"
 
 emit_phase() {
   # emit_phase <phase> <ok:true|false> [extra-json-object]
@@ -248,6 +248,9 @@ trap cleanup EXIT
 
 ps_require_command logoscore
 ps_require_command lgs
+if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+  ps_require_logoscore_min_revision
+fi
 
 narr_header
 
@@ -284,11 +287,6 @@ if ps_is_testnet; then
   [[ -n "$PROVIDER" ]] || ps_fatal "fixture missing provider_account_id"
   [[ -n "$PROGRAM_ID_HEX" ]] || ps_fatal "fixture missing program_id_hex"
 
-  # Wallet CLI AT/pinata uses the CLI home when present.
-  if [[ -n "${TESTNET_WALLET_CLI_DIR:-}" ]]; then
-    export LEE_WALLET_HOME_DIR="$TESTNET_WALLET_CLI_DIR"
-    export NSSA_WALLET_HOME_DIR="$TESTNET_WALLET_CLI_DIR"
-  fi
   WALLET_E2E_PASSWORD="${WALLET_E2E_PASSWORD:-${TESTNET_WALLET_PASSWORD:-testnet-dev}}"
 
   # Public sequencer AT ImageID follows the live getProgramIds tip (v0.2.2+).
@@ -360,8 +358,13 @@ fi
 DAEMON_PID=$!
 sleep 3
 logoscore load-module logos_execution_zone >/dev/null
-logoscore load-module payment_streams_module >/dev/null
-narr_ok "logoscore ready, modules loaded: logos_execution_zone, payment_streams_module"
+narr_ok "logoscore ready, logos_execution_zone loaded"
+if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+  _ls_ver="$(ps_logoscore_version_text)"
+  _ls_commit="$(printf '%s\n' "$_ls_ver" | awk '/^commit:/{print $2; exit}')"
+  emit_phase logoscore_revision true "$(python3 -c 'import json,sys; print(json.dumps({"version":sys.argv[1],"commit":sys.argv[2],"rpc_timeout_ms":int(sys.argv[3])}))' "$(printf '%s' "$_ls_ver" | awk 'NR==1{print; exit}')" "${_ls_commit:-}" "${PS_LOGOSCORE_RPC_TIMEOUT_MS}")"
+  unset _ls_ver _ls_commit
+fi
 
 # ---------------------------------------------------------------------------
 # Wallet open / create
@@ -387,8 +390,10 @@ else
   emit_phase wallet_open false
   narr_fail "Wallet open failed"
   narr_hint "Check wallet config and storage paths"
-  ps_fatal "wallet open failed: $OPEN_LINE"
+  exit 1
 fi
+logoscore load-module payment_streams_module >/dev/null
+narr_ok "payment_streams_module loaded after wallet open"
 logoscore call logos_execution_zone save >/dev/null 2>&1 || true
 
 # ---------------------------------------------------------------------------
@@ -799,6 +804,77 @@ except Exception:
 ' "$1" 2>/dev/null
 }
 
+# Process liveness without module RPC. A save/sync into logos_execution_zone
+# while send_generic_private_transaction_json is in flight segfaults
+# libQt6RemoteObjects (isolate 2026-08-15).
+ps_logoscore_process_alive() {
+  if [[ -n "${DAEMON_PID:-}" ]]; then
+    kill -0 "$DAEMON_PID" 2>/dev/null
+    return $?
+  fi
+  pgrep -f '[.]logoscore[.]elf' >/dev/null 2>&1
+}
+
+# True when a chainAction failure must not be retried (real-prove, or a
+# METHOD_FAILED / RPC_FAILED / timeout / dead daemon).
+ps_chain_action_fatal() {
+  local line="$1" rc="$2" daemon_alive="$3"
+  [[ "$daemon_alive" == "false" ]] && return 0
+  [[ "$rc" -eq 124 ]] && return 0
+  python3 -c '
+import json,sys
+line, rc = sys.argv[1], int(sys.argv[2])
+if rc != 0 and not line.strip():
+    raise SystemExit(0)
+try:
+    outer = json.loads(line)
+except Exception:
+    raise SystemExit(1)
+code = str(outer.get("code") or "")
+status = str(outer.get("status") or "")
+if code in ("METHOD_FAILED", "RPC_FAILED") or status == "error":
+    raise SystemExit(0)
+raise SystemExit(1)
+' "${line:-}" "$rc" 2>/dev/null
+}
+
+ps_chain_action_fail_extra() {
+  python3 -c '
+import json,sys
+op, attempt, line, stderr, rc, daemon = sys.argv[1:7]
+extra = {
+    "op": op,
+    "attempt": int(attempt),
+    "rc": int(rc),
+    "daemon_alive": daemon == "true",
+    "raw": line,
+}
+if stderr.strip():
+    extra["stderr"] = stderr[-4000:]
+try:
+    outer = json.loads(line) if line.strip() else {}
+except Exception:
+    outer = {}
+if isinstance(outer, dict):
+    extra["logoscore_code"] = outer.get("code")
+    extra["logoscore_message"] = outer.get("message")
+    inner = outer.get("result", {})
+    if isinstance(inner, str):
+        try:
+            inner = json.loads(inner) if inner.strip().startswith("{") else {}
+        except Exception:
+            inner = {"raw_result": inner}
+    if isinstance(inner, dict):
+        if inner.get("message"):
+            extra["nested_message"] = inner.get("message")
+        if "wallet" in inner:
+            extra["wallet"] = inner["wallet"]
+        if "account_slots" in inner:
+            extra["account_slots"] = inner["account_slots"]
+print(json.dumps(extra))
+' "$1" "$2" "$3" "$4" "$5" "$6"
+}
+
 # call_ps <phase> <required:0|1> <op> <params-json> [status-key] [success-label] [verify-fn]
 # narr_step should describe intent (→). On success, prints ✓ success-label.
 # On failure, prints ✗ phase failed: … and ! clarification (never reuses success-label).
@@ -809,15 +885,31 @@ except Exception:
 # with inclusion:"state_verified" instead of a false timeout failure.
 call_ps() {
   local phase="$1" required="$2" op="$3" params="$4" key="${5:-}" success_label="${6:-$phase}" verify_fn="${7:-}"
-  local attempt line="" tx_hash=""
-  for attempt in 1 2 3 4 5 6; do
-    # Real prove: raise outer logoscore CLI→daemon budget for this call only (D39.24).
+  local attempt line="" tx_hash="" rc=0 stderr="" daemon_alive="true" max_attempts=6
+  if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+    max_attempts=1
+  fi
+  for attempt in $(seq 1 "$max_attempts"); do
+    local outf errf
+    outf="$(mktemp "${TMPDIR:-/tmp}/ps-chainAction.XXXXXX.out")"
+    errf="$(mktemp "${TMPDIR:-/tmp}/ps-chainAction.XXXXXX.err")"
+    rc=0
     if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
-      # pipefail: logoscore non-zero (module/wallet errors) must not abort before emit_phase.
-      line="$(env "LOGOSCORE_RPC_TIMEOUT_MS=${PS_LOGOSCORE_RPC_TIMEOUT_MS}" \
-        logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)" || true
+      env "LOGOSCORE_RPC_TIMEOUT_MS=${PS_LOGOSCORE_RPC_TIMEOUT_MS}" \
+        logoscore call payment_streams_module chainAction "$op" "$params" >"$outf" 2>"$errf" || rc=$?
     else
-      line="$(logoscore call payment_streams_module chainAction "$op" "$params" 2>/dev/null | tail -1)" || true
+      logoscore call payment_streams_module chainAction "$op" "$params" >"$outf" 2>"$errf" || rc=$?
+    fi
+    line="$(tail -1 "$outf" 2>/dev/null || true)"
+    stderr="$(cat "$errf" 2>/dev/null || true)"
+    rm -f "$outf" "$errf"
+    daemon_alive="true"
+    if [[ "${RISC0_DEV_MODE:-1}" == "0" ]]; then
+      if ! ps_logoscore_process_alive; then
+        daemon_alive="false"
+      fi
+    elif ! timeout 2 logoscore call logos_execution_zone save >/dev/null 2>&1; then
+      daemon_alive="false"
     fi
     if inner_status_ok "$line" "$key"; then
       tx_hash="$(extract_tx_hash "$line")"
@@ -867,15 +959,20 @@ except Exception:
       echo "$line"
       return 0
     fi
+    if [[ "${RISC0_DEV_MODE:-1}" == "0" ]] || ps_chain_action_fatal "${line:-}" "$rc" "$daemon_alive"; then
+      break
+    fi
     sleep 8
   done
-  emit_phase "$phase" false "{\"op\":\"$op\",\"raw\":$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "${line:-}")}"
+  emit_phase "$phase" false "$(ps_chain_action_fail_extra "$op" "$attempt" "${line:-}" "${stderr:-}" "$rc" "$daemon_alive")"
   narr_fail "$phase failed: chainAction rejected or module RPC error"
-  narr_hint "Check sequencer height, wallet sync, gas balance, and logoscore module load"
+  narr_hint "Check sequencer height, wallet sync, gas balance, nested wallet error in the artifact, and logoscore module load"
   if [[ "$required" == "1" ]]; then
     FAILURES=$((FAILURES + 1))
   fi
-  sync_wallet
+  if [[ "${RISC0_DEV_MODE:-1}" != "0" ]]; then
+    sync_wallet
+  fi
   echo ""
   return 0
 }
@@ -909,6 +1006,7 @@ j() { python3 -c 'import json,sys; print(json.dumps(json.loads(sys.argv[1])))' "
 # ---------------------------------------------------------------------------
 if ps_is_local || ps_is_testnet; then
   export LEE_WALLET_HOME_DIR="$WALLET_HOME"
+  export NSSA_WALLET_HOME_DIR="$WALLET_HOME"
   export WALLET_CONFIG="${WALLET_CONFIG:-$WALLET_HOME/wallet_config.json}"
   export WALLET_STORAGE="${WALLET_STORAGE:-$WALLET_HOME/storage.json}"
   export PS_AT_LOGOSCORE_WALLET_HANDOFF=1
@@ -959,10 +1057,6 @@ if ps_is_local || ps_is_testnet; then
     FAILURES=$((FAILURES + 1))
   fi
   sync_wallet
-  # Handoff may have closed/reopened LEZ wallet; refresh payment_streams handle (D39.22).
-  if [[ "${PS_AT_LOGOSCORE_WALLET_HANDOFF:-0}" == "1" ]]; then
-    ps_reload_payment_streams_wallet
-  fi
 fi
 
 if ps_is_local; then
@@ -970,6 +1064,7 @@ if ps_is_local; then
   if [[ -x "$SCAFFOLD_WALLET" ]]; then
     export PATH="$(dirname "$SCAFFOLD_WALLET"):$PATH"
     export LEE_WALLET_HOME_DIR="$WALLET_HOME"
+  export NSSA_WALLET_HOME_DIR="$WALLET_HOME"
     if ps_is_owner_privacy_e2e; then
       narr_step "Funding public funder and pre-shielding private vault owner"
       owner_target=$((DEPOSIT + 50))
@@ -1043,6 +1138,7 @@ fi
 
 if ps_is_testnet; then
   export LEE_WALLET_HOME_DIR="$WALLET_HOME"
+  export NSSA_WALLET_HOME_DIR="$WALLET_HOME"
   SCAFFOLD_WALLET="$(ps_lez_cache)/target/release/wallet"
   if [[ -x "$SCAFFOLD_WALLET" ]]; then
     export PATH="$(dirname "$SCAFFOLD_WALLET"):$PATH"
@@ -1600,10 +1696,17 @@ else
     read -r CLOSE_ACC CLOSE_UNC CLOSE_ST <<< "$CLOSE_STREAM"
   fi
 
-  emit_phase close_state true "{\"vault_balance\":${CLOSE_VAULT_BAL:-0},\"total_allocated\":${CLOSE_VAULT_TOT:-0},\"stream_accrued\":${CLOSE_ACC:-0},\"stream_unaccrued\":${CLOSE_UNC:-0},\"stream_state\":${CLOSE_ST:--1}}"
-  narr_ok "Stream closed: on-chain state $(stream_state_name "$CLOSE_ST")"
-  narr_value "Stream residual: accrued=${CLOSE_ACC:-?}, unaccrued=${CLOSE_UNC:-?} (unaccrued reclaimed to vault)"
-  narr_value "Vault holding balance: ${CLOSE_VAULT_BAL:-?}, total_allocated: ${CLOSE_VAULT_TOT:-?}"
+  if ps_close_state_ok "${CLOSE_ST:--1}"; then
+    emit_phase close_state true "{\"vault_balance\":${CLOSE_VAULT_BAL:-0},\"total_allocated\":${CLOSE_VAULT_TOT:-0},\"stream_accrued\":${CLOSE_ACC:-0},\"stream_unaccrued\":${CLOSE_UNC:-0},\"stream_state\":${CLOSE_ST}}"
+    narr_ok "Stream closed: on-chain state $(stream_state_name "$CLOSE_ST")"
+    narr_value "Stream residual: accrued=${CLOSE_ACC:-?}, unaccrued=${CLOSE_UNC:-?} (unaccrued reclaimed to vault)"
+    narr_value "Vault holding balance: ${CLOSE_VAULT_BAL:-?}, total_allocated: ${CLOSE_VAULT_TOT:-?}"
+  else
+    emit_phase close_state false "{\"vault_balance\":${CLOSE_VAULT_BAL:-0},\"total_allocated\":${CLOSE_VAULT_TOT:-0},\"stream_accrued\":${CLOSE_ACC:-0},\"stream_unaccrued\":${CLOSE_UNC:-0},\"stream_state\":${CLOSE_ST:--1}}"
+    narr_fail "Close did not reach Closed state (stream_state=${CLOSE_ST:--1})"
+    narr_hint "stream_state=-1 means the stream account was missing or unreadable after close"
+    FAILURES=$((FAILURES + 1))
+  fi
 
   narr_phase "Claim"
 
@@ -1614,8 +1717,15 @@ else
   CLAIM_ACCRUED="${CLAIM_ACCRUED:-0}"
 
   if [[ "${CLAIM_ACCRUED:-0}" -le 0 ]]; then
-    emit_phase claim true "{\"skipped\":true,\"reason\":\"zero_accrued\"}"
-    narr_ok "No residual accrued to claim after close"
+    if [[ "${E2E_CLAIM_OPTIONAL:-0}" == "0" ]]; then
+      emit_phase claim false "{\"skipped\":true,\"reason\":\"zero_accrued\"}"
+      narr_fail "Strict claim required but accrued is 0 after close"
+      narr_hint "Zero-accrual skip is not success when E2E_CLAIM_OPTIONAL=0"
+      FAILURES=$((FAILURES + 1))
+    else
+      emit_phase claim true "{\"skipped\":true,\"reason\":\"zero_accrued\"}"
+      narr_ok "No residual accrued to claim after close"
+    fi
   else
     PRE_CLAIM_BALANCE="$(ps_account_balance "$PROVIDER" || echo 0)"
     PRE_CLAIM_VAULT=0

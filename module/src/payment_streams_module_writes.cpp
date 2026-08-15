@@ -1,6 +1,7 @@
 #include "payment_streams_module_impl.h"
 #include "payment_streams_module_inventory.h"
 
+#include <QDebug>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -20,6 +21,8 @@
 #include "payment_streams_module_kit.h"
 #include "payment_streams_privacy_policy.h"
 
+#include <QDebug>
+
 #include <cstring>
 
 namespace {
@@ -30,6 +33,7 @@ using payment_streams_kit::fixtureManifestPath;
 using payment_streams_kit::hex32FromQString;
 using payment_streams_kit::kAccountIdHexLen;
 using payment_streams_kit::kFfiSuccess;
+using payment_streams_kit::kPrivateSubmitTimeoutMs;
 using payment_streams_kit::makeErrorJson;
 using payment_streams_kit::makeOkJson;
 using payment_streams_kit::parseWalletAccountJson;
@@ -40,16 +44,8 @@ using payment_streams_kit::walletAccountIdHexFromBase58;
 constexpr uint8_t kPrivacyTierPublic = 0;
 constexpr uint8_t kPrivacyTierPseudonymousFunding = 1;
 constexpr uint8_t kPrivacyTierReadFromChain = 255;
-// Private submit runs the privacy-preserving prover. Default LogosAPIClient
-// Timeout is 20s, which is too short even for RISC0_DEV_MODE stub receipts on
-// a cold path and far too short for real proving.
-constexpr int kPrivateSubmitTimeoutMs = 600000;
 
-enum class VaultIxLayout : uint8_t {
-    InitOrDeposit3,
-    StreamOwner5,
-    StreamProvider6,
-};
+using payment_streams_privacy::VaultIxLayout;
 
 QString parseWalletSubmitJson(const QString& walletJson, QJsonObject* fieldsOut, QString* errorOut);
 
@@ -289,20 +285,6 @@ bool walletHoldsPrivateAccount(LogosExecutionZone& wallet, const QString& accoun
     return npkHex.size() == kAccountIdHexLen;
 }
 
-// PF layout fallback: owner identity slots stay private even if keychain probe
-// races. Provider/authority use wallet probe so a private provider on a Public
-// or PF vault becomes a private slot (D37.9).
-bool pfOwnerSlotByLayout(VaultIxLayout layout, int index) {
-    switch (layout) {
-    case VaultIxLayout::InitOrDeposit3:
-        return index == 2;
-    case VaultIxLayout::StreamOwner5:
-    case VaultIxLayout::StreamProvider6:
-        return index == 3;
-    }
-    return false;
-}
-
 QStringList slotResolutionsForSubmit(LogosExecutionZone& wallet,
                                      VaultIxLayout layout,
                                      uint8_t privacyTier,
@@ -312,8 +294,11 @@ QStringList slotResolutionsForSubmit(LogosExecutionZone& wallet,
     resolutions.reserve(accountHexIds.size());
     for (int i = 0; i < accountHexIds.size(); ++i) {
         const QString& accountHex = accountHexIds.at(i);
-        if (walletHoldsPrivateAccount(wallet, accountHex) ||
-            (privacyTier == kPrivacyTierPseudonymousFunding && pfOwnerSlotByLayout(layout, i))) {
+        const bool probePrivate = payment_streams_privacy::slotMayHoldPrivateKey(layout, i) &&
+                                  walletHoldsPrivateAccount(wallet, accountHex);
+        if (probePrivate ||
+            (privacyTier == kPrivacyTierPseudonymousFunding &&
+             payment_streams_privacy::pfOwnerSlotByLayout(layout, i))) {
             resolutions.append(QStringLiteral("private"));
         } else if (i < signingFlags.size() && signingFlags.at(i)) {
             resolutions.append(QStringLiteral("public_sign"));
@@ -668,7 +653,9 @@ QString parseWalletSubmitJson(const QString& walletJson, QJsonObject* fieldsOut,
     if (errorOut != nullptr) {
         *errorOut = err.isEmpty() ? QStringLiteral("wallet submit failed") : err;
     }
-    return makeErrorJson(err.isEmpty() ? QStringLiteral("wallet submit failed") : err);
+    QJsonObject extra;
+    extra.insert(QStringLiteral("wallet"), obj);
+    return makeErrorJson(err.isEmpty() ? QStringLiteral("wallet submit failed") : err, extra);
 }
 
 QString submitGenericPublic(LogosAPI* api,
@@ -793,15 +780,29 @@ QString buildAndSubmit(LogosExecutionZone& wallet,
         if (guestPath.isEmpty() || !QFile::exists(guestPath)) {
             return makeErrorJson(QStringLiteral("guest ELF missing at %1").arg(guestPath));
         }
+        const QJsonArray slotList = accountSlotsJsonForSubmit(accountIds, resolutions);
+        qInfo().noquote() << QStringLiteral("payment_streams private submit account_slots=%1")
+                                 .arg(QString::fromUtf8(
+                                     QJsonDocument(slotList).toJson(QJsonDocument::Compact)));
         QJsonObject payload;
-        payload.insert(QStringLiteral("account_slots"),
-                       accountSlotsJsonForSubmit(accountIds, resolutions));
+        payload.insert(QStringLiteral("account_slots"), slotList);
         payload.insert(QStringLiteral("instruction_hex"), QString::fromLatin1(instructionBytes.toHex()));
         payload.insert(QStringLiteral("program_elf_path"), guestPath);
         if (vaultCtx != nullptr && vaultCtx->requireAuthTransferDep) {
             payload.insert(QStringLiteral("include_authenticated_transfer_elf"), true);
         }
-        return submitGenericPrivateViaFfi(api, payload, errorOut);
+        const QString submitted = submitGenericPrivateViaFfi(api, payload, errorOut);
+        QJsonParseError parseError{};
+        const QJsonDocument submittedDoc = QJsonDocument::fromJson(submitted.toUtf8(), &parseError);
+        if (parseError.error == QJsonParseError::NoError && submittedDoc.isObject()) {
+            QJsonObject obj = submittedDoc.object();
+            if (obj.value(QStringLiteral("status")).toString() == QStringLiteral("error") &&
+                !obj.contains(QStringLiteral("account_slots"))) {
+                obj.insert(QStringLiteral("account_slots"), slotList);
+                return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+            }
+        }
+        return submitted;
     }
 
     const QString programIdHex = fixtureConfig().programIdHex;

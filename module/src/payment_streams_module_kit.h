@@ -19,12 +19,15 @@ namespace payment_streams_kit {
 constexpr quint64 kMsEpochThreshold = 1'000'000'000'000ULL;
 constexpr int kAccountIdHexLen = 64;
 constexpr uint32_t kFfiSuccess = 0u;
+// Private submit LogosAPIClient Timeout. 20s is too short for stub or real prove.
+constexpr int kPrivateSubmitTimeoutMs = 1800000;
 
 quint64 chainTimestampToFoldSeconds(quint64 ts);
 
 QJsonObject mergePersistedDiskKeys(const QJsonObject& memory, const QJsonObject& disk);
 
 QString makeErrorJson(const QString& message);
+QString makeErrorJson(const QString& message, const QJsonObject& extra);
 QString makeOkJson(const QJsonObject& payload);
 QString makePlainError(const QString& message);
 QString makeEligibilityError(const QString& code, const QString& message);

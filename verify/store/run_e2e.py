@@ -18,6 +18,10 @@ _STORE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_STORE_DIR))
 sys.path.insert(0, str(_STORE_DIR.parent / "lib"))
 from await_tx import AwaitTxError, wait_for_sequencer_tx as await_sequencer_tx
+from harness_policy import (
+    close_state_ok,
+    logoscore_meets_min_revision,
+)
 
 
 # Static sharding config - simpler for E2E demo without autosharding complexity
@@ -721,19 +725,43 @@ def logoscore_cmd(cfg_dir: Path, *args: str, timeout: int = 120) -> subprocess.C
         and args[2] == "chainAction"
     ):
         env = os.environ.copy()
-        env.setdefault("LOGOSCORE_RPC_TIMEOUT_MS", "600000")
-        timeout = max(timeout, int(env.get("LOGOSCORE_RPC_TIMEOUT_MS", "600000")) // 1000 + 60)
+        env.setdefault("LOGOSCORE_RPC_TIMEOUT_MS", "1800000")
+        timeout = max(timeout, int(env.get("LOGOSCORE_RPC_TIMEOUT_MS", "1800000")) // 1000 + 60)
     return run(cmd, env=env, timeout=timeout)
+
+
+def logoscore_version_text() -> str:
+    try:
+        proc = subprocess.run(
+            ["logoscore", "--version"],
+            text=True,
+            capture_output=True,
+            timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise E2EError(f"logoscore --version failed: {exc}") from exc
+    return (proc.stdout or "") + (proc.stderr or "")
+
+
+def require_logoscore_min_revision() -> str:
+    text = logoscore_version_text()
+    if not logoscore_meets_min_revision(text):
+        raise E2EError(
+            "logoscore must be pre-release-66c4194 or newer "
+            f"(got: {' '.join(text.split())})"
+        )
+    return text
 
 
 def chain_action_timeout_s() -> int:
     """Subprocess budget for payment_streams_module chainAction."""
     if os.environ.get("RISC0_DEV_MODE", "1").strip() == "0":
-        raw = os.environ.get("LOGOSCORE_CHAIN_ACTION_TIMEOUT", "660").strip()
+        raw = os.environ.get("LOGOSCORE_CHAIN_ACTION_TIMEOUT", "1860").strip()
         try:
-            return max(600, int(raw))
+            return max(1800, int(raw))
         except ValueError:
-            return 660
+            return 1860
     if os.environ.get("CHAIN", "local").strip().lower() != "testnet":
         return 120
     raw = os.environ.get("LOGOSCORE_CHAIN_ACTION_TIMEOUT", "360").strip()
@@ -1166,7 +1194,7 @@ def start_daemon(cfg: Path, modules: Path, persist: Path) -> None:
     if os.environ.get("RISC0_DEV_MODE", "1").strip() == "0":
         daemon_env["LOGOSCORE_RPC_TIMEOUT_MS"] = os.environ.get(
             "PS_LOGOSCORE_RPC_TIMEOUT_MS",
-            os.environ.get("LOGOSCORE_RPC_TIMEOUT_MS", "600000"),
+            os.environ.get("LOGOSCORE_RPC_TIMEOUT_MS", "1800000"),
         )
     persist.mkdir(parents=True, exist_ok=True)
     stderr_path = persist / "logoscore-daemon.stderr"
@@ -1193,13 +1221,31 @@ def start_daemon(cfg: Path, modules: Path, persist: Path) -> None:
         raise E2EError(f"logoscore daemon exited early for {cfg}")
 
 
-def load_modules(cfg: Path) -> None:
-    for name in ("logos_execution_zone", "payment_streams_module", "delivery_module"):
+def load_lez_module(cfg: Path) -> None:
+    r = logoscore_cmd(cfg, "load-module", "logos_execution_zone")
+    parsed = call_result(r)
+    if parsed.get("status") != "ok":
+        raise E2EError(f"load-module logos_execution_zone: {parsed}")
+
+
+def load_dependent_modules(cfg: Path) -> None:
+    for name in ("payment_streams_module", "delivery_module"):
         r = logoscore_cmd(cfg, "load-module", name)
         parsed = call_result(r)
         if parsed.get("status") != "ok":
             raise E2EError(f"load-module {name}: {parsed}")
     time.sleep(2)
+
+
+def load_modules(cfg: Path) -> None:
+    load_lez_module(cfg)
+    load_dependent_modules(cfg)
+
+
+def load_lez_open_then_app_modules(cfg: Path, wallet_config: Path, wallet_storage: Path) -> None:
+    load_lez_module(cfg)
+    open_wallet(cfg, wallet_config, wallet_storage)
+    load_dependent_modules(cfg)
 
 
 def wallet_statistics_path(wallet_storage: Path) -> Path:
@@ -1424,10 +1470,11 @@ def reload_provider_payment_streams_module(cfg_provider: Path) -> None:
 
 
 def reload_payment_streams_wallet(cfg: Path, seq_url: str) -> None:
+    """Reload payment_streams_module while the LEZ wallet stays open."""
     sync_wallet(cfg, seq_url)
     logoscore_cmd(cfg, "unload-module", "payment_streams_module")
     logoscore_cmd(cfg, "load-module", "payment_streams_module")
-    reopen_logoscore_wallet(cfg, seq_url)
+    sync_wallet(cfg, seq_url)
 
 
 def vault_next_stream_id(cfg: Path, manifest: dict) -> int:
@@ -1509,6 +1556,19 @@ def register_store_host_runtime(
     }
 
 
+def assert_cfg_wallet_storage_realpath(cfg: Path) -> None:
+    _wc, ws = cfg_wallet_paths(cfg)
+    lee = Path(os.environ.get("LEE_WALLET_HOME_DIR", "")).expanduser()
+    if not str(lee):
+        raise E2EError("LEE_WALLET_HOME_DIR unset during wallet CLI handoff")
+    cli = (lee / "storage.json").resolve()
+    daemon = ws.resolve()
+    if cli != daemon:
+        raise E2EError(
+            f"wallet CLI storage {cli} != daemon storage {daemon} for {cfg}"
+        )
+
+
 def stop_store_host_for_wallet_cli(cfg: Path) -> None:
     """Exclusive storage handoff for standalone wallet CLI (D39.22).
 
@@ -1518,6 +1578,7 @@ def stop_store_host_for_wallet_cli(cfg: Path) -> None:
     its independent storage open.
     """
     logoscore_cmd(cfg, "call", "logos_execution_zone", "save", timeout=60)
+    assert_cfg_wallet_storage_realpath(cfg)
     stop_daemon(cfg)
     time.sleep(2)
 
@@ -1531,9 +1592,8 @@ def restart_store_host_after_wallet_cli(cfg: Path, seq_url: str) -> None:
     modules = rt["modules"]
     persist = rt["persist"]
     start_daemon(cfg, modules, persist)
-    load_modules(cfg)
     wc, ws = cfg_wallet_paths(cfg)
-    open_wallet(cfg, wc, ws)
+    load_lez_open_then_app_modules(cfg, wc, ws)
     sync_wallet(cfg, seq_url)
     delivery_create = rt.get("delivery_create")
     if isinstance(delivery_create, dict):
@@ -1546,7 +1606,6 @@ def restart_store_host_after_wallet_cli(cfg: Path, seq_url: str) -> None:
     verifier = rt.get("eligibility_verifier")
     if verifier:
         set_eligibility_verifier(cfg, str(verifier))
-    reload_payment_streams_wallet(cfg, seq_url)
 
 
 def cfg_wallet_paths(cfg: Path) -> tuple[Path, Path]:
@@ -4324,10 +4383,11 @@ def demo_teardown(
         )
     vb, tot = vault_status_balances(cfg_user, manifest)
     s_acc, s_unc, s_st = stream_status_fields(cfg_user, manifest, stream_id)
+    close_ok = close_state_ok(s_st)
     emit_module_phase(
         artifact,
         "close_state",
-        True,
+        close_ok,
         {
             "vault_balance": vb,
             "total_allocated": tot,
@@ -4336,6 +4396,10 @@ def demo_teardown(
             "stream_state": s_st,
         },
     )
+    if not close_ok:
+        raise E2EError(
+            f"close_state rejected stream_state={s_st} (Closed=2 required)"
+        )
     log_vault_liquidity(cfg_user, manifest, artifact, phase="vault_liquidity_after_close")
 
     narrator.phase("Claim")
@@ -4926,11 +4990,29 @@ def main() -> int:
 
     repo = args.repo.resolve()
     preflight_e2e_helpers(repo)
+    ls_text = ""
+    if os.environ.get("RISC0_DEV_MODE", "1").strip() == "0":
+        ls_text = require_logoscore_min_revision()
     artifact = args.artifact
     artifact.parent.mkdir(parents=True, exist_ok=True)
     if artifact.exists():
         artifact.unlink()
     timer = RunTimer(artifact)
+    if ls_text:
+        ls_commit = ""
+        for line in ls_text.splitlines():
+            if line.startswith("commit:"):
+                ls_commit = line.split(None, 1)[-1].strip()
+                break
+        emit_module_phase(
+            artifact,
+            "logoscore_revision",
+            True,
+            {
+                "version": ls_text.splitlines()[0] if ls_text.strip() else "",
+                "commit": ls_commit,
+            },
+        )
 
     e2e = repo / ".scaffold" / "e2e"
     modules_user = Path(os.environ.get("MODULES_USER", e2e / "user" / "modules"))
@@ -5036,8 +5118,7 @@ def main() -> int:
             narrator.phase("Environment Setup")
             narrator.step("Starting provider logoscore, loading modules")
             start_daemon(cfg_provider, modules_provider, persist_provider)
-            load_modules(cfg_provider)
-            open_wallet(cfg_provider, prov_wallet_config, prov_wallet_storage)
+            load_lez_open_then_app_modules(cfg_provider, prov_wallet_config, prov_wallet_storage)
             sync_wallet(cfg_provider, manifest.get("sequencer_url", "http://127.0.0.1:3040"))
 
             provider_create = {
@@ -5080,8 +5161,7 @@ def main() -> int:
             # --- User daemon ---
             narrator.step("Starting user logoscore, loading modules")
             start_daemon(cfg_user, modules_user, persist_user)
-            load_modules(cfg_user)
-            open_wallet(cfg_user, wallet_config, wallet_storage)
+            load_lez_open_then_app_modules(cfg_user, wallet_config, wallet_storage)
             sync_wallet(cfg_user, manifest.get("sequencer_url", "http://127.0.0.1:3040"))
 
             user_create = {

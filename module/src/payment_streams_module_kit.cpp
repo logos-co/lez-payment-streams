@@ -4,6 +4,7 @@
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonObject>
 #include <QJsonParseError>
 #include <QJsonValue>
 
@@ -78,9 +79,19 @@ QJsonObject mergePersistedDiskKeys(const QJsonObject& memory, const QJsonObject&
 }
 
 QString makeErrorJson(const QString& message) {
+    return makeErrorJson(message, QJsonObject());
+}
+
+QString makeErrorJson(const QString& message, const QJsonObject& extra) {
     QJsonObject obj;
     obj.insert(QStringLiteral("status"), QStringLiteral("error"));
     obj.insert(QStringLiteral("message"), message);
+    for (auto it = extra.begin(); it != extra.end(); ++it) {
+        if (it.key() == QStringLiteral("status") || it.key() == QStringLiteral("message")) {
+            continue;
+        }
+        obj.insert(it.key(), it.value());
+    }
     return QJsonDocument(obj).toJson(QJsonDocument::Compact);
 }
 

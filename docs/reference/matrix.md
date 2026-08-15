@@ -74,8 +74,12 @@ Set `VAULT_ID` to pin a vault id, or `E2E_REUSE_BASELINE_VAULT=1` for the vault-
 
 Claim is required on both networks for the module.
 Store claim is strict by default (`E2E_CLAIM_OPTIONAL=0`).
+A skipped zero-accrual claim is not success under that default.
+`close_state` fails when `stream_state` is `-1` (stream missing or unreadable).
 Artifact phase is `claim`.
 Privacy testnet gates use `E2E_CLAIM_OPTIONAL=0` with real proving (`RISC0_DEV_MODE=0`).
+Real prove requires logoscore `pre-release-66c4194` or newer and a 30-minute
+private-submit budget (`PS_LOGOSCORE_RPC_TIMEOUT_MS=1800000`).
 
 ## On-chain confirmation principle
 
@@ -105,8 +109,11 @@ Do not wait for `getTransaction` to stay null.
 
 `PAYMENT_STREAMS_PROGRAM_ID_HEX` is unset on local cells so identity comes from the live ELF.
 Neither that variable nor a testnet `FIXTURE_MANIFEST` may leak across cells.
+Prepare and run still require fixture `program_id_hex`, `spel inspect` of `PAYMENT_STREAMS_GUEST_BIN`,
+and live vault `program_owner` to agree when all three are present.
 
-Wallet CLI writes (AT-init, shield, seed deposit) stop the logoscore daemon first so it cannot autosave over `storage.json`. Restart one `open` after the CLI exits. Do not use `logos_execution_zone.close` for this handoff.
+Wallet CLI writes (AT-init, shield, seed deposit) stop the logoscore daemon first so it cannot autosave over `storage.json`. Restart loads `logos_execution_zone`, opens the wallet, then loads `payment_streams_module`. Do not use `logos_execution_zone.close` for this handoff.
+CLI and daemon `storage.json` realpaths must be the same file. Testnet no longer keeps a separate `-cli-v024` home.
 
 Real-prove shields default to `PS_WALLET_SHIELD_TIMEOUT=1800` (CPU prove measured ~1020s). Raise that env if prove is slower.
 
