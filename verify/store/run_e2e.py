@@ -717,16 +717,19 @@ def run(cmd: list[str], *, cwd: Path | None = None, env: dict | None = None, tim
 def logoscore_cmd(cfg_dir: Path, *args: str, timeout: int = 120) -> subprocess.CompletedProcess:
     cmd = ["logoscore", "--config-dir", str(cfg_dir), *args]
     env = None
-    # Real prove: raise outer logoscore CLI→daemon budget for PPE calls only (D39.24).
-    if (
-        os.environ.get("RISC0_DEV_MODE", "1").strip() == "0"
-        and len(args) >= 3
-        and args[0] == "call"
-        and args[2] == "chainAction"
-    ):
+    # Real prove: raise outer logoscore CLI→daemon budget for module calls
+    # (create_account_private, save, chainAction). A bloated testnet seed clone
+    # can spend >20s on create_account_private while storage is flushing.
+    # Do not export into the parent shell — logoscore stop can hang (D39.24).
+    if os.environ.get("RISC0_DEV_MODE", "1").strip() == "0" and args and args[0] == "call":
         env = os.environ.copy()
-        env.setdefault("LOGOSCORE_RPC_TIMEOUT_MS", "1800000")
-        timeout = max(timeout, int(env.get("LOGOSCORE_RPC_TIMEOUT_MS", "1800000")) // 1000 + 60)
+        env.setdefault(
+            "LOGOSCORE_RPC_TIMEOUT_MS",
+            os.environ.get("PS_LOGOSCORE_RPC_TIMEOUT_MS", "1800000"),
+        )
+        rpc_s = int(env.get("LOGOSCORE_RPC_TIMEOUT_MS", "1800000")) // 1000 + 60
+        if timeout >= 120:
+            timeout = max(timeout, rpc_s)
     return run(cmd, env=env, timeout=timeout)
 
 
@@ -2847,6 +2850,9 @@ def setup_store_owner_privacy_accounts(
     """
     seq_url = manifest.get("sequencer_url", "http://127.0.0.1:3040")
     is_testnet = os.environ.get("CHAIN", "local").strip().lower() == "testnet"
+    # Open/sync of a large testnet seed clone can still be flushing storage;
+    # create_account_private must not race that (RPC_FAILED at the 20s default).
+    sync_wallet(cfg_user, seq_url)
     sync_burned_private_ids_for_imageid(
         repo,
         Path(os.environ.get("WALLET_STORAGE", "")),
