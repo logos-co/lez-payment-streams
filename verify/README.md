@@ -79,6 +79,8 @@ Root:
 | File | Caller |
 | --- | --- |
 | `common.sh`, `auth_transfer.sh`, `chain_poll.sh`, `vault_scan.sh`, `repro-env.sh` | sourced by root scripts |
+| `harness_policy.py` | `common.sh`, `run_e2e.py` |
+| `test_harness_policy.py` | colocated unit test (`import harness_policy`) |
 | `await_tx.py` | `chain_poll.sh` |
 | `ensure-scaffold-lez-layout.sh` | `seed.sh` |
 | `auth-transfer-ensure.sh` | `repro-auth-transfer.sh`, Store E2E |

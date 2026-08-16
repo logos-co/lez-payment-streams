@@ -51,8 +51,8 @@ Step 35 (complete) supplies integrate-doc substance.
 [Step 52](docs/plan/completed/step-52-wrap-up-verification.md) is complete
 (wrap-up verification).
 Next: [Step 51](docs/plan/upcoming/step-51-forum-post.md)
-(forum post). [Step 53](docs/plan/upcoming/step-53-repository-structure.md)
-is upcoming (repository structure).
+(forum post). [Step 53](docs/plan/completed/step-53-repository-structure.md)
+is complete (repository structure).
 
 Historical protocol CLI (complete):
 [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370);
@@ -60,8 +60,7 @@ Historical protocol CLI (complete):
 [Step 34](docs/plan/completed/step-34-user-journey-manual-walkthrough.md);
 [Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
 Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
-[Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post),
-[Step 53](docs/plan/upcoming/step-53-repository-structure.md) (repository structure).
+[Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post).
 Step 52 is complete
 ([step-52-gate-log.md](docs/plan/completed/step-52-gate-log.md)).
 Step 51 publishes the forum post from that gate log.
@@ -73,7 +72,8 @@ Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer
 multi-token types),
 [Step 50](docs/plan/completed/step-50-consistency-and-clarity.md) (consistency and
 clarity),
-[Step 52](docs/plan/completed/step-52-wrap-up-verification.md) (wrap-up verification).
+[Step 52](docs/plan/completed/step-52-wrap-up-verification.md) (wrap-up verification),
+[Step 53](docs/plan/completed/step-53-repository-structure.md) (repository structure).
 Wontfix: [Step 20](docs/plan/wontfix/step-20-developer-journey.md) (formal logos-docs integrator publish),
 [Step 23](docs/plan/wontfix/step-23-public-store-provider.md) (public Store provider),
 [Step 25](docs/plan/wontfix/step-25-demo-coordination-module.md) (demo coordinator),

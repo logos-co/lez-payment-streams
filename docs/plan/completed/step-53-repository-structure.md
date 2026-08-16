@@ -1,9 +1,10 @@
 # Step 53 — repository structure
 
-Upcoming. Index: [index.md](../index.md).
+Index: [index.md](../index.md). Status: complete (2026-08-16).
+Gate log: [step-53-gate-log.md](step-53-gate-log.md).
 
-Independent of [Step 21](step-21-basecamp-ui.md) and
-[Step 52](../completed/step-52-wrap-up-verification.md).
+Independent of [Step 21](../upcoming/step-21-basecamp-ui.md) and
+[Step 52](step-52-wrap-up-verification.md).
 Forum draft stays at `docs/external/forum-post.md` (Step 51).
 This step does not move, edit, or link it (D53.12 superseded).
 
@@ -479,7 +480,7 @@ After this commit, README Testing commands, `make verify-*`, and
   `docs/plan/waiting/`).
   Remove empty directories.
 - Do not edit `docs/external/forum-post.md` or
-  [step-51-forum-post.md](step-51-forum-post.md).
+  [step-51-forum-post.md](../upcoming/step-51-forum-post.md).
 - Add `verify/lib/check-relative-links.sh`: resolve relative
   links in tracked `.md` outside `docs/plan/`, `docs/archive/`,
   and `docs/external/`.
@@ -696,7 +697,7 @@ D53.2 (stub packet) is superseded.
 
 - [index.md](../index.md)
 - [AGENTS.md](../../../AGENTS.md)
-- [step-46-docs-unify-and-forum-post.md](../completed/step-46-docs-unify-and-forum-post.md)
-- [step-51-forum-post.md](step-51-forum-post.md)
-- [step-52-wrap-up-verification.md](../completed/step-52-wrap-up-verification.md)
+- [step-46-docs-unify-and-forum-post.md](step-46-docs-unify-and-forum-post.md)
+- [step-51-forum-post.md](../upcoming/step-51-forum-post.md)
+- [step-52-wrap-up-verification.md](step-52-wrap-up-verification.md)
 - [docs/README.md](../../README.md)

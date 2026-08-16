@@ -12,7 +12,7 @@
   "active_steps": [],
   "waiting_steps": [],
   "paused_steps": [],
-  "upcoming_steps": [21, 51, 53],
+  "upcoming_steps": [21, 51],
   "wontfix_steps": [20, 23, 25, 42, 43, 48],
   "optional_stretch_steps": [],
   "optional_steps": [],
@@ -59,7 +59,7 @@
     "50": "docs/plan/completed/step-50-consistency-and-clarity.md",
     "51": "docs/plan/upcoming/step-51-forum-post.md",
     "52": "docs/plan/completed/step-52-wrap-up-verification.md",
-    "53": "docs/plan/upcoming/step-53-repository-structure.md"
+    "53": "docs/plan/completed/step-53-repository-structure.md"
   },
   "completed_normative": {
     "12": "docs/plan/completed/step-12-normative.md",
