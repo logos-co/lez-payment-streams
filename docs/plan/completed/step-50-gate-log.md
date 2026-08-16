@@ -1,7 +1,7 @@
 # Step 50 gate log
 
 Packet: [step-50-consistency-and-clarity.md](step-50-consistency-and-clarity.md).
-Status: complete. Wrap-up matrix is [Step 52](../upcoming/step-52-wrap-up-verification.md)
+Status: complete. Wrap-up matrix is [Step 52](step-52-wrap-up-verification.md)
 (D52.1). No ImageID cut (D50.1).
 
 Branch: `feat/step-50-consistency-and-clarity`.

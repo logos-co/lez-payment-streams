@@ -3,7 +3,7 @@
 Upcoming. Index: [index.md](../index.md).
 
 Independent of [Step 21](step-21-basecamp-ui.md) and
-[Step 52](step-52-wrap-up-verification.md).
+[Step 52](../completed/step-52-wrap-up-verification.md).
 Forum draft stays at `docs/external/forum-post.md` (Step 51).
 This step does not move, edit, or link it (D53.12 superseded).
 
@@ -698,5 +698,5 @@ D53.2 (stub packet) is superseded.
 - [AGENTS.md](../../../AGENTS.md)
 - [step-46-docs-unify-and-forum-post.md](../completed/step-46-docs-unify-and-forum-post.md)
 - [step-51-forum-post.md](step-51-forum-post.md)
-- [step-52-wrap-up-verification.md](step-52-wrap-up-verification.md)
+- [step-52-wrap-up-verification.md](../completed/step-52-wrap-up-verification.md)
 - [docs/README.md](../../README.md)

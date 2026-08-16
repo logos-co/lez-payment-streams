@@ -5,7 +5,7 @@ Gate log: [step-50-gate-log.md](step-50-gate-log.md).
 
 Workstreams A–F landed on `feat/step-50-consistency-and-clarity`.
 Fast verification recorded 2026-08-13. No ImageID cut (D50.1).
-Wrap-up matrix remains [Step 52](../upcoming/step-52-wrap-up-verification.md).
+Wrap-up matrix remains [Step 52](step-52-wrap-up-verification.md).
 
 Prerequisite: [Step 46](step-46-docs-unify-and-forum-post.md)
 (living docs IA, complete) and
@@ -13,7 +13,7 @@ Prerequisite: [Step 46](step-46-docs-unify-and-forum-post.md)
 (token_id / policy types and ImageID cut landed 2026-08).
 [Step 48](../wontfix/step-48-program-graph-lez-unify.md) is not a prerequisite.
 [Step 51](../upcoming/step-51-forum-post.md) (forum publish) and
-[Step 52](../upcoming/step-52-wrap-up-verification.md) (wrap-up matrix) follow this step.
+[Step 52](step-52-wrap-up-verification.md) (wrap-up matrix) follow this step.
 
 ## Goal
 
@@ -275,7 +275,7 @@ No `MODE=module` / `MODE=store` E2E in this gate. README Testing handle
 
 ## After this step
 
-[Step 52](../upcoming/step-52-wrap-up-verification.md) runs the wrap-up protocol matrix on the
+[Step 52](step-52-wrap-up-verification.md) runs the wrap-up protocol matrix on the
 current ImageID (D52.1). Step 51 publishes the forum post from that gate log. Step 49 proved public
 local and public testnet only. Privacy never ran on this cut.
 
@@ -283,7 +283,7 @@ local and public testnet only. Privacy never ran on this cut.
 
 - [step-46-docs-unify-and-forum-post.md](step-46-docs-unify-and-forum-post.md)
 - [step-51-forum-post.md](../upcoming/step-51-forum-post.md)
-- [step-52-wrap-up-verification.md](../upcoming/step-52-wrap-up-verification.md)
+- [step-52-wrap-up-verification.md](step-52-wrap-up-verification.md)
 - [step-47-unify-role-terminology.md](step-47-unify-role-terminology.md)
 - [step-49-native-token-spec-alignment.md](step-49-native-token-spec-alignment.md)
 - [naming-conventions.md](../../reference/naming-conventions.md)

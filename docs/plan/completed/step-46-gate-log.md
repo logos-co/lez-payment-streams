@@ -3,7 +3,7 @@
 Packet: [step-46-docs-unify-and-forum-post.md](step-46-docs-unify-and-forum-post.md).
 Status: complete (docs IA). Forum publish is
 [Step 51](../upcoming/step-51-forum-post.md).
-Wrap-up dogfood is [Step 52](../upcoming/step-52-wrap-up-verification.md).
+Wrap-up dogfood is [Step 52](step-52-wrap-up-verification.md).
 
 ## Docs landed
 

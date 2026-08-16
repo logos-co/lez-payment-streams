@@ -1,17 +1,15 @@
 # Step 52 — wrap-up verification
 
-Upcoming. Index: [index.md](../index.md).
+Index: [index.md](../index.md). Status: complete (2026-08-16).
+Gate log: [step-52-gate-log.md](step-52-gate-log.md).
 
 Owns the post-50 protocol matrix that Step 46 called D46.11
 and that briefly sat on Step 51 as D51.1.
-Prerequisite: [Step 50](../completed/step-50-consistency-and-clarity.md)
+Prerequisite: [Step 50](step-50-consistency-and-clarity.md)
 (persist merge, `await_tx`, kit).
-[Step 51](step-51-forum-post.md) cites this gate log for wrap-up claims.
-Independent of [Step 21](step-21-basecamp-ui.md)
+[Step 51](../upcoming/step-51-forum-post.md) cites this gate log for wrap-up claims.
+Independent of [Step 21](../upcoming/step-21-basecamp-ui.md)
 (Basecamp UI is a separate track; this packet certifies the CLI / Store stack).
-
-Gate log: [step-52-gate-log.md](../completed/step-52-gate-log.md)
-(create when closing).
 
 ## Goal
 
@@ -55,22 +53,25 @@ On the Step 53 tree the living runner is `./verify/e2e.sh`
 
 ## This run
 
-Partial. Branch `feat/step-53-repository-structure`.
-Do not close this step. No gate log yet.
+Complete. Branch `feat/step-53-repository-structure`.
+Gate log: [step-52-gate-log.md](step-52-gate-log.md).
 
 Product ImageID (README, funded snapshot, `verify/fixtures/testnet-module.json`)
 is `c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a`.
 Local harness guest remains
 `cdc9bfea4fdb6490a99929619bfb2c0eefd36a936668b1b3a22f684e66b44f0c`
-(live guest mtime 2026-08-14, sequencer block 1743).
+for local real-prove only.
 Product ELF recovered 2026-08-15 by isolated `make build` at
 `8a0e374a7e7171cd5b60ad20d46b9510b057dfe3`
 (373916 bytes, ImageID match).
 Pin: `.scaffold/program-bins/lez_payment_streams-c30781ea.bin` (gitignored).
 Live guest was not replaced.
-Testnet public cells already used the product ImageID.
+Testnet cells used the product ImageID.
 
-Operator log: `/tmp/step52-verify/log.txt`.
+Operator logs: `/tmp/step52-verify/log.txt`,
+`/tmp/step52-verify/local-realprove-45s.log`,
+`/tmp/step52-verify/testnet-private-module.log`,
+`/tmp/step52-verify/testnet-private-store.log`.
 
 ### Verified
 
@@ -88,24 +89,12 @@ Operator log: `/tmp/step52-verify/log.txt`.
 | Store private stub | pass | `.scaffold/e2e/artifacts/e2e-20260814T174058.log` (`RISC0_DEV_MODE=1 OWNER_PRIVACY=1 PROVIDER_PRIVACY=1`) |
 | Module testnet public | pass | `.scaffold/e2e/artifacts/module-e2e-20260814T180419.log` |
 | Store eligibility testnet public | pass | `.scaffold/e2e/artifacts/e2e-20260814T190338.log` |
-| Module local real-prove | pass | `.scaffold/e2e/artifacts/module-e2e-local-realprove-45s-retry.log` (`RISC0_DEV_MODE=0 OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 E2E_CLAIM_OPTIONAL=0 LOCALNET_BLOCK_TIME=45s`, logoscore `pre-release-66c4194`, LEZ `47eba256`, guest `cdc9bfea…`). Claim `0e8a2566…`. First 45s attempt failed claim inclusion (110s wait, CLOCK_50 `rem=0`); retry after wait-budget fix is the green row. |
+| Module local real-prove | pass | `.scaffold/e2e/artifacts/module-e2e-local-realprove-45s-retry.log` (`RISC0_DEV_MODE=0 OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 E2E_CLAIM_OPTIONAL=0 LOCALNET_BLOCK_TIME=45s`, logoscore `pre-release-66c4194`, LEZ `47eba256`, guest `cdc9bfea…`). Claim `0e8a2566…`. |
+| Module testnet private | pass | `.scaffold/e2e/artifacts/module-e2e-testnet-private-retry.log` (`RISC0_DEV_MODE=0 OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 E2E_CLAIM_OPTIONAL=0`, pinned ELF `c30781ea…`). Claim `34e48ed2…`, vault_drop 400. |
+| Store testnet private | pass | `.scaffold/e2e/artifacts/e2e-testnet-store-private-retry.log` (`RISC0_DEV_MODE=0 OWNER_PRIVACY=1 PROVIDER_PRIVACY=1 E2E_CLAIM_OPTIONAL=0`, pinned ELF `c30781ea…`). Query 200, missing-proof reject, close, claim `2547744f…`, vault_drop 400. |
 
-Local private stub is green after two harness fixes in `verify/store/run_e2e.py`:
-`resync_wallet_from_genesis` after privacy account create (spent-nullifier replay on the seed clone),
-and skip continuation seed precreate when `OWNER_PRIVACY=1` (`signing key not found`).
-
-Store testnet public needed the fixture ImageID (`c30781ea…`), not the local guest
-(`cdc9bfea…`). `verify/e2e.sh` now exports `PAYMENT_STREAMS_PROGRAM_ID_HEX` from
-the testnet fixture; `seed_localnet_fixture` honors that for PDA probes.
-
-### Not verified
-
-| Function | Status | Notes |
-| --- | --- | --- |
-| Module testnet private | fail | Funded (owner 600, provider 692). Artifact `.scaffold/e2e/artifacts/module-e2e-20260814T212606.log`: shields ok; `initializeVault` `wallet FFI error 99` after FFI 7 (`Private account not found`). Live guest is `cdc9bfea…`; testnet program is `c30781ea…`. Product ELF is now pinned; this cell still needs a rerun. |
-| Store testnet private | not run | Waited on product ELF pin (now at `.scaffold/program-bins/lez_payment_streams-c30781ea.bin`). |
-
-Full wrap-up is not green. Step 51 must not fill wrap-up claims from this run.
+Fail artifacts and retries are listed in the [gate log](step-52-gate-log.md).
+Step 51 may fill wrap-up claims from the green rows only.
 
 ## Time estimates
 
@@ -139,7 +128,7 @@ testnet public → testnet private so a cheap fail stops a dearer leg.
 
 - Run the coverage table on the post-50 tree (ImageID `c30781ea…` unless
   a later guest cut landed).
-- Write [step-52-gate-log.md](../completed/step-52-gate-log.md) with
+- Write [step-52-gate-log.md](step-52-gate-log.md) with
   artifact paths, ImageID citations, and wall-clock notes.
 - Reuse a post-50 artifact only when the command and tree match a row.
 
@@ -160,8 +149,8 @@ testnet public → testnet private so a cheap fail stops a dearer leg.
 
 ## Related
 
-- [step-50-consistency-and-clarity.md](../completed/step-50-consistency-and-clarity.md)
-- [step-51-forum-post.md](step-51-forum-post.md)
-- [step-39-testnet-gate-log.md](../completed/step-39-testnet-gate-log.md)
+- [step-50-consistency-and-clarity.md](step-50-consistency-and-clarity.md)
+- [step-51-forum-post.md](../upcoming/step-51-forum-post.md)
+- [step-39-testnet-gate-log.md](step-39-testnet-gate-log.md)
 - [README Testing](../../../README.md#testing)
 - [matrix.md](../../reference/matrix.md)

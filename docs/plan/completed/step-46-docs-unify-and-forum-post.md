@@ -4,7 +4,7 @@ Index: [index.md](../index.md). Status: complete (2026-08).
 Gate log: [step-46-gate-log.md](step-46-gate-log.md).
 
 Forum publish moved to [Step 51](../upcoming/step-51-forum-post.md).
-Wrap-up dogfood moved to [Step 52](../upcoming/step-52-wrap-up-verification.md).
+Wrap-up dogfood moved to [Step 52](step-52-wrap-up-verification.md).
 This packet is the living-docs IA (reproduce / integrate / README Testing /
 journey-name retirement).
 
@@ -179,7 +179,7 @@ Extracted to [Step 51](../upcoming/step-51-forum-post.md).
 Draft path stays [forum-post.md](../../external/forum-post.md).
 Outline, D46.5 command rule, D46.17 path, and venue TBD
 moved with that packet. Wrap-up dogfood (D46.11) is
-[Step 52](../upcoming/step-52-wrap-up-verification.md).
+[Step 52](step-52-wrap-up-verification.md).
 
 ## Prerequisites
 

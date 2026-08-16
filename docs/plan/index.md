@@ -12,8 +12,8 @@ Decisions: [integration-decisions.md](../reference/decisions.md).
 | Path | Contents |
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
-| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44–47, 49–50) |
-| [upcoming/](upcoming/) | Steps 21, 51–53 |
+| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44–47, 49–50, 52) |
+| [upcoming/](upcoming/) | Steps 21, 51, 53 |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43, 48 |
 | [reference/wire.md](../reference/wire.md) | Cross-step APIs |
 | [reference/decisions.md](../reference/decisions.md) | D1-D6, N1-N18 |
@@ -29,7 +29,7 @@ Documentation tracks ([N18](../reference/decisions.md#n18-integration-demo-vs-pa
 | Protocol UI (Basecamp) | Upcoming | Step 21 |
 | Docs unify | Complete | Step 46 |
 | Forum post | Upcoming | Step 51; draft [forum-post.md](../external/forum-post.md) |
-| Wrap-up verification | Upcoming | Step 52 |
+| Wrap-up verification | Complete | Step 52 |
 | Repository structure | Upcoming | Step 53 |
 | Multi-token type alignment (native-only demo) | Complete | Step 49 |
 | Consistency and clarity polish | Complete | Step 50 |
@@ -37,12 +37,12 @@ Documentation tracks ([N18](../reference/decisions.md#n18-integration-demo-vs-pa
 Engineering: Steps 26–33 complete; Steps 36–41 complete
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
-Steps 21, 51–53 upcoming (Basecamp UI; forum post; wrap-up verification;
-repository structure).
+Steps 21, 51, 53 upcoming (Basecamp UI; forum post; repository structure).
+Step 52 complete (wrap-up verification).
 Step 48 wontfix (program-graph LEZ unify / AT config drop).
 Step 46 complete (living docs IA). Step 49 complete (ImageID cut).
 Step 50 complete (consistency and clarity polish).
-Step 52 records the wrap-up matrix on the current ImageID
+Step 52 recorded the wrap-up matrix on ImageID `c30781ea…`
 (unit, localnet, testnet, private execution).
 Step 51 publishes the forum post from that gate log.
 Step 53 is upcoming (repository structure).
@@ -152,6 +152,7 @@ Dual-host demo coordination stays in host scripts
 | 47 | Unify role terminology (module, journey, policy, layouts) | [step-47-unify-role-terminology.md](completed/step-47-unify-role-terminology.md) |
 | 49 | LIP-155 multi-token type alignment (native-only demo) | [step-49-native-token-spec-alignment.md](completed/step-49-native-token-spec-alignment.md) |
 | 50 | Consistency and clarity polish | [step-50-consistency-and-clarity.md](completed/step-50-consistency-and-clarity.md) |
+| 52 | Wrap-up verification | [step-52-wrap-up-verification.md](completed/step-52-wrap-up-verification.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
 [step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33),
@@ -161,7 +162,8 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 [step-46-gate-log.md](completed/step-46-gate-log.md) (Step 46),
 [step-47-gate-log.md](completed/step-47-gate-log.md) (Step 47),
 [step-49-gate-log.md](completed/step-49-gate-log.md) (Step 49),
-[step-50-gate-log.md](completed/step-50-gate-log.md) (Step 50).
+[step-50-gate-log.md](completed/step-50-gate-log.md) (Step 50),
+[step-52-gate-log.md](completed/step-52-gate-log.md) (Step 52).
 
 ## Upcoming steps
 
@@ -169,7 +171,6 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | --- | --- | --- |
 | 21 | Protocol UI: Basecamp plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
 | 51 | Forum post | Upcoming — [step-51-forum-post.md](upcoming/step-51-forum-post.md) |
-| 52 | Wrap-up verification | Upcoming — [step-52-wrap-up-verification.md](upcoming/step-52-wrap-up-verification.md) |
 | 53 | Repository structure | Upcoming — [step-53-repository-structure.md](upcoming/step-53-repository-structure.md) |
 
 ## Waiting steps

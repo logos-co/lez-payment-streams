@@ -19,7 +19,7 @@ Living docs: [docs/reproduce/](docs/reproduce/),
 [docs/external/forum-post.md](docs/external/forum-post.md)
 ([Step 46](docs/plan/completed/step-46-docs-unify-and-forum-post.md) docs;
 [Step 51](docs/plan/upcoming/step-51-forum-post.md) forum;
-[Step 52](docs/plan/upcoming/step-52-wrap-up-verification.md) wrap-up verification;
+[Step 52](docs/plan/completed/step-52-wrap-up-verification.md) wrap-up verification;
 Step 48 wontfix).
 Historical protocol CLI track is complete
 ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)).
@@ -48,8 +48,9 @@ Step 35 (complete) supplies integrate-doc substance.
 (native-only LIP token_id / `accepted_tokens`; ImageID cut).
 [Step 50](docs/plan/completed/step-50-consistency-and-clarity.md) is complete
 (glue and naming).
-Next: [Step 52](docs/plan/upcoming/step-52-wrap-up-verification.md)
-(wrap-up verification), then [Step 51](docs/plan/upcoming/step-51-forum-post.md)
+[Step 52](docs/plan/completed/step-52-wrap-up-verification.md) is complete
+(wrap-up verification).
+Next: [Step 51](docs/plan/upcoming/step-51-forum-post.md)
 (forum post). [Step 53](docs/plan/upcoming/step-53-repository-structure.md)
 is upcoming (repository structure).
 
@@ -60,10 +61,10 @@ Historical protocol CLI (complete):
 [Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
 Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
 [Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post),
-[Step 52](docs/plan/upcoming/step-52-wrap-up-verification.md) (wrap-up verification),
 [Step 53](docs/plan/upcoming/step-53-repository-structure.md) (repository structure).
-Step 52 records unit, localnet, and testnet E2E including private execution
-on the current ImageID. Step 51 publishes the forum post from that gate log.
+Step 52 is complete
+([step-52-gate-log.md](docs/plan/completed/step-52-gate-log.md)).
+Step 51 publishes the forum post from that gate log.
 Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer and payee close),
 [Step 45](docs/plan/completed/step-45-dependencies-and-patches.md) (deps and patches),
 [Step 46](docs/plan/completed/step-46-docs-unify-and-forum-post.md) (docs unify),
@@ -71,7 +72,8 @@ Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer
 [Step 49](docs/plan/completed/step-49-native-token-spec-alignment.md) (native-only
 multi-token types),
 [Step 50](docs/plan/completed/step-50-consistency-and-clarity.md) (consistency and
-clarity).
+clarity),
+[Step 52](docs/plan/completed/step-52-wrap-up-verification.md) (wrap-up verification).
 Wontfix: [Step 20](docs/plan/wontfix/step-20-developer-journey.md) (formal logos-docs integrator publish),
 [Step 23](docs/plan/wontfix/step-23-public-store-provider.md) (public Store provider),
 [Step 25](docs/plan/wontfix/step-25-demo-coordination-module.md) (demo coordinator),
