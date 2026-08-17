@@ -11,6 +11,7 @@ Cite the LIP for semantics.
 | [program/README.md](../program/README.md) | Guest program, Rust tests, review order |
 | [module/README.md](../module/README.md#chainaction-catalogue) | chainAction API reference |
 | [reproduce/module.md](reproduce/module.md) | Manual LIP-155 via the module (testnet primary) |
+| [reproduce/basecamp-ui.md](reproduce/basecamp-ui.md) | Same lifecycle in Basecamp (`payment_streams_ui`) |
 | [reproduce/store.md](reproduce/store.md) | Paid Store + eligibility (`e2e.sh`, local primary) |
 | [integrate.md](integrate.md) | Eligibility for a request-response protocol |
 

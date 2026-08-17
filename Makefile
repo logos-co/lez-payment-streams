@@ -179,3 +179,13 @@ bootstrap-testnet: ## One-time fixture bootstrap (Part B; verify/testnet/bootstr
 bootstrap-testnet-module: ## One-time fixture for module-only testnet (reuses testnet owner)
 	chmod +x verify/testnet/bootstrap-testnet-module.sh verify/testnet/testnet-common.sh
 	./verify/testnet/bootstrap-testnet-module.sh
+
+NETWORK ?= testnet
+
+basecamp-ui-build: ## Build patched wallet, payment_streams_module, payment_streams_ui, and Nix Basecamp
+	chmod +x verify/lib/basecamp-ui.sh verify/lib/build-wallet-lgx.sh
+	./verify/lib/basecamp-ui.sh build
+
+basecamp-ui-run: ## Launch Basecamp with WALLET_HOME and FIXTURE_MANIFEST (NETWORK=testnet|localnet)
+	chmod +x verify/lib/basecamp-ui.sh
+	NETWORK="$(NETWORK)" ./verify/lib/basecamp-ui.sh run

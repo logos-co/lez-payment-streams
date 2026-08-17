@@ -6,6 +6,17 @@ Use Nix-built portable Basecamp (`Logos.Theme`) and an isolated user directory
 (`.scaffold/basecamp-ui`).
 The Nix-built binary loads local `.lgx` packages directly.
 
+Operator launch is Make:
+
+```bash
+make basecamp-ui-build
+make basecamp-ui-run                  # testnet (default)
+make basecamp-ui-run NETWORK=localnet
+```
+
+Walkthrough: [docs/reproduce/basecamp-ui.md](../../reproduce/basecamp-ui.md).
+The rest of this page is the rebuild iteration form of those targets.
+
 Install custom plugins through Package Manager or Modules → Install LGX Package
 ([Install and load a module](https://docs.logos.co/basecamp/install-and-load-a-module-in-logos-basecamp)).
 The installed `.lgx` files remain in the user directory across restarts.
@@ -15,7 +26,7 @@ Rebuild, reinstall that `.lgx`, restart, and load when modifying source files.
 Mock mode runs without network or wallet environment variables.
 Live chain writes read wallet and fixture paths from the environment inherited
 by the child `logos_host` processes
-([step-21 Host process](step-21-basecamp-ui.md#host-process-and-compatibility)).
+([step-21 Architecture](step-21-basecamp-ui.md#architecture)).
 
 ```bash
 USER_DIR="$PWD/.scaffold/basecamp-ui"
@@ -37,44 +48,34 @@ Packages:
 `logos_execution_zone` in `ui/metadata.json`.
 Basecamp requires both dependencies to be installed before mounting the UI.
 
+`make basecamp-ui-run` maps `NETWORK` onto absolute `WALLET_HOME` and
+`FIXTURE_MANIFEST` (see `verify/lib/basecamp-ui.sh`).
+The same three `.lgx` packages serve both networks.
+
 ## Initial setup
 
 Perform these steps before the first load, or when the Basecamp binary,
 user directory, or packages are missing.
 
-1. Build the Basecamp binary in sibling repository:
+1. Build packages and Basecamp:
 
 ```bash
-( cd ../logos-basecamp && nix build '.#bin-bundle-dir' )
+make basecamp-ui-build
 ```
 
-2. Create the isolated user directory:
+2. Start Basecamp:
 
 ```bash
-mkdir -p "$USER_DIR"
+make basecamp-ui-run
 ```
 
-3. Build all three `.lgx` packages:
-
-```bash
-./verify/lib/build-wallet-lgx.sh
-nix build ./module#lgx-portable
-nix build ./ui#lgx-portable -o ui/result
-```
-
-4. Start Basecamp:
-
-```bash
-"$BASECAMP" --user-dir "$USER_DIR"
-```
-
-5. In Modules, select Install LGX Package in this order:
+3. In Modules, select Install LGX Package in this order:
 
    1. Patched wallet `.lgx` (`logos_execution_zone`)
    2. Payment streams core `.lgx` (`payment_streams_module`)
    3. UI `.lgx` (`payment_streams_ui`)
 
-6. Load modules in that same order.
+4. Load modules in that same order.
 
 ## Loop after a change
 
@@ -99,11 +100,11 @@ nix build ./module#lgx-portable
 ./verify/lib/build-wallet-lgx.sh
 ```
 
-3. Start Basecamp with the chosen network environment
-   (see Testnet launch or Localnet launch below):
+3. Start Basecamp with the chosen network:
 
 ```bash
-"$BASECAMP" --user-dir "$USER_DIR"
+make basecamp-ui-run
+# or: make basecamp-ui-run NETWORK=localnet
 ```
 
 4. Install LGX Package to overwrite the rebuilt `.lgx`.
@@ -117,11 +118,14 @@ Skip this section when evaluating visual layout in Mock mode.
 
 `logos_host` subprocesses inherit environment variables from the shell
 that launches Basecamp.
-The active network is determined by `FIXTURE_MANIFEST` and `WALLET_HOME`.
+The active network is `WALLET_HOME` (sequencer in `wallet_config.json`)
+and `FIXTURE_MANIFEST` (`program_id_hex`).
 
-### Testnet launch
+Manual spawn (same env as `make basecamp-ui-run`):
 
-Public Testnet v0.2 is the primary live network (`https://testnet.lez.logos.co/`).
+### Testnet
+
+Public Testnet v0.2 is the default live network (`https://testnet.lez.logos.co/`).
 Use `verify/fixtures/testnet-module.json` and the testnet wallet directory
 populated during the reproduce walkthrough
 ([reproduce/module.md](../../reproduce/module.md)).
@@ -142,7 +146,7 @@ mkdir -p "$USER_DIR"
 When using default CLI home `~/.lee/wallet` configured for testnet,
 set `WALLET_HOME="$HOME/.lee/wallet"`.
 
-### Localnet launch
+### Localnet
 
 Localnet runs against a local sequencer instance (`http://127.0.0.1:3040`).
 Ensure the local sequencer is running before submitting live transactions.
@@ -153,7 +157,6 @@ export WALLET_HOME="$PWD/.scaffold/wallet"
 export LEE_WALLET_HOME_DIR="$WALLET_HOME"
 export NSSA_WALLET_HOME_DIR="$WALLET_HOME"
 export FIXTURE_MANIFEST="$PWD/verify/fixtures/localnet.json"
-export PAYMENT_STREAMS_GUEST_BIN="$PWD/program/methods/guest/target/riscv32im-risc0-zkvm-elf/docker/lez_payment_streams.bin"
 export REPO="$PWD"
 BASECAMP=../logos-basecamp/result/bin/LogosBasecamp
 

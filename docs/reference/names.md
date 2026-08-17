@@ -73,6 +73,8 @@ Primary (step-free):
 | `make verify-store-local` | Store × localnet |
 | `make verify-store-testnet` | Store × testnet |
 | `make verify-store-local-lifecycle` | Maintainer only (two runs, one ledger) |
+| `make basecamp-ui-build` | Protocol UI packages (Step 21) |
+| `make basecamp-ui-run` | Protocol UI launch (`NETWORK=testnet` default, `NETWORK=localnet`) |
 
 Canonical commands: [verification-matrix.md](matrix.md),
 [verify/README.md](../../verify/README.md).
@@ -89,6 +91,7 @@ Gitignored state under `$REPO_ROOT/.scaffold/`. Path helpers live in
 | `e2e/user/wallet-local` | module (localnet module E2E) | Isolated wallet; reset each `module-e2e.sh` local run (`WALLET_E2E_DIR`) |
 | `e2e/provider/modules`, `e2e/provider/logoscore`, `e2e/provider/persist` | Store provider | Provider host |
 | `e2e/testnet-wallet` | module + Store (testnet) | Testnet wallet home (`ps_chain_wallet_home` when `CHAIN=testnet`) |
+| `basecamp-ui` | Protocol UI | Isolated Basecamp `--user-dir` for `payment_streams_ui` |
 | `e2e/artifacts` | E2E verification | JSONL logs (`module-e2e-*.log`, `e2e-*.log`, …) |
 | `e2e/provider-advertisement.json` | Store | Off-band provider ad file (orchestrator) |
 | `wallet` | Localnet (scaffold) | Default localnet wallet when not using `e2e/user/wallet-local` |

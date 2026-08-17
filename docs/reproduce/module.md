@@ -5,6 +5,7 @@ Testnet is the primary network.
 Phases match `verify/module-e2e.sh`: vault init, deposit, create stream, accrual, close, claim.
 
 Paid Store queries live in [store-eligibility.md](store.md).
+Basecamp UI: [basecamp-ui.md](basecamp-ui.md).
 `chainAction` catalogue: [payment-streams-module README](../../module/README.md#chainaction-catalogue).
 Program identity: root README [Public testnet guest program](../../README.md#public-testnet-guest-program) and [verify/fixtures/testnet-module.json](../../verify/fixtures/testnet-module.json).
 

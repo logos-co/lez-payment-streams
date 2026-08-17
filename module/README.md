@@ -136,3 +136,4 @@ so `logos_host` inherits `WALLET_HOME` from `make basecamp-ui-run`.
 
 Store eligibility: [docs/reproduce/store.md](../docs/reproduce/store.md).
 Eligibility for other protocols: [docs/integrate.md](../docs/integrate.md).
+Basecamp UI: [docs/reproduce/basecamp-ui.md](../docs/reproduce/basecamp-ui.md).

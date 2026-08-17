@@ -11,6 +11,7 @@ Maintainers: [AGENTS.md](AGENTS.md).
 Reproduce:
 
 - Protocol (manual, testnet primary): [docs/reproduce/module.md](docs/reproduce/module.md)
+- Protocol UI (Basecamp): [docs/reproduce/basecamp-ui.md](docs/reproduce/basecamp-ui.md)
 - Store eligibility (orchestrator, local primary): [docs/reproduce/store.md](docs/reproduce/store.md)
 - Eligibility for other protocols: [docs/integrate.md](docs/integrate.md)
 
