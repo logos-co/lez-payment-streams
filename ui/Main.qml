@@ -27,7 +27,7 @@ Rectangle {
     property string pendingHoldingHex: ""
     property var pendingStartedMs: 0
     readonly property int livePollMs: 2000
-    readonly property int liveConfirmTimeoutMs: 60000
+    readonly property int liveConfirmTimeoutMs: 120000
     property string lastError: "—"
     property string snapshotWalletBalance: "—"
     property string snapshotVaultHolding: "—"
@@ -40,6 +40,7 @@ Rectangle {
     property string snapshotChainTime: "—"
     property string snapshotDepletedAt: "—"
     property var previousStreams: []
+    property var recentTxs: []
     property bool sessionReady: true
     property bool writesReadOnly: false
     property string sessionBanner: ""
@@ -191,6 +192,45 @@ Rectangle {
         clipboardHelper.text = s
         clipboardHelper.selectAll()
         clipboardHelper.copy()
+    }
+
+    function shortHash(h) {
+        var t = trimmed(h)
+        if (t.length <= 12)
+            return t.length > 0 ? t : "—"
+        return t.substring(0, 8) + "…" + t.substring(t.length - 4)
+    }
+
+    function pushRecentTx(action, hash, status) {
+        var rows = recentTxs.slice()
+        rows.unshift({
+                         "at": new Date().toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC"),
+                         "action": action,
+                         "hash": hash,
+                         "status": status
+                     })
+        if (rows.length > 12)
+            rows = rows.slice(0, 12)
+        recentTxs = rows
+    }
+
+    function updateRecentTxStatus(hash, status) {
+        var t = trimmed(hash)
+        if (t.length === 0)
+            return
+        var rows = recentTxs.slice()
+        for (var i = 0; i < rows.length; ++i) {
+            if (rows[i].hash === t) {
+                rows[i] = {
+                    "at": rows[i].at,
+                    "action": rows[i].action,
+                    "hash": rows[i].hash,
+                    "status": status
+                }
+                recentTxs = rows
+                return
+            }
+        }
     }
 
     function sequencerLabel(raw) {
@@ -751,6 +791,7 @@ Rectangle {
             clearPendingWrite()
             return
         }
+        pushRecentTx(name, pendingTxHash, "submitted")
         pendingStartedMs = Date.now()
         liveConfirmTimer.restart()
     }
@@ -786,8 +827,10 @@ Rectangle {
         if (Date.now() - pendingStartedMs > liveConfirmTimeoutMs) {
             lastError = "Inclusion timeout after "
                     + Math.round(liveConfirmTimeoutMs / 1000) + "s"
-            if (pendingTxHash.length > 0)
+            if (pendingTxHash.length > 0) {
                 lastError = lastError + " (tx " + pendingTxHash + ")"
+                updateRecentTxStatus(pendingTxHash, "timeout")
+            }
             clearPendingWrite()
             return
         }
@@ -796,6 +839,7 @@ Rectangle {
             liveConfirmTimer.restart()
             return
         }
+        updateRecentTxStatus(pendingTxHash, "included")
         clearPendingWrite()
         refreshChainState()
     }
@@ -840,6 +884,7 @@ Rectangle {
             applyDemoSnapshot()
             snapshotSequencer = "—"
             snapshotBlockHeight = "—"
+            recentTxs = []
             return
         }
         if (accountsEqual(ownerField.value, demoOwnerId))
@@ -1352,6 +1397,16 @@ Rectangle {
 
                         LogosText {
                             Layout.fillWidth: true
+                            visible: !ui.demoMode && ui.stage === "needClose"
+                                     && ui.streamStateCode === 0
+                            text: "Refresh until Accrued is greater than 0, then close."
+                            color: Theme.palette.textSecondary
+                            font.pixelSize: Theme.typography.secondaryText
+                            wrapMode: Text.Wrap
+                        }
+
+                        LogosText {
+                            Layout.fillWidth: true
                             text: "Snapshot as of last Refresh"
                             color: Theme.palette.textTertiary
                             font.pixelSize: Theme.typography.secondaryText
@@ -1442,6 +1497,88 @@ Rectangle {
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            SectionCard {
+                Layout.fillWidth: true
+                Layout.leftMargin: Theme.spacing.medium
+                Layout.rightMargin: Theme.spacing.medium
+                visible: !ui.demoMode
+                title: "Recent transactions"
+
+                LogosText {
+                    Layout.fillWidth: true
+                    visible: ui.recentTxs.length === 0
+                    text: "Submitted writes in this session."
+                    color: Theme.palette.textTertiary
+                    font.pixelSize: Theme.typography.secondaryText
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    visible: ui.recentTxs.length > 0
+                    spacing: Theme.spacing.small
+
+                    LogosText {
+                        Layout.preferredWidth: 160
+                        text: "Time"
+                        color: Theme.palette.textSecondary
+                        font.pixelSize: Theme.typography.secondaryText
+                    }
+                    LogosText {
+                        Layout.preferredWidth: 120
+                        text: "Action"
+                        color: Theme.palette.textSecondary
+                        font.pixelSize: Theme.typography.secondaryText
+                    }
+                    LogosText {
+                        Layout.fillWidth: true
+                        text: "Hash"
+                        color: Theme.palette.textSecondary
+                        font.pixelSize: Theme.typography.secondaryText
+                    }
+                    LogosText {
+                        Layout.preferredWidth: 80
+                        text: "Status"
+                        color: Theme.palette.textSecondary
+                        font.pixelSize: Theme.typography.secondaryText
+                    }
+                }
+
+                Repeater {
+                    model: ui.recentTxs.length
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.spacing.small
+
+                        LogosText {
+                            Layout.preferredWidth: 160
+                            text: ui.recentTxs[index].at
+                            color: Theme.palette.textTertiary
+                            font.pixelSize: Theme.typography.secondaryText
+                        }
+                        LogosText {
+                            Layout.preferredWidth: 120
+                            text: ui.recentTxs[index].action
+                            color: Theme.palette.text
+                            font.pixelSize: Theme.typography.secondaryText
+                        }
+                        LogosText {
+                            Layout.fillWidth: true
+                            text: ui.shortHash(ui.recentTxs[index].hash)
+                            color: Theme.palette.text
+                            font.pixelSize: Theme.typography.secondaryText
+                        }
+                        LogosText {
+                            Layout.preferredWidth: 80
+                            text: ui.recentTxs[index].status
+                            color: ui.recentTxs[index].status === "included"
+                                   ? Theme.palette.success : Theme.palette.textSecondary
+                            font.pixelSize: Theme.typography.secondaryText
                         }
                     }
                 }
