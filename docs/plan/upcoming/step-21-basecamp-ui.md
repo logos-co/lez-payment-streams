@@ -19,14 +19,15 @@ This step provides a Basecamp `ui_qml` plugin so the same lifecycle is
 visible on one host: initialize vault, deposit, create stream, wait
 for accrual, owner-close, provider claim.
 The plugin calls `payment_streams_module`.
-That module submits through the patched `logos_execution_zone` wallet.
+That module opens the patched `logos_execution_zone` wallet and submits
+through it.
 
 ```text
 LogosBasecamp  (spawn with runtime user directory)
   payment_streams_ui (Main.qml, in-process)
     logos.callModule(...)
   logos_host  logos_execution_zone     (wallet handle lives here)
-  logos_host  payment_streams_module   (resolves program identity here)
+  logos_host  payment_streams_module   (opens wallet; resolves program identity)
 ```
 
 Service-layer `user` (who pays for a protocol) maps on this screen to
@@ -35,9 +36,9 @@ The recipient is `provider` on both layers.
 On-screen labels and JSON keys are `owner` and `provider`.
 
 Owner and provider are distinct account ids.
-They reside in one open wallet as two public accounts.
+They reside in one wallet as two public accounts.
 That follows the approach in [reproduce/module.md](../../reproduce/module.md)
-for running close and claim on one `logoscore` and one wallet home.
+for running close and claim on one host and one wallet home.
 
 ## Goal
 
@@ -52,48 +53,68 @@ The focus is simplicity for a clear and reliable demo.
 
 The visual layout is established.
 `ui/Main.qml` contains the single-page layout, field validation,
-mock-state transitions (the current `demoMode` branch),
+mock-state transitions (`demoMode`, default on),
 `logos.callModule` invocations,
 session probing, vault and stream scanning, and inclusion polling.
 `ui/metadata.json` declares the two core-module dependencies.
 
-The remaining work integrates live chain execution with the UI:
+The remaining work is live chain execution and the operator launch path
+(slices below).
 
-1. adopt the open wallet session in `logos_execution_zone`;
-2. resolve program identity in `payment_streams_module` reliably;
-3. display network mode and block status cleanly in the header;
-4. verify live `chainAction` submissions and polling through localnet and testnet;
-5. provide a streamlined build, launch, and walkthrough workflow.
-
-## Implementation direction
-
-The demo flow uses three layers.
+## Architecture
 
 ```text
 payment_streams_ui
-  wallet adoption, account selection, network display, lifecycle UX
-    |
-    +-- logos_execution_zone
-    |     account queries, block height, sync, signature and submit
+  account selection, network display, lifecycle UX
     |
     +-- payment_streams_module
-          program identity, instruction planning, status reads
+    |     open wallet, program identity, instruction planning, status reads
+    |
+    +-- logos_execution_zone
+          account queries, block height, sync, signature and submit
 ```
 
-The wallet configuration provides the sequencer connection.
-The UI connects to `logos_execution_zone` upon loading.
-When accounts are available from `list_accounts`, the UI populates owner and
-provider fields and marks the session ready.
+Operator launch is Make from this repository:
 
-`payment_streams_module` resolves the payment-stream program id through
-its standard fixture resolution and environment configuration.
-Public v1 writes submit by program id and skip guest binary execution.
-`PAYMENT_STREAMS_GUEST_BIN` remains reserved for private proving and local
-guest development.
+```bash
+make basecamp-ui-build
+make basecamp-ui-run                  # testnet (default)
+make basecamp-ui-run NETWORK=localnet
+```
+
+`NETWORK` is a Make variable.
+The run target exports `WALLET_HOME`, `LEE_WALLET_HOME_DIR`,
+`NSSA_WALLET_HOME_DIR`, `FIXTURE_MANIFEST`, `REPO`, and `USER_DIR`
+as absolute paths, then starts Nix-built Basecamp with `--user-dir`.
+Basecamp’s argument surface stays `--user-dir`.
+`logos_host` children inherit that environment.
+
+Chain choice at runtime:
+
+- Sequencer URL comes from `WALLET_HOME/wallet_config.json` when the
+  module opens the wallet.
+- Program id and clock accounts come from `FIXTURE_MANIFEST`
+  (`program_id_hex`).
+
+The same three `.lgx` packages serve both networks.
+Switching networks is a new Basecamp process with the other Make env.
+Rebuild and reinstall only when source changes.
+Walkthrough: [docs/reproduce/basecamp-ui.md](../../reproduce/basecamp-ui.md)
+(Slice 3).
+Rebuild iteration: [basecamp-rebuild-loop.md](basecamp-rebuild-loop.md).
+
+Public v1 writes submit by program id.
+`PAYMENT_STREAMS_GUEST_BIN` remains reserved for private proving and
+local guest development.
 
 Wallet creation, mnemonic handling, funding, and authenticated-transfer
-initialisation remain in the existing setup scripts and LEZ wallet tooling.
-The UI focuses on presenting the payment stream lifecycle cleanly.
+initialisation stay in the existing setup scripts and LEZ wallet tooling.
+
+`logos.callModule` invokes core modules in `logos_host` subprocesses.
+Wallet handle, fixture config, and sequencer connection live there.
+Stop logoscore before Basecamp so `storage.json` is free
+([N52](../../reference/decisions.md#n52-exclusive-wallet-cli-stop-window-2026-08-14)).
+logoscore and E2E keep using their own fixture manifests and CLI path.
 
 ## Work plan
 
@@ -112,21 +133,23 @@ Files:
 
 Work:
 
-1. Build portable packages for `logos_execution_zone`, `payment_streams_module`,
-   and `payment_streams_ui`.
-2. Install them into an isolated Basecamp user directory (`.scaffold/basecamp-ui`).
-3. Load the modules in order and verify that `Main.qml` renders without QML errors.
-4. Verify the visual layout and mock transitions for initialize, deposit, create,
-   close, and claim.
+1. Build portable packages for `logos_execution_zone`,
+   `payment_streams_module`, and `payment_streams_ui`.
+2. Install them into an isolated Basecamp user directory
+   (`.scaffold/basecamp-ui`).
+3. Load the modules in order and verify that `Main.qml` renders without
+   QML errors.
+4. Verify the visual layout and mock transitions for initialize, deposit,
+   create, close, and claim.
 
 Gate:
 `payment_streams_ui` loads inside Basecamp and completes the layout pass
 cleanly.
 
-### Slice 1, connect wallet and resolve program identity
+### Slice 1, connect wallet and show network state
 
 Purpose:
-establish wallet readiness, network mode display, and program identity resolution.
+open the wallet from env, prefill accounts, and show live network state.
 
 Files:
 
@@ -136,18 +159,25 @@ Files:
 
 Work:
 
-1. UI queries `logos_execution_zone` via `list_accounts` and
-   `get_current_block_height`.
-2. When public accounts are present, the UI prefills owner and provider fields.
-3. When the wallet is closed or empty, the UI presents a clear readiness banner.
-4. UI displays passive network mode and chain height indicators in the header
-   (Mock mode simulation badge versus Live mode block height and network target).
-5. Ensure `payment_streams_module` resolves the deployed `program_id_hex`
-   consistently for PDA derivation and `chainAction` planning.
+1. On first live probe, `payment_streams_module` reads `WALLET_HOME` /
+   `LEE_WALLET_HOME_DIR`, ensures `statistics.json` beside storage, and
+   calls `logos_execution_zone.open`.
+2. UI queries `list_accounts` and `get_current_block_height` (and
+   `get_sequencer_addr` when useful for the header).
+3. When public accounts are present, the UI prefills owner and provider
+   fields.
+4. When the home is missing, files are missing, `open` fails, or the
+   account list is empty, the UI shows a readiness banner.
+5. Header shows mock versus live: simulated offline when Demo mode is
+   on; live block height and sequencer target when connected.
+6. Make exports an absolute `FIXTURE_MANIFEST`.
+   Keep the existing fixture resolver.
+   Surface a clear error when the manifest is missing or
+   `program_id_hex` is invalid.
 
 Gate:
-Opening the plugin with an active wallet populates public accounts and
-enables the initial lifecycle stage with the active network state visible.
+Opening the plugin with a prepared wallet populates public accounts and
+enables the initial lifecycle stage with network state visible.
 
 ### Slice 2, live lifecycle reads and writes
 
@@ -160,20 +190,27 @@ Files:
 
 Work:
 
-1. Connect `submitLiveAction` to `payment_streams_module.chainAction` for:
-   `initializeVault`, `deposit`, `createStream`, `closeStream`, `claim`.
-2. Use periodic QML timer ticks (`liveConfirmTimer`) to query `sync_to_block`
-   and read vault and stream status until confirmed.
-3. Keep live `deriveStage` transitions synchronized:
-   `needVault` → `needDeposit` → `needStream` → `needClose` → `needClaim`.
-4. Update the Recent transactions table on live submissions with short hashes
-   and inclusion status.
-5. Provide a toggle to switch between live mode and mock mode for demonstration
-   flexibility.
+1. Connect `submitLiveAction` to `payment_streams_module.chainAction` for
+   `initializeVault`, `deposit`, `createStream`, `closeStream`, and
+   `claim`.
+2. Poll with `liveConfirmTimer` every 2s: `sync_to_block` then vault and
+   stream status, until included or 120s elapse.
+3. Keep live stage transitions synchronized:
+   `needVault` → `needDeposit` → `needStream` → `needClose` →
+   `needClaim` → `needStream`.
+4. While the stream is Active (`needClose`), Refresh is the accrual wait.
+   Close stays enabled at zero accrued.
+   Show a one-line hint to Refresh until Accrued is greater than 0,
+   then close.
+5. Update the Recent transactions table on live submissions with short
+   hashes and inclusion status.
+6. Demo mode remains the visual mock switch (default on for Slice 0).
+   The live walkthrough turns it off after the wallet is open.
 
 Gate:
 A user can complete the full lifecycle on localnet from the UI:
-initialize vault, deposit, create stream, observe accrual, close, and claim.
+initialize vault, deposit, create stream, observe accrual, close, and
+claim.
 
 ### Slice 3, reproducible runner and walkthrough
 
@@ -188,43 +225,44 @@ Files:
 
 Work:
 
-1. Add Makefile targets to build packages and launch Basecamp with the
-   prepared user directory:
+1. Add Makefile targets:
    `make basecamp-ui-build`
-   `make basecamp-ui-run`
-2. Document the step-by-step operator walkthrough for localnet and testnet.
-3. Verify that the UI walkthrough matches the documented CLI reproduce steps.
+   `make basecamp-ui-run` (testnet default)
+   `make basecamp-ui-run NETWORK=localnet`
+2. Document the operator walkthrough for localnet and testnet, including
+   wallet setup from [reproduce/module.md](../../reproduce/module.md)
+   and stopping logoscore before Basecamp.
+3. Verify that the UI walkthrough matches the documented CLI reproduce
+   steps.
 
 Gate:
-An operator can follow `docs/reproduce/basecamp-ui.md` on a fresh environment
-and complete the full payment stream lifecycle.
+An operator can follow `docs/reproduce/basecamp-ui.md` on a fresh
+environment and complete the full payment stream lifecycle.
 
 ## User test journeys
 
-### Localnet
-
-First run:
+Setup (once):
 
 ```bash
 make basecamp-ui-build
-make basecamp-ui-run
 ```
 
-The operator opens Basecamp, loads the modules, and follows the highlighted
-lifecycle actions in `payment_streams_ui`.
-
-### Testnet
-
-Run:
+Testnet (default):
 
 ```bash
-make basecamp-ui-build
 make basecamp-ui-run
 ```
 
-With a testnet wallet and fixture in the environment, the plugin displays
-testnet accounts and allows running the live lifecycle against the public
-sequencer.
+Localnet (sequencer already running):
+
+```bash
+make basecamp-ui-run NETWORK=localnet
+```
+
+The operator opens Basecamp, loads the modules in order
+(`logos_execution_zone`, `payment_streams_module`,
+`payment_streams_ui`), turns Demo mode off, and follows the highlighted
+lifecycle actions.
 
 ## Scope boundaries
 
@@ -235,12 +273,12 @@ and a read-only network and block indicator.
 
 v1 excludes:
 wallet creation and mnemonic setup inside QML, faucet integration,
-in-app authenticated transfer registration, private zero-knowledge proving,
-Store eligibility hooks, non-native tokens, dynamic network switching dropdowns,
-and multi-vault navigation tables.
+in-app authenticated transfer registration, private zero-knowledge
+proving, Store eligibility hooks, non-native tokens, a Basecamp or QML
+network-switching control, and multi-vault navigation tables.
 
-Setup tasks like account creation, funding, and authenticated transfer remain
-handled by existing repository scripts and CLI helpers.
+Account creation, funding, and authenticated transfer stay in existing
+repository scripts and CLI helpers.
 
 ## Decisions
 
@@ -258,7 +296,9 @@ Portable package: `nix build .#lgx-portable` from `ui/`.
 D21.3. Host: Nix-built portable Basecamp
 (`nix build '.#bin-bundle-dir'`).
 Install the `.lgx` through Package Manager or Modules menu.
-Iterate with `--user-dir`.
+Operator launch is `make basecamp-ui-run`, which passes `--user-dir`.
+Rebuild iteration may spawn the binary with the same env as
+[basecamp-rebuild-loop.md](basecamp-rebuild-loop.md).
 
 D21.4. Theme: `import Logos.Theme` and `import Logos.Controls`.
 Page fill `Theme.palette.background`.
@@ -268,7 +308,8 @@ D21.5. Session model for v1: one owner, one vault, one provider,
 and one active stream at a time.
 `owner`, `vault_id`, `provider`, and `stream_id` remain visible and
 copyable.
-On load, Session prefills from `logos_execution_zone` `list_accounts`.
+On load, after a successful open, Session prefills from
+`logos_execution_zone` `list_accounts`.
 
 D21.6. Layout for v1: one page, two action regions (Owner, Provider),
 plus Session and On-chain state cards.
@@ -279,12 +320,16 @@ D21.7. v1 actions, in lifecycle order:
 - Owner: `initializeVault`, `deposit`, `createStream`, owner-close
   (`closeStream` with `provider` omitted or equal to `owner`)
 - On-chain state: Refresh → `getVaultStatus` / `getStreamStatus`
-- Provider: `claim`, provider-close (`closeStream` with distinct `provider`)
+- Provider: `claim`, provider-close (`closeStream` with distinct
+  `provider`)
 
 D21.8. Signing and wallet connection:
 The UI calls `chainAction` on `payment_streams_module`.
 The module submits transactions through `logos_execution_zone`.
-v1 assumes two public accounts in the active wallet.
+v1 assumes two public accounts in the wallet that the module opens.
+`open` takes config, storage, and statistics paths and does not take a
+password.
+The UI has no mnemonic, create-wallet, or password field.
 
 D21.9. Status: chain state after sync is the source of truth.
 A `tx_hash` confirms submission.
@@ -297,13 +342,17 @@ D21.10. Dependencies:
 D21.11. Stream card displays:
 `stream_state` (Active, Paused, Closed), rate, allocation, accrued,
 unaccrued, accrual timestamp, and estimated depletion time.
+While Active, a one-line hint tells the operator to Refresh until
+Accrued is greater than 0, then close.
 
 D21.12. Balances:
 Owner wallet balance and vault holding display in On-chain state.
 
 D21.13. Lifecycle stage progression:
-`needVault` → `needDeposit` → `needStream` → `needClose` → `needClaim` → `needStream`.
+`needVault` → `needDeposit` → `needStream` → `needClose` → `needClaim`
+→ `needStream`.
 Deposit remains available whenever the vault exists.
+Close stays enabled at zero accrued.
 
 D21.14. Field validation:
 Account ids accept valid base58 or 64-hex strings.
@@ -311,23 +360,28 @@ Vault id, stream id, amounts, rate, and allocation validate as positive
 integers before submission.
 
 D21.15. Demo switch and network indicator:
-A clean switch allows toggling between live chain interaction and
-visual mock mode.
-The header displays a read-only badge indicating active mode:
-simulated offline mode when the demo switch is active,
-or live on-chain status with current block height when connected to a sequencer.
+A switch toggles live chain interaction and visual mock mode
+(default on).
+The header displays a read-only badge:
+simulated offline when Demo mode is on,
+or live sequencer target and block height when the wallet is open.
 
 D21.16. Inclusion polling:
-`liveConfirmTimer` periodically triggers wallet sync and status checks
-without blocking the UI thread.
+`liveConfirmTimer` ticks every 2s, runs `sync_to_block` and status
+reads, and gives up after 120s.
+The interval and timeout are the same on localnet and testnet.
 
 D21.17. Payload construction:
 `Main.qml` builds standard JSON payloads matching the `chainAction`
 catalogue.
 
-D21.18. Readiness detection:
-The UI checks for an open wallet and available accounts on load,
-displaying an informative banner if setup is required.
+D21.18. Wallet open and readiness:
+On first live probe, `payment_streams_module` reads `WALLET_HOME` /
+`LEE_WALLET_HOME_DIR`, ensures `statistics.json` beside `storage.json`,
+and calls `logos_execution_zone.open`.
+The UI shows a readiness banner when the home is unset, files are
+missing, `open` fails, or `list_accounts` is empty.
+Environment reads stay in the C++ module.
 
 D21.19. Public execution scope:
 This screen focuses on public vaults (`privacy_tier = 0`).
@@ -339,11 +393,33 @@ D21.21. Recent transactions:
 A session-scoped table displays submitted transaction hashes, action
 names, and confirmation status.
 
+D21.22. Launch and network:
+`make basecamp-ui-run` is the documented operator launch.
+`NETWORK` defaults to testnet.
+`NETWORK=localnet` selects the localnet fixture and wallet home.
+Make maps `NETWORK` onto `WALLET_HOME` and `FIXTURE_MANIFEST`.
+Basecamp’s extra argument is `--user-dir`.
+The three `.lgx` packages are network-agnostic.
+A network switch is a restart with the other env; load already-installed
+modules.
+
+D21.23. Stream id on Refresh:
+Refresh writes `stream_id` to the active stream, else a closed
+unclaimed stream, else `next_stream_id`.
+Edits in the field last until the next Refresh.
+
+D21.24. Program identity:
+`payment_streams_module` keeps the existing fixture resolver.
+Make exports `FIXTURE_MANIFEST` as an absolute path into the Basecamp
+process.
+Missing or invalid `program_id_hex` is an error on the readiness banner
+or the failed `chainAction` message.
+
 ## v1 screen
 
 ```text
 title:          Payment Streams Dashboard (live / mock switch)
-                network indicator (Simulated offline badge / Live block height)
+                network indicator (Simulated offline / Live sequencer and height)
 
 session:        owner, vault_id, provider, stream_id
                 (prefilled from wallet; editable)
@@ -353,6 +429,7 @@ on-chain state: Refresh action
                 owner balance, vault holding, total allocated
                 stream state, rate, allocation, accrued, unaccrued
                 accrual checkpoint, chain time, estimated depletion
+                accrual hint while Active
                 previous closed streams summary
 
 transactions:   Recent transactions table
@@ -365,27 +442,17 @@ provider:       claim, provider-close
 
 ## Runtime
 
-Runtime uses the same wallet and deployed programs as
+Runtime uses the same wallet homes and deployed programs as
 [reproduce/module.md](../../reproduce/module.md).
 
 Before the first public UI write:
 
-- `logos_execution_zone` package is loaded;
-- `payment_streams_module` and `payment_streams_ui` packages are loaded;
-- the wallet contains two funded public accounts;
+- packages are loaded in order:
+  `logos_execution_zone`, `payment_streams_module`, `payment_streams_ui`;
+- the wallet home has two funded public accounts;
 - authenticated transfer is registered for both accounts;
-- the owner holds sufficient balance for deposit.
-
-Launch recipe: [basecamp-rebuild-loop.md](basecamp-rebuild-loop.md).
-
-## Host process and compatibility
-
-`logos.callModule` invokes core modules running in `logos_host`
-subprocesses.
-Wallet handle and module configuration reside in those processes.
-
-The logoscore and E2E scripts continue to function independently via
-their established fixture manifests and CLI commands.
+- the owner holds sufficient balance for deposit;
+- logoscore is stopped.
 
 ## Later work
 
@@ -402,14 +469,6 @@ After v1, the UI can expand to:
 - `ui/` with `metadata.json`, `flake.nix`, and `Main.qml`
 - Portable `.lgx` package buildable via Nix
 - Live payment stream lifecycle execution in Basecamp
-- Streamlined build and launch targets in `Makefile`
+- `make basecamp-ui-build` and `make basecamp-ui-run` (`NETWORK` selects
+  testnet or localnet)
 - Reproduction documentation in `docs/reproduce/basecamp-ui.md`
-
-## Open questions
-
-1. Testnet poll cadence:
-   Default poll interval is `2s` with profile-adjusted timeout.
-
-2. Stream id selection:
-   Refresh selects the active or next available `stream_id` while allowing
-   operator edit.

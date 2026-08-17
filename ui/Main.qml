@@ -12,7 +12,6 @@ Rectangle {
     readonly property int addressFieldWidth: 440
     readonly property int paramFieldWidth: 280
 
-    // Temporary layout switch. Delete with D21.14 when chain writes land.
     property bool demoMode: true
     property int demoStreamId: 0
     property int demoExtraHolding: 0
@@ -45,6 +44,14 @@ Rectangle {
     property bool writesReadOnly: false
     property string sessionBanner: ""
     property string snapshotBlockHeight: "—"
+    property string snapshotSequencer: "—"
+    readonly property string networkBadgeText: demoMode
+        ? "Simulated offline"
+        : (sessionReady
+           ? (snapshotSequencer !== "—" && snapshotSequencer.length > 0
+              ? "Live · " + snapshotSequencer + " · block " + snapshotBlockHeight
+              : "Live · block " + snapshotBlockHeight)
+           : "Wallet closed")
 
     readonly property bool writeBusy: pendingWrite.length > 0
     readonly property int demoConfirmMs: 2000
@@ -1080,6 +1087,11 @@ Rectangle {
                     font.pixelSize: Theme.typography.panelTitleText
                     font.weight: Theme.typography.weightBold
                     color: Theme.palette.text
+                }
+
+                LogosBadge {
+                    text: ui.networkBadgeText
+                    color: ui.demoMode ? Theme.palette.textSecondary : Theme.palette.success
                 }
 
                 Item {
