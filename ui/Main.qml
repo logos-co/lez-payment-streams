@@ -44,6 +44,7 @@ Rectangle {
     property bool sessionReady: true
     property bool writesReadOnly: false
     property string sessionBanner: ""
+    property string snapshotBlockHeight: "—"
 
     readonly property bool writeBusy: pendingWrite.length > 0
     readonly property int demoConfirmMs: 2000
@@ -293,6 +294,30 @@ Rectangle {
         }
     }
 
+    function asNumber(raw) {
+        if (raw === undefined || raw === null)
+            return NaN
+        if (typeof raw === "object") {
+            if (raw.result !== undefined)
+                return Number(raw.result)
+            if (raw.data !== undefined)
+                return Number(raw.data)
+        }
+        return Number(raw)
+    }
+
+    function refreshChainHeight() {
+        var n = asNumber(callJson("logos_execution_zone", "get_current_block_height", []))
+        if (!isFinite(n)) {
+            snapshotBlockHeight = "—"
+            lastError = "Could not read block height. Load logos_execution_zone and open the wallet."
+            return
+        }
+        snapshotBlockHeight = String(Math.floor(n))
+        if (lastError.indexOf("Could not read block height") === 0)
+            lastError = "—"
+    }
+
     function accountToBase58(accountIdHex) {
         var b58 = callJson("logos_execution_zone", "account_id_to_base58", [accountIdHex])
         if (typeof b58 === "string" && b58.length > 0)
@@ -320,7 +345,7 @@ Rectangle {
     }
 
     function syncWalletMirror() {
-        var height = Number(callJson("logos_execution_zone", "get_current_block_height", []))
+        var height = asNumber(callJson("logos_execution_zone", "get_current_block_height", []))
         if (height > 0)
             callJson("logos_execution_zone", "sync_to_block", [height])
     }
@@ -937,7 +962,7 @@ Rectangle {
     }
 
     function probeSession(owner) {
-        var height = Number(callJson("logos_execution_zone", "get_current_block_height", []))
+        var height = asNumber(callJson("logos_execution_zone", "get_current_block_height", []))
         if (!(height > 0))
             return false
         var listed = callJson("logos_execution_zone", "list_accounts", [])
@@ -966,6 +991,7 @@ Rectangle {
     function loadSessionDefaults(opts) {
         opts = opts || {}
         var preserve = opts.preserveSession === true
+        refreshChainHeight()
         if (demoMode) {
             sessionReady = true
             writesReadOnly = false
@@ -1097,6 +1123,12 @@ Rectangle {
                     wrapMode: Text.Wrap
                 }
 
+                SnapshotValue {
+                    Layout.fillWidth: true
+                    label: "Chain height"
+                    value: ui.snapshotBlockHeight
+                }
+
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: Theme.spacing.medium
@@ -1172,6 +1204,7 @@ Rectangle {
                         Layout.preferredHeight: 40
                         Layout.alignment: Qt.AlignTop
                         onClicked: {
+                            ui.refreshChainHeight()
                             if (ui.demoMode)
                                 ui.applyDemoSnapshot()
                             else
