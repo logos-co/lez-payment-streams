@@ -27,6 +27,7 @@
 
 namespace {
 
+using payment_streams_kit::chainTimestampToFoldSeconds;
 using payment_streams_kit::ffiBufferTwoPhase;
 using payment_streams_kit::findRepoFile;
 using payment_streams_kit::fixtureManifestPath;
@@ -1477,10 +1478,19 @@ QString PaymentStreamsModuleImpl::getVaultStatus(const QVariant& ownerAccountIdB
                    QJsonObject{
                        {QStringLiteral("vault_id"), static_cast<qint64>(decodedCfg.vault_id)},
                        {QStringLiteral("next_stream_id"), static_cast<qint64>(decodedCfg.next_stream_id)},
+                       {QStringLiteral("privacy_tier"), static_cast<qint64>(decodedCfg.privacy_tier)},
                        {QStringLiteral("total_allocated_lo"), static_cast<qint64>(decodedCfg.total_allocated_lo)},
                        {QStringLiteral("total_allocated_hi"), static_cast<qint64>(decodedCfg.total_allocated_hi)},
                    });
     payload.insert(QStringLiteral("vault_holding_balance_hex"), holdingBalanceHex);
+
+    QString ownerBalanceHex;
+    const QString ownerHex = bytes32ToHexLower(owner);
+    const QString ownerJson = QString::fromStdString(wallet.get_account_public(ownerHex.toStdString()));
+    if (!ownerJson.isEmpty()) {
+        parseWalletAccountJson(ownerJson, nullptr, nullptr, &ownerBalanceHex);
+    }
+    payload.insert(QStringLiteral("owner_wallet_balance_hex"), ownerBalanceHex);
     return makeOkJson(payload);
 }
 
@@ -1555,6 +1565,12 @@ QString PaymentStreamsModuleImpl::getStreamStatus(const QVariant& ownerAccountId
     payload.insert(QStringLiteral("stream_config_account_id_hex"), streamHex);
     payload.insert(QStringLiteral("as_of"), static_cast<qint64>(decodedClock.timestamp));
     payload.insert(QStringLiteral("stream_state"), static_cast<qint64>(decodedStream.stream_state));
+    payload.insert(QStringLiteral("rate"), static_cast<qint64>(decodedStream.rate_tokens_per_second));
+    payload.insert(QStringLiteral("allocation_lo"), static_cast<qint64>(decodedStream.allocation_lo));
+    payload.insert(QStringLiteral("allocation_hi"), static_cast<qint64>(decodedStream.allocation_hi));
+    payload.insert(QStringLiteral("accrued_as_of"), static_cast<qint64>(decodedStream.accrued_as_of));
+    payload.insert(QStringLiteral("accrued_as_of_seconds"),
+                   static_cast<qint64>(chainTimestampToFoldSeconds(decodedStream.accrued_as_of)));
     payload.insert(QStringLiteral("accrued_lo"), static_cast<qint64>(fold.accrued_lo));
     payload.insert(QStringLiteral("accrued_hi"), static_cast<qint64>(fold.accrued_hi));
     payload.insert(QStringLiteral("unaccrued_lo"), static_cast<qint64>(fold.unaccrued_lo));

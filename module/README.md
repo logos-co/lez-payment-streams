@@ -13,6 +13,12 @@ logoscore call payment_streams_module chainAction <operation> '<paramsJson>'
 
 `paramsJson` is a compact JSON object. Writes return submit JSON (`status`, `tx_hash`, …). Callers
 sync via `logos_execution_zone sync_to_block` and poll status ops below.
+The invokable return is that compact JSON string (`status` `ok` or `error`, optional `message`,
+payload keys merged in). Basecamp `logos.callModule` may wrap it as `{success, data}` with `data`
+the same string; `payment_streams_ui` unwraps that envelope.
+Status numeric fields (`accrued_lo`, `allocation_lo`, …) are inserted as `qint64` JSON numbers
+(IEEE doubles). Values above `2^53 − 1` lose precision on the read path. v1 demo amounts fit in
+`*_lo` well below that.
 Historical step runbook: [docs/archive/steps/module-chain-writes-runbook.md](../docs/archive/steps/module-chain-writes-runbook.md)
 (points here).
 
@@ -36,8 +42,8 @@ Walkthrough = exercised in [docs/reproduce/module.md](../docs/reproduce/module.m
 
 | operation | JSON keys | Semantics | Walkthrough |
 | --- | --- | --- | --- |
-| `getVaultStatus` | `owner`, `vault_id` | Vault holding balance hex + config (e.g. `total_allocated_lo`) | yes |
-| `getStreamStatus` | `owner`, `vault_id`, `stream_id` | `accrued_lo`, `unaccrued_lo`, `stream_state` (0 Active, 1 Paused, 2 Closed) | yes |
+| `getVaultStatus` | `owner`, `vault_id` | Vault holding balance hex, owner wallet balance hex, and config (`privacy_tier`, `total_allocated_lo`, …) | yes |
+| `getStreamStatus` | `owner`, `vault_id`, `stream_id` | Fold at clock (`as_of`, `accrued_*`, `unaccrued_*`), `stream_state` (0 Active, 1 Paused, 2 Closed), plus config `rate`, `allocation_*`, and `accrued_as_of` | yes |
 
 ### Low-level decode helpers (separate invokables)
 

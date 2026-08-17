@@ -1,13 +1,13 @@
 {
   "name": "payment_streams_ui",
   "version": "0.1.0",
-  "description": "Payment streams Basecamp UI (Hello World load loop)",
+  "description": "Payment streams Basecamp UI (vault and stream lifecycle)",
   "author": "Logos",
   "type": "ui_qml",
   "category": "blockchain",
   "view": "Main.qml",
   "icon": "icons/payment_streams_ui.png",
-  "dependencies": [],
+  "dependencies": ["payment_streams_module", "logos_execution_zone"],
 
   "nix": {
     "packages": {

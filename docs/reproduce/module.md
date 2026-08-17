@@ -498,6 +498,8 @@ See [store-eligibility.md](store.md) for Store recipes and the [verification mat
 | Stream | `stream_id` | Pays provider at `rate` up to `allocation`. |
 | `*_lo` / `*_hi` | writes and `getStreamStatus` | 128-bit amount as two uint64s: `lo + (hi << 64)`. Values here fit in `*_lo` with `*_hi` = 0. |
 | `accrued_*`, `unaccrued_*` | `getStreamStatus` | Claimable vs remaining allocation. |
+| `rate`, `allocation_*`, `accrued_as_of` | `getStreamStatus` | Stream config copied onto the fold payload. |
+| `owner_wallet_balance_hex` | `getVaultStatus` | Owner public native balance next to vault holding. |
 | `stream_state` | 0 Active, 1 Paused, 2 Closed | |
 | `MIN_ACCRUED` | shell only | Minimum `accrued_lo` before close. Token units. |
 | Authenticated transfer (AT) | `wallet auth-transfer init` / `register_public_account` | Lets public accounts spend tokens. Required before deposit and stream writes. |
