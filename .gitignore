@@ -27,6 +27,7 @@ verify/fixtures/testnet.json
 # Nix build outputs (symlinks)
 result
 module/result
+ui/result
 
 # Local `nix bundle -o …` under the patched wallet flake (see operator guide)
 module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out
