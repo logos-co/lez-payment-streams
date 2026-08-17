@@ -49,6 +49,7 @@ Walkthrough = exercised in [docs/reproduce/module.md](../docs/reproduce/module.m
 
 | Method | Purpose |
 | --- | --- |
+| `ensureWalletOpen` | Open `logos_execution_zone` from `WALLET_HOME` (else `LEE_WALLET_HOME_DIR` / `NSSA_WALLET_HOME_DIR`) when the handle is closed. Creates `statistics.json` beside storage if missing. Returns `sequencer_addr`, `wallet_home`, `fixture_path`, `program_id_hex`. `chainAction` calls the same helper first. |
 | `readVaultConfigDecoded` | Decode vault config PDA by base58 account id |
 | `readVaultHoldingDecoded` | Decode vault holding PDA |
 | `readStreamConfigDecoded` | Decode stream config PDA |
@@ -124,6 +125,8 @@ Set `PAYMENT_STREAMS_GUEST_BIN` on the logoscore daemon process before writes.
 
 One logoscore process loads `logos_execution_zone` and `payment_streams_module`. Store integration
 adds `delivery_module` on provider and user hosts. See [docs/reproduce/store.md](../docs/reproduce/store.md).
+CLI callers open the wallet before `chainAction`. Basecamp `payment_streams_ui` calls `ensureWalletOpen`
+so `logos_host` inherits `WALLET_HOME` from `make basecamp-ui-run`.
 
 ## Recovery
 

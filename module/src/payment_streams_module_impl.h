@@ -19,6 +19,7 @@ public:
     QString readClock10Decoded();
 
     QString chainAction(const QVariant& operation, const QVariant& paramsJson);
+    QString ensureWalletOpen();
 
     QString registerProviderMapping(const QVariant& providerPeerId, const QVariant& providerAccountIdBase58);
     QString prepareEligibilityProofWithStreamProposalForStoreQuery(const QVariant& canonicalRequestHex, const QVariant& providerPeerId);

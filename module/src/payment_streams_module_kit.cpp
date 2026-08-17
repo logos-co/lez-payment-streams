@@ -2,6 +2,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -230,6 +231,81 @@ QString fixtureManifestPath() {
         return found;
     }
     return QStringLiteral("verify/fixtures/localnet.json");
+}
+
+QString walletHomeFromEnv() {
+    static const char* kKeys[] = {"WALLET_HOME", "LEE_WALLET_HOME_DIR", "NSSA_WALLET_HOME_DIR"};
+    for (const char* key : kKeys) {
+        const QByteArray value = qgetenv(key);
+        if (value.isEmpty()) {
+            continue;
+        }
+        const QString home = QString::fromUtf8(value).trimmed();
+        if (!home.isEmpty()) {
+            return QDir::cleanPath(home);
+        }
+    }
+    return {};
+}
+
+bool resolveWalletHomePaths(const QString& home, WalletHomePaths* out, QString* errorOut) {
+    const QString trimmed = home.trimmed();
+    if (trimmed.isEmpty()) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("WALLET_HOME is unset. Launch with make basecamp-ui-run.");
+        }
+        return false;
+    }
+    const QDir dir(trimmed);
+    WalletHomePaths paths;
+    paths.home = dir.absolutePath();
+    paths.config = dir.filePath(QStringLiteral("wallet_config.json"));
+    paths.storage = dir.filePath(QStringLiteral("storage.json"));
+    paths.statistics = dir.filePath(QStringLiteral("statistics.json"));
+    if (!QFile::exists(paths.config)) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("wallet_config.json missing at %1").arg(paths.config);
+        }
+        return false;
+    }
+    if (!QFile::exists(paths.storage)) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("storage.json missing at %1").arg(paths.storage);
+        }
+        return false;
+    }
+    if (out != nullptr) {
+        *out = paths;
+    }
+    return true;
+}
+
+bool ensureWalletStatisticsFile(const QString& statisticsPath, QString* errorOut) {
+    if (statisticsPath.trimmed().isEmpty()) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("wallet statistics path is empty");
+        }
+        return false;
+    }
+    if (QFile::exists(statisticsPath)) {
+        return true;
+    }
+    QDir parent = QFileInfo(statisticsPath).absoluteDir();
+    if (!parent.exists() && !parent.mkpath(QStringLiteral("."))) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("cannot create wallet statistics directory %1").arg(parent.absolutePath());
+        }
+        return false;
+    }
+    QFile file(statisticsPath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("cannot create wallet statistics file %1").arg(statisticsPath);
+        }
+        return false;
+    }
+    file.write("{}\n");
+    return true;
 }
 
 bool loadFixtureManifest(QJsonObject* out, QString* errorOut) {

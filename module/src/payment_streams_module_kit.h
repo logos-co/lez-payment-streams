@@ -46,6 +46,19 @@ bool findRepoFile(const QString& relativePath, QString* absoluteOut);
 QString fixtureManifestPath();
 bool loadFixtureManifest(QJsonObject* out, QString* errorOut);
 
+// Wallet home for Basecamp logos_host: WALLET_HOME, else LEE_WALLET_HOME_DIR,
+// else NSSA_WALLET_HOME_DIR.
+struct WalletHomePaths {
+    QString home;
+    QString config;
+    QString storage;
+    QString statistics;
+};
+
+QString walletHomeFromEnv();
+bool resolveWalletHomePaths(const QString& home, WalletHomePaths* out, QString* errorOut);
+bool ensureWalletStatisticsFile(const QString& statisticsPath, QString* errorOut);
+
 bool ffiBufferTwoPhase(const std::function<uint32_t(uint8_t*, size_t, size_t*)>& call,
                        QByteArray* out,
                        QString* errorOut,

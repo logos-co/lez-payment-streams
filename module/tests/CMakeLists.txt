@@ -13,6 +13,7 @@ logos_test(
         test_privacy_submit_policy.cpp
         test_persist_merge.cpp
         test_clock_fold.cpp
+        test_wallet_home.cpp
     EXTRA_INCLUDES
         ../src
 )

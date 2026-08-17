@@ -193,7 +193,15 @@ Rectangle {
         clipboardHelper.copy()
     }
 
-    function parseCall(raw) {
+    function sequencerLabel(raw) {
+        var s = trimmed(raw)
+        if (s.length === 0)
+            return "—"
+        if (s.charAt(s.length - 1) === "/")
+            s = s.substring(0, s.length - 1)
+        var host = s.replace(/^https?:\/\//, "")
+        return host.length > 0 ? host : s
+    }
         var v = raw
         if (typeof v === "string") {
             var trimmedRaw = v.trim()
@@ -830,6 +838,8 @@ Rectangle {
             streamIdField.value = "0"
             setStage("needVault")
             applyDemoSnapshot()
+            snapshotSequencer = "—"
+            snapshotBlockHeight = "—"
             return
         }
         if (accountsEqual(ownerField.value, demoOwnerId))
@@ -987,10 +997,14 @@ Rectangle {
         return true
     }
 
-    function markSessionUnready() {
+    function markSessionUnready(message, keepNetwork) {
         sessionReady = false
         writesReadOnly = false
-        sessionBanner = "Wallet not open — restart Basecamp with the wallet env set"
+        sessionBanner = (message && String(message).length > 0)
+                ? String(message)
+                : "Wallet not open — launch with make basecamp-ui-run"
+        if (!keepNetwork)
+            snapshotSequencer = "—"
         setStage("needVault")
         clearSnapshot()
     }
@@ -998,16 +1012,27 @@ Rectangle {
     function loadSessionDefaults(opts) {
         opts = opts || {}
         var preserve = opts.preserveSession === true
-        refreshChainHeight()
         if (demoMode) {
             sessionReady = true
             writesReadOnly = false
             sessionBanner = ""
+            snapshotSequencer = "—"
+            snapshotBlockHeight = "—"
             if (!preserve)
                 fillDemoAccounts()
             applyDemoSnapshot()
             return
         }
+
+        var opened = callJson("payment_streams_module", "ensureWalletOpen", [])
+        if (!opened || opened.status !== "ok") {
+            markSessionUnready(moduleMessage(
+                                   opened,
+                                   "Wallet not open — launch with make basecamp-ui-run"))
+            return
+        }
+        snapshotSequencer = sequencerLabel(opened.sequencer_addr)
+        refreshChainHeight()
 
         if (!preserve) {
             var accounts = publicAccountIds()
@@ -1019,7 +1044,11 @@ Rectangle {
 
         var owner = trimmed(ownerField.value)
         if (owner.length === 0 || !probeSession(owner)) {
-            markSessionUnready()
+            markSessionUnready(owner.length === 0
+                               ? "Wallet is open but has no public accounts to prefill"
+                               : "Wallet is open but chain status is unread",
+                               true)
+            refreshChainHeight()
             return
         }
 

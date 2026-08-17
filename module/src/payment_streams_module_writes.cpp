@@ -10,6 +10,7 @@
 #include <QJsonParseError>
 #include <QMetaType>
 #include <QVariant>
+#include <QVariantList>
 
 #include <functional>
 
@@ -33,14 +34,19 @@ using payment_streams_kit::findRepoFile;
 using payment_streams_kit::fixtureManifestPath;
 using payment_streams_kit::hex32FromQString;
 using payment_streams_kit::kAccountIdHexLen;
+using payment_streams_kit::ensureWalletStatisticsFile;
+using payment_streams_kit::fixtureManifestPath;
 using payment_streams_kit::kFfiSuccess;
 using payment_streams_kit::kPrivateSubmitTimeoutMs;
 using payment_streams_kit::makeErrorJson;
 using payment_streams_kit::makeOkJson;
 using payment_streams_kit::parseWalletAccountJson;
 using payment_streams_kit::resolveRepoRelativePath;
+using payment_streams_kit::resolveWalletHomePaths;
 using payment_streams_kit::variantToU64;
 using payment_streams_kit::walletAccountIdHexFromBase58;
+using payment_streams_kit::walletHomeFromEnv;
+using payment_streams_kit::WalletHomePaths;
 
 constexpr uint8_t kPrivacyTierPublic = 0;
 constexpr uint8_t kPrivacyTierPseudonymousFunding = 1;
@@ -93,6 +99,24 @@ QString invokeWalletQtString(LogosAPIClient* client,
         return {};
     }
     return result.toString();
+}
+
+QVariant invokeWalletQtList(LogosAPIClient* client,
+                            const char* method,
+                            const QVariantList& args,
+                            QString* errorOut = nullptr) {
+    if (client == nullptr) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("logos_execution_zone client unavailable");
+        }
+        return {};
+    }
+    const QVariant result = client->invokeRemoteMethod(
+        QStringLiteral("logos_execution_zone"), QString::fromUtf8(method), args);
+    if (!result.isValid() && errorOut != nullptr) {
+        *errorOut = QStringLiteral("IPC returned invalid result for %1").arg(QString::fromUtf8(method));
+    }
+    return result;
 }
 
 // Prefer PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX when the live sequencer AT
@@ -178,6 +202,56 @@ bool programIdBytes(uint8_t out[32], QString* errorOut) {
         return false;
     }
     return hex32FromQString(fixtureConfig().programIdHex, out);
+}
+
+bool openWalletFromEnv(LogosExecutionZone& wallet, LogosAPI* api, QString* errorOut, QJsonObject* extraOut) {
+    QString sequencer = QString::fromStdString(wallet.get_sequencer_addr());
+    WalletHomePaths paths;
+    const QString home = walletHomeFromEnv();
+    if (sequencer.isEmpty()) {
+        if (!resolveWalletHomePaths(home, &paths, errorOut)) {
+            return false;
+        }
+        if (!ensureWalletStatisticsFile(paths.statistics, errorOut)) {
+            return false;
+        }
+        // Runtime open is config, storage, statistics (v0.2.2+). The lp typed
+        // wrapper still has a two-argument open, so dispatch through Qt IPC.
+        QString ipcErr;
+        const QVariant openResult = invokeWalletQtList(
+            walletQtClientOrNull(api),
+            "open",
+            QVariantList{paths.config, paths.storage, paths.statistics},
+            &ipcErr);
+        sequencer = QString::fromStdString(wallet.get_sequencer_addr());
+        if (sequencer.isEmpty()) {
+            if (errorOut != nullptr) {
+                *errorOut = ipcErr.isEmpty()
+                    ? QStringLiteral("logos_execution_zone.open failed (status %1)")
+                          .arg(openResult.toLongLong())
+                    : ipcErr;
+            }
+            return false;
+        }
+    } else if (!home.isEmpty()) {
+        resolveWalletHomePaths(home, &paths, nullptr);
+    }
+
+    QString fixtureErr;
+    if (!ensureFixtureLoaded(&fixtureErr)) {
+        if (errorOut != nullptr) {
+            *errorOut = fixtureErr;
+        }
+        return false;
+    }
+
+    if (extraOut != nullptr) {
+        extraOut->insert(QStringLiteral("wallet_home"), paths.home);
+        extraOut->insert(QStringLiteral("sequencer_addr"), sequencer);
+        extraOut->insert(QStringLiteral("fixture_path"), fixtureManifestPath());
+        extraOut->insert(QStringLiteral("program_id_hex"), fixtureConfig().programIdHex);
+    }
+    return true;
 }
 
 QString accountIdHexFromField(LogosExecutionZone& wallet, const QString& field, QString* errorOut) {
@@ -1578,7 +1652,22 @@ QString PaymentStreamsModuleImpl::getStreamStatus(const QVariant& ownerAccountId
     return makeOkJson(payload);
 }
 
+QString PaymentStreamsModuleImpl::ensureWalletOpen() {
+    LogosExecutionZone& wallet = modules().logos_execution_zone;
+    QString err;
+    QJsonObject extra;
+    if (!openWalletFromEnv(wallet, modules().api, &err, &extra)) {
+        return makeErrorJson(err);
+    }
+    return makeOkJson(extra);
+}
+
 QString PaymentStreamsModuleImpl::chainAction(const QVariant& operation, const QVariant& paramsJson) {
+    LogosExecutionZone& wallet = modules().logos_execution_zone;
+    QString openErr;
+    if (!openWalletFromEnv(wallet, modules().api, &openErr, nullptr)) {
+        return makeErrorJson(openErr);
+    }
     const QString op = operation.toString().trimmed();
     QJsonParseError parseError {};
     const QJsonDocument doc = QJsonDocument::fromJson(paramsJson.toString().toUtf8(), &parseError);
