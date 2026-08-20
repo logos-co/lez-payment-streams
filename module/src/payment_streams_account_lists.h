@@ -22,6 +22,10 @@ enum class WithdrawDestClass : uint8_t {
     Distinct = 3,
 };
 
+inline bool accountIdsEqual32(const uint8_t left[32], const uint8_t right[32]) {
+    return std::memcmp(left, right, 32) == 0;
+}
+
 inline WithdrawDestClass classifyWithdrawDest(bool keyPresent,
                                               bool presentEmpty,
                                               const uint8_t owner[32],
@@ -34,10 +38,6 @@ inline WithdrawDestClass classifyWithdrawDest(bool keyPresent,
     }
     return accountIdsEqual32(owner, withdrawTo) ? WithdrawDestClass::EqualOwner
                                                 : WithdrawDestClass::Distinct;
-}
-
-inline bool accountIdsEqual32(const uint8_t left[32], const uint8_t right[32]) {
-    return std::memcmp(left, right, 32) == 0;
 }
 
 // Rejects length that is not a multiple of 64, then splits lowercase 64-hex ids.
