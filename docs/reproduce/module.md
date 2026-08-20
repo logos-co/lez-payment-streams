@@ -2,7 +2,7 @@
 
 Manual teaching path for LIP-155 through `payment_streams_module` on a single host.
 Testnet is the primary network.
-Phases match `verify/module-e2e.sh`: vault init, deposit, create stream, accrual, close, claim.
+Phases match `verify/module-e2e.sh`: vault init, deposit, create stream, accrual, close, claim, leftover withdraw to owner.
 
 Paid Store queries live in [store-eligibility.md](store.md).
 Basecamp UI: [basecamp-ui.md](basecamp-ui.md).
@@ -10,11 +10,11 @@ Basecamp UI: [basecamp-ui.md](basecamp-ui.md).
 Program identity: root README [Public testnet guest program](../../README.md#public-testnet-guest-program) and [verify/fixtures/testnet-module.json](../../verify/fixtures/testnet-module.json).
 
 Pause, resume, and top-up are listed in the catalogue.
-This walkthrough covers the public happy path through close and claim.
+This walkthrough covers the public happy path through close, claim, and leftover withdraw to owner.
 
 ## What you run
 
-Fund a vault, open a stream to a provider at a fixed rate, wait for accrual, close the stream, then claim.
+Fund a vault, open a stream to a provider at a fixed rate, wait for accrual, close the stream, claim, then withdraw leftover to the owner.
 Both roles share one `logoscore` daemon and one wallet with two public accounts.
 
 Toolchain helpers: `verify/repro-reset.sh`, `verify/repro-shell.sh`, and `verify/lib/repro-env.sh`.
@@ -453,7 +453,36 @@ Proceed to Step 16 when the provider balance reflects the payout.
 Private provider: confirm via `vault_holding` drop.
 See [Private execution notes](#private-execution-notes).
 
-## Step 16 — Confirm
+## Step 16 — Withdraw leftover to owner
+
+Unallocated tokens remain in the vault after claim.
+Withdraw them to the vault owner.
+Omit `withdraw_to`.
+Destination is the owner.
+The example amount is `1`; any unallocated amount that fits in `amount_lo` with `amount_hi` 0 is valid.
+
+```bash
+h0=$(last_block)
+line=$(logoscore call payment_streams_module chainAction withdraw \
+  "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":1,\"amount_hi\":0}" | tail -1)
+echo "$line"
+write_ok "Owner withdrew leftover from vault $VAULT_ID" "$line"
+echo "Submitted at chain height $h0"
+```
+
+Wait until `last_block` is greater than `$h0`, then:
+
+```bash
+sync_to_chain
+logoscore call payment_streams_module chainAction getVaultStatus \
+  "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID}"
+owner_bal=$(chain_balance "$OWNER"); owner_bal=${owner_bal:-0}
+echo "Owner on-chain balance: $owner_bal"
+```
+
+Proceed to Step 17 when vault holding dropped by the withdrawn amount and the owner native balance rose.
+
+## Step 17 — Confirm
 
 ```bash
 sync_to_chain
@@ -464,7 +493,7 @@ echo "Provider on-chain balance: $provider_bal"
 step_ok "Payment stream walkthrough complete (provider balance $provider_bal)"
 ```
 
-## Step 17 — Shut down
+## Step 18 — Shut down
 
 ```bash
 logoscore call logos_execution_zone close 2>/dev/null || true
@@ -480,7 +509,8 @@ Wallet files remain under `$WALLET_HOME` unless you run `./verify/repro-reset.sh
 Each step prints a `Success: ...` line.
 After close, `stream_state` is `2` (Closed).
 After claim, accrued tokens move to the provider.
-Step 16 prints the provider on-chain balance.
+Leftover unallocated deposit can be withdrawn to the owner (omit `withdraw_to`).
+Step 17 prints the provider on-chain balance.
 
 Sizing SSOT: `demo_deposit_amount` 500, `allocation` 80, `stream_rate` 1 in [verify/fixtures/testnet-module.json](../../verify/fixtures/testnet-module.json).
 Deposit must cover allocation.
@@ -503,6 +533,7 @@ See [store-eligibility.md](store.md) for Store recipes and the [verification mat
 | `owner_wallet_balance_hex` | `getVaultStatus` | Owner public native balance next to vault holding. |
 | `stream_state` | 0 Active, 1 Paused, 2 Closed | |
 | `MIN_ACCRUED` | shell only | Minimum `accrued_lo` before close. Token units. |
+| `withdraw_to` | optional on `withdraw` | Omit, JSON null, or equal to `owner` credits the owner. A distinct id credits that account. |
 | Authenticated transfer (AT) | `wallet auth-transfer init` / `register_public_account` | Lets public accounts spend tokens. Required before deposit and stream writes. |
 
 ## Failure modes

@@ -77,6 +77,12 @@ Store claim is strict by default (`E2E_CLAIM_OPTIONAL=0`).
 A skipped zero-accrual claim is not success under that default.
 `close_state` fails when `stream_state` is `-1` (stream missing or unreadable).
 Artifact phase is `claim`.
+Withdraw to owner is Required on module local and module testnet
+(`MODULE_E2E_WITHDRAW=1` by default, omit `withdraw_to`).
+Distinct `WITHDRAW_PATH=withdraw` is a thin local cell.
+Store happy path does not withdraw.
+Store-local public remains Required on a new guest ELF.
+Store-testnet and privacy Store stay off the Step 54 gate log.
 Privacy testnet gates use `E2E_CLAIM_OPTIONAL=0` with real proving (`RISC0_DEV_MODE=0`).
 Real prove requires logoscore `pre-release-66c4194` or newer and a 30-minute
 private-submit budget (`PS_LOGOSCORE_RPC_TIMEOUT_MS=1800000`).
@@ -126,7 +132,7 @@ Local snapshot save records the vault `program_owner` from the sequencer, not th
 
 Per-cell prepare, bootstrap, verbosity, and expected artifacts: [reproduce/store.md](../reproduce/store.md).
 
-Make aliases: `verify-module-local`, `verify-module-testnet`, `verify-module-local-provider-close`, `verify-module-local-provider-close-privacy`, `verify-module-local-close-negatives`, `verify-store-local`, `verify-store-testnet`.
+Make aliases: `verify-module-local`, `verify-module-testnet`, `verify-module-local-provider-close`, `verify-module-local-provider-close-privacy`, `verify-module-local-close-negatives`, `verify-module-local-withdraw-negatives`, `verify-store-local`, `verify-store-testnet`.
 
 Maintainer-only: `make verify-store-local-lifecycle` or [`verify/store/store-lifecycle.sh`](../../verify/store/store-lifecycle.sh).
 
@@ -145,7 +151,7 @@ Maintainer-only: `make verify-store-local-lifecycle` or [`verify/store/store-lif
 - Module testnet uses `VAULT_ID` to pin a fresh vault.
 - Artifacts: `.scaffold/e2e/artifacts/` JSON-lines logs.
   Layout: [naming-conventions.md#scaffold-layout](names.md#scaffold-layout).
-  Module: `module-e2e-*.log` (`vault_init`, `deposit`, `create_stream`, `claim`, …).
+  Module: `module-e2e-*.log` (`vault_init`, `deposit`, `create_stream`, `withdraw`, `claim`, …).
   Store: `e2e-*.log` (`store_query_success`, `store_query_missing_proof`, `claim`, …).
   Privacy overlays and env flags: [reproduce/store.md](../reproduce/store.md#privacy-overlays).
   Privacy cells keep the same private owner/provider within one run and derive fresh

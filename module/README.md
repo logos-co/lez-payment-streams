@@ -30,7 +30,7 @@ Walkthrough = exercised in [docs/reproduce/module.md](../docs/reproduce/module.m
 | --- | --- | --- | --- |
 | `initializeVault` | `owner`, `vault_id` | Create empty native vault. Optional `privacy_tier`. Optional `token_id` (64-hex or base58). Omit `token_id` for native (32 zero octets). | yes |
 | `deposit` | `owner`, `vault_id`, `amount_lo`, `amount_hi` | Credit vault from owner balance | yes |
-| `withdraw` | `owner`, `vault_id`, `amount_lo`, `amount_hi`, optional `withdraw_to` | Debit vault to owner or `withdraw_to` | no |
+| `withdraw` | `owner`, `vault_id`, `amount_lo`, `amount_hi`, optional `withdraw_to` | Omit `withdraw_to`, JSON null, or `withdraw_to` equal to `owner` credits the owner (`withdraw_to_owner`). Distinct `withdraw_to` credits that account (`withdraw`). `amount_hi` is mandatory. | yes |
 | `createStream` | `owner`, `vault_id`, `stream_id`, `provider`, `rate`, `allocation_lo`, `allocation_hi` | Open stream to provider (`provider` base58) | yes |
 | `pauseStream` | `owner`, `vault_id`, `stream_id` | Pause accrual | no |
 | `resumeStream` | `owner`, `vault_id`, `stream_id` | Resume paused stream | no |
@@ -70,8 +70,8 @@ make verify-module-testnet
 ```
 
 Success: exit code 0 and JSON-lines under `.scaffold/e2e/artifacts/` (`module-e2e-*.log`) with phases
-`vault_init`, `deposit`, `create_stream`, `close_stream`, `claim`, `module_e2e_complete`
-(close then claim). Localnet module E2E uses `e2e/user/wallet-local`. Testnet uses
+`vault_init`, `deposit`, `create_stream`, `withdraw`, `close_stream`, `claim`, `module_e2e_complete`
+(withdraw after accrual and before close; default `MODULE_E2E_WITHDRAW=1` omits `withdraw_to`). Localnet module E2E uses `e2e/user/wallet-local`. Testnet uses
 `e2e/testnet-wallet`. Layout:
 [names.md](../docs/reference/names.md#scaffold-layout).
 

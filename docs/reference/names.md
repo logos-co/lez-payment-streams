@@ -79,6 +79,8 @@ Primary (step-free):
 | Make target | Matrix cell |
 | --- | --- |
 | `make verify-module-local` | Module × localnet |
+| `make verify-module-testnet` | Module × testnet |
+| `make verify-module-local-withdraw-negatives` | Module withdraw reject tokens |
 | `make verify-store-local` | Store × localnet |
 | `make verify-store-testnet` | Store × testnet |
 | `make verify-store-local-lifecycle` | Maintainer only (two runs, one ledger) |

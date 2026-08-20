@@ -22,7 +22,7 @@ Each `run` performs prepare, orchestration, and teardown unless `SKIP_TEARDOWN=1
 ./verify/e2e.sh build
 ```
 
-Make aliases: `verify-module-local`, `verify-module-testnet`, `verify-store-local`, `verify-store-testnet`.
+Make aliases: `verify-module-local`, `verify-module-testnet`, `verify-module-local-withdraw-negatives`, `verify-store-local`, `verify-store-testnet`.
 Terminology: `make check-terminology`.
 
 ## Environment
@@ -44,6 +44,9 @@ Terminology: `make check-terminology`.
 | `E2E_VAULT_UNALLOC_BUFFER_LO` | `50` | Extra unallocated lo on continuation top-up (`needed + buffer`). |
 | `PS_WALLET_SHIELD_TIMEOUT` | `1800` | Wall-clock seconds for `wallet auth-transfer send` (CPU prove measured ~1020s). Stub receipts never take this path. |
 | `PAYMENT_STREAMS_PROGRAM_ID_HEX` | unset local; fixture hex on testnet | Testnet ImageID. Must match the fixture and the pinned ELF. Unset on local so identity comes from the live guest. Do not leak across cells. |
+| `MODULE_E2E_WITHDRAW` | `1` | Module happy-path withdraw after accrual. `0` skips it (`module-close-negatives.sh` and withdraw negatives force `0`). |
+| `WITHDRAW_PATH` | `owner` | `owner` omits `withdraw_to`. `withdraw` sends a distinct `withdraw_to`. |
+| `MODULE_E2E_WITHDRAW_NEGATIVES` | `0` | `1` asserts `args_mismatch` and `withdraw_prestate_unavailable` after create. |
 | `LOCALNET_BLOCK_TIME` | unset (`15s` on explicit start) | Sequencer `block_create_timeout`. Use `45s` for local real prove. Applied at localnet start/ensure only. |
 
 On-chain confirmation: [verification-matrix.md](../docs/reference/matrix.md#on-chain-confirmation-principle).
@@ -67,6 +70,7 @@ Root:
 | `fixture.sh` | `e2e.sh` |
 | `module-e2e.sh` | `e2e.sh` when `MODE=module` |
 | `module-close-negatives.sh` | Make `verify-module-local-close-negatives` only (`e2e.sh` does not exec it) |
+| `module-withdraw-negatives.sh` | Make `verify-module-local-withdraw-negatives` only (`e2e.sh` does not exec it) |
 | `repro-reset.sh` | `docs/reproduce/module.md` |
 | `repro-shell.sh` | same |
 | `repro-lgs-setup.sh` | same |
