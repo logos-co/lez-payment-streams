@@ -12,7 +12,7 @@ Prerequisite: [Step 46](step-46-docs-unify-and-forum-post.md)
 [Step 49](step-49-native-token-spec-alignment.md)
 (token_id / policy types and ImageID cut landed 2026-08).
 [Step 48](../wontfix/step-48-program-graph-lez-unify.md) is not a prerequisite.
-[Step 51](../upcoming/step-51-forum-post.md) (forum publish) and
+[Step 51](step-51-forum-post.md) (forum publish) and
 [Step 52](step-52-wrap-up-verification.md) (wrap-up matrix) follow this step.
 
 ## Goal
@@ -282,7 +282,7 @@ local and public testnet only. Privacy never ran on this cut.
 ## Related
 
 - [step-46-docs-unify-and-forum-post.md](step-46-docs-unify-and-forum-post.md)
-- [step-51-forum-post.md](../upcoming/step-51-forum-post.md)
+- [step-51-forum-post.md](step-51-forum-post.md)
 - [step-52-wrap-up-verification.md](step-52-wrap-up-verification.md)
 - [step-47-unify-role-terminology.md](step-47-unify-role-terminology.md)
 - [step-49-native-token-spec-alignment.md](step-49-native-token-spec-alignment.md)

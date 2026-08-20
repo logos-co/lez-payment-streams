@@ -7,7 +7,7 @@ Owns the post-50 protocol matrix that Step 46 called D46.11
 and that briefly sat on Step 51 as D51.1.
 Prerequisite: [Step 50](step-50-consistency-and-clarity.md)
 (persist merge, `await_tx`, kit).
-[Step 51](../upcoming/step-51-forum-post.md) cites this gate log for wrap-up claims.
+[Step 51](step-51-forum-post.md) cites this gate log for wrap-up claims.
 Independent of [Step 21](step-21-basecamp-ui.md)
 (Basecamp UI is a separate track; this packet certifies the CLI / Store stack).
 
@@ -150,7 +150,7 @@ testnet public → testnet private so a cheap fail stops a dearer leg.
 ## Related
 
 - [step-50-consistency-and-clarity.md](step-50-consistency-and-clarity.md)
-- [step-51-forum-post.md](../upcoming/step-51-forum-post.md)
+- [step-51-forum-post.md](step-51-forum-post.md)
 - [step-39-testnet-gate-log.md](step-39-testnet-gate-log.md)
 - [README Testing](../../../README.md#testing)
 - [matrix.md](../../reference/matrix.md)

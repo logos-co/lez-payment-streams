@@ -818,7 +818,7 @@ Step 49/52 `c30781ea…`). Same for
 [decisions.md](../../reference/decisions.md) N18 ImageID sentences,
 [AGENTS.md](../../../AGENTS.md) Step 39 `dea010d9…`,
 `docs/plan/index.md` Step 52 wrap-up line, and `verify/archive/`
-defaults. [Step 51](../upcoming/step-51-forum-post.md) fills wrap-up claims from
+defaults. [Step 51](step-51-forum-post.md) fills wrap-up claims from
 the Step 52 gate log (that ImageID is wrap-up evidence). Living guest
 identity after this step is the README block.
 

@@ -8,7 +8,7 @@ is not shipping as a standalone public packet.
 Living docs ship in
 [Step 46](../completed/step-46-docs-unify-and-forum-post.md)
 (reproduce / integrate docs). Forum orientation with links is
-[Step 51](../upcoming/step-51-forum-post.md).
+[Step 51](../completed/step-51-forum-post.md).
 In-repo Store SSOT and verification remain:
 [store-integration/README.md](../../store-integration/README.md),
 [DEVELOPER_JOURNEY.md](../../journeys/DEVELOPER_JOURNEY.md),

@@ -116,7 +116,7 @@ In-repo Developer Journey / Store SSOT is the operator path; formal logos-docs p
 (Step 20) is wontfix — see
 [step-20-developer-journey.md](../../plan/wontfix/step-20-developer-journey.md)
 and [Step 46](../../plan/completed/step-46-docs-unify-and-forum-post.md) for docs unify;
-[Step 51](../../plan/upcoming/step-51-forum-post.md) for the forum post.
+[Step 51](../../plan/completed/step-51-forum-post.md) for the forum post.
 Optional probe: [`scripts/e2e/debug_happy_path.py`](../scripts/e2e/debug_happy_path.py).
 
 ## Hermetic run (hand-off)

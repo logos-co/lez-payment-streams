@@ -761,7 +761,8 @@ Living doc names move under [Step 46](../plan/completed/step-46-docs-unify-and-f
   [store-eligibility.md](../reproduce/store.md) /
   [eligibility.md](../integrate.md).
   Forum orientation:
-  [Step 51](../plan/upcoming/step-51-forum-post.md).
+  [Step 51](../plan/completed/step-51-forum-post.md)
+  ([Payment streams on LEZ](https://forum.research.logos.co/t/payment-streams-on-lez/725)).
 - **Mechanism:** external script orchestration ([N17](#n17-demo-orchestration-stays-external-script-2026-06));
   dual local `logoscore` hosts; `payment_streams_module` + `delivery_module` +
   `logos_execution_zone`.

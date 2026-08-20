@@ -1,5 +1,9 @@
 # Payment streams on LEZ
 
+Published:
+[Payment streams on LEZ](https://forum.research.logos.co/t/payment-streams-on-lez/725)
+(2026-08-20).
+
 This post summarizes progress on payment streams and the first implementation on the Logos Execution Zone (LEZ).
 
 A payment stream lets a user pay a provider over time from a vault. It can be used as a separate off-chain payment protocol, or as eligibility on a request-response protocol. The protocol is specified in [LIP-155](https://lip.logos.co/anoncomms/raw/payment-streams.html). This work builds on [Off-chain Payment Protocols on LEE](https://forum.research.logos.co/t/off-chain-payment-protocols-on-lee/674).

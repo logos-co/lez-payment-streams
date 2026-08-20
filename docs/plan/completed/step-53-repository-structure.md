@@ -480,7 +480,7 @@ After this commit, README Testing commands, `make verify-*`, and
   `docs/plan/waiting/`).
   Remove empty directories.
 - Do not edit `docs/external/forum-post.md` or
-  [step-51-forum-post.md](../upcoming/step-51-forum-post.md).
+  [step-51-forum-post.md](step-51-forum-post.md).
 - Add `verify/lib/check-relative-links.sh`: resolve relative
   links in tracked `.md` outside `docs/plan/`, `docs/archive/`,
   and `docs/external/`.
@@ -698,6 +698,6 @@ D53.2 (stub packet) is superseded.
 - [index.md](../index.md)
 - [AGENTS.md](../../../AGENTS.md)
 - [step-46-docs-unify-and-forum-post.md](step-46-docs-unify-and-forum-post.md)
-- [step-51-forum-post.md](../upcoming/step-51-forum-post.md)
+- [step-51-forum-post.md](step-51-forum-post.md)
 - [step-52-wrap-up-verification.md](step-52-wrap-up-verification.md)
 - [docs/README.md](../../README.md)

@@ -18,7 +18,8 @@ Living docs: [docs/reproduce/](docs/reproduce/),
 [docs/integrate.md](docs/integrate.md),
 [docs/external/forum-post.md](docs/external/forum-post.md)
 ([Step 46](docs/plan/completed/step-46-docs-unify-and-forum-post.md) docs;
-[Step 51](docs/plan/upcoming/step-51-forum-post.md) forum;
+[Step 51](docs/plan/completed/step-51-forum-post.md) forum
+([Payment streams on LEZ](https://forum.research.logos.co/t/payment-streams-on-lez/725));
 [Step 52](docs/plan/completed/step-52-wrap-up-verification.md) wrap-up verification;
 Step 48 wontfix).
 Historical protocol CLI track is complete
@@ -35,8 +36,10 @@ Terminology: [docs/reference/names.md](docs/reference/names.md).
 Docs unify ([Step 46](docs/plan/completed/step-46-docs-unify-and-forum-post.md),
 complete):
 README Testing recipes, `docs/reproduce/`, `docs/integrate.md`.
-Forum draft remains at `docs/external/forum-post.md`
-([Step 51](docs/plan/upcoming/step-51-forum-post.md)).
+Forum published
+([Payment streams on LEZ](https://forum.research.logos.co/t/payment-streams-on-lez/725);
+[Step 51](docs/plan/completed/step-51-forum-post.md)).
+Draft remains at `docs/external/forum-post.md`.
 Formal logos-docs integrator publish remains wontfix
 ([Step 20](docs/plan/wontfix/step-20-developer-journey.md);
 [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)).
@@ -50,8 +53,9 @@ Step 35 (complete) supplies integrate-doc substance.
 (glue and naming).
 [Step 52](docs/plan/completed/step-52-wrap-up-verification.md) is complete
 (wrap-up verification).
-Next: [Step 51](docs/plan/upcoming/step-51-forum-post.md)
-(forum post). [Step 53](docs/plan/completed/step-53-repository-structure.md)
+[Step 51](docs/plan/completed/step-51-forum-post.md) is complete
+([Payment streams on LEZ](https://forum.research.logos.co/t/payment-streams-on-lez/725)).
+[Step 53](docs/plan/completed/step-53-repository-structure.md)
 is complete (repository structure).
 [Step 54](docs/plan/completed/step-54-withdraw-owner-and-recipient.md)
 is complete (withdraw to owner and withdraw).
@@ -61,10 +65,10 @@ Historical protocol CLI (complete):
 [Step 22](docs/plan/completed/step-22-ui-journey.md);
 [Step 34](docs/plan/completed/step-34-user-journey-manual-walkthrough.md);
 [Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
-Upcoming: [Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post).
 Step 52 is complete
 ([step-52-gate-log.md](docs/plan/completed/step-52-gate-log.md)).
-Step 51 publishes the forum post from that gate log.
+Step 51 published the forum post from that gate log
+([Payment streams on LEZ](https://forum.research.logos.co/t/payment-streams-on-lez/725)).
 Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer and payee close),
 [Step 45](docs/plan/completed/step-45-dependencies-and-patches.md) (deps and patches),
 [Step 46](docs/plan/completed/step-46-docs-unify-and-forum-post.md) (docs unify),
@@ -73,6 +77,7 @@ Complete: [Step 44](docs/plan/completed/step-44-payer-and-payee-close.md) (payer
 multi-token types),
 [Step 50](docs/plan/completed/step-50-consistency-and-clarity.md) (consistency and
 clarity),
+[Step 51](docs/plan/completed/step-51-forum-post.md) (forum post),
 [Step 52](docs/plan/completed/step-52-wrap-up-verification.md) (wrap-up verification),
 [Step 53](docs/plan/completed/step-53-repository-structure.md) (repository structure),
 [Step 54](docs/plan/completed/step-54-withdraw-owner-and-recipient.md)
