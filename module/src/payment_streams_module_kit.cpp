@@ -406,6 +406,31 @@ bool accountIdBytesFromField(const QString& field,
     return hex32FromQString(hex, out);
 }
 
+WithdrawUiAmount withdrawUiAmountFromUnallocated(quint64 unallocatedLo, quint64 unallocatedHi) {
+    WithdrawUiAmount out;
+    if (unallocatedHi != 0 || unallocatedLo == 0) {
+        return out;
+    }
+    out.enabled = true;
+    out.amountLo = unallocatedLo;
+    return out;
+}
+
+WithdrawUiAmount withdrawUiAmountFromHoldingAndAllocated(quint64 holdingLo,
+                                                         quint64 holdingHi,
+                                                         quint64 allocatedLo,
+                                                         quint64 allocatedHi) {
+    if (holdingHi < allocatedHi || (holdingHi == allocatedHi && holdingLo < allocatedLo)) {
+        return {};
+    }
+    quint64 unallocatedLo = holdingLo - allocatedLo;
+    quint64 unallocatedHi = holdingHi - allocatedHi;
+    if (holdingLo < allocatedLo) {
+        unallocatedHi -= 1;
+    }
+    return withdrawUiAmountFromUnallocated(unallocatedLo, unallocatedHi);
+}
+
 QJsonObject sequencerJsonRpc(const QString& sequencerUrl,
                              const QString& method,
                              const QJsonArray& params,

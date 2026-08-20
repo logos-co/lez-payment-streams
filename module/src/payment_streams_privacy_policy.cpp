@@ -17,6 +17,8 @@ bool pfOwnerSlotByLayout(VaultIxLayout layout, int index) {
     case VaultIxLayout::StreamOwner5:
     case VaultIxLayout::StreamProvider6:
         return index == 3;
+    case VaultIxLayout::Withdraw4:
+        return index == 2;
     }
     return false;
 }
@@ -29,6 +31,8 @@ bool slotMayHoldPrivateKey(VaultIxLayout layout, int index) {
         return index == 3;
     case VaultIxLayout::StreamProvider6:
         return index == 3 || index == 4;
+    case VaultIxLayout::Withdraw4:
+        return index == 2 || index == 3;
     }
     return false;
 }

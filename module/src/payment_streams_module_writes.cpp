@@ -19,6 +19,7 @@
 #include <logos_api_client.h>
 #include <logos_sdk.h>
 
+#include "payment_streams_account_lists.h"
 #include "payment_streams_ffi_bridge.h"
 #include "payment_streams_module_kit.h"
 #include "payment_streams_privacy_policy.h"
@@ -550,15 +551,6 @@ bool ffiPlanAccountsTwoPhase(const std::function<uint32_t(uint8_t*, size_t, size
         QStringLiteral("plan accounts failed (%1)"));
 }
 
-QStringList splitAccountsHex(const QByteArray& accountsHex) {
-    QStringList ids;
-    const QString all = QString::fromLatin1(accountsHex);
-    for (int i = 0; i + kAccountIdHexLen <= all.size(); i += kAccountIdHexLen) {
-        ids.append(all.mid(i, kAccountIdHexLen));
-    }
-    return ids;
-}
-
 QList<bool> signingRequirementsForAccounts(const QStringList& accountHexIds, const QString& submitterHex) {
     const QString submitter = submitterHex.trimmed().toLower();
     QList<bool> flags;
@@ -805,7 +797,11 @@ QString buildAndSubmit(LogosExecutionZone& wallet,
         return makeErrorJson(loadErr.isEmpty() ? QStringLiteral("invalid submitter account") : loadErr);
     }
 
-    const QStringList accountIds = splitAccountsHex(accountsHex);
+    QStringList accountIds;
+    QString accountsErr;
+    if (!payment_streams_accounts::parseUniqueAccountsHex(accountsHex, &accountIds, &accountsErr)) {
+        return makeErrorJson(accountsErr);
+    }
     if (accountIds.isEmpty()) {
         return makeErrorJson(QStringLiteral("planned account list is empty"));
     }
@@ -1028,17 +1024,27 @@ QString PaymentStreamsModuleImpl::withdraw(const QVariant& ownerAccountIdBase58,
                                            const QVariant& amountHi,
                                            const QVariant& withdrawToAccountIdBase58) {
     LogosExecutionZone& wallet = modules().logos_execution_zone;
-    bool ok = false;
-    const quint64 vid = variantToU64(vaultId, &ok);
-    const quint64 lo = variantToU64(amountLo, &ok);
-    const quint64 hi = variantToU64(amountHi, &ok);
-    if (!ok) {
+    bool vidOk = false;
+    bool loOk = false;
+    bool hiOk = false;
+    const quint64 vid = variantToU64(vaultId, &vidOk);
+    const quint64 lo = variantToU64(amountLo, &loOk);
+    const quint64 hi = variantToU64(amountHi, &hiOk);
+    if (!vidOk || !loOk || !hiOk) {
         return makeErrorJson(QStringLiteral("invalid numeric argument"));
     }
 
-    const QString withdrawBase58 = withdrawToAccountIdBase58.isValid() && !withdrawToAccountIdBase58.isNull()
-                                       ? withdrawToAccountIdBase58.toString()
-                                       : ownerAccountIdBase58.toString();
+    const bool withdrawToKeyPresent =
+        withdrawToAccountIdBase58.isValid() && !withdrawToAccountIdBase58.isNull();
+    const QString ownerField = ownerAccountIdBase58.toString();
+    if (ownerField.trimmed().isEmpty()) {
+        return makeErrorJson(QStringLiteral("args_mismatch"));
+    }
+    const QString withdrawToField =
+        withdrawToKeyPresent ? withdrawToAccountIdBase58.toString() : QString();
+    if (withdrawToKeyPresent && withdrawToField.trimmed().isEmpty()) {
+        return makeErrorJson(QStringLiteral("args_mismatch"));
+    }
 
     uint8_t programId[32]{};
     uint8_t owner[32]{};
@@ -1047,33 +1053,71 @@ QString PaymentStreamsModuleImpl::withdraw(const QVariant& ownerAccountIdBase58,
     if (!programIdBytes(programId, &err)) {
         return makeErrorJson(err);
     }
-    if (!ownerBytesFromBase58(wallet, ownerAccountIdBase58.toString(), owner, &err)) {
+    if (!ownerBytesFromOwnerField(wallet, ownerField, owner, &err)) {
         return makeErrorJson(err);
     }
-    if (!ownerBytesFromBase58(wallet, withdrawBase58, withdrawTo, &err)) {
+    if (withdrawToKeyPresent && !ownerBytesFromBase58(wallet, withdrawToField, withdrawTo, &err)) {
         return makeErrorJson(err);
+    }
+
+    const auto destClass = payment_streams_accounts::classifyWithdrawDest(
+        withdrawToKeyPresent, false, owner, withdrawTo);
+    const bool toOwner =
+        destClass == payment_streams_accounts::WithdrawDestClass::Omit ||
+        destClass == payment_streams_accounts::WithdrawDestClass::EqualOwner;
+
+    PsFfiDecodedVaultConfig decodedVault{};
+    QString vaultLoadErr;
+    if (!loadVaultConfigOnChain(wallet, programId, owner, vid, &decodedVault, &vaultLoadErr)) {
+        return makeErrorJson(QStringLiteral("withdraw_prestate_unavailable"));
+    }
+    if (std::memcmp(decodedVault.owner, owner, 32) != 0) {
+        return makeErrorJson(QStringLiteral("withdraw_owner_mismatch"));
     }
 
     QByteArray instruction;
-    if (!ffiSerializeTwoPhase(
-            [&](uint8_t* ptr, size_t cap, size_t* len) {
-                return ps_ffi_serialize_withdraw(vid, lo, hi, ptr, cap, len);
-            },
-            &instruction, &err)) {
-        return makeErrorJson(err);
-    }
-
     QByteArray accountsHex;
-    if (!ffiPlanAccountsTwoPhase(
-            [&](uint8_t* ptr, size_t cap, size_t* len) {
-                return ps_ffi_plan_withdraw(
-                    programId, owner, vid, withdrawTo, ptr, cap, len);
-            },
-            &accountsHex, &err)) {
-        return makeErrorJson(err);
+    if (toOwner) {
+        if (!ffiSerializeTwoPhase(
+                [&](uint8_t* ptr, size_t cap, size_t* len) {
+                    return ps_ffi_serialize_withdraw_to_owner(vid, lo, hi, ptr, cap, len);
+                },
+                &instruction, &err)) {
+            return makeErrorJson(err);
+        }
+        if (!ffiPlanAccountsTwoPhase(
+                [&](uint8_t* ptr, size_t cap, size_t* len) {
+                    return ps_ffi_plan_withdraw_to_owner(programId, owner, vid, ptr, cap, len);
+                },
+                &accountsHex, &err)) {
+            return makeErrorJson(err);
+        }
+    } else {
+        if (!ffiSerializeTwoPhase(
+                [&](uint8_t* ptr, size_t cap, size_t* len) {
+                    return ps_ffi_serialize_withdraw(vid, lo, hi, ptr, cap, len);
+                },
+                &instruction, &err)) {
+            return makeErrorJson(err);
+        }
+        if (!ffiPlanAccountsTwoPhase(
+                [&](uint8_t* ptr, size_t cap, size_t* len) {
+                    return ps_ffi_plan_withdraw(
+                        programId, owner, vid, withdrawTo, ptr, cap, len);
+                },
+                &accountsHex, &err)) {
+            return makeErrorJson(err);
+        }
     }
 
-    return buildAndSubmit(wallet, modules().api, ownerAccountIdBase58.toString(), instruction, accountsHex, &err);
+    VaultSubmitContext ctx{};
+    std::memcpy(ctx.programId, programId, 32);
+    std::memcpy(ctx.vaultOwner, owner, 32);
+    ctx.vaultId = vid;
+    ctx.layout = toOwner ? VaultIxLayout::InitOrDeposit3 : VaultIxLayout::Withdraw4;
+    ctx.hasDecodedVaultConfig = true;
+    ctx.decodedVaultConfig = decodedVault;
+    return buildAndSubmit(wallet, modules().api, ownerField, instruction, accountsHex, &err, &ctx);
 }
 
 QString PaymentStreamsModuleImpl::createStream(const QVariant& ownerAccountIdBase58,

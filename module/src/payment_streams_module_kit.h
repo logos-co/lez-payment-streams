@@ -81,6 +81,17 @@ bool accountIdBytesFromField(const QString& field,
                              const std::function<QString(const QString&)>& base58ToHex,
                              QString* errorOut);
 
+struct WithdrawUiAmount {
+    bool enabled = false;
+    quint64 amountLo = 0;
+};
+
+WithdrawUiAmount withdrawUiAmountFromUnallocated(quint64 unallocatedLo, quint64 unallocatedHi);
+WithdrawUiAmount withdrawUiAmountFromHoldingAndAllocated(quint64 holdingLo,
+                                                         quint64 holdingHi,
+                                                         quint64 allocatedLo,
+                                                         quint64 allocatedHi);
+
 template <typename Wallet>
 QString walletAccountIdHexFromBase58(Wallet& wallet, const QString& accountIdBase58) {
     const QString trimmed = accountIdBase58.trimmed();

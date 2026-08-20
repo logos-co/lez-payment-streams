@@ -14,6 +14,7 @@ logos_test(
         test_persist_merge.cpp
         test_clock_fold.cpp
         test_wallet_home.cpp
+        test_withdraw_helpers.cpp
     EXTRA_INCLUDES
         ../src
 )

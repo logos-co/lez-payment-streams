@@ -133,8 +133,19 @@ LOGOS_TEST(init_or_deposit_probes_owner_slot_only) {
     LOGOS_ASSERT_FALSE(slotMayHoldPrivateKey(VaultIxLayout::InitOrDeposit3, 0));
     LOGOS_ASSERT_FALSE(slotMayHoldPrivateKey(VaultIxLayout::InitOrDeposit3, 1));
     LOGOS_ASSERT_TRUE(slotMayHoldPrivateKey(VaultIxLayout::InitOrDeposit3, 2));
+    LOGOS_ASSERT_FALSE(slotMayHoldPrivateKey(VaultIxLayout::InitOrDeposit3, 3));
     LOGOS_ASSERT_TRUE(pfOwnerSlotByLayout(VaultIxLayout::InitOrDeposit3, 2));
     LOGOS_ASSERT_FALSE(pfOwnerSlotByLayout(VaultIxLayout::InitOrDeposit3, 0));
+}
+
+LOGOS_TEST(withdraw4_probes_owner_and_withdraw_to) {
+    LOGOS_ASSERT_FALSE(slotMayHoldPrivateKey(VaultIxLayout::Withdraw4, 0));
+    LOGOS_ASSERT_FALSE(slotMayHoldPrivateKey(VaultIxLayout::Withdraw4, 1));
+    LOGOS_ASSERT_TRUE(slotMayHoldPrivateKey(VaultIxLayout::Withdraw4, 2));
+    LOGOS_ASSERT_TRUE(slotMayHoldPrivateKey(VaultIxLayout::Withdraw4, 3));
+    LOGOS_ASSERT_TRUE(pfOwnerSlotByLayout(VaultIxLayout::Withdraw4, 2));
+    LOGOS_ASSERT_FALSE(pfOwnerSlotByLayout(VaultIxLayout::Withdraw4, 3));
+    LOGOS_ASSERT_FALSE(pfOwnerSlotByLayout(VaultIxLayout::Withdraw4, 0));
 }
 
 LOGOS_TEST(stream_owner_layout_probes_owner_not_clock) {

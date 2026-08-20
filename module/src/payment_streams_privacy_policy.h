@@ -30,6 +30,7 @@ enum class VaultIxLayout : uint8_t {
     InitOrDeposit3 = 0,
     StreamOwner5 = 1,
     StreamProvider6 = 2,
+    Withdraw4 = 3,
 };
 
 // True for owner, provider, or authority slots. PDA and clock slots are never
