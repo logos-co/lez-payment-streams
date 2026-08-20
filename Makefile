@@ -128,6 +128,10 @@ verify-module-local-close-negatives: ## Asserted close/create reject tokens on l
 	chmod +x verify/module-close-negatives.sh
 	./verify/module-close-negatives.sh
 
+verify-module-local-withdraw-negatives: ## Asserted withdraw reject tokens on localnet
+	chmod +x verify/module-withdraw-negatives.sh
+	./verify/module-withdraw-negatives.sh
+
 verify-module-testnet: ## Flow A (module only) testnet happy path
 	chmod +x verify/e2e.sh verify/lifecycle.sh verify/fixture.sh verify/module-e2e.sh
 	MODE=module ./verify/e2e.sh testnet run

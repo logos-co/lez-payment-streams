@@ -3,7 +3,7 @@
 #
 # Exercises payment_streams_module chainAction end-to-end through logoscore:
 # vault init, deposit, stream create, optional pause/resume/top-up, accrual,
-# close, then claim residual on the closed stream.
+# withdraw (default omit withdraw_to), close, then claim residual on the closed stream.
 # OWNER_PRIVACY=1 defaults pause/resume and top-up on (Step 36 PseudonymousFunding).
 # PROVIDER_PRIVACY=1 enables private provider / shielded claim (Step 37; independent).
 # PRIVACY=1 remains an alias for OWNER_PRIVACY=1.
@@ -161,9 +161,19 @@ MODULE_E2E_CLOSE_NEGATIVES="${MODULE_E2E_CLOSE_NEGATIVES:-0}"
 # Close role for Step 44 cells: owner (default; omit provider key) or provider
 # (include provider JSON key on six-slot close).
 CLOSE_ROLE="${CLOSE_ROLE:-owner}"
-# Optional tiny withdraw before settlement (Step 47 Required rename smoke).
-MODULE_E2E_WITHDRAW="${MODULE_E2E_WITHDRAW:-0}"
+# Withdraw after accrual, before close. Default on; omit withdraw_to (owner path).
+# WITHDRAW_PATH=withdraw sends distinct withdraw_to. Negatives force happy withdraw off.
+MODULE_E2E_WITHDRAW_NEGATIVES="${MODULE_E2E_WITHDRAW_NEGATIVES:-0}"
+if [[ "$MODULE_E2E_WITHDRAW_NEGATIVES" == "1" ]]; then
+  MODULE_E2E_WITHDRAW=0
+else
+  MODULE_E2E_WITHDRAW="${MODULE_E2E_WITHDRAW:-1}"
+fi
+WITHDRAW_PATH="${WITHDRAW_PATH:-owner}"
 WITHDRAW_AMOUNT="${WITHDRAW_AMOUNT:-1}"
+if [[ "$WITHDRAW_PATH" != "owner" && "$WITHDRAW_PATH" != "withdraw" ]]; then
+  ps_fatal "WITHDRAW_PATH must be owner or withdraw (got: $WITHDRAW_PATH)"
+fi
 # Set MODULE_E2E_SKIP_FUND=1 to skip inline testnet pinata funding (assumes the
 # fixture owner/provider were pre-funded via verify/testnet/fund-testnet-accounts.sh).
 MODULE_E2E_SKIP_FUND="${MODULE_E2E_SKIP_FUND:-0}"
@@ -933,6 +943,12 @@ except Exception:
 ' "${line:-}" 2>/dev/null || true)"
         close_extra=",\"close_role\":\"${CLOSE_ROLE:-}\",\"RISC0_DEV_MODE\":\"${RISC0_DEV_MODE:-1}\",\"clock_account_id_hex\":\"${clock_hex}\""
       fi
+      if [[ "$phase" == "withdraw" || "$phase" == "withdraw_equal_owner" ]]; then
+        close_extra+=",\"withdraw_path\":\"${WITHDRAW_PATH}\""
+        if [[ "$phase" == "withdraw_equal_owner" ]]; then
+          close_extra+=",\"equal_owner_submit\":true"
+        fi
+      fi
       if [[ -n "$tx_hash" ]] && ! await_inclusion "$tx_hash"; then
         if [[ -n "$verify_fn" ]] && ps_poll_verify "$verify_fn"; then
           emit_phase "$phase" true "{\"op\":\"$op\",\"attempt\":$attempt,\"tx_hash\":\"$tx_hash\",\"inclusion\":\"state_verified\"${close_extra}}"
@@ -1350,10 +1366,36 @@ verify_close_stream() {
   [[ "${st:-}" == "2" ]]   # Closed
 }
 
+owner_other_id_encoding() {
+  if [[ ${#OWNER} -eq 64 && "$OWNER" =~ ^[0-9a-fA-F]+$ ]]; then
+    to_base58 "$OWNER"
+  else
+    account_id_to_hex "$OWNER"
+  fi
+}
+
+capture_withdraw_prestate() {
+  local dest="$1"
+  PRE_WITHDRAW_VAULT_BAL=""
+  PRE_WITHDRAW_VAULT_ALLOC=""
+  PRE_WITHDRAW_DEST_BAL="0"
+  if PRE_WD="$(poll_read read_vault "$OWNER" "$VAULT_ID")"; then
+    read -r PRE_WITHDRAW_VAULT_BAL PRE_WITHDRAW_VAULT_ALLOC <<< "$PRE_WD"
+  fi
+  PRE_WITHDRAW_DEST_BAL="$(ps_account_balance "$dest" 2>/dev/null | tr -d '[:space:]' || echo 0)"
+}
+
 verify_withdraw() {
-  local bal
-  read -r bal _ <<< "$(read_vault "$OWNER" "$VAULT_ID")"
-  [[ -n "${bal:-}" && -n "${PRE_WITHDRAW_VAULT_BAL:-}" && "$bal" -le $((PRE_WITHDRAW_VAULT_BAL - WITHDRAW_AMOUNT)) ]]
+  local bal tot dest_bal
+  read -r bal tot <<< "$(read_vault "$OWNER" "$VAULT_ID")"
+  [[ -n "${bal:-}" && -n "${PRE_WITHDRAW_VAULT_BAL:-}" ]] || return 1
+  [[ "$bal" -eq $((PRE_WITHDRAW_VAULT_BAL - WITHDRAW_AMOUNT)) ]] || return 1
+  [[ "${tot:-}" == "${PRE_WITHDRAW_VAULT_ALLOC:-}" ]] || return 1
+  if [[ "${WITHDRAW_EXPECT_DEST_CREDIT:-0}" == "1" ]]; then
+    dest_bal="$(ps_account_balance "$WITHDRAW_DEST" 2>/dev/null | tr -d '[:space:]' || echo 0)"
+    [[ -n "${dest_bal:-}" && "$dest_bal" -eq $((PRE_WITHDRAW_DEST_BAL + WITHDRAW_AMOUNT)) ]] || return 1
+  fi
+  return 0
 }
 
 # Claim credits the provider. Public provider: getAccount balance rises.
@@ -1546,6 +1588,36 @@ if [[ "$MODULE_E2E_CLOSE_NEGATIVES" == "1" ]]; then
   fi
 fi
 
+assert_withdraw_reject_token() {
+  local label="$1" params="$2" token="$3"
+  local line msg
+  line="$(logoscore call payment_streams_module chainAction withdraw "$params" 2>/dev/null | tail -1)"
+  msg="$(extract_field "$line" message)"
+  if [[ "$msg" == *"$token"* ]]; then
+    emit_phase "withdraw_neg_$label" true "{\"token\":\"$token\"}"
+    narr_ok "Reject $label → $token"
+    return 0
+  fi
+  emit_phase "withdraw_neg_$label" false "{\"token\":\"$token\",\"message\":$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "${msg:-}")}"
+  narr_fail "Reject $label expected token $token, got: ${msg:-<empty>}"
+  FAILURES=$((FAILURES + 1))
+  return 0
+}
+
+if [[ "$MODULE_E2E_WITHDRAW_NEGATIVES" == "1" ]]; then
+  narr_phase "Withdraw negatives (Step 54)"
+  assert_withdraw_reject_token args_empty_owner \
+    "$(j "{\"owner\":\"\",\"vault_id\":$VAULT_ID,\"amount_lo\":$WITHDRAW_AMOUNT,\"amount_hi\":0}")" \
+    args_mismatch
+  assert_withdraw_reject_token args_empty_withdraw_to \
+    "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$WITHDRAW_AMOUNT,\"amount_hi\":0,\"withdraw_to\":\"\"}")" \
+    args_mismatch
+  assert_withdraw_reject_token prestate_undecodable_vault \
+    "$(j "{\"owner\":\"$PROVIDER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$WITHDRAW_AMOUNT,\"amount_hi\":0}")" \
+    withdraw_prestate_unavailable
+  emit_phase withdraw_negatives_summary true "{\"failures\":$FAILURES}"
+fi
+
 # ---------------------------------------------------------------------------
 # PHASE: Stream Lifecycle (optional pause/resume + top-up)
 # ---------------------------------------------------------------------------
@@ -1658,13 +1730,42 @@ if [[ "$MODULE_E2E_SKIP_CLOSE" == "1" ]]; then
 else
   if [[ "$MODULE_E2E_WITHDRAW" == "1" ]]; then
     narr_phase "Withdraw"
-    # withdraw_to must differ from owner: LEZ rejects duplicate account ids in one ix.
-    narr_step "Alice withdraws ${WITHDRAW_AMOUNT} token(s) from vault $VAULT_ID to provider"
-    PRE_WITHDRAW_VAULT_BAL=""
-    if PRE_WD="$(poll_read read_vault "$OWNER" "$VAULT_ID")"; then
-      read -r PRE_WITHDRAW_VAULT_BAL _ <<< "$PRE_WD"
+    WITHDRAW_DEST="$OWNER"
+    WITHDRAW_PARAMS="$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$WITHDRAW_AMOUNT,\"amount_hi\":0}")"
+    if [[ "$WITHDRAW_PATH" == "withdraw" ]]; then
+      WITHDRAW_DEST="$PROVIDER"
+      WITHDRAW_PARAMS="$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$WITHDRAW_AMOUNT,\"amount_hi\":0,\"withdraw_to\":\"$PROVIDER\"}")"
+      narr_step "Alice withdraws ${WITHDRAW_AMOUNT} token(s) from vault $VAULT_ID to a distinct withdraw_to"
+    else
+      narr_step "Alice withdraws ${WITHDRAW_AMOUNT} token(s) from vault $VAULT_ID to owner (omit withdraw_to)"
     fi
-    call_ps withdraw 1 withdraw "$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$WITHDRAW_AMOUNT,\"amount_hi\":0,\"withdraw_to\":\"$PROVIDER\"}")" "" "Withdraw transaction included on chain" verify_withdraw
+    if ps_is_owner_privacy_e2e; then
+      WITHDRAW_EXPECT_DEST_CREDIT=0
+    else
+      WITHDRAW_EXPECT_DEST_CREDIT=1
+    fi
+    capture_withdraw_prestate "$WITHDRAW_DEST"
+    unalloc=$((${PRE_WITHDRAW_VAULT_BAL:-0} - ${PRE_WITHDRAW_VAULT_ALLOC:-0}))
+    if [[ "$WITHDRAW_AMOUNT" -ge "$unalloc" ]]; then
+      narr_fail "Withdraw amount $WITHDRAW_AMOUNT does not leave remainder >= 1 (unallocated=$unalloc)"
+      FAILURES=$((FAILURES + 1))
+    else
+      call_ps withdraw 1 withdraw "$WITHDRAW_PARAMS" "" "Withdraw transaction included on chain" verify_withdraw
+
+      if [[ "$WITHDRAW_PATH" == "owner" ]] && ps_is_local && ! ps_is_any_privacy_e2e; then
+        EQUAL_OWNER_TO="$(owner_other_id_encoding)"
+        if [[ -z "${EQUAL_OWNER_TO:-}" ]]; then
+          narr_fail "Could not encode owner id in the other encoding for equal-owner withdraw"
+          FAILURES=$((FAILURES + 1))
+        else
+          narr_step "Alice withdraws ${WITHDRAW_AMOUNT} token(s) again with withdraw_to equal to owner (other encoding)"
+          capture_withdraw_prestate "$OWNER"
+          WITHDRAW_DEST="$OWNER"
+          EQUAL_PARAMS="$(j "{\"owner\":\"$OWNER\",\"vault_id\":$VAULT_ID,\"amount_lo\":$WITHDRAW_AMOUNT,\"amount_hi\":0,\"withdraw_to\":\"$EQUAL_OWNER_TO\"}")"
+          call_ps withdraw_equal_owner 1 withdraw "$EQUAL_PARAMS" "" "Equal-owner withdraw included on chain" verify_withdraw
+        fi
+      fi
+    fi
   fi
 
   narr_phase "Close"
