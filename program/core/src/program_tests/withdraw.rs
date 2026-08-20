@@ -1,5 +1,6 @@
 //! `withdraw` to third-party recipients, including public and privacy-preserving recipient flows.
 
+use lee::error::LeeError;
 #[cfg(feature = "pp-program-tests")]
 use lee::program::Program;
 use lee_core::{
@@ -688,6 +689,75 @@ fn test_withdraw_owner_mismatch_fails() {
         state.get_account_by_id(alt_signer_account_id).balance,
         alt_signer_balance_before
     );
+}
+
+/// D54.5 seam: four-slot `Withdraw` with `withdraw_to == owner`.
+/// Uniqueness is expected to reject before guest logic; this test locks that error.
+#[test]
+fn test_withdraw_four_slot_same_id_never_includes() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = 100 as Balance;
+    let withdraw_amount = 10 as Balance;
+    let mut wr = state_with_initialized_vault_with_recipient(owner_balance_start);
+
+    let account_ids_deposit = [
+        wr.vault.vault_config_account_id,
+        wr.vault.vault_holding_account_id,
+        wr.vault.owner_account_id,
+    ];
+    let tx_deposit = build_signed_public_tx(
+        wr.vault.program_id,
+        Instruction::Deposit {
+            vault_id: wr.vault.vault_id,
+            amount: deposit_amount,
+            authenticated_transfer_program_id: authenticated_transfer().id(),
+        },
+        &account_ids_deposit,
+        &[Nonce(1)],
+        &[&wr.vault.owner_private_key],
+    );
+    assert!(
+        wr.vault
+            .state
+            .transition_from_public_transaction(
+                &tx_deposit,
+                2 as BlockId,
+                crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
+            )
+            .is_ok(),
+        "deposit failed"
+    );
+
+    let account_ids_withdraw = [
+        wr.vault.vault_config_account_id,
+        wr.vault.vault_holding_account_id,
+        wr.vault.owner_account_id,
+        wr.vault.owner_account_id,
+    ];
+    let tx_withdraw = build_signed_public_tx(
+        wr.vault.program_id,
+        Instruction::Withdraw {
+            vault_id: wr.vault.vault_id,
+            amount: withdraw_amount,
+        },
+        &account_ids_withdraw,
+        &[Nonce(2)],
+        &[&wr.vault.owner_private_key],
+    );
+    let result = wr.vault.state.transition_from_public_transaction(
+        &tx_withdraw,
+        3 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
+    match result {
+        Err(LeeError::InvalidInput(msg)) => assert!(
+            msg.contains("Duplicate account_ids found in message"),
+            "D54.5 expected harness uniqueness, got InvalidInput({msg:?})"
+        ),
+        other => panic!(
+            "D54.5 expected InvalidInput duplicate account_ids (guest 6029 not added); got {other:?}"
+        ),
+    }
 }
 
 #[test]
