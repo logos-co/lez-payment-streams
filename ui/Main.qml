@@ -12,18 +12,18 @@ Rectangle {
     readonly property int addressFieldWidth: 440
     readonly property int paramFieldWidth: 280
 
-    property bool demoMode: true
-    property int demoStreamId: 0
-    property int demoExtraHolding: 0
-    property int demoWithdrawn: 0
+    property bool mockMode: true
+    property int mockStreamId: 0
+    property int mockExtraHolding: 0
+    property int mockWithdrawn: 0
     property string lastWithdrawDefault: "0"
     property string unallocatedDec: "0"
     property bool unallocatedFitsU64: false
     property string pendingWithdrawAmount: ""
     property string pendingAllocatedLo: ""
     property string pendingAllocatedHi: ""
-    readonly property string demoOwnerId: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
-    readonly property string demoProviderId: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM"
+    readonly property string mockOwnerId: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
+    readonly property string mockProviderId: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM"
     property string stage: "needVault"
     property bool vaultExists: false
     property bool vaultHasHolding: false
@@ -63,7 +63,7 @@ Rectangle {
     property string sessionBanner: ""
     property string snapshotBlockHeight: "—"
     property string snapshotSequencer: "—"
-    readonly property string networkBadgeText: demoMode
+    readonly property string networkBadgeText: mockMode
         ? "Simulated offline"
         : (sessionReady
            ? (snapshotSequencer !== "—" && snapshotSequencer.length > 0
@@ -72,12 +72,12 @@ Rectangle {
            : "Wallet closed")
 
     readonly property bool writeBusy: pendingWrite.length > 0
-    readonly property int demoConfirmMs: 2000
+    readonly property int mockConfirmMs: 2000
     readonly property int localnetBlockTimeMs: 15000
     readonly property int confirmBlockTimeSeconds: Math.max(1, Math.round(chainBlockTimeMs / 1000))
     readonly property int confirmWaitSeconds: Math.max(1, Math.round(liveConfirmTimeoutMs / 1000))
-    readonly property string confirmingLabel: demoMode
-        ? ("Confirming… ~" + Math.round(demoConfirmMs / 1000) + "s")
+    readonly property string confirmingLabel: mockMode
+        ? ("Confirming… ~" + Math.round(mockConfirmMs / 1000) + "s")
         : ("Confirming… up to " + confirmWaitSeconds + "s (block ~" + confirmBlockTimeSeconds + "s)")
     property string pendingNextStage: ""
     readonly property string ownerError: accountIdError(ownerField.value, true)
@@ -123,7 +123,7 @@ Rectangle {
         var t = trimmed(providerField.value)
         return accountIdError(t, true).length === 0 && !accountsEqual(ownerField.value, t)
     }
-    readonly property bool liveWritesOk: demoMode || (sessionReady && !writesReadOnly)
+    readonly property bool liveWritesOk: mockMode || (sessionReady && !writesReadOnly)
     readonly property bool canInitialize: stage === "needVault" && !writeBusy && liveWritesOk
         && ownerError.length === 0 && vaultIdError.length === 0
     readonly property bool canDeposit: vaultExists && !writeBusy && liveWritesOk
@@ -151,7 +151,7 @@ Rectangle {
         return ""
     }
     readonly property string depositBalanceWarning: {
-        if (demoMode || !vaultExists || amountError.length > 0 || ownerError.length > 0)
+        if (mockMode || !vaultExists || amountError.length > 0 || ownerError.length > 0)
             return ""
         var depAmt = Number(trimmed(depositAmountField.value))
         var bal = ownerNativeBalanceLo()
@@ -364,7 +364,7 @@ Rectangle {
 
     function refreshSessionWalletSummary() {
         sessionVaultToken = "Native"
-        if (demoMode) {
+        if (mockMode) {
             sessionOwnerBalance = "—"
             return
         }
@@ -870,16 +870,16 @@ Rectangle {
         }
     }
 
-    function demoHoldingText(base) {
+    function mockHoldingText(base) {
         var n = Number(String(base).replace(/\s/g, ""))
         if (!isFinite(n))
             return String(base)
-        return String(Math.max(0, n + demoExtraHolding - demoWithdrawn))
+        return String(Math.max(0, n + mockExtraHolding - mockWithdrawn))
     }
 
-    function applyDemoPrevious() {
+    function applyMockPrevious() {
         var rows = []
-        for (var i = 0; i < demoStreamId; ++i) {
+        for (var i = 0; i < mockStreamId; ++i) {
             rows.push({
                           "streamId": String(i),
                           "claimed": true
@@ -887,19 +887,19 @@ Rectangle {
         }
         if (stage === "needClaim") {
             rows.push({
-                          "streamId": String(demoStreamId),
+                          "streamId": String(mockStreamId),
                           "claimed": false
                       })
         }
         previousStreams = rows
     }
 
-    function applyDemoSnapshot() {
+    function applyMockSnapshot() {
         if (stage === "needVault") {
             clearSnapshot()
             return
         }
-        applyDemoPrevious()
+        applyMockPrevious()
         snapshotWalletBalance = "2 000"
         snapshotAccrualStarted = "—"
         snapshotChainTime = "—"
@@ -916,7 +916,7 @@ Rectangle {
         }
         if (stage === "needStream") {
             snapshotWalletBalance = "1 500"
-            snapshotVaultHolding = demoHoldingText(demoStreamId === 0 ? "500" : "488")
+            snapshotVaultHolding = mockHoldingText(mockStreamId === 0 ? "500" : "488")
             snapshotTotalAllocated = "0"
             snapshotRate = "—"
             snapshotAllocation = "—"
@@ -931,7 +931,7 @@ Rectangle {
         snapshotAccrualStarted = "2026-08-17 07:12:04 UTC"
         snapshotChainTime = "2026-08-17 07:32:44 UTC"
         if (stage === "needClose") {
-            snapshotVaultHolding = demoHoldingText("420")
+            snapshotVaultHolding = mockHoldingText("420")
             snapshotTotalAllocated = "80"
             snapshotAccrued = "12"
             snapshotUnaccrued = "68"
@@ -942,13 +942,13 @@ Rectangle {
         snapshotUnaccrued = "0"
         snapshotDepletedAt = "—"
         if (stage === "needClaim") {
-            snapshotVaultHolding = demoHoldingText("488")
+            snapshotVaultHolding = mockHoldingText("488")
             snapshotTotalAllocated = "12"
             snapshotAccrued = "12"
             setUnallocatedFromDec(decimalNorm(snapshotVaultHolding), "12", false)
             return
         }
-        snapshotVaultHolding = demoHoldingText("488")
+        snapshotVaultHolding = mockHoldingText("488")
         snapshotTotalAllocated = "0"
         snapshotAccrued = "0"
         setUnallocatedFromDec(decimalNorm(snapshotVaultHolding), "0", false)
@@ -1027,8 +1027,8 @@ Rectangle {
         pendingTxHash = ""
         pendingHoldingHex = ""
         pendingStartedMs = Date.now()
-        if (demoMode) {
-            demoConfirmTimer.restart()
+        if (mockMode) {
+            mockConfirmTimer.restart()
             return
         }
         Qt.callLater(function () {
@@ -1095,7 +1095,7 @@ Rectangle {
         pendingAllocatedLo = ""
         pendingAllocatedHi = ""
         pendingStartedMs = 0
-        demoConfirmTimer.stop()
+        mockConfirmTimer.stop()
         liveConfirmTimer.stop()
     }
 
@@ -1223,62 +1223,62 @@ Rectangle {
         refreshChainState()
     }
 
-    function finishDemoAction() {
+    function finishMockAction() {
         var next = pendingNextStage
         var wasClaim = (pendingWrite === "claim")
         var wasInit = (pendingWrite === "initializeVault")
         var wasExtraDeposit = (pendingWrite === "deposit" && stage !== "needDeposit")
         var wasWithdraw = (pendingWrite === "withdraw")
         if (wasInit) {
-            demoExtraHolding = 0
-            demoWithdrawn = 0
+            mockExtraHolding = 0
+            mockWithdrawn = 0
         }
         if (wasExtraDeposit) {
             var add = Number(trimmed(depositAmountField.value))
             if (isFinite(add) && add > 0)
-                demoExtraHolding += add
+                mockExtraHolding += add
         }
         if (wasWithdraw) {
             var take = Number(trimmed(withdrawAmountField.value))
             if (isFinite(take) && take > 0)
-                demoWithdrawn += take
+                mockWithdrawn += take
         }
         pendingWrite = ""
         pendingNextStage = ""
         if (next.length === 0)
             return
         if (wasClaim) {
-            demoStreamId += 1
-            streamIdField.value = String(demoStreamId)
+            mockStreamId += 1
+            streamIdField.value = String(mockStreamId)
         }
         setStage(next)
-        applyDemoSnapshot()
+        applyMockSnapshot()
     }
 
-    function setDemoMode(on) {
-        demoMode = on
+    function setMockMode(on) {
+        mockMode = on
         lastError = "—"
         clearPendingWrite()
-        demoStreamId = 0
-        demoExtraHolding = 0
-        demoWithdrawn = 0
+        mockStreamId = 0
+        mockExtraHolding = 0
+        mockWithdrawn = 0
         lastWithdrawDefault = "0"
         sessionReady = true
         writesReadOnly = false
         sessionBanner = ""
         if (on) {
-            fillDemoAccounts()
+            fillMockAccounts()
             streamIdField.value = "0"
             setStage("needVault")
-            applyDemoSnapshot()
+            applyMockSnapshot()
             snapshotSequencer = "—"
             snapshotBlockHeight = "—"
             recentTxs = []
             return
         }
-        if (accountsEqual(ownerField.value, demoOwnerId))
+        if (accountsEqual(ownerField.value, mockOwnerId))
             ownerField.value = ""
-        if (accountsEqual(providerField.value, demoProviderId))
+        if (accountsEqual(providerField.value, mockProviderId))
             providerField.value = ""
         clearSnapshot()
         setStage("needVault")
@@ -1365,16 +1365,16 @@ Rectangle {
         loadPreviousStreams(owner, found.vault_id, nextStream)
     }
 
-    function fillDemoAccounts() {
+    function fillMockAccounts() {
         var accounts = publicAccountIds()
         if (accounts.length > 0)
             ownerField.value = accounts[0]
         else
-            ownerField.value = demoOwnerId
+            ownerField.value = mockOwnerId
         if (accounts.length > 1)
             providerField.value = accounts[1]
         else
-            providerField.value = demoProviderId
+            providerField.value = mockProviderId
     }
 
     function uniqueProbeIds(first) {
@@ -1446,15 +1446,15 @@ Rectangle {
     function loadSessionDefaults(opts) {
         opts = opts || {}
         var preserve = opts.preserveSession === true
-        if (demoMode) {
+        if (mockMode) {
             sessionReady = true
             writesReadOnly = false
             sessionBanner = ""
             snapshotSequencer = "—"
             snapshotBlockHeight = "—"
             if (!preserve)
-                fillDemoAccounts()
-            applyDemoSnapshot()
+                fillMockAccounts()
+            applyMockSnapshot()
             return
         }
 
@@ -1515,10 +1515,10 @@ Rectangle {
     }
 
     Timer {
-        id: demoConfirmTimer
-        interval: ui.demoConfirmMs
+        id: mockConfirmTimer
+        interval: ui.mockConfirmMs
         repeat: false
-        onTriggered: ui.finishDemoAction()
+        onTriggered: ui.finishMockAction()
     }
 
     Timer {
@@ -1555,7 +1555,7 @@ Rectangle {
 
                 LogosBadge {
                     text: ui.networkBadgeText
-                    color: ui.demoMode ? Theme.palette.textSecondary : Theme.palette.success
+                    color: ui.mockMode ? Theme.palette.textSecondary : Theme.palette.success
                 }
 
                 Item {
@@ -1563,14 +1563,14 @@ Rectangle {
                 }
 
                 LogosText {
-                    text: "Demo mode"
+                    text: "Mock mode"
                     color: Theme.palette.textSecondary
                     font.pixelSize: Theme.typography.secondaryText
                 }
 
                 LogosSwitch {
-                    checked: ui.demoMode
-                    onToggled: ui.setDemoMode(checked)
+                    checked: ui.mockMode
+                    onToggled: ui.setMockMode(checked)
                 }
             }
 
@@ -1582,8 +1582,8 @@ Rectangle {
 
                 LogosText {
                     Layout.fillWidth: true
-                    text: ui.demoMode
-                          ? "Demo mode walks these actions on this screen."
+                    text: ui.mockMode
+                          ? "Mock mode walks these actions on this screen."
                           : "These are the wallet defaults. Continue with them, or paste other account ids from the LEZ wallet UI. Refresh keeps the ids in these fields and re-reads this vault."
                     color: Theme.palette.textSecondary
                     font.pixelSize: Theme.typography.secondaryText
@@ -1607,21 +1607,21 @@ Rectangle {
 
                 SnapshotValue {
                     Layout.fillWidth: true
-                    visible: !ui.demoMode
+                    visible: !ui.mockMode
                     label: "Block time (observed)"
                     value: ui.confirmBlockTimeSeconds + " s"
                 }
 
                 SnapshotValue {
                     Layout.fillWidth: true
-                    visible: !ui.demoMode
+                    visible: !ui.mockMode
                     label: "Vault token (demo)"
                     value: ui.sessionVaultToken
                 }
 
                 SnapshotValue {
                     Layout.fillWidth: true
-                    visible: !ui.demoMode
+                    visible: !ui.mockMode
                     label: "Owner native balance"
                     value: ui.sessionOwnerBalance
                 }
@@ -1688,8 +1688,8 @@ Rectangle {
 
                     LogosText {
                         Layout.fillWidth: true
-                        text: ui.demoMode
-                              ? "Demo snapshot of vault holding, stream fold, and owner wallet balance."
+                        text: ui.mockMode
+                              ? "Mock snapshot of vault holding, stream fold, and owner wallet balance."
                               : "Read-only snapshot of vault holding, stream fold, and owner wallet balance. Refresh re-reads those from chain."
                         color: Theme.palette.textSecondary
                         font.pixelSize: Theme.typography.secondaryText
@@ -1702,8 +1702,8 @@ Rectangle {
                         Layout.alignment: Qt.AlignTop
                         onClicked: {
                             ui.refreshChainHeight()
-                            if (ui.demoMode)
-                                ui.applyDemoSnapshot()
+                            if (ui.mockMode)
+                                ui.applyMockSnapshot()
                             else {
                                 ui.refreshChainState()
                                 ui.refreshSessionWalletSummary()
@@ -1815,7 +1815,7 @@ Rectangle {
 
                         LogosText {
                             Layout.fillWidth: true
-                            visible: !ui.demoMode && ui.stage === "needClose"
+                            visible: !ui.mockMode && ui.stage === "needClose"
                                      && ui.streamStateCode === 0
                             text: "Refresh until Accrued is greater than 0, then close."
                             color: Theme.palette.textSecondary
@@ -1924,7 +1924,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.leftMargin: Theme.spacing.medium
                 Layout.rightMargin: Theme.spacing.medium
-                visible: !ui.demoMode
+                visible: !ui.mockMode
                 title: "Recent transactions"
 
                 LogosText {

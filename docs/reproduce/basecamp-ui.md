@@ -105,7 +105,7 @@ Install the three `.lgx` files from the [Build packages](#build-packages) table,
 wallet then `payment_streams_module` then `payment_streams_ui`.
 Open `payment_streams_ui` from the sidebar.
 Basecamp loads the two core modules from the UI package dependencies.
-Turn Demo mode off.
+Turn Mock mode off.
 
 Defaults match [module.md](module.md): deposit 500, allocation 80, rate 1,
 `vault_id` 0, `stream_id` 0.

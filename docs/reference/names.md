@@ -44,6 +44,7 @@ alias it to local `OWNER` at the state-file boundary.
 | --- | --- |
 | Module verification | Single-host `payment_streams_module` happy path (`MODE=module`). |
 | Store integration | Dual-host Store demo with eligibility (`MODE=store`, default). |
+| Mock mode | `payment_streams_ui` switch (default on). Buttons stay on this screen; they do not submit to localnet or testnet. |
 
 ## Verification flows (`MODE`)
 
