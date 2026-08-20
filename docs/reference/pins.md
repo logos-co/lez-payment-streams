@@ -24,13 +24,15 @@ Pins SSOT for the freeze packet:
 ## LIP-155 spec (Step 49 pin)
 
 Single citation pin for living docs and implementation comments.
-`logos-lips` `master` at a tip that contains Step 40 (`435a6f18`,
-[logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)) and Step 41
-(`f09f9e9e`, [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)).
+`logos-lips` branch `docs/payment-streams-dual-close` at a tip that contains
+Step 40 (`435a6f18`,
+[logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)), Step 41
+(`f09f9e9e`, [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)),
+Step 44 close split (`32d7da4e`), and Step 54 withdraw split (`92685c78`).
 
 | Artifact | Ref | Locked rev |
 | --- | --- | --- |
-| `logos-lips` / `rfc-index` `docs/anoncomms/raw/payment-streams.md` | `master` | `32d7da4e` |
+| `logos-lips` / `rfc-index` `docs/anoncomms/raw/payment-streams.md` | `docs/payment-streams-dual-close` | `92685c78` |
 
 Local clone: `lez-related/rfc-index`.
 Historical Step 19 work used `feat/payment-streams-onchain-part` at `345c8eef`.

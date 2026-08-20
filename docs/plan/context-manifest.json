@@ -77,10 +77,10 @@
   },
   "lip155_spec": {
     "repo": "logos-co/logos-lips",
-    "branch": "master",
-    "rev": "32d7da4e2cd28e1b0c7e69e46505e883b224442c",
+    "branch": "docs/payment-streams-dual-close",
+    "rev": "92685c78b66892d1589cdfb4bb9bd82a7f309790",
     "path": "docs/anoncomms/raw/payment-streams.md",
-    "contains": ["435a6f18", "f09f9e9e"]
+    "contains": ["435a6f18", "f09f9e9e", "32d7da4e", "92685c78"]
   },
   "reference": "docs/reference/decisions.md",
   "plan_layout": "docs/plan/README.md",
