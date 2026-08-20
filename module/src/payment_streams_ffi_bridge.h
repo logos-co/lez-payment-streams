@@ -118,6 +118,19 @@ uint32_t ps_ffi_plan_withdraw(const uint8_t program_id_bytes[32],
                               size_t accounts_hex_out_cap,
                               size_t* accounts_hex_out_len);
 
+uint32_t ps_ffi_serialize_withdraw_to_owner(uint64_t vault_id,
+                                            uint64_t amount_lo,
+                                            uint64_t amount_hi,
+                                            uint8_t* out_ptr,
+                                            size_t out_cap,
+                                            size_t* out_len);
+uint32_t ps_ffi_plan_withdraw_to_owner(const uint8_t program_id_bytes[32],
+                                       const uint8_t owner_account_id_bytes[32],
+                                       uint64_t vault_id,
+                                       uint8_t* accounts_hex_out,
+                                       size_t accounts_hex_out_cap,
+                                       size_t* accounts_hex_out_len);
+
 uint32_t ps_ffi_serialize_create_stream(uint64_t vault_id,
                                         uint64_t stream_id,
                                         const uint8_t provider_account_id_bytes[32],

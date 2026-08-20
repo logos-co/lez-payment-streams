@@ -518,6 +518,34 @@ PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_withdraw_instr
                                                                                                 uintptr_t *accounts_hex_out_len);
 
 /**
+ * Serializes a `withdraw_to_owner` instruction (`amount_lo` / `amount_hi` → `Balance`).
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_serialize_withdraw_to_owner_instruction(uint64_t vault_id,
+                                                                                                     uint64_t amount_lo,
+                                                                                                     uint64_t amount_hi,
+                                                                                                     uint8_t *out_ptr,
+                                                                                                     uintptr_t out_cap,
+                                                                                                     uintptr_t *out_len);
+
+/**
+ * Plans ordered account ids for `withdraw_to_owner` (config, holding, owner).
+ *
+ * # Safety
+ *
+ * See module-level FFI contracts.
+ */
+PaymentStreamsFfiPaymentStreamsFfiStatus payment_streams_ffi_plan_withdraw_to_owner_instruction_accounts(const uint8_t *program_id_bytes,
+                                                                                                         const uint8_t *owner_account_id_bytes,
+                                                                                                         uint64_t vault_id,
+                                                                                                         uint8_t *accounts_hex_out,
+                                                                                                         uintptr_t accounts_hex_out_cap,
+                                                                                                         uintptr_t *accounts_hex_out_len);
+
+/**
  * Serializes `create_stream` (`allocation_lo` / `allocation_hi` → `Balance`).
  *
  * # Safety

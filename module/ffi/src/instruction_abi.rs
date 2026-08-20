@@ -66,7 +66,8 @@ use lez_payment_streams_core::{
     deposit_instruction_accounts, initialize_vault_instruction_accounts,
     instruction_bytes_for_public_transaction, pause_stream_instruction_accounts,
     resume_stream_instruction_accounts, top_up_stream_instruction_accounts,
-    withdraw_instruction_accounts, Instruction, VaultPrivacyTier,
+    withdraw_instruction_accounts, withdraw_to_owner_instruction_accounts, Instruction,
+    VaultPrivacyTier,
 };
 use programs::authenticated_transfer;
 
@@ -462,6 +463,57 @@ pub unsafe extern "C" fn payment_streams_ffi_plan_withdraw_instruction_accounts(
     )
 }
 
+/// Serializes a `withdraw_to_owner` instruction (`amount_lo` / `amount_hi` → `Balance`).
+///
+/// # Safety
+///
+/// See module-level FFI contracts.
+#[no_mangle]
+pub unsafe extern "C" fn payment_streams_ffi_serialize_withdraw_to_owner_instruction(
+    vault_id: u64,
+    amount_lo: u64,
+    amount_hi: u64,
+    out_ptr: *mut u8,
+    out_cap: usize,
+    out_len: *mut usize,
+) -> PaymentStreamsFfiStatus {
+    let amount: Balance = balance_from_lo_hi(amount_lo, amount_hi);
+    let instruction = Instruction::WithdrawToOwner { vault_id, amount };
+    serialize_instruction_bytes(&instruction, out_ptr, out_cap, out_len)
+}
+
+/// Plans ordered account ids for `withdraw_to_owner` (config, holding, owner).
+///
+/// # Safety
+///
+/// See module-level FFI contracts.
+#[no_mangle]
+pub unsafe extern "C" fn payment_streams_ffi_plan_withdraw_to_owner_instruction_accounts(
+    program_id_bytes: *const u8,
+    owner_account_id_bytes: *const u8,
+    vault_id: u64,
+    accounts_hex_out: *mut u8,
+    accounts_hex_out_cap: usize,
+    accounts_hex_out_len: *mut usize,
+) -> PaymentStreamsFfiStatus {
+    let program_id = match read_program_id(program_id_bytes) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let owner = match read_account_id(owner_account_id_bytes) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let accounts = withdraw_to_owner_instruction_accounts(&program_id, owner, vault_id);
+    write_instruction_accounts_hex(
+        &accounts,
+        accounts_hex_out,
+        accounts_hex_out_cap,
+        accounts_hex_out_len,
+    )
+}
+
 /// Serializes `create_stream` (`allocation_lo` / `allocation_hi` → `Balance`).
 ///
 /// # Safety
@@ -848,8 +900,10 @@ pub unsafe extern "C" fn payment_streams_ffi_plan_claim_instruction_accounts(
 mod tests {
     use lee_core::account::AccountId;
     use lez_payment_streams_core::{
-        initialize_vault_instruction_accounts, instruction_try_from_instruction_words,
-        instruction_words_from_bytes_le, Instruction, VaultPrivacyTier,
+        deposit_instruction_accounts, initialize_vault_instruction_accounts,
+        instruction_try_from_instruction_words, instruction_words_from_bytes_le,
+        withdraw_instruction_accounts, withdraw_to_owner_instruction_accounts, Instruction,
+        VaultPrivacyTier,
     };
     use programs::authenticated_transfer;
 
@@ -1102,5 +1156,182 @@ mod tests {
                 authenticated_transfer_program_id: transfer_pid,
             }
         );
+    }
+
+    fn ffi_program_id_bytes() -> ([u8; 32], lee_core::program::ProgramId) {
+        let program_words = [0x01020304_u32, 0, 0, 0, 0, 0, 0, 0];
+        let mut program_bytes = [0_u8; 32];
+        for (idx, word) in program_words.iter().enumerate() {
+            program_bytes[idx * 4..idx * 4 + 4].copy_from_slice(&word.to_le_bytes());
+        }
+        let program_id = crate::program_id_from_le_bytes(&program_bytes).expect("program id");
+        (program_bytes, program_id)
+    }
+
+    #[test]
+    fn withdraw_serialize_leading_discriminant_is_two() {
+        let mut out_len = 0_usize;
+        let status = unsafe {
+            super::payment_streams_ffi_serialize_withdraw_instruction(
+                2,
+                99,
+                0,
+                std::ptr::null_mut(),
+                0,
+                &mut out_len,
+            )
+        };
+        assert_eq!(status, super::PaymentStreamsFfiStatus::Success);
+        let mut buf = vec![0_u8; out_len];
+        let status = unsafe {
+            super::payment_streams_ffi_serialize_withdraw_instruction(
+                2,
+                99,
+                0,
+                buf.as_mut_ptr(),
+                buf.len(),
+                &mut out_len,
+            )
+        };
+        assert_eq!(status, super::PaymentStreamsFfiStatus::Success);
+        let words = instruction_words_from_bytes_le(&buf).expect("words");
+        assert_eq!(words[0], 2);
+        let decoded = instruction_try_from_instruction_words(&words).expect("decode");
+        assert_eq!(
+            decoded,
+            Instruction::Withdraw {
+                vault_id: 2,
+                amount: 99,
+            }
+        );
+    }
+
+    #[test]
+    fn withdraw_to_owner_serialize_leading_discriminant_is_ten() {
+        let mut out_len = 0_usize;
+        let status = unsafe {
+            super::payment_streams_ffi_serialize_withdraw_to_owner_instruction(
+                2,
+                99,
+                0,
+                std::ptr::null_mut(),
+                0,
+                &mut out_len,
+            )
+        };
+        assert_eq!(status, super::PaymentStreamsFfiStatus::Success);
+        let mut buf = vec![0_u8; out_len];
+        let status = unsafe {
+            super::payment_streams_ffi_serialize_withdraw_to_owner_instruction(
+                2,
+                99,
+                0,
+                buf.as_mut_ptr(),
+                buf.len(),
+                &mut out_len,
+            )
+        };
+        assert_eq!(status, super::PaymentStreamsFfiStatus::Success);
+        let words = instruction_words_from_bytes_le(&buf).expect("words");
+        assert_eq!(words[0], 10);
+        let decoded = instruction_try_from_instruction_words(&words).expect("decode");
+        assert_eq!(
+            decoded,
+            Instruction::WithdrawToOwner {
+                vault_id: 2,
+                amount: 99,
+            }
+        );
+    }
+
+    #[test]
+    fn plan_withdraw_hex_is_four_slots_config_holding_owner_withdraw_to() {
+        let (program_bytes, program_id) = ffi_program_id_bytes();
+        let owner = AccountId::new([9_u8; 32]);
+        let withdraw_to = AccountId::new([7_u8; 32]);
+        let vault_id = 42_u64;
+        let expected = withdraw_instruction_accounts(&program_id, owner, vault_id, withdraw_to);
+        let mut required = 0_usize;
+        let status = unsafe {
+            super::payment_streams_ffi_plan_withdraw_instruction_accounts(
+                program_bytes.as_ptr(),
+                owner.value().as_ptr(),
+                vault_id,
+                withdraw_to.value().as_ptr(),
+                std::ptr::null_mut(),
+                0,
+                &mut required,
+            )
+        };
+        assert_eq!(status, super::PaymentStreamsFfiStatus::Success);
+        assert_eq!(required, 4 * super::PAYMENT_STREAMS_FFI_ACCOUNT_ID_HEX_LEN);
+
+        let mut hex_buf = vec![0_u8; required];
+        let mut written = 0_usize;
+        let status = unsafe {
+            super::payment_streams_ffi_plan_withdraw_instruction_accounts(
+                program_bytes.as_ptr(),
+                owner.value().as_ptr(),
+                vault_id,
+                withdraw_to.value().as_ptr(),
+                hex_buf.as_mut_ptr(),
+                hex_buf.len(),
+                &mut written,
+            )
+        };
+        assert_eq!(status, super::PaymentStreamsFfiStatus::Success);
+        assert_eq!(written, required);
+        for (idx, account) in expected.iter().enumerate() {
+            let chunk = &hex_buf[idx * super::PAYMENT_STREAMS_FFI_ACCOUNT_ID_HEX_LEN
+                ..(idx + 1) * super::PAYMENT_STREAMS_FFI_ACCOUNT_ID_HEX_LEN];
+            let decoded = hex::decode(chunk).expect("hex decode");
+            assert_eq!(decoded.as_slice(), account.value().as_slice());
+        }
+    }
+
+    #[test]
+    fn plan_withdraw_to_owner_hex_matches_deposit_three_slots() {
+        let (program_bytes, program_id) = ffi_program_id_bytes();
+        let owner = AccountId::new([9_u8; 32]);
+        let vault_id = 42_u64;
+        let expected = withdraw_to_owner_instruction_accounts(&program_id, owner, vault_id);
+        assert_eq!(
+            expected,
+            deposit_instruction_accounts(&program_id, owner, vault_id)
+        );
+        let mut required = 0_usize;
+        let status = unsafe {
+            super::payment_streams_ffi_plan_withdraw_to_owner_instruction_accounts(
+                program_bytes.as_ptr(),
+                owner.value().as_ptr(),
+                vault_id,
+                std::ptr::null_mut(),
+                0,
+                &mut required,
+            )
+        };
+        assert_eq!(status, super::PaymentStreamsFfiStatus::Success);
+        assert_eq!(required, 3 * super::PAYMENT_STREAMS_FFI_ACCOUNT_ID_HEX_LEN);
+
+        let mut hex_buf = vec![0_u8; required];
+        let mut written = 0_usize;
+        let status = unsafe {
+            super::payment_streams_ffi_plan_withdraw_to_owner_instruction_accounts(
+                program_bytes.as_ptr(),
+                owner.value().as_ptr(),
+                vault_id,
+                hex_buf.as_mut_ptr(),
+                hex_buf.len(),
+                &mut written,
+            )
+        };
+        assert_eq!(status, super::PaymentStreamsFfiStatus::Success);
+        assert_eq!(written, required);
+        for (idx, account) in expected.iter().enumerate() {
+            let chunk = &hex_buf[idx * super::PAYMENT_STREAMS_FFI_ACCOUNT_ID_HEX_LEN
+                ..(idx + 1) * super::PAYMENT_STREAMS_FFI_ACCOUNT_ID_HEX_LEN];
+            let decoded = hex::decode(chunk).expect("hex decode");
+            assert_eq!(decoded.as_slice(), account.value().as_slice());
+        }
     }
 }
