@@ -3,8 +3,7 @@
 Complete (2026-08-20).
 Index: [index.md](../index.md).
 Walkthrough: [docs/reproduce/basecamp-ui.md](../../reproduce/basecamp-ui.md)
-(init → deposit → create → close → claim).
-Withdraw UI is [Step 54](../upcoming/step-54-withdraw-owner-and-recipient.md).
+(init → deposit → create → close → claim → withdraw leftover to owner).
 Protocol UI track:
 [N18](../../reference/decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 Terminology: [names.md](../../reference/names.md).
@@ -482,7 +481,6 @@ Before the first public UI write:
 After v1, the UI can expand to:
 
 - pause, resume, and top-up actions;
-- withdraw to owner ([Step 54](../upcoming/step-54-withdraw-owner-and-recipient.md));
 - multi-vault and multi-stream tables;
 - interactive account switching;
 - Store query and eligibility integration;

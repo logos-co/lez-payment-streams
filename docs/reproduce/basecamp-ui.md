@@ -2,7 +2,8 @@
 
 Same LIP-155 lifecycle as [module.md](module.md), on one host, through
 `payment_streams_ui`.
-Initialize vault, deposit, create stream, wait for accrual, close, claim.
+Initialize vault, deposit, create stream, wait for accrual, close, claim,
+withdraw leftover unallocated to the owner (omit `withdraw_to`).
 
 Commands are from the repository root.
 Plan: [step-21-basecamp-ui.md](../plan/completed/step-21-basecamp-ui.md).
@@ -116,6 +117,13 @@ Defaults match [module.md](module.md): deposit 500, allocation 80, rate 1,
    close stays enabled at zero accrued).
 5. Owner close (or provider close).
 6. Claim.
+7. Withdraw leftover unallocated (amount defaults to Unallocated,
+   destination is the owner). Omit `withdraw_to`.
+
+Withdraw is available whenever Unallocated is a positive value that fits
+in `u64` (`amount_hi` 0), including before create or while a stream is
+Active or Paused.
+Allocated tokens stay locked while a stream is Active or Paused.
 
 Each write shows Confirming until `sync_to_block` plus status agree,
 or 120 seconds elapse.

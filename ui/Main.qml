@@ -15,6 +15,13 @@ Rectangle {
     property bool demoMode: true
     property int demoStreamId: 0
     property int demoExtraHolding: 0
+    property int demoWithdrawn: 0
+    property string lastWithdrawDefault: "0"
+    property string unallocatedDec: "0"
+    property bool unallocatedFitsU64: false
+    property string pendingWithdrawAmount: ""
+    property string pendingAllocatedLo: ""
+    property string pendingAllocatedHi: ""
     readonly property string demoOwnerId: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
     readonly property string demoProviderId: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM"
     property string stage: "needVault"
@@ -41,6 +48,7 @@ Rectangle {
     property string snapshotWalletBalance: "—"
     property string snapshotVaultHolding: "—"
     property string snapshotTotalAllocated: "—"
+    property string snapshotUnallocated: "—"
     property string snapshotRate: "—"
     property string snapshotAllocation: "—"
     property string snapshotAccrued: "—"
@@ -89,6 +97,20 @@ Rectangle {
                                               depositAmountField.value,
                                               "Enter an amount greater than 0",
                                               "Amount must be greater than 0")
+    readonly property string withdrawAmountError: {
+        if (!unallocatedFitsU64 && trimmed(withdrawAmountField.value) === "0")
+            return ""
+        if (decimalCmp(unallocatedDec, "0") <= 0 && trimmed(withdrawAmountField.value) === "0")
+            return ""
+        var e = positiveU64Error(withdrawAmountField.value,
+                                 "Enter an amount greater than 0",
+                                 "Amount must be greater than 0")
+        if (e.length > 0)
+            return e
+        if (decimalCmp(trimmed(withdrawAmountField.value), unallocatedDec) > 0)
+            return "Amount exceeds unallocated " + unallocatedDec
+        return ""
+    }
     readonly property string rateError: positiveU64Error(
                                             rateField.value,
                                             "Enter a rate greater than 0",
@@ -106,6 +128,28 @@ Rectangle {
         && ownerError.length === 0 && vaultIdError.length === 0
     readonly property bool canDeposit: vaultExists && !writeBusy && liveWritesOk
         && ownerError.length === 0 && vaultIdError.length === 0 && amountError.length === 0
+    readonly property bool canWithdraw: vaultExists && !writeBusy && liveWritesOk
+        && ownerError.length === 0 && vaultIdError.length === 0
+        && withdrawAmountError.length === 0 && unallocatedFitsU64
+        && decimalCmp(unallocatedDec, "0") > 0
+    readonly property string withdrawAmountWarning: {
+        if (!vaultExists || withdrawAmountError.length > 0 || ownerError.length > 0)
+            return ""
+        if (!unallocatedFitsU64)
+            return "Unallocated does not fit in a u64 amount (amount_hi would be nonzero)."
+        if (decimalCmp(unallocatedDec, "0") <= 0)
+            return "Unallocated vault balance is 0."
+        return ""
+    }
+    readonly property string withdrawStreamNote: {
+        if (!vaultExists)
+            return ""
+        if (streamStateCode === 0)
+            return "A stream is Active. Allocated tokens stay locked; only unallocated can leave the vault."
+        if (streamStateCode === 1)
+            return "A stream is Paused. Allocated tokens stay locked; only unallocated can leave the vault."
+        return ""
+    }
     readonly property string depositBalanceWarning: {
         if (demoMode || !vaultExists || amountError.length > 0 || ownerError.length > 0)
             return ""
@@ -285,6 +329,8 @@ Rectangle {
         pushKey("vault_id")
         if (name === "deposit") {
             parts.push("amount: " + formatLoHi(p.amount_lo, p.amount_hi))
+        } else if (name === "withdraw") {
+            parts.push("amount: " + formatLoHi(p.amount_lo, p.amount_hi))
         } else if (name === "createStream") {
             pushKey("stream_id")
             pushKey("provider")
@@ -459,6 +505,112 @@ Rectangle {
         return out
     }
 
+    function decimalNorm(s) {
+        var t = trimmed(s)
+        if (t.length === 0)
+            return "0"
+        t = t.replace(/^0+/, "")
+        return t.length === 0 ? "0" : t
+    }
+
+    function decimalCmp(a, b) {
+        var x = decimalNorm(a)
+        var y = decimalNorm(b)
+        if (x.length !== y.length)
+            return x.length < y.length ? -1 : 1
+        if (x === y)
+            return 0
+        return x < y ? -1 : 1
+    }
+
+    function decimalFitsU64(s) {
+        var t = decimalNorm(s)
+        if (t.length > 20)
+            return false
+        if (t.length === 20 && t > "18446744073709551615")
+            return false
+        return true
+    }
+
+    function decimalSub(a, b) {
+        var x = decimalNorm(a)
+        var y = decimalNorm(b)
+        if (decimalCmp(x, y) < 0)
+            return ""
+        var xi = x.split("").reverse()
+        var yi = y.split("").reverse()
+        var out = []
+        var borrow = 0
+        for (var i = 0; i < xi.length; ++i) {
+            var d = Number(xi[i]) - borrow - (i < yi.length ? Number(yi[i]) : 0)
+            if (d < 0) {
+                d += 10
+                borrow = 1
+            } else {
+                borrow = 0
+            }
+            out.push(String(d))
+        }
+        return decimalNorm(out.reverse().join(""))
+    }
+
+    function decimalAdd(a, b) {
+        var x = decimalNorm(a).split("").reverse()
+        var y = decimalNorm(b).split("").reverse()
+        var n = Math.max(x.length, y.length)
+        var out = []
+        var carry = 0
+        for (var i = 0; i < n; ++i) {
+            var s = carry + (i < x.length ? Number(x[i]) : 0) + (i < y.length ? Number(y[i]) : 0)
+            out.push(String(s % 10))
+            carry = Math.floor(s / 10)
+        }
+        if (carry > 0)
+            out.push(String(carry))
+        return decimalNorm(out.reverse().join(""))
+    }
+
+    function jsonU64Dec(v) {
+        if (v === undefined || v === null)
+            return "0"
+        return decimalNorm(String(v))
+    }
+
+    function jsonLimbNonzero(v) {
+        return decimalCmp(jsonU64Dec(v), "0") > 0
+    }
+
+    function syncWithdrawAmountDefault() {
+        var def = (unallocatedFitsU64 && decimalCmp(unallocatedDec, "0") > 0)
+                ? unallocatedDec : "0"
+        var cur = trimmed(withdrawAmountField.value)
+        if (cur.length === 0 || cur === lastWithdrawDefault)
+            withdrawAmountField.value = def
+        lastWithdrawDefault = def
+    }
+
+    function setUnallocatedFromDec(holdDec, allocDec, allocHiNonzero) {
+        if (allocHiNonzero || holdDec.length === 0 || decimalCmp(holdDec, allocDec) < 0) {
+            unallocatedDec = "0"
+            unallocatedFitsU64 = false
+            snapshotUnallocated = "—"
+            syncWithdrawAmountDefault()
+            return
+        }
+        var u = decimalSub(holdDec, allocDec)
+        unallocatedDec = u
+        unallocatedFitsU64 = decimalFitsU64(u)
+        snapshotUnallocated = unallocatedFitsU64 ? u : (u + " (exceeds u64)")
+        syncWithdrawAmountDefault()
+    }
+
+    function setUnallocatedFromVault(vault) {
+        var holdDec = hexToDecimalLE(vault.vault_holding_balance_hex || "")
+        var cfg = vault.vault_config || {}
+        setUnallocatedFromDec(holdDec, jsonU64Dec(cfg.total_allocated_lo),
+                              jsonLimbNonzero(cfg.total_allocated_hi))
+    }
+
     function formatHexBalance(hex) {
         var d = hexToDecimalLE(hex)
         return d.length > 0 ? d : "—"
@@ -628,6 +780,7 @@ Rectangle {
         snapshotVaultHolding = formatHexBalance(vault.vault_holding_balance_hex)
         var cfg = vault.vault_config || {}
         snapshotTotalAllocated = formatLoHi(cfg.total_allocated_lo, cfg.total_allocated_hi)
+        setUnallocatedFromVault(vault)
         if (!stream) {
             snapshotRate = "—"
             snapshotAllocation = "—"
@@ -659,7 +812,20 @@ Rectangle {
         snapshotWalletBalance = "—"
         snapshotVaultHolding = "—"
         snapshotTotalAllocated = "—"
+        snapshotUnallocated = "—"
         snapshotRate = "—"
+        snapshotAllocation = "—"
+        snapshotAccrued = "—"
+        snapshotUnaccrued = "—"
+        snapshotAccrualStarted = "—"
+        snapshotChainTime = "—"
+        snapshotDepletedAt = "—"
+        previousStreams = []
+        unallocatedDec = "0"
+        unallocatedFitsU64 = false
+        lastWithdrawDefault = "0"
+        if (typeof withdrawAmountField !== "undefined")
+            withdrawAmountField.value = "0"
         snapshotAllocation = "—"
         snapshotAccrued = "—"
         snapshotUnaccrued = "—"
@@ -708,7 +874,7 @@ Rectangle {
         var n = Number(String(base).replace(/\s/g, ""))
         if (!isFinite(n))
             return String(base)
-        return String(n + demoExtraHolding)
+        return String(Math.max(0, n + demoExtraHolding - demoWithdrawn))
     }
 
     function applyDemoPrevious() {
@@ -745,6 +911,7 @@ Rectangle {
             snapshotAllocation = "—"
             snapshotAccrued = "—"
             snapshotUnaccrued = "—"
+            setUnallocatedFromDec("0", "0", false)
             return
         }
         if (stage === "needStream") {
@@ -755,6 +922,7 @@ Rectangle {
             snapshotAllocation = "—"
             snapshotAccrued = "—"
             snapshotUnaccrued = "—"
+            setUnallocatedFromDec(decimalNorm(snapshotVaultHolding), "0", false)
             return
         }
         snapshotWalletBalance = "1 500"
@@ -768,6 +936,7 @@ Rectangle {
             snapshotAccrued = "12"
             snapshotUnaccrued = "68"
             snapshotDepletedAt = "2026-08-17 08:40:44 UTC"
+            setUnallocatedFromDec(decimalNorm(snapshotVaultHolding), "80", false)
             return
         }
         snapshotUnaccrued = "0"
@@ -776,17 +945,19 @@ Rectangle {
             snapshotVaultHolding = demoHoldingText("488")
             snapshotTotalAllocated = "12"
             snapshotAccrued = "12"
+            setUnallocatedFromDec(decimalNorm(snapshotVaultHolding), "12", false)
             return
         }
         snapshotVaultHolding = demoHoldingText("488")
         snapshotTotalAllocated = "0"
         snapshotAccrued = "0"
+        setUnallocatedFromDec(decimalNorm(snapshotVaultHolding), "0", false)
     }
 
     function actionOpen(stageName, action) {
         if (!liveWritesOk)
             return false
-        if (action === "deposit") {
+        if (action === "deposit" || action === "withdraw") {
             if (!vaultExists)
                 return false
             return pendingWrite.length === 0 || pendingWrite === action
@@ -801,6 +972,8 @@ Rectangle {
             return "needDeposit"
         if (name === "deposit")
             return (stage === "needDeposit") ? "needStream" : stage
+        if (name === "withdraw")
+            return stage
         if (name === "createStream")
             return "needClose"
         if (name === "ownerClose" || name === "providerClose")
@@ -815,6 +988,8 @@ Rectangle {
             return canInitialize
         if (name === "deposit")
             return canDeposit
+        if (name === "withdraw")
+            return canWithdraw
         if (name === "createStream")
             return canCreateStream
         if (name === "ownerClose")
@@ -832,6 +1007,13 @@ Rectangle {
         if (name === "deposit") {
             if (depositBalanceWarning.length > 0) {
                 lastError = depositBalanceWarning
+                return
+            }
+            if (!actionAllowed(name))
+                return
+        } else if (name === "withdraw") {
+            if (withdrawAmountWarning.length > 0) {
+                lastError = withdrawAmountWarning
                 return
             }
             if (!actionAllowed(name))
@@ -872,6 +1054,11 @@ Rectangle {
             p.amount_hi = 0
             return p
         }
+        if (name === "withdraw") {
+            p.amount_lo = u64Json(withdrawAmountField.value)
+            p.amount_hi = 0
+            return p
+        }
         if (name === "createStream") {
             p.stream_id = u64Json(streamIdField.value)
             p.provider = normalizeAccount(providerField.value)
@@ -904,6 +1091,9 @@ Rectangle {
         pendingHoldingHex = ""
         pendingOwnerBalanceHex = ""
         pendingOwnerBalanceLo = -1
+        pendingWithdrawAmount = ""
+        pendingAllocatedLo = ""
+        pendingAllocatedHi = ""
         pendingStartedMs = 0
         demoConfirmTimer.stop()
         liveConfirmTimer.stop()
@@ -939,6 +1129,13 @@ Rectangle {
             }
         }
         pendingHoldingHex = vault ? String(vault.vault_holding_balance_hex || "") : ""
+        pendingOwnerBalanceHex = ownerWalletBalanceHex(owner, undefined)
+        if (name === "withdraw" && vault) {
+            var cfg = vault.vault_config || {}
+            pendingWithdrawAmount = decimalNorm(withdrawAmountField.value)
+            pendingAllocatedLo = jsonU64Dec(cfg.total_allocated_lo)
+            pendingAllocatedHi = jsonU64Dec(cfg.total_allocated_hi)
+        }
         var result = callJson("payment_streams_module", "chainAction",
                               [writeOperation(name), JSON.stringify(writePayload(name))])
         if (!result || result.status !== "ok") {
@@ -969,6 +1166,24 @@ Rectangle {
             if (!v)
                 return false
             return String(v.vault_holding_balance_hex || "") !== pendingHoldingHex
+        }
+        if (name === "withdraw") {
+            var wv = vaultStatus(owner, vid)
+            if (!wv)
+                return false
+            var holdNow = hexToDecimalLE(wv.vault_holding_balance_hex || "")
+            var holdWas = hexToDecimalLE(pendingHoldingHex)
+            var expectedHold = decimalSub(holdWas, pendingWithdrawAmount)
+            if (expectedHold.length === 0 || holdNow !== expectedHold)
+                return false
+            var wcfg = wv.vault_config || {}
+            if (jsonU64Dec(wcfg.total_allocated_lo) !== pendingAllocatedLo)
+                return false
+            if (jsonU64Dec(wcfg.total_allocated_hi) !== pendingAllocatedHi)
+                return false
+            var ownerNow = hexToDecimalLE(ownerWalletBalanceHex(owner, undefined))
+            var ownerWas = hexToDecimalLE(pendingOwnerBalanceHex)
+            return ownerNow === decimalAdd(ownerWas, pendingWithdrawAmount)
         }
         var st = streamStatus(owner, vid, sid)
         if (!st)
@@ -1013,12 +1228,20 @@ Rectangle {
         var wasClaim = (pendingWrite === "claim")
         var wasInit = (pendingWrite === "initializeVault")
         var wasExtraDeposit = (pendingWrite === "deposit" && stage !== "needDeposit")
-        if (wasInit)
+        var wasWithdraw = (pendingWrite === "withdraw")
+        if (wasInit) {
             demoExtraHolding = 0
+            demoWithdrawn = 0
+        }
         if (wasExtraDeposit) {
             var add = Number(trimmed(depositAmountField.value))
             if (isFinite(add) && add > 0)
                 demoExtraHolding += add
+        }
+        if (wasWithdraw) {
+            var take = Number(trimmed(withdrawAmountField.value))
+            if (isFinite(take) && take > 0)
+                demoWithdrawn += take
         }
         pendingWrite = ""
         pendingNextStage = ""
@@ -1038,6 +1261,8 @@ Rectangle {
         clearPendingWrite()
         demoStreamId = 0
         demoExtraHolding = 0
+        demoWithdrawn = 0
+        lastWithdrawDefault = "0"
         sessionReady = true
         writesReadOnly = false
         sessionBanner = ""
@@ -1547,6 +1772,11 @@ Rectangle {
                             }
                             SnapshotValue {
                                 Layout.fillWidth: true
+                                label: "Unallocated"
+                                value: ui.snapshotUnallocated
+                            }
+                            SnapshotValue {
+                                Layout.fillWidth: true
                                 label: "Rate (tokens / s)"
                                 value: ui.snapshotRate
                             }
@@ -1868,6 +2098,54 @@ Rectangle {
                             visible: ui.depositBalanceWarning.length > 0
                             text: ui.depositBalanceWarning
                             color: Theme.palette.error
+                            font.pixelSize: Theme.typography.secondaryText
+                            wrapMode: Text.Wrap
+                        }
+                    }
+
+                    OperationBlock {
+                        Layout.fillWidth: true
+                        available: ui.actionOpen("needDeposit", "withdraw")
+                        title: "Withdraw"
+                        summary: "Credits leftover unallocated tokens to the vault owner. Omits withdraw_to. Amount defaults to Unallocated."
+
+                        ParamField {
+                            id: withdrawAmountField
+                            placeholderText: "amount"
+                            value: "0"
+                            enabled: ui.vaultExists && !ui.writeBusy && ui.unallocatedFitsU64
+                                     && ui.decimalCmp(ui.unallocatedDec, "0") > 0
+                            errorText: ui.vaultExists ? ui.withdrawAmountError : ""
+                        }
+
+                        ActionButton {
+                            idleText: "Withdraw"
+                            confirming: ui.pendingWrite === "withdraw"
+                            actionEnabled: (ui.canWithdraw || ui.withdrawAmountWarning.length > 0) || confirming
+                            onClicked: {
+                                if (ui.withdrawAmountWarning.length > 0) {
+                                    ui.lastError = ui.withdrawAmountWarning
+                                    return
+                                }
+                                if (ui.canWithdraw)
+                                    ui.runAction("withdraw")
+                            }
+                        }
+
+                        LogosText {
+                            Layout.fillWidth: true
+                            visible: ui.withdrawAmountWarning.length > 0
+                            text: ui.withdrawAmountWarning
+                            color: Theme.palette.error
+                            font.pixelSize: Theme.typography.secondaryText
+                            wrapMode: Text.Wrap
+                        }
+
+                        LogosText {
+                            Layout.fillWidth: true
+                            visible: ui.withdrawStreamNote.length > 0
+                            text: ui.withdrawStreamNote
+                            color: Theme.palette.textSecondary
                             font.pixelSize: Theme.typography.secondaryText
                             wrapMode: Text.Wrap
                         }
