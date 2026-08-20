@@ -15,9 +15,10 @@ use crate::{
     test_helpers::{
         assert_vault_state_unchanged_with_recipient, build_signed_public_tx, create_keypair,
         create_state_with_guest_program, derive_stream_pda, derive_vault_pdas,
-        harness_clock_provider, patch_vault_config, state_with_initialized_vault_with_recipient,
+        harness_clock_provider, patch_vault_config, state_with_initialized_vault,
+        state_with_initialized_vault_with_recipient,
     },
-    TokensPerSecond, VaultConfig, VaultId,
+    withdraw_to_owner_instruction_accounts, TokensPerSecond, VaultConfig, VaultId,
 };
 
 use super::common::{
@@ -761,6 +762,100 @@ fn test_withdraw_four_slot_same_id_never_includes() {
 }
 
 #[test]
+fn test_withdraw_to_owner_succeeds() {
+    let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
+    let deposit_amount = 400 as Balance;
+    let withdraw_amount = 100 as Balance;
+
+    let mut fx = state_with_initialized_vault(owner_balance_start);
+
+    let account_ids_deposit = [
+        fx.vault_config_account_id,
+        fx.vault_holding_account_id,
+        fx.owner_account_id,
+    ];
+    let tx_deposit = build_signed_public_tx(
+        fx.program_id,
+        Instruction::Deposit {
+            vault_id: fx.vault_id,
+            amount: deposit_amount,
+            authenticated_transfer_program_id: authenticated_transfer().id(),
+        },
+        &account_ids_deposit,
+        &[Nonce(1)],
+        &[&fx.owner_private_key],
+    );
+    assert!(
+        fx.state
+            .transition_from_public_transaction(
+                &tx_deposit,
+                2 as BlockId,
+                crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP
+            )
+            .is_ok(),
+        "deposit failed"
+    );
+
+    let vault_config_before = borsh::from_slice::<VaultConfig>(
+        &fx.state.get_account_by_id(fx.vault_config_account_id).data,
+    )
+    .expect("valid vault config bytes");
+    let owner_after_deposit = fx.state.get_account_by_id(fx.owner_account_id);
+    let owner_balance_after_deposit = owner_after_deposit.balance;
+    let mut expected_nonce = owner_after_deposit.nonce;
+    expected_nonce.public_account_nonce_increment();
+    let vault_holding_before = fx
+        .state
+        .get_account_by_id(fx.vault_holding_account_id)
+        .balance;
+
+    let account_ids_withdraw = withdraw_to_owner_instruction_accounts(
+        &fx.program_id,
+        fx.owner_account_id,
+        fx.vault_id,
+    );
+    let tx_withdraw = build_signed_public_tx(
+        fx.program_id,
+        Instruction::WithdrawToOwner {
+            vault_id: fx.vault_id,
+            amount: withdraw_amount,
+        },
+        &account_ids_withdraw,
+        &[Nonce(2)],
+        &[&fx.owner_private_key],
+    );
+    let result_withdraw = fx.state.transition_from_public_transaction(
+        &tx_withdraw,
+        3 as BlockId,
+        crate::program_tests::common::TEST_PUBLIC_TX_TIMESTAMP,
+    );
+    assert!(
+        result_withdraw.is_ok(),
+        "withdraw_to_owner tx failed: {result_withdraw:?}"
+    );
+
+    let vault_config_after = borsh::from_slice::<VaultConfig>(
+        &fx.state.get_account_by_id(fx.vault_config_account_id).data,
+    )
+    .expect("valid vault config bytes");
+    let owner_after = fx.state.get_account_by_id(fx.owner_account_id);
+    assert_eq!(
+        owner_after.balance,
+        owner_balance_after_deposit + withdraw_amount
+    );
+    assert_eq!(owner_after.nonce, expected_nonce);
+    assert_eq!(
+        fx.state.get_account_by_id(fx.vault_holding_account_id).balance,
+        vault_holding_before - withdraw_amount
+    );
+    assert_eq!(
+        vault_config_after.total_allocated,
+        vault_config_before.total_allocated
+    );
+    assert_eq!(owner_balance_after_deposit, owner_balance_start - deposit_amount);
+}
+
+#[test]
 fn test_withdraw_recipient_balance_overflow_fails() {
     let owner_balance_start = DEFAULT_OWNER_GENESIS_BALANCE;
     let deposit_amount = 100 as Balance;
@@ -892,7 +987,7 @@ mod pp_program_tests {
     use crate::program_tests::pp_common::{
         account_meta, decrypt_account, encapsulate, identity_authorized_update, identity_public,
         identity_unauthorized, owner_vpk, pp3_recipient_npk, pp3_recipient_vpk, pp_owner_setup,
-        private_account_id, run_pp_withdraw_to_private_recipient,
+        private_account_id, run_pp_withdraw_to_owner, run_pp_withdraw_to_private_recipient,
         vault_fixture_pseudonymous_funding_funded_via_native_transfer,
         vault_fixture_public_tier_funded_via_deposit, OWNER_NSK, PP3_OWNER_FUND_AMOUNT,
         PP3_RECIPIENT_EPK_SCALAR, PP3_SIGNER_EPK_SCALAR, PP3_WITHDRAW_AMOUNT,
@@ -1112,5 +1207,59 @@ mod pp_program_tests {
             1,
         );
         assert_eq!(recipient_decrypted.balance, PP3_WITHDRAW_AMOUNT);
+    }
+
+    #[test]
+    fn test_pp_withdraw_to_owner_succeeds() {
+        crate::program_tests::pp_common::guard_pp_tests_run_in_risc0_dev_mode_only();
+
+        let mut setup = pp_owner_setup();
+        let holding_before = setup
+            .fx
+            .state
+            .get_account_by_id(setup.vault_holding_b_id)
+            .balance;
+        let allocated_before = borsh::from_slice::<VaultConfig>(
+            &setup
+                .fx
+                .state
+                .get_account_by_id(setup.vault_config_b_id)
+                .data,
+        )
+        .expect("vault")
+        .total_allocated;
+        let receipt = run_pp_withdraw_to_owner(&mut setup, PP3_WITHDRAW_AMOUNT, 5 as BlockId);
+
+        assert_eq!(
+            setup
+                .fx
+                .state
+                .get_account_by_id(setup.vault_holding_b_id)
+                .balance,
+            holding_before - PP3_WITHDRAW_AMOUNT
+        );
+        let allocated_after = borsh::from_slice::<VaultConfig>(
+            &setup
+                .fx
+                .state
+                .get_account_by_id(setup.vault_config_b_id)
+                .data,
+        )
+        .expect("vault")
+        .total_allocated;
+        assert_eq!(allocated_after, allocated_before);
+
+        assert_eq!(receipt.tx.message().new_commitments.len(), 1);
+        assert_eq!(receipt.tx.message().encrypted_private_post_states.len(), 1);
+        let owner_decrypted = decrypt_account(
+            &receipt.tx.message().encrypted_private_post_states[0].ciphertext,
+            &receipt.shared_secret,
+            &receipt.tx.message().new_commitments[0],
+            0,
+        );
+        assert_eq!(
+            owner_decrypted.balance,
+            PP3_OWNER_FUND_AMOUNT + PP3_WITHDRAW_AMOUNT
+        );
     }
 }

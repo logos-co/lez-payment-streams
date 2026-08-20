@@ -137,6 +137,11 @@ fn withdraw_instruction_data(vault_id: u64, amount: Balance) -> InstructionData 
         .expect("withdraw instruction serializes")
 }
 
+fn withdraw_to_owner_instruction_data(vault_id: u64, amount: Balance) -> InstructionData {
+    Program::serialize_instruction(Instruction::WithdrawToOwner { vault_id, amount })
+        .expect("withdraw_to_owner instruction serializes")
+}
+
 pub(crate) fn account_meta(
     state: &V03State,
     id: AccountId,
@@ -482,6 +487,77 @@ pub(crate) fn pp_owner_setup() -> PpOwnerSetup {
         vault_holding_b_id,
         owner_committed_account,
         owner_npk,
+    }
+}
+
+/// Three-slot PP `WithdrawToOwner` against vault B of [`pp_owner_setup`].
+/// Claim fixtures keep using the four-slot `withdraw_to` helpers above.
+pub(crate) fn run_pp_withdraw_to_owner(
+    setup: &mut PpOwnerSetup,
+    withdraw_amount: Balance,
+    block: BlockId,
+) -> PpWithdrawReceipt {
+    guard_pp_tests_run_in_risc0_dev_mode_only();
+
+    let guest_program = load_guest_program();
+    assert_eq!(guest_program.id(), setup.fx.program_id);
+
+    let owner_id = private_account_id(&setup.owner_npk);
+    let owner_commitment_obj = Commitment::new(&owner_id, &setup.owner_committed_account);
+    let membership_proof = setup
+        .fx
+        .state
+        .get_proof_for_commitment(&owner_commitment_obj)
+        .expect("owner commitment in state after PP fund");
+
+    let (owner_shared_secret, owner_epk) = encapsulate(&owner_vpk(), &PP3_SIGNER_EPK_SCALAR, 0);
+
+    let pre_states = vec![
+        account_meta(&setup.fx.state, setup.vault_config_b_id, false),
+        account_meta(&setup.fx.state, setup.vault_holding_b_id, false),
+        AccountWithMetadata {
+            account: setup.owner_committed_account.clone(),
+            is_authorized: true,
+            account_id: owner_id,
+        },
+    ];
+
+    let (output, proof) = execute_and_prove(
+        pre_states,
+        withdraw_to_owner_instruction_data(setup.vault_b_id, withdraw_amount),
+        vec![
+            identity_public(),
+            identity_public(),
+            identity_authorized_update(
+                OWNER_NSK,
+                &owner_vpk(),
+                owner_shared_secret.clone(),
+                owner_epk,
+                membership_proof,
+            ),
+        ],
+        &ProgramWithDependencies::from(guest_program),
+    )
+    .expect("execute_and_prove: PP withdraw_to_owner");
+
+    let message = Message::try_from_circuit_output(
+        vec![setup.vault_config_b_id, setup.vault_holding_b_id],
+        vec![],
+        output,
+    )
+    .expect("try_from_circuit_output: PP withdraw_to_owner");
+
+    let witness_set = WitnessSet::for_message(&message, proof, &[]);
+    let tx = PrivacyPreservingTransaction::new(message, witness_set);
+    setup
+        .fx
+        .state
+        .transition_from_privacy_preserving_transaction(&tx, block, TEST_PUBLIC_TX_TIMESTAMP)
+        .expect("transition: PP withdraw_to_owner");
+
+    PpWithdrawReceipt {
+        tx,
+        shared_secret: owner_shared_secret,
     }
 }
 
