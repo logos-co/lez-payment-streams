@@ -1,13 +1,14 @@
 # Step 21, payment streams Basecamp UI
 
-Upcoming.
+Complete (2026-08-20).
 Index: [index.md](../index.md).
+Walkthrough: [docs/reproduce/basecamp-ui.md](../../reproduce/basecamp-ui.md)
+(init → deposit → create → close → claim).
+Withdraw UI is [Step 54](../upcoming/step-54-withdraw-owner-and-recipient.md).
 Protocol UI track:
 [N18](../../reference/decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 Terminology: [names.md](../../reference/names.md).
 `chainAction` catalogue: [module/README.md](../../../module/README.md#chainaction-catalogue).
-Operator walkthrough and rebuild loop:
-[docs/reproduce/basecamp-ui.md](../../reproduce/basecamp-ui.md).
 
 ## Context
 
@@ -59,8 +60,8 @@ mock-state transitions (`demoMode`, default on),
 session probing, vault and stream scanning, and inclusion polling.
 `ui/metadata.json` declares the two core-module dependencies.
 
-The remaining work is live chain execution and the operator launch path
-(slices below).
+Live chain execution and the operator launch path shipped
+(`make basecamp-ui-build` / `prepare` / `run`, Demo off walkthrough).
 
 ## Architecture
 
@@ -481,6 +482,7 @@ Before the first public UI write:
 After v1, the UI can expand to:
 
 - pause, resume, and top-up actions;
+- withdraw to owner ([Step 54](../upcoming/step-54-withdraw-owner-and-recipient.md));
 - multi-vault and multi-stream tables;
 - interactive account switching;
 - Store query and eligibility integration;

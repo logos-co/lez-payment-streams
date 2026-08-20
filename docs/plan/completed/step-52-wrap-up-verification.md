@@ -8,7 +8,7 @@ and that briefly sat on Step 51 as D51.1.
 Prerequisite: [Step 50](step-50-consistency-and-clarity.md)
 (persist merge, `await_tx`, kit).
 [Step 51](../upcoming/step-51-forum-post.md) cites this gate log for wrap-up claims.
-Independent of [Step 21](../upcoming/step-21-basecamp-ui.md)
+Independent of [Step 21](step-21-basecamp-ui.md)
 (Basecamp UI is a separate track; this packet certifies the CLI / Store stack).
 
 ## Goal

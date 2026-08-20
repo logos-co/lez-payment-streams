@@ -3,7 +3,7 @@
 Index: [index.md](../index.md). Status: complete (2026-08-16).
 Gate log: [step-53-gate-log.md](step-53-gate-log.md).
 
-Independent of [Step 21](../upcoming/step-21-basecamp-ui.md) and
+Independent of [Step 21](step-21-basecamp-ui.md) and
 [Step 52](step-52-wrap-up-verification.md).
 Forum draft stays at `docs/external/forum-post.md` (Step 51).
 This step does not move, edit, or link it (D53.12 superseded).

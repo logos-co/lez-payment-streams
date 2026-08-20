@@ -23,7 +23,7 @@ Living docs: [docs/reproduce/](docs/reproduce/),
 Step 48 wontfix).
 Historical protocol CLI track is complete
 ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)).
-Protocol UI (Step 21) is upcoming. Public hosted Store (Step 23) is wontfix.
+Protocol UI (Step 21) is complete. Public hosted Store (Step 23) is wontfix.
 
 Program index: [docs/plan/index.md](docs/plan/index.md).
 Terminology: [docs/reference/names.md](docs/reference/names.md).
@@ -59,8 +59,7 @@ Historical protocol CLI (complete):
 [Step 22](docs/plan/completed/step-22-ui-journey.md);
 [Step 34](docs/plan/completed/step-34-user-journey-manual-walkthrough.md);
 [Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
-Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
-[Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post),
+Upcoming: [Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post),
 [Step 54](docs/plan/upcoming/step-54-withdraw-owner-and-recipient.md)
 (withdraw to owner and withdraw).
 Step 52 is complete
@@ -75,7 +74,8 @@ multi-token types),
 [Step 50](docs/plan/completed/step-50-consistency-and-clarity.md) (consistency and
 clarity),
 [Step 52](docs/plan/completed/step-52-wrap-up-verification.md) (wrap-up verification),
-[Step 53](docs/plan/completed/step-53-repository-structure.md) (repository structure).
+[Step 53](docs/plan/completed/step-53-repository-structure.md) (repository structure),
+[Step 21](docs/plan/completed/step-21-basecamp-ui.md) (Basecamp UI).
 Wontfix: [Step 20](docs/plan/wontfix/step-20-developer-journey.md) (formal logos-docs integrator publish),
 [Step 23](docs/plan/wontfix/step-23-public-store-provider.md) (public Store provider),
 [Step 25](docs/plan/wontfix/step-25-demo-coordination-module.md) (demo coordinator),

@@ -12,8 +12,8 @@ Decisions: [integration-decisions.md](../reference/decisions.md).
 | Path | Contents |
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
-| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44–47, 49–50, 52–53) |
-| [upcoming/](upcoming/) | Steps 21, 51, 54 |
+| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 21–22, 24, 26-41, 44–47, 49–50, 52–53) |
+| [upcoming/](upcoming/) | Steps 51, 54 |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43, 48 |
 | [reference/wire.md](../reference/wire.md) | Cross-step APIs |
 | [reference/decisions.md](../reference/decisions.md) | D1-D6, N1-N18 |
@@ -26,7 +26,7 @@ Documentation tracks ([N18](../reference/decisions.md#n18-integration-demo-vs-pa
 | Store eligibility | Formal logos-docs publish wontfix; living docs | [store-eligibility.md](../reproduce/store.md), [eligibility.md](../integrate.md); Step 20 ([logos-docs#369](https://github.com/logos-co/logos-docs/issues/369)); Step 46 |
 | Eligibility integration guide (Step 35) | Complete (substance in integrate doc) | [eligibility.md](../integrate.md); Step 35 |
 | Protocol-only CLI | Complete as historical track; living path | [payment-streams.md](../reproduce/module.md); [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370); Steps 22, 28, 34; Step 46 |
-| Protocol UI (Basecamp) | Upcoming | Step 21 |
+| Protocol UI (Basecamp) | Complete | Step 21; [basecamp-ui.md](../reproduce/basecamp-ui.md) |
 | Docs unify | Complete | Step 46 |
 | Forum post | Upcoming | Step 51; draft [forum-post.md](../external/forum-post.md) |
 | Wrap-up verification | Complete | Step 52 |
@@ -37,7 +37,8 @@ Documentation tracks ([N18](../reference/decisions.md#n18-integration-demo-vs-pa
 Engineering: Steps 26–33 complete; Steps 36–41 complete
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
-Steps 21, 51, 54 upcoming (Basecamp UI; forum post; withdraw split).
+Steps 51, 54 upcoming (forum post; withdraw split).
+Step 21 complete (Basecamp UI).
 Step 52 complete (wrap-up verification).
 Step 48 wontfix (program-graph LEZ unify / AT config drop).
 Step 46 complete (living docs IA). Step 49 complete (ImageID cut).
@@ -77,7 +78,7 @@ paid Store mode on the provider.
 | Developer Journey: protocol-agnostic eligibility guide | 35 (complete) |
 | User Journey: CLI doc packet ([logos-docs#370](https://github.com/logos-co/logos-docs/issues/370)) | 22 (complete) |
 | User Journey: testnet manual walkthrough | 34 (complete) |
-| Protocol UI: Basecamp plugin (vaults and streams) | 21 (upcoming) |
+| Protocol UI: Basecamp plugin (vaults and streams) | 21 (complete) |
 | Public hosted Store provider | 23 (wontfix) |
 | LEZ in-process harness (`program_tests`, rc5 `lee`) | 24 + 24b (complete) |
 | Deterministic demo lifecycle | 24c (complete) |
@@ -155,6 +156,7 @@ Dual-host demo coordination stays in host scripts
 | 50 | Consistency and clarity polish | [step-50-consistency-and-clarity.md](completed/step-50-consistency-and-clarity.md) |
 | 52 | Wrap-up verification | [step-52-wrap-up-verification.md](completed/step-52-wrap-up-verification.md) |
 | 53 | Repository structure | [step-53-repository-structure.md](completed/step-53-repository-structure.md) |
+| 21 | Protocol UI: Basecamp plugin | [step-21-basecamp-ui.md](completed/step-21-basecamp-ui.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
 [step-33-testnet-gate-log.md](completed/step-33-testnet-gate-log.md) (Step 33),
@@ -172,7 +174,6 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 
 | Step | Focus | Status |
 | --- | --- | --- |
-| 21 | Protocol UI: Basecamp plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
 | 51 | Forum post | Upcoming — [step-51-forum-post.md](upcoming/step-51-forum-post.md) |
 | 54 | Withdraw to owner and withdraw | Upcoming — [step-54-withdraw-owner-and-recipient.md](upcoming/step-54-withdraw-owner-and-recipient.md) |
 
@@ -226,7 +227,7 @@ when creating the branch. Both delivery repos must use the same string.
 | `logos-delivery` / `liblogosdelivery` | Store protocol + eligibility hooks (14-15) |
 | `logos-delivery-module` | `delivery_module` + routing (16) |
 | `verify/e2e.sh`, `verify/store/run_e2e.py` | Store integration: dual-host orchestration (Step 17; in-repo SSOT) |
-| `payment_streams_ui` (upcoming) | Protocol UI: Basecamp over `payment_streams_module` only (Step 21). Vaults and streams as a payment mechanism; no Store. |
+| `payment_streams_ui` | Protocol UI: Basecamp over `payment_streams_module` only (Step 21). Vaults and streams as a payment mechanism; no Store. |
 | `lgs` / `logoscore` / `lgpm` / `lm` | Localnet, host, install, introspection |
 
 Detail: [`logos-architecture-overview.md`](../archive/reference/logos-architecture-overview.md).

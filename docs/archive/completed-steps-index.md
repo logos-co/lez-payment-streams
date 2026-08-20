@@ -29,7 +29,7 @@ Product gates: [verification-matrix.md](../reference/verification-matrix.md).
 | 18 | Public sequencer E2E | Complete -- [step-18-public-testnet-demo.md](../plan/completed/step-18-public-testnet-demo.md), [steps/public-sequencer-store-runbook.md](steps/public-sequencer-store-runbook.md) |
 | 19 | LIP-155 on-chain spec | Complete -- [step-19](../plan/completed/step-19-lip155-onchain-spec.md) |
 | 20 | Developer Journey formal publish | Wontfix -- [step-20-developer-journey.md](../plan/wontfix/step-20-developer-journey.md); [logos-docs#369](https://github.com/logos-co/logos-docs/issues/369); high-level in Step 46 |
-| 21 | User Journey: Basecamp UI plugin | Upcoming -- [step-21-basecamp-ui.md](../plan/upcoming/step-21-basecamp-ui.md) |
+| 21 | User Journey: Basecamp UI plugin | Complete -- [step-21-basecamp-ui.md](../plan/completed/step-21-basecamp-ui.md) |
 | 22 | User Journey: doc packet (CLI-based) | Complete -- [step-22-ui-journey.md](../plan/completed/step-22-ui-journey.md); [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370) |
 | 23 | Public Store provider | Wontfix -- [step-23-public-store-provider.md](../plan/wontfix/step-23-public-store-provider.md) |
 | 24 | LEZ `lee` harness @ 510 | Complete -- [step-24](../plan/completed/step-24-lee-harness-upgrade.md) |

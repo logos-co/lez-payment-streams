@@ -5,7 +5,7 @@ Same LIP-155 lifecycle as [module.md](module.md), on one host, through
 Initialize vault, deposit, create stream, wait for accrual, close, claim.
 
 Commands are from the repository root.
-Plan: [step-21-basecamp-ui.md](../plan/upcoming/step-21-basecamp-ui.md).
+Plan: [step-21-basecamp-ui.md](../plan/completed/step-21-basecamp-ui.md).
 `chainAction` catalogue: [module README](../../module/README.md#chainaction-catalogue).
 
 ## Background

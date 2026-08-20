@@ -452,7 +452,7 @@ Pre-applied (uncommitted; slice 7/11 are flips, not first registration):
 | `docs/reference/wire.md` (dispatch block) | Slice 5, after module dispatch exists |
 | `docs/reference/names.md` (destination-split terms) | Slice 7 |
 | `docs/reproduce/basecamp-ui.md` (deposit AT / in-guest credit) | Slice 7 or 8 |
-| [Step 21](step-21-basecamp-ui.md) later-work (withdraw dropped) | Slice 8 |
+| [Step 21](../completed/step-21-basecamp-ui.md) later-work (withdraw dropped) | Slice 8 |
 | `AGENTS.md`, `docs/plan/index.md`, `context-manifest.json` (Step 54 upcoming) | Slice 11 flips these to completed |
 
 ### 0. D54.5 seam probe
@@ -618,7 +618,7 @@ Files:
 
 - `ui/Main.qml`
 - `docs/reproduce/basecamp-ui.md`
-- [Step 21](step-21-basecamp-ui.md) (later-work already dropped withdraw)
+- [Step 21](../completed/step-21-basecamp-ui.md) (later-work already dropped withdraw)
 
 Amount-cap helper and its tests: slice 5 (`payment_streams_module_kit`).
 May reuse stash `wip: withdraw UI and uniqueness reject` after module
@@ -956,6 +956,6 @@ grep clean).
   (full-matrix pin; out of scope here)
 - [logos-lips#401](https://github.com/logos-co/logos-lips/pull/401)
   (`docs/payment-streams-dual-close`)
-- [step-21-basecamp-ui.md](step-21-basecamp-ui.md)
+- [step-21-basecamp-ui.md](../completed/step-21-basecamp-ui.md)
 - [step-47-unify-role-terminology.md](../completed/step-47-unify-role-terminology.md)
 - [module/README.md](../../../module/README.md)
