@@ -110,6 +110,10 @@ mod tests {
                 vault_id: 15,
                 stream_id: 16,
             },
+            Instruction::WithdrawToOwner {
+                vault_id: 17,
+                amount: 50,
+            },
         ];
 
         for instruction in samples {
@@ -130,6 +134,11 @@ mod tests {
 
     #[test]
     fn close_and_claim_wire_discriminants_are_stable() {
+        let withdraw = instruction_words_for_public_transaction(&Instruction::Withdraw {
+            vault_id: 1,
+            amount: 2,
+        })
+        .expect("serialize Withdraw");
         let close_owner = instruction_words_for_public_transaction(&Instruction::CloseStreamByOwner {
             vault_id: 1,
             stream_id: 2,
@@ -146,12 +155,23 @@ mod tests {
                 stream_id: 2,
             })
             .expect("serialize CloseStreamByProvider");
+        let withdraw_to_owner =
+            instruction_words_for_public_transaction(&Instruction::WithdrawToOwner {
+                vault_id: 1,
+                amount: 2,
+            })
+            .expect("serialize WithdrawToOwner");
 
+        assert_eq!(withdraw[0], 2, "Withdraw discriminant must stay at 2");
         assert_eq!(close_owner[0], 7, "CloseStreamByOwner discriminant must stay at 7");
         assert_eq!(claim[0], 8, "Claim discriminant must stay at 8");
         assert_eq!(
             close_provider[0], 9,
             "CloseStreamByProvider discriminant must stay at 9"
+        );
+        assert_eq!(
+            withdraw_to_owner[0], 10,
+            "WithdrawToOwner discriminant must stay at 10"
         );
     }
 }

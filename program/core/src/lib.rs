@@ -41,8 +41,10 @@ pub use instruction_accounts::{
     deposit_instruction_accounts, initialize_vault_instruction_accounts,
     pause_stream_instruction_accounts, resume_stream_instruction_accounts,
     top_up_stream_instruction_accounts, withdraw_instruction_accounts,
-    ClaimStreamInstructionAccounts, DepositInstructionAccounts, InitializeVaultInstructionAccounts,
+    withdraw_to_owner_instruction_accounts, ClaimStreamInstructionAccounts,
+    DepositInstructionAccounts, InitializeVaultInstructionAccounts,
     StreamOwnerInstructionAccounts, StreamProviderInstructionAccounts, WithdrawInstructionAccounts,
+    WithdrawToOwnerInstructionAccounts,
 };
 #[cfg(feature = "host")]
 pub use instruction_wire::{

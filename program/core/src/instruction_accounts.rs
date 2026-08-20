@@ -16,6 +16,9 @@ pub type InitializeVaultInstructionAccounts = [AccountId; 3];
 pub type DepositInstructionAccounts = [AccountId; 3];
 /// `withdraw`: vault config, vault holding, owner (signer), withdraw recipient.
 pub type WithdrawInstructionAccounts = [AccountId; 4];
+/// `withdraw_to_owner`: same three slots as [`DepositInstructionAccounts`]
+/// (config, holding, owner).
+pub type WithdrawToOwnerInstructionAccounts = DepositInstructionAccounts;
 /// Owner-authorized stream instructions share this five-account tail:
 /// vault config, vault holding, stream config PDA, owner (signer), system clock account.
 pub type StreamOwnerInstructionAccounts = [AccountId; 5];
@@ -64,6 +67,15 @@ pub fn withdraw_instruction_accounts(
         owner_id,
         withdraw_to_account_id,
     ]
+}
+
+#[must_use]
+pub fn withdraw_to_owner_instruction_accounts(
+    program_id: &ProgramId,
+    owner_account_id: AccountId,
+    vault_id: VaultId,
+) -> WithdrawToOwnerInstructionAccounts {
+    deposit_instruction_accounts(program_id, owner_account_id, vault_id)
 }
 
 #[must_use]
@@ -287,6 +299,42 @@ mod tests {
             ),
             expected
         );
+    }
+
+    #[test]
+    fn withdraw_to_owner_planner_ids_are_unique_and_four_slot_same_id_duplicates() {
+        let fixture = state_with_initialized_vault_with_recipient(DEFAULT_OWNER_GENESIS_BALANCE);
+        let three = withdraw_to_owner_instruction_accounts(
+            &fixture.vault.program_id,
+            fixture.vault.owner_account_id,
+            fixture.vault.vault_id,
+        );
+        let deposit = deposit_instruction_accounts(
+            &fixture.vault.program_id,
+            fixture.vault.owner_account_id,
+            fixture.vault.vault_id,
+        );
+        assert_eq!(three, deposit);
+        let [config, holding, owner] = three;
+        assert_eq!(config, fixture.vault.vault_config_account_id);
+        assert_eq!(holding, fixture.vault.vault_holding_account_id);
+        assert_eq!(owner, fixture.vault.owner_account_id);
+        assert_ne!(config, holding);
+        assert_ne!(config, owner);
+        assert_ne!(holding, owner);
+
+        let four_same = withdraw_instruction_accounts(
+            &fixture.vault.program_id,
+            fixture.vault.owner_account_id,
+            fixture.vault.vault_id,
+            fixture.vault.owner_account_id,
+        );
+        let [_, _, owner_slot, withdraw_to] = four_same;
+        assert_eq!(
+            owner_slot, withdraw_to,
+            "four-slot withdraw_to == owner duplicates"
+        );
+        assert_eq!(owner_slot, fixture.vault.owner_account_id);
     }
 
     #[test]

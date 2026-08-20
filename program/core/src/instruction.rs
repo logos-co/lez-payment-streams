@@ -57,6 +57,10 @@ pub enum Instruction {
         vault_id: VaultId,
         stream_id: StreamId,
     },
+    WithdrawToOwner {
+        vault_id: VaultId,
+        amount: Balance,
+    },
 }
 
 impl Instruction {
