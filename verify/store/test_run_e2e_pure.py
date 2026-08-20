@@ -78,7 +78,7 @@ def test_private_id_is_unusable() -> None:
     assert rle.private_id_is_unusable("DaV7bT45xxxx", [])
     assert rle.private_id_is_unusable("fresh", ["fresh"])
     assert not rle.private_id_is_unusable("fresh", ["other"])
-    pid = "c30781ea9d7cc7b3be36f459ce9094644b984224d3d3119a644bb1b21ba2982a"
+    pid = "9d88f2e7498ae25caa3a5d829a3d1ed39f08673ba90987333074b965a81b90f8"
     assert rle.testnet_write_manifest_program_id(pid, pid) == pid
     assert rle.testnet_write_manifest_program_id(pid.upper(), pid) == pid
     assert rle.testnet_write_manifest_program_id(pid, None) == pid
