@@ -25,10 +25,19 @@ Rectangle {
     property string pendingWrite: ""
     property string pendingTxHash: ""
     property string pendingHoldingHex: ""
+    property string pendingOwnerBalanceHex: ""
+    property int pendingOwnerBalanceLo: -1
     property var pendingStartedMs: 0
     readonly property int livePollMs: 2000
+    property int chainBlockTimeMs: localnetBlockTimeMs
+    property int lastBlockHeightSample: -1
+    property int lastBlockHeightSampleMs: 0
+    // D21.16: one give-up ceiling on localnet and testnet. Polls return as soon
+    // as inclusion is visible. Observed block time only labels the spinner.
     readonly property int liveConfirmTimeoutMs: 120000
     property string lastError: "—"
+    property string sessionVaultToken: "Native"
+    property string sessionOwnerBalance: "—"
     property string snapshotWalletBalance: "—"
     property string snapshotVaultHolding: "—"
     property string snapshotTotalAllocated: "—"
@@ -57,10 +66,11 @@ Rectangle {
     readonly property bool writeBusy: pendingWrite.length > 0
     readonly property int demoConfirmMs: 2000
     readonly property int localnetBlockTimeMs: 15000
-    readonly property int confirmEtaSeconds: demoMode
-        ? Math.round(demoConfirmMs / 1000)
-        : Math.round(localnetBlockTimeMs / 1000)
-    readonly property string confirmingLabel: "Confirming… ~" + confirmEtaSeconds + "s"
+    readonly property int confirmBlockTimeSeconds: Math.max(1, Math.round(chainBlockTimeMs / 1000))
+    readonly property int confirmWaitSeconds: Math.max(1, Math.round(liveConfirmTimeoutMs / 1000))
+    readonly property string confirmingLabel: demoMode
+        ? ("Confirming… ~" + Math.round(demoConfirmMs / 1000) + "s")
+        : ("Confirming… up to " + confirmWaitSeconds + "s (block ~" + confirmBlockTimeSeconds + "s)")
     property string pendingNextStage: ""
     readonly property string ownerError: accountIdError(ownerField.value, true)
     readonly property string vaultIdError: u64Error(vaultIdField.value, "Enter a vault id")
@@ -96,6 +106,21 @@ Rectangle {
         && ownerError.length === 0 && vaultIdError.length === 0
     readonly property bool canDeposit: vaultExists && !writeBusy && liveWritesOk
         && ownerError.length === 0 && vaultIdError.length === 0 && amountError.length === 0
+    readonly property string depositBalanceWarning: {
+        if (demoMode || !vaultExists || amountError.length > 0 || ownerError.length > 0)
+            return ""
+        var depAmt = Number(trimmed(depositAmountField.value))
+        var bal = ownerNativeBalanceLo()
+        if (!isFinite(depAmt) || depAmt <= 0)
+            return ""
+        if (bal < 0)
+            return "Could not read owner native balance."
+        if (bal === 0)
+            return "Owner native balance is 0. Top up the owner account in the terminal before depositing."
+        if (depAmt > bal)
+            return "Deposit amount " + depAmt + " exceeds owner balance " + bal + "."
+        return ""
+    }
     readonly property bool canCreateStream: stage === "needStream" && !writeBusy && liveWritesOk
         && ownerError.length === 0 && vaultIdError.length === 0
         && streamIdError.length === 0 && providerError.length === 0
@@ -201,36 +226,158 @@ Rectangle {
         return t.substring(0, 8) + "…" + t.substring(t.length - 4)
     }
 
-    function pushRecentTx(action, hash, status) {
+    function pushRecentTx(action, hash, status, detail) {
         var rows = recentTxs.slice()
         rows.unshift({
                          "at": new Date().toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC"),
                          "action": action,
+                         "detail": detail || action,
                          "hash": hash,
-                         "status": status
+                         "status": status,
+                         "error": ""
                      })
         if (rows.length > 12)
             rows = rows.slice(0, 12)
         recentTxs = rows
     }
 
-    function updateRecentTxStatus(hash, status) {
+    function updateRecentTxStatus(hash, status, detailError) {
         var t = trimmed(hash)
         if (t.length === 0)
             return
         var rows = recentTxs.slice()
         for (var i = 0; i < rows.length; ++i) {
             if (rows[i].hash === t) {
+                var errText = detailError !== undefined && detailError !== null
+                        ? String(detailError)
+                        : (rows[i].error || "")
                 rows[i] = {
                     "at": rows[i].at,
                     "action": rows[i].action,
+                    "detail": rows[i].detail || rows[i].action,
                     "hash": rows[i].hash,
-                    "status": status
+                    "status": status,
+                    "error": errText
                 }
                 recentTxs = rows
                 return
             }
         }
+    }
+
+    function formatArgPair(key, value) {
+        if (value === undefined || value === null)
+            return ""
+        if (key === "amount_hi" || key === "allocation_hi" || key === "increase_hi")
+            return ""
+        return key + ": " + String(value)
+    }
+
+    function actionDetailLabel(name) {
+        var p = writePayload(name)
+        var parts = []
+        function pushKey(k) {
+            var piece = formatArgPair(k, p[k])
+            if (piece.length > 0)
+                parts.push(piece)
+        }
+        pushKey("owner")
+        pushKey("vault_id")
+        if (name === "deposit") {
+            parts.push("amount: " + formatLoHi(p.amount_lo, p.amount_hi))
+        } else if (name === "createStream") {
+            pushKey("stream_id")
+            pushKey("provider")
+            pushKey("rate")
+            parts.push("allocation: " + formatLoHi(p.allocation_lo, p.allocation_hi))
+        } else if (name === "ownerClose" || name === "providerClose") {
+            pushKey("stream_id")
+            if (name === "providerClose")
+                pushKey("provider")
+        } else if (name === "claim") {
+            pushKey("stream_id")
+            pushKey("provider")
+        }
+        return name + "(" + parts.join(", ") + ")"
+    }
+
+    function sequencerTxDiagnostics(txHash) {
+        var params = JSON.stringify({
+                                        "tx_hash": txHash
+                                    })
+        var raw = callJson("payment_streams_module", "chainAction",
+                           ["querySequencerTransaction", params])
+        if (!raw || raw.status !== "ok")
+            return moduleMessage(raw, "Could not query sequencer for this transaction")
+        if (raw.rpc_error && String(raw.rpc_error).length > 0)
+            return String(raw.rpc_error)
+        if (raw.summary && String(raw.summary).length > 0)
+            return String(raw.summary)
+        return "Transaction was not included before the wait budget expired"
+    }
+
+    function refreshSessionWalletSummary() {
+        sessionVaultToken = "Native"
+        if (demoMode) {
+            sessionOwnerBalance = "—"
+            return
+        }
+        var owner = trimmed(ownerField.value)
+        if (owner.length === 0) {
+            sessionOwnerBalance = "—"
+            return
+        }
+        var hex = ownerWalletBalanceHex(owner, undefined)
+        sessionOwnerBalance = hex.length > 0 ? formatHexBalance(hex) : "—"
+    }
+
+    function ownerNativeBalanceLo() {
+        var owner = normalizeAccount(ownerField.value)
+        if (owner.length === 0)
+            return -1
+        var hex = ownerWalletBalanceHex(owner, undefined)
+        if (hex.length === 0)
+            return -1
+        var d = hexToDecimalLE(hex)
+        if (d.length === 0)
+            return 0
+        if (d.length > 16)
+            return -1
+        var n = Number(d)
+        return isFinite(n) ? n : -1
+    }
+
+    function sequencerTxIncluded(txHash) {
+        var h = trimmed(txHash)
+        if (h.length === 0)
+            return false
+        var raw = callJson("payment_streams_module", "chainAction",
+                           ["querySequencerTransaction", JSON.stringify({
+                                                                        "tx_hash": h
+                                                                    })])
+        return raw && raw.status === "ok" && raw.included === true
+    }
+
+    function normalizeOwnerBalanceHex(hex) {
+        var t = trimmed(hex).toLowerCase()
+        if (t.length === 0)
+            return "00000000000000000000000000000000"
+        return t
+    }
+
+    function noteBlockHeightSample(height) {
+        if (!isFinite(height) || height <= 0)
+            return
+        var h = Math.floor(height)
+        var now = Date.now()
+        if (lastBlockHeightSample > 0 && h > lastBlockHeightSample) {
+            var dt = now - lastBlockHeightSampleMs
+            var dh = h - lastBlockHeightSample
+            if (dh > 0 && dt > 500)
+                chainBlockTimeMs = Math.max(1000, Math.round(dt / dh))
+        }
+        lastBlockHeightSample = h
+        lastBlockHeightSampleMs = now
     }
 
     function sequencerLabel(raw) {
@@ -242,6 +389,8 @@ Rectangle {
         var host = s.replace(/^https?:\/\//, "")
         return host.length > 0 ? host : s
     }
+
+    function parseCall(raw) {
         var v = raw
         if (typeof v === "string") {
             var trimmedRaw = v.trim()
@@ -369,6 +518,7 @@ Rectangle {
             return
         }
         snapshotBlockHeight = String(Math.floor(n))
+        noteBlockHeightSample(n)
         if (lastError.indexOf("Could not read block height") === 0)
             lastError = "—"
     }
@@ -677,8 +827,18 @@ Rectangle {
     }
 
     function runAction(name) {
-        if (writeBusy || !actionAllowed(name))
+        if (writeBusy)
             return
+        if (name === "deposit") {
+            if (depositBalanceWarning.length > 0) {
+                lastError = depositBalanceWarning
+                return
+            }
+            if (!actionAllowed(name))
+                return
+        } else if (!actionAllowed(name)) {
+            return
+        }
         lastError = "—"
         pendingWrite = name
         pendingNextStage = nextStageForAction(name)
@@ -742,6 +902,8 @@ Rectangle {
         pendingNextStage = ""
         pendingTxHash = ""
         pendingHoldingHex = ""
+        pendingOwnerBalanceHex = ""
+        pendingOwnerBalanceLo = -1
         pendingStartedMs = 0
         demoConfirmTimer.stop()
         liveConfirmTimer.stop()
@@ -791,7 +953,7 @@ Rectangle {
             clearPendingWrite()
             return
         }
-        pushRecentTx(name, pendingTxHash, "submitted")
+        pushRecentTx(name, pendingTxHash, "submitted", actionDetailLabel(name))
         pendingStartedMs = Date.now()
         liveConfirmTimer.restart()
     }
@@ -825,11 +987,12 @@ Rectangle {
         if (pendingWrite.length === 0)
             return
         if (Date.now() - pendingStartedMs > liveConfirmTimeoutMs) {
-            lastError = "Inclusion timeout after "
-                    + Math.round(liveConfirmTimeoutMs / 1000) + "s"
+            var seqMsg = pendingTxHash.length > 0
+                    ? sequencerTxDiagnostics(pendingTxHash)
+                    : "Inclusion timeout"
+            lastError = "Inclusion timeout after " + confirmWaitSeconds + "s — " + seqMsg
             if (pendingTxHash.length > 0) {
-                lastError = lastError + " (tx " + pendingTxHash + ")"
-                updateRecentTxStatus(pendingTxHash, "timeout")
+                updateRecentTxStatus(pendingTxHash, "timeout", seqMsg)
             }
             clearPendingWrite()
             return
@@ -839,7 +1002,8 @@ Rectangle {
             liveConfirmTimer.restart()
             return
         }
-        updateRecentTxStatus(pendingTxHash, "included")
+        updateRecentTxStatus(pendingTxHash, "included", "")
+        refreshSessionWalletSummary()
         clearPendingWrite()
         refreshChainState()
     }
@@ -1102,6 +1266,7 @@ Rectangle {
         sessionBanner = ""
 
         syncWalletMirror()
+        refreshSessionWalletSummary()
 
         var enteredVid = trimmed(vaultIdField.value)
         var found = preserve ? vaultStatus(owner, enteredVid)
@@ -1215,6 +1380,27 @@ Rectangle {
                     value: ui.snapshotBlockHeight
                 }
 
+                SnapshotValue {
+                    Layout.fillWidth: true
+                    visible: !ui.demoMode
+                    label: "Block time (observed)"
+                    value: ui.confirmBlockTimeSeconds + " s"
+                }
+
+                SnapshotValue {
+                    Layout.fillWidth: true
+                    visible: !ui.demoMode
+                    label: "Vault token (demo)"
+                    value: ui.sessionVaultToken
+                }
+
+                SnapshotValue {
+                    Layout.fillWidth: true
+                    visible: !ui.demoMode
+                    label: "Owner native balance"
+                    value: ui.sessionOwnerBalance
+                }
+
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: Theme.spacing.medium
@@ -1293,8 +1479,10 @@ Rectangle {
                             ui.refreshChainHeight()
                             if (ui.demoMode)
                                 ui.applyDemoSnapshot()
-                            else
+                            else {
                                 ui.refreshChainState()
+                                ui.refreshSessionWalletSummary()
+                            }
                         }
                     }
                 }
@@ -1529,19 +1717,13 @@ Rectangle {
                         font.pixelSize: Theme.typography.secondaryText
                     }
                     LogosText {
-                        Layout.preferredWidth: 120
+                        Layout.fillWidth: true
                         text: "Action"
                         color: Theme.palette.textSecondary
                         font.pixelSize: Theme.typography.secondaryText
                     }
                     LogosText {
-                        Layout.fillWidth: true
-                        text: "Hash"
-                        color: Theme.palette.textSecondary
-                        font.pixelSize: Theme.typography.secondaryText
-                    }
-                    LogosText {
-                        Layout.preferredWidth: 80
+                        Layout.preferredWidth: 88
                         text: "Status"
                         color: Theme.palette.textSecondary
                         font.pixelSize: Theme.typography.secondaryText
@@ -1551,34 +1733,69 @@ Rectangle {
                 Repeater {
                     model: ui.recentTxs.length
 
-                    RowLayout {
+                    ColumnLayout {
                         Layout.fillWidth: true
                         spacing: Theme.spacing.small
 
-                        LogosText {
-                            Layout.preferredWidth: 160
-                            text: ui.recentTxs[index].at
-                            color: Theme.palette.textTertiary
-                            font.pixelSize: Theme.typography.secondaryText
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacing.small
+
+                            LogosText {
+                                Layout.preferredWidth: 160
+                                text: ui.recentTxs[index].at
+                                color: Theme.palette.textTertiary
+                                font.pixelSize: Theme.typography.secondaryText
+                            }
+                            LogosText {
+                                Layout.fillWidth: true
+                                text: ui.recentTxs[index].detail || ui.recentTxs[index].action
+                                color: Theme.palette.text
+                                font.pixelSize: Theme.typography.secondaryText
+                                wrapMode: Text.Wrap
+                            }
+                            LogosText {
+                                Layout.preferredWidth: 88
+                                text: ui.recentTxs[index].status
+                                color: ui.recentTxs[index].status === "included"
+                                       ? Theme.palette.success : Theme.palette.textSecondary
+                                font.pixelSize: Theme.typography.secondaryText
+                            }
                         }
-                        LogosText {
-                            Layout.preferredWidth: 120
-                            text: ui.recentTxs[index].action
-                            color: Theme.palette.text
-                            font.pixelSize: Theme.typography.secondaryText
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacing.small
+
+                            LogosText {
+                                Layout.fillWidth: true
+                                text: ui.recentTxs[index].hash
+                                color: Theme.palette.text
+                                font.pixelSize: Theme.typography.secondaryText
+                                wrapMode: Text.Wrap
+                            }
+
+                            LogosButton {
+                                text: "Copy"
+                                Layout.preferredHeight: 32
+                                onClicked: ui.copyToClipboard(ui.recentTxs[index].hash)
+                            }
                         }
+
                         LogosText {
                             Layout.fillWidth: true
-                            text: ui.shortHash(ui.recentTxs[index].hash)
-                            color: Theme.palette.text
+                            visible: (ui.recentTxs[index].error || "").length > 0
+                            text: ui.recentTxs[index].error
+                            color: Theme.palette.error
                             font.pixelSize: Theme.typography.secondaryText
+                            wrapMode: Text.Wrap
                         }
-                        LogosText {
-                            Layout.preferredWidth: 80
-                            text: ui.recentTxs[index].status
-                            color: ui.recentTxs[index].status === "included"
-                                   ? Theme.palette.success : Theme.palette.textSecondary
-                            font.pixelSize: Theme.typography.secondaryText
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.topMargin: Theme.spacing.small
+                            height: 1
+                            color: Theme.palette.borderSubtle
                         }
                     }
                 }
@@ -1635,11 +1852,24 @@ Rectangle {
                         ActionButton {
                             idleText: "Deposit"
                             confirming: ui.pendingWrite === "deposit"
-                            actionEnabled: ui.canDeposit || confirming
+                            actionEnabled: (ui.canDeposit || ui.depositBalanceWarning.length > 0) || confirming
                             onClicked: {
+                                if (ui.depositBalanceWarning.length > 0) {
+                                    ui.lastError = ui.depositBalanceWarning
+                                    return
+                                }
                                 if (ui.canDeposit)
                                     ui.runAction("deposit")
                             }
+                        }
+
+                        LogosText {
+                            Layout.fillWidth: true
+                            visible: ui.depositBalanceWarning.length > 0
+                            text: ui.depositBalanceWarning
+                            color: Theme.palette.error
+                            font.pixelSize: Theme.typography.secondaryText
+                            wrapMode: Text.Wrap
                         }
                     }
 

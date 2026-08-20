@@ -186,6 +186,10 @@ basecamp-ui-build: ## Build patched wallet, payment_streams_module, payment_stre
 	chmod +x verify/lib/basecamp-ui.sh verify/lib/build-wallet-lgx.sh
 	./verify/lib/basecamp-ui.sh build
 
+basecamp-ui-prepare: ## AT-init and pinata-fund the two public accounts in WALLET_HOME (NETWORK=testnet|localnet)
+	chmod +x verify/lib/basecamp-ui.sh
+	NETWORK="$(NETWORK)" ./verify/lib/basecamp-ui.sh prepare
+
 basecamp-ui-run: ## Launch Basecamp with WALLET_HOME and FIXTURE_MANIFEST (NETWORK=testnet|localnet)
 	chmod +x verify/lib/basecamp-ui.sh
 	NETWORK="$(NETWORK)" ./verify/lib/basecamp-ui.sh run

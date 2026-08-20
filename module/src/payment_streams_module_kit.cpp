@@ -1,6 +1,7 @@
 #include "payment_streams_module_kit.h"
 
 #include <QDir>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -8,6 +9,12 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QJsonValue>
+#include <QObject>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QTimer>
+#include <QUrl>
 
 #include <cstring>
 
@@ -397,6 +404,76 @@ bool accountIdBytesFromField(const QString& field,
         return false;
     }
     return hex32FromQString(hex, out);
+}
+
+QJsonObject sequencerJsonRpc(const QString& sequencerUrl,
+                             const QString& method,
+                             const QJsonArray& params,
+                             QString* errorOut) {
+    const QString trimmedUrl = sequencerUrl.trimmed();
+    if (trimmedUrl.isEmpty()) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("sequencer URL is empty");
+        }
+        return {};
+    }
+    QUrl url(trimmedUrl);
+    if (!url.isValid()) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("sequencer URL is invalid");
+        }
+        return {};
+    }
+
+    QJsonObject body;
+    body.insert(QStringLiteral("jsonrpc"), QStringLiteral("2.0"));
+    body.insert(QStringLiteral("id"), 1);
+    body.insert(QStringLiteral("method"), method);
+    body.insert(QStringLiteral("params"), params);
+
+    QNetworkAccessManager nam;
+    QNetworkRequest req(url);
+    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+
+    QEventLoop loop;
+    QTimer timer;
+    timer.setSingleShot(true);
+    QNetworkReply* reply = nam.post(req, QJsonDocument(body).toJson(QJsonDocument::Compact));
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+    timer.start(15000);
+    loop.exec();
+
+    if (!reply->isFinished()) {
+        reply->abort();
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("sequencer RPC timed out");
+        }
+        reply->deleteLater();
+        return {};
+    }
+
+    const QByteArray raw = reply->readAll();
+    const QNetworkReply::NetworkError netErr = reply->error();
+    const QString netMsg = reply->errorString();
+    reply->deleteLater();
+
+    if (netErr != QNetworkReply::NoError) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("sequencer HTTP error: %1").arg(netMsg);
+        }
+        return {};
+    }
+
+    QJsonParseError parseError{};
+    const QJsonDocument doc = QJsonDocument::fromJson(raw, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        if (errorOut != nullptr) {
+            *errorOut = QStringLiteral("sequencer RPC response parse failed");
+        }
+        return {};
+    }
+    return doc.object();
 }
 
 }  // namespace payment_streams_kit

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QByteArray>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QString>
 #include <QVariant>
@@ -29,6 +30,12 @@ QJsonObject mergePersistedDiskKeys(const QJsonObject& memory, const QJsonObject&
 QString makeErrorJson(const QString& message);
 QString makeErrorJson(const QString& message, const QJsonObject& extra);
 QString makeOkJson(const QJsonObject& payload);
+
+// Synchronous JSON-RPC POST to the LEZ sequencer (getTransaction, etc.).
+QJsonObject sequencerJsonRpc(const QString& sequencerUrl,
+                             const QString& method,
+                             const QJsonArray& params,
+                             QString* errorOut);
 QString makePlainError(const QString& message);
 QString makeEligibilityError(const QString& code, const QString& message);
 QString makeVerifyEligibilityError(const QString& eligibility, const QString& message);

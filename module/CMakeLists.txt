@@ -10,6 +10,8 @@ else()
   message(FATAL_ERROR "LogosModule.cmake not found. Set LOGOS_MODULE_BUILDER_ROOT.")
 endif()
 
+find_package(Qt6 REQUIRED COMPONENTS Network)
+
 logos_module(
   NAME payment_streams_module
     SOURCES
@@ -25,6 +27,8 @@ logos_module(
     src/payment_streams_module_eligibility.cpp
   EXTERNAL_LIBS
     lez_payment_streams_ffi
+  LINK_LIBRARIES
+    Qt6::Network
 )
 
 set_source_files_properties(src/payment_streams_ffi_bridge.c src/payment_streams_ffi_bridge_writes.c PROPERTIES LANGUAGE C)

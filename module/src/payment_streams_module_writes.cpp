@@ -2,6 +2,7 @@
 #include "payment_streams_module_inventory.h"
 
 #include <QDebug>
+#include <QCryptographicHash>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -25,6 +26,7 @@
 #include <QDebug>
 
 #include <cstring>
+#include <limits>
 
 namespace {
 
@@ -43,6 +45,7 @@ using payment_streams_kit::makeOkJson;
 using payment_streams_kit::parseWalletAccountJson;
 using payment_streams_kit::resolveRepoRelativePath;
 using payment_streams_kit::resolveWalletHomePaths;
+using payment_streams_kit::sequencerJsonRpc;
 using payment_streams_kit::variantToU64;
 using payment_streams_kit::walletAccountIdHexFromBase58;
 using payment_streams_kit::walletHomeFromEnv;
@@ -1652,6 +1655,57 @@ QString PaymentStreamsModuleImpl::getStreamStatus(const QVariant& ownerAccountId
     return makeOkJson(payload);
 }
 
+QString PaymentStreamsModuleImpl::querySequencerTransaction(const QVariant& txHash) {
+    LogosExecutionZone& wallet = modules().logos_execution_zone;
+    QString openErr;
+    if (!openWalletFromEnv(wallet, modules().api, &openErr, nullptr)) {
+        return makeErrorJson(openErr);
+    }
+    QString hash = txHash.toString().trimmed();
+    if (hash.startsWith(QStringLiteral("0x"), Qt::CaseInsensitive)) {
+        hash = hash.mid(2);
+    }
+    hash = hash.toLower();
+    if (hash.size() != 64) {
+        return makeErrorJson(QStringLiteral("tx_hash must be 64 hex chars"));
+    }
+
+    const QString seq = QString::fromStdString(wallet.get_sequencer_addr());
+    QString rpcErr;
+    const QJsonObject rpc = sequencerJsonRpc(seq, QStringLiteral("getTransaction"), QJsonArray{hash}, &rpcErr);
+    if (rpc.isEmpty()) {
+        return makeErrorJson(rpcErr.isEmpty() ? QStringLiteral("sequencer RPC failed") : rpcErr);
+    }
+    if (rpc.contains(QStringLiteral("error"))) {
+        const QJsonObject errObj = rpc.value(QStringLiteral("error")).toObject();
+        const QString msg = errObj.value(QStringLiteral("message")).toString();
+        const QString code = errObj.value(QStringLiteral("code")).toVariant().toString();
+        QJsonObject payload;
+        payload.insert(QStringLiteral("included"), false);
+        payload.insert(QStringLiteral("rpc_error"), msg.isEmpty() ? QStringLiteral("sequencer RPC error") : msg);
+        if (!code.isEmpty()) {
+            payload.insert(QStringLiteral("rpc_error_code"), code);
+        }
+        payload.insert(QStringLiteral("summary"), msg.isEmpty() ? QStringLiteral("sequencer rejected getTransaction") : msg);
+        return makeOkJson(payload);
+    }
+
+    const QJsonValue result = rpc.value(QStringLiteral("result"));
+    const bool included = !(result.isNull() || result.isUndefined()
+                            || (result.isArray() && result.toArray().isEmpty())
+                            || (result.isString() && result.toString().isEmpty()));
+    QJsonObject payload;
+    payload.insert(QStringLiteral("included"), included);
+    if (included) {
+        payload.insert(QStringLiteral("summary"), QStringLiteral("Transaction is on chain"));
+        payload.insert(QStringLiteral("result"), result);
+    } else {
+        payload.insert(QStringLiteral("summary"),
+                       QStringLiteral("getTransaction returned no result (not included or unknown hash)"));
+    }
+    return makeOkJson(payload);
+}
+
 QString PaymentStreamsModuleImpl::ensureWalletOpen() {
     LogosExecutionZone& wallet = modules().logos_execution_zone;
     QString err;
@@ -1717,6 +1771,9 @@ QString PaymentStreamsModuleImpl::chainAction(const QVariant& operation, const Q
     }
     if (op == QLatin1String("getStreamStatus")) {
         return getStreamStatus(qv("owner"), qv("vault_id"), qv("stream_id"));
+    }
+    if (op == QLatin1String("querySequencerTransaction")) {
+        return querySequencerTransaction(p.value(QStringLiteral("tx_hash")).toVariant());
     }
     return makeErrorJson(QStringLiteral("unknown chainAction operation: %1").arg(op));
 }

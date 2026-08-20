@@ -6,7 +6,8 @@ Protocol UI track:
 [N18](../../reference/decisions.md#n18-integration-demo-vs-payment-streams-ui-tracks-2026-06).
 Terminology: [names.md](../../reference/names.md).
 `chainAction` catalogue: [module/README.md](../../../module/README.md#chainaction-catalogue).
-Load-loop notes: [basecamp-rebuild-loop.md](basecamp-rebuild-loop.md).
+Operator walkthrough and rebuild loop:
+[docs/reproduce/basecamp-ui.md](../../reproduce/basecamp-ui.md).
 
 ## Context
 
@@ -78,7 +79,9 @@ Operator launch is Make from this repository:
 
 ```bash
 make basecamp-ui-build
+make basecamp-ui-prepare              # testnet (default); AT + pinata
 make basecamp-ui-run                  # testnet (default)
+make basecamp-ui-prepare NETWORK=localnet
 make basecamp-ui-run NETWORK=localnet
 ```
 
@@ -95,20 +98,30 @@ Chain choice at runtime:
   module opens the wallet.
 - Program id and clock accounts come from `FIXTURE_MANIFEST`
   (`program_id_hex`).
+- Authenticated-transfer ImageID comes from
+  `PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX`, exported by
+  `make basecamp-ui-run` via `ps_export_authenticated_transfer_program_id_hex`
+  (live LEZ-cache ELF). Deposit and claim serialize that id into the
+  instruction. Unset, the module uses graph
+  `programs::authenticated_transfer().id()`, which on testnet is a
+  different ImageID than the owner's `program_owner`. The wallet still
+  returns a `tx_hash`; the sequencer never includes those deposits.
 
 The same three `.lgx` packages serve both networks.
 Switching networks is a new Basecamp process with the other Make env.
 Rebuild and reinstall only when source changes.
-Walkthrough: [docs/reproduce/basecamp-ui.md](../../reproduce/basecamp-ui.md)
-(Slice 3).
-Rebuild iteration: [basecamp-rebuild-loop.md](basecamp-rebuild-loop.md).
+Walkthrough and rebuild loop:
+[docs/reproduce/basecamp-ui.md](../../reproduce/basecamp-ui.md) (Slice 3).
 
 Public v1 writes submit by program id.
 `PAYMENT_STREAMS_GUEST_BIN` remains reserved for private proving and
 local guest development.
 
-Wallet creation, mnemonic handling, funding, and authenticated-transfer
-initialisation stay in the existing setup scripts and LEZ wallet tooling.
+Wallet creation and mnemonic handling stay in the existing LEZ wallet
+tooling ([reproduce/module.md](../../reproduce/module.md) Steps 4-7).
+Authenticated-transfer registration and pinata funding for the UI wallet
+are `make basecamp-ui-prepare`, which reuses `ps_auth_transfer_ensure`
+and `ps_fund_testnet_account` on both networks.
 
 `logos.callModule` invokes core modules in `logos_host` subprocesses.
 Wallet handle, fixture config, and sequencer connection live there.
@@ -129,7 +142,6 @@ Files:
 - `ui/Main.qml`
 - `ui/metadata.json`
 - `ui/flake.nix`
-- `docs/plan/upcoming/basecamp-rebuild-loop.md`
 
 Work:
 
@@ -221,17 +233,18 @@ Files:
 
 - `Makefile`
 - `docs/reproduce/basecamp-ui.md`
-- `docs/plan/upcoming/basecamp-rebuild-loop.md`
 
 Work:
 
 1. Add Makefile targets:
    `make basecamp-ui-build`
+   `make basecamp-ui-prepare` (testnet default; AT + pinata)
    `make basecamp-ui-run` (testnet default)
    `make basecamp-ui-run NETWORK=localnet`
 2. Document the operator walkthrough for localnet and testnet, including
-   wallet setup from [reproduce/module.md](../../reproduce/module.md)
-   and stopping logoscore before Basecamp.
+   wallet creation from [reproduce/module.md](../../reproduce/module.md)
+   Steps 4-7, `make basecamp-ui-prepare`, and stopping logoscore before
+   Basecamp.
 3. Verify that the UI walkthrough matches the documented CLI reproduce
    steps.
 
@@ -250,12 +263,14 @@ make basecamp-ui-build
 Testnet (default):
 
 ```bash
+make basecamp-ui-prepare
 make basecamp-ui-run
 ```
 
 Localnet (sequencer already running):
 
 ```bash
+make basecamp-ui-prepare NETWORK=localnet
 make basecamp-ui-run NETWORK=localnet
 ```
 
@@ -277,8 +292,11 @@ in-app authenticated transfer registration, private zero-knowledge
 proving, Store eligibility hooks, non-native tokens, a Basecamp or QML
 network-switching control, and multi-vault navigation tables.
 
-Account creation, funding, and authenticated transfer stay in existing
-repository scripts and CLI helpers.
+Account creation stays in [reproduce/module.md](../../reproduce/module.md)
+Steps 4-7.
+Funding and authenticated transfer for the UI wallet are
+`make basecamp-ui-prepare` (same helpers as
+`./verify/testnet/fund-testnet-accounts.sh`).
 
 ## Decisions
 
@@ -297,8 +315,8 @@ D21.3. Host: Nix-built portable Basecamp
 (`nix build '.#bin-bundle-dir'`).
 Install the `.lgx` through Package Manager or Modules menu.
 Operator launch is `make basecamp-ui-run`, which passes `--user-dir`.
-Rebuild iteration may spawn the binary with the same env as
-[basecamp-rebuild-loop.md](basecamp-rebuild-loop.md).
+Rebuild iteration:
+[basecamp-ui.md](../../reproduce/basecamp-ui.md#rebuild-after-source-changes).
 
 D21.4. Theme: `import Logos.Theme` and `import Logos.Controls`.
 Page fill `Theme.palette.background`.
@@ -395,9 +413,12 @@ names, and confirmation status.
 
 D21.22. Launch and network:
 `make basecamp-ui-run` is the documented operator launch.
+`make basecamp-ui-prepare` AT-inits and pinata-funds the first two public
+accounts in that same `WALLET_HOME`.
 `NETWORK` defaults to testnet.
 `NETWORK=localnet` selects the localnet fixture and wallet home.
-Make maps `NETWORK` onto `WALLET_HOME` and `FIXTURE_MANIFEST`.
+Make maps `NETWORK` onto `WALLET_HOME`, `FIXTURE_MANIFEST`, `CHAIN`,
+and `PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX`.
 Basecamp’s extra argument is `--user-dir`.
 The three `.lgx` packages are network-agnostic.
 A network switch is a restart with the other env; load already-installed
@@ -447,11 +468,12 @@ Runtime uses the same wallet homes and deployed programs as
 
 Before the first public UI write:
 
+- the wallet home has two public accounts
+  ([reproduce/module.md](../../reproduce/module.md) Steps 4-7);
+- `make basecamp-ui-prepare` has registered authenticated transfer and
+  pinata-funded those accounts;
 - packages are loaded in order:
   `logos_execution_zone`, `payment_streams_module`, `payment_streams_ui`;
-- the wallet home has two funded public accounts;
-- authenticated transfer is registered for both accounts;
-- the owner holds sufficient balance for deposit;
 - logoscore is stopped.
 
 ## Later work
@@ -469,6 +491,6 @@ After v1, the UI can expand to:
 - `ui/` with `metadata.json`, `flake.nix`, and `Main.qml`
 - Portable `.lgx` package buildable via Nix
 - Live payment stream lifecycle execution in Basecamp
-- `make basecamp-ui-build` and `make basecamp-ui-run` (`NETWORK` selects
-  testnet or localnet)
+- `make basecamp-ui-build`, `make basecamp-ui-prepare`, and
+  `make basecamp-ui-run` (`NETWORK` selects testnet or localnet)
 - Reproduction documentation in `docs/reproduce/basecamp-ui.md`

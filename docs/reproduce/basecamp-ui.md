@@ -1,85 +1,109 @@
 # Reproduce payment streams in Basecamp
 
-Protocol UI for LIP-155 through `payment_streams_ui` on one host.
-The CLI teaching path remains [module.md](module.md).
-This walkthrough uses the same wallets, fixtures, and lifecycle:
-initialize vault, deposit, create stream, wait for accrual, close, claim.
+Same LIP-155 lifecycle as [module.md](module.md), on one host, through
+`payment_streams_ui`.
+Initialize vault, deposit, create stream, wait for accrual, close, claim.
 
-`chainAction` catalogue: [payment-streams-module README](../../module/README.md#chainaction-catalogue).
+Commands are from the repository root.
+Plan: [step-21-basecamp-ui.md](../plan/upcoming/step-21-basecamp-ui.md).
+`chainAction` catalogue: [module README](../../module/README.md#chainaction-catalogue).
 
-## What you run
+## Background
 
-Nix-built Basecamp with three packages loaded in order:
-`logos_execution_zone`, `payment_streams_module`, `payment_streams_ui`.
+Nix-built portable Basecamp, user directory `.scaffold/basecamp-ui`, three
+packages: `logos_execution_zone` (patched wallet), `payment_streams_module`,
+`payment_streams_ui`.
+The same `.lgx` files serve both networks.
+
 Owner and provider are two public accounts in one wallet.
+Session prefills them in that order.
 
-## Prerequisites
+`make basecamp-ui-prepare` does not create a wallet or accounts.
+It registers authenticated transfer and pinata-funds the first two public
+accounts already in `WALLET_HOME`.
+`make basecamp-ui-run` exports that home, `FIXTURE_MANIFEST`, and
+`PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX` (live sequencer AT ImageID)
+into child `logos_host` processes.
+Deposit and claim instructions carry that id in a chained call.
+The FFI graph AT differs from the program that owns testnet accounts.
 
-Complete wallet setup from [module.md](module.md) (testnet primary):
-accounts funded, authenticated transfer registered, logoscore stopped
-so `storage.json` is free
+Basecamp needs exclusive access to `storage.json`
 ([N52](../reference/decisions.md#n52-exclusive-wallet-cli-stop-window-2026-08-14)).
+`prepare` stops logoscore when it holds the wallet; leave it stopped.
 
-Sibling checkout `../logos-basecamp` for the Nix-built binary
-(`nix build '.#bin-bundle-dir'`).
-Host: Git, Nix (flakes).
+Host: Git, Nix (flakes), sibling checkout `../logos-basecamp`.
+Localnet also needs `lgs` on `PATH`.
 
-## Launch
-
-From the repository root:
+## Build packages
 
 ```bash
 make basecamp-ui-build
-make basecamp-ui-run
 ```
 
-Testnet is the default (`verify/fixtures/testnet-module.json`,
-`.scaffold/e2e/testnet-wallet`).
+| Runtime id | `.lgx` after build |
+| --- | --- |
+| `logos_execution_zone` | `module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out/*.lgx` |
+| `payment_streams_module` | `result/logos-payment_streams_module-module-lib.lgx` |
+| `payment_streams_ui` | `ui/result/logos-payment_streams_ui-module.lgx` |
 
-Localnet (sequencer already running):
+## Localnet
+
+1. Create the local wallet, two public accounts, and
+   `verify/fixtures/localnet.json`, and start the sequencer:
+
+```bash
+make seed-fixture
+```
+
+2. Fund those accounts:
+
+```bash
+make basecamp-ui-prepare NETWORK=localnet
+```
+
+3. Launch Basecamp:
 
 ```bash
 make basecamp-ui-run NETWORK=localnet
 ```
 
-`NETWORK` is a Make variable.
-Make exports `WALLET_HOME`, `LEE_WALLET_HOME_DIR`, `NSSA_WALLET_HOME_DIR`,
-`FIXTURE_MANIFEST`, `REPO`, and `USER_DIR`, then starts Basecamp with
-`--user-dir .scaffold/basecamp-ui`.
-The three `.lgx` packages are the same on both networks.
-Switching networks is a new Basecamp process with the other env.
+4. Continue at [In Basecamp](#in-basecamp).
 
-Override `WALLET_HOME` or `FIXTURE_MANIFEST` when the wallet lives
-somewhere else (for example `WALLET_HOME=$HOME/.lee/wallet` on testnet,
-or `WALLET_HOME=$PWD/.scaffold/e2e/user/wallet-local` for module E2E
-local state).
+## Testnet
 
-## First load
+Wallet home `.scaffold/e2e/testnet-wallet`; fixture
+`verify/fixtures/testnet-module.json`.
+Sequencer is the public endpoint in that wallet config
+(`https://testnet.lez.logos.co/`).
+Make defaults `NETWORK` to testnet.
 
-1. In Modules, Install LGX Package in this order:
-   patched wallet (`logos_execution_zone`),
-   `payment_streams_module`,
-   `payment_streams_ui`.
-2. Load the same order.
-3. Open `payment_streams_ui`.
-4. Turn Demo mode off.
+1. Create the wallet and two public accounts:
+   [module.md](module.md) Steps 4-7.
 
-The header shows the sequencer host and block height when the wallet
-opens.
-Session prefills `owner` and `provider` from public accounts.
-A banner explains missing `WALLET_HOME`, missing wallet files, or an
-empty account list.
+2. Fund those accounts:
 
-Package paths after `make basecamp-ui-build`:
+```bash
+make basecamp-ui-prepare
+```
 
-- Wallet: `module/nix/flakes/logos-execution-zone-module-patched/wallet-lgx-out/*.lgx`
-- Module: `result/logos-payment_streams_module-module-lib.lgx`
-- UI: `ui/result/logos-payment_streams_ui-module.lgx`
+3. Launch Basecamp:
 
-Installed packages stay in `.scaffold/basecamp-ui` across restarts.
-Rebuild and reinstall only when source changes.
+```bash
+make basecamp-ui-run
+```
 
-## Lifecycle
+4. Continue at [In Basecamp](#in-basecamp).
+
+## In Basecamp
+
+Install custom plugins through Package Manager or Modules → Install LGX Package
+([Install and load a module](https://docs.logos.co/basecamp/install-and-load-a-module-in-logos-basecamp)).
+
+Install the three `.lgx` files from the [Build packages](#build-packages) table,
+wallet then `payment_streams_module` then `payment_streams_ui`.
+Open `payment_streams_ui` from the sidebar.
+Basecamp loads the two core modules from the UI package dependencies.
+Turn Demo mode off.
 
 Defaults match [module.md](module.md): deposit 500, allocation 80, rate 1,
 `vault_id` 0, `stream_id` 0.
@@ -94,11 +118,39 @@ Defaults match [module.md](module.md): deposit 500, allocation 80, rate 1,
 
 Each write shows Confirming until `sync_to_block` plus status agree,
 or 120 seconds elapse.
-Recent transactions lists short hashes for this session.
 
-## After a QML or module change
+## Notes
 
-Stop Basecamp and `logos_host`, rebuild the changed `.lgx`
-(`nix build ./ui#lgx-portable -o ui/result`,
-`nix build ./module#lgx-portable`, or `./verify/lib/build-wallet-lgx.sh`),
-relaunch with `make basecamp-ui-run`, reinstall that package, load again.
+A later localnet session with wallet and fixture already present only needs
+the sequencer up (`./verify/lifecycle.sh localnet start`), then prepare and
+run.
+If `seed-fixture` already created a vault, Session picks it up; start at
+Deposit or Create stream.
+Leave the sequencer running across UI rebuilds.
+Stop it with `./verify/lifecycle.sh localnet stop` when finished.
+
+Switching networks is a new Basecamp process with the other Make env.
+Already-installed packages stay in `.scaffold/basecamp-ui`.
+
+A header banner means `WALLET_HOME` is unset, wallet files are missing, or the
+account list is empty.
+
+## Rebuild after source changes
+
+When editing `ui/`, `module/`, or the patched wallet tree:
+
+```bash
+pkill -9 -f 'logos_host|LogosBasecamp'
+```
+
+Rebuild only what changed:
+
+```bash
+nix build ./ui#lgx-portable -o ui/result
+nix build ./module#lgx-portable
+./verify/lib/build-wallet-lgx.sh
+```
+
+Relaunch with the same `NETWORK` (`make basecamp-ui-run` or
+`NETWORK=localnet`).
+Install LGX Package again for the rebuilt `.lgx`, then open `payment_streams_ui`.

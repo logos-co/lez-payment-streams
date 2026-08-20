@@ -29,7 +29,7 @@
       "find_packages": [],
       "extra_sources": [],
       "extra_include_dirs": [],
-      "extra_link_libraries": []
+      "extra_link_libraries": ["Qt6::Network"]
     }
   }
 }

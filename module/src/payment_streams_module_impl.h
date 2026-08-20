@@ -74,4 +74,5 @@ private:
     QString getStreamStatus(const QVariant& ownerAccountIdBase58,
                             const QVariant& vaultId,
                             const QVariant& streamId);
+    QString querySequencerTransaction(const QVariant& txHash);
 };
