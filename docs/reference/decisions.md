@@ -797,7 +797,7 @@ Living doc names move under [Step 46](../plan/completed/step-46-docs-unify-and-f
   `delivery_module`.
 - **Status:** [completed packet](../plan/completed/step-21-basecamp-ui.md).
   Walkthrough: [basecamp-ui.md](../reproduce/basecamp-ui.md).
-  Withdraw UI: [Step 54](../plan/upcoming/step-54-withdraw-owner-and-recipient.md).
+  Withdraw UI: [Step 54](../plan/completed/step-54-withdraw-owner-and-recipient.md).
 - **Mechanism:** Thin UI over `payment_streams_module` and the patched
   `logos_execution_zone` wallet. Single Basecamp process; out-of-band
   counterparty coordination.

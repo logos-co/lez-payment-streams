@@ -53,15 +53,15 @@ Step 35 (complete) supplies integrate-doc substance.
 Next: [Step 51](docs/plan/upcoming/step-51-forum-post.md)
 (forum post). [Step 53](docs/plan/completed/step-53-repository-structure.md)
 is complete (repository structure).
+[Step 54](docs/plan/completed/step-54-withdraw-owner-and-recipient.md)
+is complete (withdraw to owner and withdraw).
 
 Historical protocol CLI (complete):
 [logos-docs#370](https://github.com/logos-co/logos-docs/issues/370);
 [Step 22](docs/plan/completed/step-22-ui-journey.md);
 [Step 34](docs/plan/completed/step-34-user-journey-manual-walkthrough.md);
 [Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
-Upcoming: [Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post),
-[Step 54](docs/plan/upcoming/step-54-withdraw-owner-and-recipient.md)
-(withdraw to owner and withdraw).
+Upcoming: [Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post).
 Step 52 is complete
 ([step-52-gate-log.md](docs/plan/completed/step-52-gate-log.md)).
 Step 51 publishes the forum post from that gate log.
@@ -75,6 +75,8 @@ multi-token types),
 clarity),
 [Step 52](docs/plan/completed/step-52-wrap-up-verification.md) (wrap-up verification),
 [Step 53](docs/plan/completed/step-53-repository-structure.md) (repository structure),
+[Step 54](docs/plan/completed/step-54-withdraw-owner-and-recipient.md)
+(withdraw to owner and withdraw),
 [Step 21](docs/plan/completed/step-21-basecamp-ui.md) (Basecamp UI).
 Wontfix: [Step 20](docs/plan/wontfix/step-20-developer-journey.md) (formal logos-docs integrator publish),
 [Step 23](docs/plan/wontfix/step-23-public-store-provider.md) (public Store provider),

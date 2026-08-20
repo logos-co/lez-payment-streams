@@ -12,7 +12,7 @@
   "active_steps": [],
   "waiting_steps": [],
   "paused_steps": [],
-  "upcoming_steps": [51, 54],
+  "upcoming_steps": [51],
   "wontfix_steps": [20, 23, 25, 42, 43, 48],
   "optional_stretch_steps": [],
   "optional_steps": [],
@@ -60,7 +60,7 @@
     "51": "docs/plan/upcoming/step-51-forum-post.md",
     "52": "docs/plan/completed/step-52-wrap-up-verification.md",
     "53": "docs/plan/completed/step-53-repository-structure.md",
-    "54": "docs/plan/upcoming/step-54-withdraw-owner-and-recipient.md"
+    "54": "docs/plan/completed/step-54-withdraw-owner-and-recipient.md"
   },
   "completed_normative": {
     "12": "docs/plan/completed/step-12-normative.md",
@@ -78,9 +78,9 @@
   "lip155_spec": {
     "repo": "logos-co/logos-lips",
     "branch": "docs/payment-streams-dual-close",
-    "rev": "92685c78b66892d1589cdfb4bb9bd82a7f309790",
+    "rev": "6d71addda422eeac7816faa37541c34af65594c9",
     "path": "docs/anoncomms/raw/payment-streams.md",
-    "contains": ["435a6f18", "f09f9e9e", "32d7da4e", "92685c78"]
+    "contains": ["435a6f18", "f09f9e9e", "32d7da4e", "92685c78", "6d71addd"]
   },
   "reference": "docs/reference/decisions.md",
   "plan_layout": "docs/plan/README.md",

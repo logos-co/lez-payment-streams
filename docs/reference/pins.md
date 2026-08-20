@@ -28,11 +28,12 @@ Single citation pin for living docs and implementation comments.
 Step 40 (`435a6f18`,
 [logos-lips#397](https://github.com/logos-co/logos-lips/pull/397)), Step 41
 (`f09f9e9e`, [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379)),
-Step 44 close split (`32d7da4e`), and Step 54 withdraw split (`92685c78`).
+Step 44 close split (`32d7da4e`), Step 54 withdraw split (`92685c78`),
+and credit-path MUST language (`6d71addd`).
 
 | Artifact | Ref | Locked rev |
 | --- | --- | --- |
-| `logos-lips` / `rfc-index` `docs/anoncomms/raw/payment-streams.md` | `docs/payment-streams-dual-close` | `92685c78` |
+| `logos-lips` / `rfc-index` `docs/anoncomms/raw/payment-streams.md` | `docs/payment-streams-dual-close` | `6d71addd` |
 
 Local clone: `lez-related/rfc-index`.
 Historical Step 19 work used `feat/payment-streams-onchain-part` at `345c8eef`.

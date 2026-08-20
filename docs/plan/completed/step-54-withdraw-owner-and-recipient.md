@@ -1,8 +1,8 @@
 # Step 54, withdraw to owner and withdraw
 
-Upcoming.
-Index: [index.md](../index.md).
-Precedent: [Step 44](../completed/step-44-payer-and-payee-close.md)
+Index: [index.md](../index.md). Status: complete (2026-08-20).
+Gate log: [step-54-gate-log.md](step-54-gate-log.md).
+Precedent: [Step 44](step-44-payer-and-payee-close.md)
 (`CloseStreamByOwner` / `CloseStreamByProvider`).
 LIP-155: `rfc-index` / `logos-lips`
 `docs/anoncomms/raw/payment-streams.md`.
@@ -452,7 +452,7 @@ Pre-applied (uncommitted; slice 7/11 are flips, not first registration):
 | `docs/reference/wire.md` (dispatch block) | Slice 5, after module dispatch exists |
 | `docs/reference/names.md` (destination-split terms) | Slice 7 |
 | `docs/reproduce/basecamp-ui.md` (deposit AT / in-guest credit) | Slice 7 or 8 |
-| [Step 21](../completed/step-21-basecamp-ui.md) later-work (withdraw dropped) | Slice 8 |
+| [Step 21](step-21-basecamp-ui.md) later-work (withdraw dropped) | Slice 8 |
 | `AGENTS.md`, `docs/plan/index.md`, `context-manifest.json` (Step 54 upcoming) | Slice 11 flips these to completed |
 
 ### 0. D54.5 seam probe
@@ -618,7 +618,7 @@ Files:
 
 - `ui/Main.qml`
 - `docs/reproduce/basecamp-ui.md`
-- [Step 21](../completed/step-21-basecamp-ui.md) (later-work already dropped withdraw)
+- [Step 21](step-21-basecamp-ui.md) (later-work already dropped withdraw)
 
 Amount-cap helper and its tests: slice 5 (`payment_streams_module_kit`).
 May reuse stash `wip: withdraw UI and uniqueness reject` after module
@@ -818,7 +818,7 @@ Step 49/52 `c30781ea…`). Same for
 [decisions.md](../../reference/decisions.md) N18 ImageID sentences,
 [AGENTS.md](../../../AGENTS.md) Step 39 `dea010d9…`,
 `docs/plan/index.md` Step 52 wrap-up line, and `verify/archive/`
-defaults. [Step 51](step-51-forum-post.md) fills wrap-up claims from
+defaults. [Step 51](../upcoming/step-51-forum-post.md) fills wrap-up claims from
 the Step 52 gate log (that ImageID is wrap-up evidence). Living guest
 identity after this step is the README block.
 
@@ -843,8 +843,8 @@ completed / archive / historical index prose.
 ## Gate budget (D54.1)
 
 ImageID cut plus withdraw-encoding change.
-[Step 52](../completed/step-52-wrap-up-verification.md) is the last
-full-matrix pin on `c30781ea…`. Precedent: [D49.11](../completed/step-49-native-token-spec-alignment.md).
+[Step 52](step-52-wrap-up-verification.md) is the last
+full-matrix pin on `c30781ea…`. Precedent: [D49.11](step-49-native-token-spec-alignment.md).
 Skip Store-testnet (proof encoding unchanged; Store-local covers new
 PDAs) and all `RISC0_DEV_MODE=0` / testnet-private legs (uniqueness is
 visibility-independent; PP + stub-privacy cover private routing).
@@ -949,13 +949,13 @@ grep clean).
 
 ## Related
 
-- [step-44-payer-and-payee-close.md](../completed/step-44-payer-and-payee-close.md)
-- [step-49-native-token-spec-alignment.md](../completed/step-49-native-token-spec-alignment.md)
+- [step-44-payer-and-payee-close.md](step-44-payer-and-payee-close.md)
+- [step-49-native-token-spec-alignment.md](step-49-native-token-spec-alignment.md)
   (D49.11 ImageID-cut bar)
-- [step-52-wrap-up-verification.md](../completed/step-52-wrap-up-verification.md)
+- [step-52-wrap-up-verification.md](step-52-wrap-up-verification.md)
   (full-matrix pin; out of scope here)
 - [logos-lips#401](https://github.com/logos-co/logos-lips/pull/401)
   (`docs/payment-streams-dual-close`)
-- [step-21-basecamp-ui.md](../completed/step-21-basecamp-ui.md)
-- [step-47-unify-role-terminology.md](../completed/step-47-unify-role-terminology.md)
+- [step-21-basecamp-ui.md](step-21-basecamp-ui.md)
+- [step-47-unify-role-terminology.md](step-47-unify-role-terminology.md)
 - [module/README.md](../../../module/README.md)

@@ -12,8 +12,8 @@ Decisions: [integration-decisions.md](../reference/decisions.md).
 | Path | Contents |
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
-| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 21–22, 24, 26-41, 44–47, 49–50, 52–53) |
-| [upcoming/](upcoming/) | Steps 51, 54 |
+| [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 21–22, 24, 26-41, 44–47, 49–50, 52–54) |
+| [upcoming/](upcoming/) | Step 51 |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43, 48 |
 | [reference/wire.md](../reference/wire.md) | Cross-step APIs |
 | [reference/decisions.md](../reference/decisions.md) | D1-D6, N1-N18 |
@@ -31,13 +31,14 @@ Documentation tracks ([N18](../reference/decisions.md#n18-integration-demo-vs-pa
 | Forum post | Upcoming | Step 51; draft [forum-post.md](../external/forum-post.md) |
 | Wrap-up verification | Complete | Step 52 |
 | Repository structure | Complete | Step 53 |
+| Withdraw to owner and withdraw | Complete | Step 54 |
 | Multi-token type alignment (native-only demo) | Complete | Step 49 |
 | Consistency and clarity polish | Complete | Step 50 |
 
 Engineering: Steps 26–33 complete; Steps 36–41 complete
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
-Steps 51, 54 upcoming (forum post; withdraw split).
+Step 51 upcoming (forum post).
 Step 21 complete (Basecamp UI).
 Step 52 complete (wrap-up verification).
 Step 48 wontfix (program-graph LEZ unify / AT config drop).
@@ -47,6 +48,7 @@ Step 52 recorded the wrap-up matrix on ImageID `c30781ea…`
 (unit, localnet, testnet, private execution).
 Step 51 publishes the forum post from that gate log.
 Step 53 complete (repository structure).
+Step 54 complete (withdraw to owner and withdraw).
 Step 44 complete (payer/payee close). Step 45 complete (deps and patches freeze).
 Step 47 complete (role terminology).
 Step 20 wontfix (formal Developer Journey logos-docs publish; replaced by Step 46
@@ -108,7 +110,7 @@ paid Store mode on the provider.
 | Forum post | 51 (upcoming; after 52) |
 | Wrap-up verification | 52 (complete) |
 | Repository structure | 53 (complete) |
-| Withdraw to owner and withdraw (LEZ uniqueness split) | 54 (upcoming) |
+| Withdraw to owner and withdraw (LEZ uniqueness split) | 54 (complete) |
 
 Step 25 (in-process demo coordinator module) is wontfix
 ([packet](wontfix/step-25-demo-coordination-module.md)).
@@ -156,6 +158,7 @@ Dual-host demo coordination stays in host scripts
 | 50 | Consistency and clarity polish | [step-50-consistency-and-clarity.md](completed/step-50-consistency-and-clarity.md) |
 | 52 | Wrap-up verification | [step-52-wrap-up-verification.md](completed/step-52-wrap-up-verification.md) |
 | 53 | Repository structure | [step-53-repository-structure.md](completed/step-53-repository-structure.md) |
+| 54 | Withdraw to owner and withdraw | [step-54-withdraw-owner-and-recipient.md](completed/step-54-withdraw-owner-and-recipient.md) |
 | 21 | Protocol UI: Basecamp plugin | [step-21-basecamp-ui.md](completed/step-21-basecamp-ui.md) |
 
 Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) (Step 32 D3),
@@ -168,14 +171,14 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 [step-49-gate-log.md](completed/step-49-gate-log.md) (Step 49),
 [step-50-gate-log.md](completed/step-50-gate-log.md) (Step 50),
 [step-52-gate-log.md](completed/step-52-gate-log.md) (Step 52),
-[step-53-gate-log.md](completed/step-53-gate-log.md) (Step 53).
+[step-53-gate-log.md](completed/step-53-gate-log.md) (Step 53),
+[step-54-gate-log.md](completed/step-54-gate-log.md) (Step 54).
 
 ## Upcoming steps
 
 | Step | Focus | Status |
 | --- | --- | --- |
 | 51 | Forum post | Upcoming — [step-51-forum-post.md](upcoming/step-51-forum-post.md) |
-| 54 | Withdraw to owner and withdraw | Upcoming — [step-54-withdraw-owner-and-recipient.md](upcoming/step-54-withdraw-owner-and-recipient.md) |
 
 ## Waiting steps
 
