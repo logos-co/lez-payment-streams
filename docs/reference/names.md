@@ -20,6 +20,15 @@ provider id is `provider` (close). Store verify peer param is `userPeerId`
 (symmetry with `providerPeerId`). LEZ `#[account(signer)]` / IDL `"signer":
 true` means must-sign only.
 
+Withdraw destinations (Step 54):
+
+| Term | Meaning |
+| --- | --- |
+| Withdraw to owner | Three-slot guest `withdraw_to_owner`. Module JSON omits `withdraw_to`, sends JSON null, or sends `withdraw_to` equal to `owner` (normalized 32-byte ids). Vault owner signs and is credited. |
+| withdraw | Four-slot guest `withdraw`. Module JSON `withdraw_to` distinct from `owner`. Vault owner signs; a different account is credited. |
+
+Tx submitter for both paths is the vault owner.
+
 Account-id write params accept base58 or 64-hex via one helper (fixed order):
 
 1. Trimmed input exactly 64 hex characters (`[0-9a-fA-F]{64}`) → decode hex to 32 bytes.

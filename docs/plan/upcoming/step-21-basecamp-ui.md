@@ -480,7 +480,7 @@ Before the first public UI write:
 
 After v1, the UI can expand to:
 
-- pause, resume, top-up, and withdraw actions;
+- pause, resume, and top-up actions;
 - multi-vault and multi-stream tables;
 - interactive account switching;
 - Store query and eligibility integration;

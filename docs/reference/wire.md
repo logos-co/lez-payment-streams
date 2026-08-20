@@ -130,6 +130,22 @@ Logoscore close dispatch (single `closeStream` op):
 - Distinct `provider` that is not the stream provider: `close_provider_mismatch`.
 - `createStream` with `provider` equal to `owner`: `create_provider_equals_owner`.
 
+Logoscore withdraw dispatch (single `chainAction withdraw`):
+
+- Omit `withdraw_to`, or JSON null, or `withdraw_to` equal to `owner`
+  (normalized 32-byte ids, D47.7): withdraw to owner (`withdraw_to_owner`,
+  three accounts; vault owner signs).
+- Distinct `withdraw_to`: `withdraw` (four accounts; vault owner signs).
+- Empty `owner`, or `withdraw_to` key present but empty: shared `args_mismatch`
+  (D47.12).
+- `withdraw_to` present but not 64-hex and not base58:
+  `invalid account id (expect 64-hex or base58)`.
+- Missing or non-u64 `amount_lo` / `amount_hi`: `invalid numeric argument`
+  (`amount_hi` is mandatory on `withdraw()`).
+- Missing or undecodable vault: `withdraw_prestate_unavailable`.
+- Decoded `VaultConfig.owner` ≠ JSON `owner`: `withdraw_owner_mismatch`
+  (Reserved; PDA binding usually makes this unreachable).
+
 Store E2E teardown uses provider-close. Module Required cells default to
 owner-close (`CLOSE_ROLE=owner`). Thin provider-close cells set `CLOSE_ROLE=provider`.
 

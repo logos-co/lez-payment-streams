@@ -13,7 +13,7 @@ Decisions: [integration-decisions.md](../reference/decisions.md).
 | --- | --- |
 | [AGENTS.md](../../AGENTS.md) | Agent read order, active step |
 | [completed/](completed/) | Normative excerpts (12-16), completed step packets (17-19, 22, 24, 26-41, 44–47, 49–50, 52–53) |
-| [upcoming/](upcoming/) | Steps 21, 51 |
+| [upcoming/](upcoming/) | Steps 21, 51, 54 |
 | [wontfix/](wontfix/) | Not near-term; may return to upcoming — Steps 20, 23, 25, 42, 43, 48 |
 | [reference/wire.md](../reference/wire.md) | Cross-step APIs |
 | [reference/decisions.md](../reference/decisions.md) | D1-D6, N1-N18 |
@@ -37,7 +37,7 @@ Documentation tracks ([N18](../reference/decisions.md#n18-integration-demo-vs-pa
 Engineering: Steps 26–33 complete; Steps 36–41 complete
 ([logos-lips#397](https://github.com/logos-co/logos-lips/pull/397) → `master` `435a6f18`;
 [logos-lips#379](https://github.com/logos-co/logos-lips/pull/379) → `master` `f09f9e9e`);
-Steps 21, 51 upcoming (Basecamp UI; forum post).
+Steps 21, 51, 54 upcoming (Basecamp UI; forum post; withdraw split).
 Step 52 complete (wrap-up verification).
 Step 48 wontfix (program-graph LEZ unify / AT config drop).
 Step 46 complete (living docs IA). Step 49 complete (ImageID cut).
@@ -107,6 +107,7 @@ paid Store mode on the provider.
 | Forum post | 51 (upcoming; after 52) |
 | Wrap-up verification | 52 (complete) |
 | Repository structure | 53 (complete) |
+| Withdraw to owner and withdraw (LEZ uniqueness split) | 54 (upcoming) |
 
 Step 25 (in-process demo coordinator module) is wontfix
 ([packet](wontfix/step-25-demo-coordination-module.md)).
@@ -173,6 +174,7 @@ Gate logs: [step-32-testnet-gate-log.md](completed/step-32-testnet-gate-log.md) 
 | --- | --- | --- |
 | 21 | Protocol UI: Basecamp plugin | Upcoming — [step-21-basecamp-ui.md](upcoming/step-21-basecamp-ui.md) |
 | 51 | Forum post | Upcoming — [step-51-forum-post.md](upcoming/step-51-forum-post.md) |
+| 54 | Withdraw to owner and withdraw | Upcoming — [step-54-withdraw-owner-and-recipient.md](upcoming/step-54-withdraw-owner-and-recipient.md) |
 
 ## Waiting steps
 

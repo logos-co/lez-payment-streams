@@ -24,7 +24,8 @@ accounts already in `WALLET_HOME`.
 `make basecamp-ui-run` exports that home, `FIXTURE_MANIFEST`, and
 `PS_AUTHENTICATED_TRANSFER_PROGRAM_ID_HEX` (live sequencer AT ImageID)
 into child `logos_host` processes.
-Deposit and claim instructions carry that id in a chained call.
+Deposit chains authenticated transfer using that id.
+Claim and withdraw credit the destination in the payment-streams guest.
 The FFI graph AT differs from the program that owns testnet accounts.
 
 Basecamp needs exclusive access to `storage.json`

@@ -60,7 +60,9 @@ Historical protocol CLI (complete):
 [Step 34](docs/plan/completed/step-34-user-journey-manual-walkthrough.md);
 [Step 28](docs/plan/completed/step-28-user-journey-testnet.md).
 Upcoming: [Step 21](docs/plan/upcoming/step-21-basecamp-ui.md) (Basecamp UI),
-[Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post).
+[Step 51](docs/plan/upcoming/step-51-forum-post.md) (forum post),
+[Step 54](docs/plan/upcoming/step-54-withdraw-owner-and-recipient.md)
+(withdraw to owner and withdraw).
 Step 52 is complete
 ([step-52-gate-log.md](docs/plan/completed/step-52-gate-log.md)).
 Step 51 publishes the forum post from that gate log.
