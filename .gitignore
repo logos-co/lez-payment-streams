@@ -47,7 +47,8 @@ store.sqlite3-wal
 storage.json
 wallet_config.json
 
-# Python test cache
+# Local CMake tree for module/tests (cmake -B module/tests/build-test)
+module/tests/build-test/
 __pycache__/
 .pytest_cache/
 
