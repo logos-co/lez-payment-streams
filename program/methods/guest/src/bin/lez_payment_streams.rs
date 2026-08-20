@@ -161,6 +161,57 @@ mod lez_payment_streams {
         Ok(())
     }
 
+    /// Debit `vault_holding` and credit `destination` by `amount` of unallocated balance.
+    /// Returns AutoClaim for the destination slot. PP requires Claimed(Authorized) when the
+    /// destination started as Account::default() in pre-state; public existing accounts get None.
+    fn apply_withdraw_accounting(
+        vault_holding: &mut AccountWithMetadata,
+        destination: &mut AccountWithMetadata,
+        vault_config_state: &VaultConfig,
+        amount: Balance,
+    ) -> Result<AutoClaim, SpelError> {
+        if amount == 0 {
+            return Err(spel_err(
+                ErrorCode::ZeroWithdrawAmount,
+                "zero withdraw amount",
+            ));
+        }
+
+        let unallocated = vault_holding
+            .account
+            .balance
+            .saturating_sub(vault_config_state.total_allocated);
+        if amount > unallocated {
+            return Err(spel_err(
+                ErrorCode::InsufficientFunds,
+                "withdraw exceeds unallocated vault balance",
+            ));
+        }
+
+        let destination_was_default = destination.account == Account::default();
+
+        vault_holding.account.balance = vault_holding
+            .account
+            .balance
+            .checked_sub(amount)
+            .ok_or_else(|| {
+                spel_err(
+                    ErrorCode::InsufficientFunds,
+                    "vault holding balance underflow",
+                )
+            })?;
+
+        destination.account.balance = destination.account.balance.checked_add(amount).ok_or_else(
+            || spel_err(ErrorCode::ArithmeticOverflow, "recipient balance overflow"),
+        )?;
+
+        if destination_was_default {
+            Ok(AutoClaim::Claimed(Claim::Authorized))
+        } else {
+            Ok(AutoClaim::None)
+        }
+    }
+
     fn validate_stream_binding_against_vault(
         stream_config: &StreamConfig,
         vault_config_state: &VaultConfig,
@@ -464,75 +515,27 @@ mod lez_payment_streams {
         vault_id: VaultId,
         amount: Balance,
     ) -> SpelResult {
-        if amount == 0 {
-            return Err(spel_err(
-                ErrorCode::ZeroWithdrawAmount,
-                "zero withdraw amount",
-            ));
-        }
-
         let (vault_config_state, vault_holding_state) =
             parse_vault_accounts(&vault_config, &vault_holding)?;
 
         validate_vault_structure(&vault_config_state, &vault_holding_state, vault_id)?;
         validate_vault_owner(&vault_config_state, owner.account_id)?;
 
-        let unallocated = vault_holding
-            .account
-            .balance
-            .saturating_sub(vault_config_state.total_allocated);
-        if amount > unallocated {
-            return Err(spel_err(
-                ErrorCode::InsufficientFunds,
-                "withdraw exceeds unallocated vault balance",
-            ));
-        }
-
         let mut vault_holding = vault_holding;
         let mut withdraw_to = withdraw_to;
-
-        let recipient_was_default = withdraw_to.account == Account::default();
-
-        vault_holding.account.balance = vault_holding
-            .account
-            .balance
-            .checked_sub(amount)
-            .ok_or_else(|| {
-                spel_err(
-                    ErrorCode::InsufficientFunds,
-                    "vault holding balance underflow",
-                )
-            })?;
-
-        withdraw_to.account.balance = withdraw_to
-            .account
-            .balance
-            .checked_add(amount)
-            .ok_or_else(|| spel_err(ErrorCode::ArithmeticOverflow, "recipient balance overflow"))?;
-
-        // The PP circuit requires that any account modified during execution
-        // carries an ownership claim if it was default-owned (Account::default()) in pre-state.
-        // A default-owned recipient is a new private commitment;
-        // claiming it here lets the circuit set `program_owner` correctly
-        // before its "modified but not claimed" invariant check.
-        // Public withdrawals to existing accounts are unaffected: `AutoClaim::None` is a no-op.
-        let withdraw_to_claim = if recipient_was_default {
-            AutoClaim::Claimed(Claim::Authorized)
-        } else {
-            AutoClaim::None
-        };
-
-        let vault_config_account = vault_config.account;
-        let vault_holding_account = vault_holding.account;
-        let owner_account = owner.account;
-        let withdraw_to_account = withdraw_to.account;
+        let withdraw_to_claim = apply_withdraw_accounting(
+            &mut vault_holding,
+            &mut withdraw_to,
+            &vault_config_state,
+            amount,
+        )?;
 
         Ok(SpelOutput::execute_with_claims(
             &[
-                vault_config_account,
-                vault_holding_account,
-                owner_account,
-                withdraw_to_account,
+                vault_config.account,
+                vault_holding.account,
+                owner.account,
+                withdraw_to.account,
             ],
             &[
                 AutoClaim::None,
@@ -540,6 +543,42 @@ mod lez_payment_streams {
                 AutoClaim::None,
                 withdraw_to_claim,
             ],
+            vec![],
+        ))
+    }
+
+    #[instruction]
+    pub fn withdraw_to_owner(
+        #[account(mut, pda = [literal("vault_config"), account("owner"), arg("vault_id")])]
+        vault_config: AccountWithMetadata,
+        #[account(mut, pda = [literal("vault_holding"), account("vault_config"), literal("\0")])]
+        vault_holding: AccountWithMetadata,
+        #[account(mut, signer)] owner: AccountWithMetadata,
+        vault_id: VaultId,
+        amount: Balance,
+    ) -> SpelResult {
+        let (vault_config_state, vault_holding_state) =
+            parse_vault_accounts(&vault_config, &vault_holding)?;
+
+        validate_vault_structure(&vault_config_state, &vault_holding_state, vault_id)?;
+        validate_vault_owner(&vault_config_state, owner.account_id)?;
+
+        let mut vault_holding = vault_holding;
+        let mut owner = owner;
+        let owner_claim = apply_withdraw_accounting(
+            &mut vault_holding,
+            &mut owner,
+            &vault_config_state,
+            amount,
+        )?;
+
+        Ok(SpelOutput::execute_with_claims(
+            &[
+                vault_config.account,
+                vault_holding.account,
+                owner.account,
+            ],
+            &[AutoClaim::None, AutoClaim::None, owner_claim],
             vec![],
         ))
     }

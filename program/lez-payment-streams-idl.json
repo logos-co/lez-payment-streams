@@ -43,8 +43,8 @@
                 "path": "vault_config"
               },
               {
-                "kind": "const",
-                "value": "native"
+                "kind": "arg",
+                "path": "token_id"
               }
             ]
           }
@@ -67,6 +67,15 @@
           "name": "privacy_tier",
           "type": {
             "defined": "VaultPrivacyTier"
+          }
+        },
+        {
+          "name": "token_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
           }
         }
       ]
@@ -113,7 +122,7 @@
               },
               {
                 "kind": "const",
-                "value": "native"
+                "value": "\u0000"
               }
             ]
           }
@@ -186,7 +195,7 @@
               },
               {
                 "kind": "const",
-                "value": "native"
+                "value": "\u0000"
               }
             ]
           }
@@ -201,6 +210,75 @@
           "name": "withdraw_to",
           "writable": true,
           "signer": false,
+          "init": false
+        }
+      ],
+      "args": [
+        {
+          "name": "vault_id",
+          "type": {
+            "defined": "VaultId"
+          }
+        },
+        {
+          "name": "amount",
+          "type": {
+            "defined": "Balance"
+          }
+        }
+      ]
+    },
+    {
+      "name": "withdraw_to_owner",
+      "accounts": [
+        {
+          "name": "vault_config",
+          "writable": true,
+          "signer": false,
+          "init": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_config"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "vault_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_holding",
+          "writable": true,
+          "signer": false,
+          "init": false,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "vault_holding"
+              },
+              {
+                "kind": "account",
+                "path": "vault_config"
+              },
+              {
+                "kind": "const",
+                "value": "\u0000"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
           "init": false
         }
       ],
@@ -261,7 +339,7 @@
               },
               {
                 "kind": "const",
-                "value": "native"
+                "value": "\u0000"
               }
             ]
           }
@@ -374,7 +452,7 @@
               },
               {
                 "kind": "const",
-                "value": "native"
+                "value": "\u0000"
               }
             ]
           }
@@ -471,7 +549,7 @@
               },
               {
                 "kind": "const",
-                "value": "native"
+                "value": "\u0000"
               }
             ]
           }
@@ -568,7 +646,7 @@
               },
               {
                 "kind": "const",
-                "value": "native"
+                "value": "\u0000"
               }
             ]
           }
@@ -671,7 +749,7 @@
               },
               {
                 "kind": "const",
-                "value": "native"
+                "value": "\u0000"
               }
             ]
           }
@@ -768,7 +846,7 @@
               },
               {
                 "kind": "const",
-                "value": "native"
+                "value": "\u0000"
               }
             ]
           }
@@ -871,7 +949,7 @@
               },
               {
                 "kind": "const",
-                "value": "native"
+                "value": "\u0000"
               }
             ]
           }
